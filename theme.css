@@ -1,0 +1,189 @@
+.monokai {
+    /* Main Backgrounds */
+    --ace-bg: #272822;
+    --ace-gutter-bg: #2F3129;
+    --ace-active-line-bg: #202020;
+    --ace-gutter-active-bg: #272727;
+    
+    /* Text & UI Colors */
+    --ace-foreground: #F8F8F2;
+    --ace-gutter-color: #8F908A;
+    --ace-cursor: #F8F8F0;
+    --ace-selection-bg: #49483E;
+    --ace-print-margin: #555651;
+    --ace-invisible: #52524d;
+    --ace-comment: #75715E;
+
+    /* Syntax Colors (The "Monokai" Brand) */
+    --ace-pink: #F92672;    /* Keywords, Tags, Storage */
+    --ace-purple: #AE81FF;  /* Constants, Numbers */
+    --ace-blue: #66D9EF;    /* Functions, Classes, Types */
+    --ace-green: #A6E22E;   /* Entities, Variable Names */
+    --ace-orange: #FD971F;  /* Parameters */
+    --ace-yellow: #E6DB74;  /* Strings */
+    --ace-white: #FFFFFF;   /* Punctuation */
+
+    /* Functional UI States */
+    --ace-fold-bg: #A6E22E;
+    --ace-bracket-border: #49483E;
+    --ace-step-bg: rgb(102, 82, 0);
+}
+
+body
+{
+    background-color: var(--ace-bg);
+    font-family: 
+    /* 1. MacOS/iOS: The gold standard for modern screens */
+    "SF Mono", 
+    /* 2. MacOS Legacy: Still looks great */
+    "Menlo", 
+    /* 3. Windows 10/11: Built specifically for coding */
+    "Cascadia Code", 
+    /* 4. Windows Legacy: The classic VS look */
+    "Consolas", 
+    /* 5. Linux: Clean and highly readable */
+    "Liberation Mono", 
+    /* 6. General Linux: Wide support */
+    "DejaVu Sans Mono", 
+    /* 7. The Final Safety Net */
+    monospace;
+}
+
+#filelist {
+    background-color: var(--ace-gutter-bg); /* Darker than editor */
+    color: var(--ace-gutter-color);
+}
+
+.treejs-node__open > .treejs-label {
+    color: var(--ace-green); /* Use the Monokai green for active folder */
+}
+
+/* Style your custom data-extension icons from earlier */
+.treejs-node[data-extension="c"] > .treejs-label::before {
+    color: var(--ace-blue);
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    background-color: var(--ace-bg);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--ace-print-margin);
+    border-radius: 4px;
+}
+
+.xterm-scrollable-element,
+.xterm-viewport {
+    background-color: var(--ace-bg) !important;
+}
+
+/* Match the scrollbar to your editor's style */
+.xterm-viewport::-webkit-scrollbar {
+    width: 8px;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+    background: var(--ace-print-margin);
+    border-radius: 4px;
+}
+
+
+input,
+select,
+button {
+    /* Use the Gutter background for a distinct UI look */
+    background: var(--ace-gutter-bg); 
+    
+    /* Subtle border using the selection/bracket color */
+    border: 2px solid var(--ace-selection-bg); 
+    
+    /* Text color from the editor foreground */
+    color: var(--ace-foreground);
+    font-family: inherit;
+}
+
+#statusbar
+{
+    background-color: var(--ace-gutter-bg);
+    color: var(--ace-foreground);
+}
+
+input:focus,
+select:focus {
+    border-color: var(--ace-blue);
+    background: var(--ace-bg); /* Pop to the main editor bg when active */
+}
+
+button:hover {
+    background: var(--ace-selection-bg);
+    border-color: var(--ace-green);
+    cursor: pointer;
+}
+
+button:active {
+    background: var(--ace-active-line-bg);
+    transform: translateY(1px); /* Simple physical feedback */
+}
+
+/* Style for placeholders to match comments */
+input::placeholder {
+    color: var(--ace-comment);
+    font-style: italic;
+}
+
+select option {
+    background: var(--ace-gutter-bg);
+    color: var(--ace-foreground);
+}
+
+#tabs a {
+    color:var(--ace-foreground);
+}
+
+#tabs a.active,
+#toolbar a.active,
+#tabs a:active,
+#toolbar a:active,
+#tabs a:hover,
+#toolbar a:hover {
+    background: rgb(from var(--ace-foreground) r g b / 20%);
+}
+
+
+#tabs a.active,
+#toolbar a.active,
+#tabs a:active,
+#toolbar a:active {
+    border-left-color: rgb(from var(--ace-blue) r g b / 50%);
+}
+
+
+[alt]::after,
+[data-tooltip]::after
+{
+    background: var(--ace-gutter-bg); /* Use your Monokai variables! */
+    color: var(--ace-foreground);
+    border: 2px solid var(--ace-selection-bg);
+    font-family: 
+    /* 1. MacOS/iOS: The gold standard for modern screens */
+    "SF Mono", 
+    /* 2. MacOS Legacy: Still looks great */
+    "Menlo", 
+    /* 3. Windows 10/11: Built specifically for coding */
+    "Cascadia Code", 
+    /* 4. Windows Legacy: The classic VS look */
+    "Consolas", 
+    /* 5. Linux: Clean and highly readable */
+    "Liberation Mono", 
+    /* 6. General Linux: Wide support */
+    "DejaVu Sans Mono", 
+    /* 7. The Final Safety Net */
+    monospace;
+}
+
+
+
+#filelist .treejs .treejs-switcher:before
+{
+    border-top-color: var(--ace-foreground);
+}

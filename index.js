@@ -171,7 +171,7 @@ loadGitHubTree();
 var editor = ace.edit("editor");
 editor.session.setUseWorker(false);
 editor.setTheme("ace/theme/monokai");
-editor.session.setMode("ace/mode/javascript");
+editor.session.setMode("ace/mode/c_cpp");
 
 setTimeout(() => {
   editor.resize();
@@ -281,6 +281,8 @@ async function openFile(fileId, recordHistory = true) {
     const mode = getModeByFileId(fileId);
     session.setMode(mode);
     editor.setSession(session);
+    editor.resize();
+    editor.renderer.updateFull();
 
     // 3. Record it in history if this isn't a "Back/Forward" action
     if (recordHistory) {
@@ -313,4 +315,3 @@ window.addEventListener("hashchange", function(e) {
     e.preventDefault();
 }, false);
 */
-

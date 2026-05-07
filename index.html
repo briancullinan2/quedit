@@ -5,9 +5,10 @@
     <link href='/boxicons.min.css' rel='stylesheet'>
     <link href="/main.css" rel="stylesheet" />
     <link href="/xterm.css" rel="stylesheet" />
+    <link href="/theme.css" rel="stylesheet" />
 
 </head>
-<body>
+<body class="monokai">
     <div id="main" class="panel-column">
         <div id="toolbar">
             <ul>
@@ -21,17 +22,19 @@
                 <li><select name="branch" id="branch">
                     <option value="main">main</option>
                 </select></li>
-                <li><a href="#save" class="bx bx-save"></a></li>
-                <li><a href="#upload" class="bx bx-folder-up-arrow"></a></li>
-                <li><a href="#undo" class="bx bx-undo"></a></li>
-                <li><a href="#redo" class="bx bx-redo"></a></li>
+                <li><a alt="Save file" href="#save" class="bx bx-save"></a></li>
+                <li><a alt="Upload file" href="#upload" class="bx bx-folder-up-arrow"></a></li>
+                <li><a alt="Undo" href="#undo" class="bx bx-undo"></a></li>
+                <li><a alt="Redo" href="#redo" class="bx bx-redo"></a></li>
                 <li><select name="filename" id="filename">
                     <option value="">Current filename</option>
                 </select></li>
-                <li><a href="#play" class="bx bx-play"></a></li>
-                <li><a href="#pause" class="bx bx-pause"></a></li>
-                <li><a href="#stop" class="bx bx-stop"></a></li>
-                <li><a href="#reload" class="bx bx-refresh-cw-alt"></a></li>
+                <li><a alt="Compile" href="#code" class="bx bx-code"></a></li>
+                <li><a alt="Run" href="#play" class="bx bx-play"></a></li>
+                <li><a alt="Pause" href="#pause" class="bx bx-pause"></a></li>
+                <li><a alt="Stop" href="#stop" class="bx bx-stop"></a></li>
+                <li><a alt="Reload" href="#reload" class="bx bx-refresh-cw-alt"></a></li>
+                <li><a alt="Console" href="#console" class="bx bx-terminal"></a></li>
                 <li><select name="spawn" id="spawn">
                     <option value="">Spawn point</option>
                 </select></li>
@@ -46,11 +49,11 @@
         <div id="main-body" class="panel-row">
             <div id="tabs">
                 <ul>
-                    <li><a href="#filesearch" class="bx bx-search"></a></li>
-                    <li><a href="#filelist" class="bx bx-folder-code"></a></li>
-                    <li><a href="#gamelist" class="bx bx-handheld-alt"></a></li>
-                    <li><a href="#assetlist" class="bx bx-treasure-chest"></a></li>
-                    <li><a href="#database" class="bx bx-database"></a></li>
+                    <li><a alt="Search files" href="#filesearch" class="bx bx-search"></a></li>
+                    <li><a alt="Engine files" href="#filelist" class="bx bx-folder-code"></a></li>
+                    <li><a alt="Game files" href="#gamelist" class="bx bx-handheld-alt"></a></li>
+                    <li><a alt="Assets" href="#assetlist" class="bx bx-treasure-chest"></a></li>
+                    <li><a alt="Local database" href="#database" class="bx bx-database"></a></li>
                 </ul>
             </div>
             <div id="editor-container" class="panel-row">
@@ -69,9 +72,16 @@
                 <div id="database">
 
                 </div>
-                <div id="editor">
-    some text
-                </div>
+<div id="editor">
+#include <stdio.h>
+
+int main() {
+    printf("Hello World!\n");
+    printf("WASI Compiler Check: SUCCESS\n");
+    return 0;
+}
+
+</div>
             </div>
             <div id="engine">
 

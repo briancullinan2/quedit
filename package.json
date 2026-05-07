@@ -8,9 +8,10 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "live-server --entry-file=index.html"
+    "start": "node dev.js"
   },
   "dependencies": {
+    "@wasmer/wasi": "^1.2.2",
     "@widgetjs/tree": "^1.8.3",
     "@xterm/xterm": "^6.0.0",
     "live-server": "^1.2.2"
