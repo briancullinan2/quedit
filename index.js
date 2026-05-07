@@ -503,3 +503,12 @@ function clearToken() {
 }
 
 
+document.getElementById('theme').addEventListener('change', (e) => {
+    const themeName = e.target.value.split('/').pop(); // Gets 'monokai' or 'dracula'
+    // Clean up old classes and add new one
+    document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
+    
+    // Actually tell Ace to change its internal theme too
+    editor.setTheme(e.target.value);
+});
+

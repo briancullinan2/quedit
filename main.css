@@ -178,6 +178,13 @@ button
     display:flex;
     flex-direction: row;
     max-width: 100%;
+    flex-wrap: wrap;
+    justify-content: end;
+}
+
+#toolbar ul > *:has(select)
+{
+    min-width: 100px;
 }
 
 #toolbar ul > *

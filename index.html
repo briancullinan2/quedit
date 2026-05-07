@@ -8,7 +8,7 @@
     <link href="/theme.css" rel="stylesheet" />
 
 </head>
-<body class="monokai">
+<body class="theme-monokai">
     <div id="main" class="panel-column">
         <div id="toolbar">
             <ul>
@@ -44,9 +44,73 @@
                 <li><select name="wasi" id="wasi">
                     <option value="">WASI-SDK v33 (Not downloaded)</option>
                 </select></li>
-                <li><select name="theme" id="theme">
-                    <option value="">Monokai</option>
-                </select></li>
+                <li>
+                    <select id="theme" name="theme">
+                        <optgroup label="The Classics & Defaults">
+                            <option value="ace/theme/monokai" selected>Monokai (OG High Contrast)</option>
+                            <option value="ace/theme/textmate">TextMate (The Standard)</option>
+                            <option value="ace/theme/github">GitHub (Legacy)</option>
+                            <option value="ace/theme/github_light_default">GitHub Light Default</option>
+                            <option value="ace/theme/github_dark">GitHub Dark</option>
+                        </optgroup>
+
+                        <optgroup label="Cyberpunk & Retro Terminal">
+                            <option value="ace/theme/terminal">Retro Terminal</option>
+                            <option value="ace/theme/gob">Green on Black (The Matrix)</option>
+                            <option value="ace/theme/vibrant_ink">Vibrant Ink (Neon)</option>
+                            <option value="ace/theme/cobalt">Cobalt (Deep Sea Blue)</option>
+                            <option value="ace/theme/chaos">Chaos (Extreme Contrast)</option>
+                        </optgroup>
+
+                        <optgroup label="Modern & Soft Darks">
+                            <option value="ace/theme/dracula">Dracula (Vampire Mode)</option>
+                            <option value="ace/theme/one_dark">One Dark (Atom Style)</option>
+                            <option value="ace/theme/nord_dark">Nord Dark (Arctic Frost)</option>
+                            <option value="ace/theme/gruvbox">Gruvbox (Earth Tones)</option>
+                            <option value="ace/theme/pastel_on_dark">Pastel on Dark</option>
+                            <option value="ace/theme/twilight">Twilight (Warm Dark)</option>
+                            <option value="ace/theme/ambiance">Ambiance (Smooth Espresso)</option>
+                        </optgroup>
+
+                        <optgroup label="Corporate & Compliance (Bright)">
+                            <option value="ace/theme/chrome">Chrome (High Visibility)</option>
+                            <option value="ace/theme/eclipse">Eclipse (Java Classic)</option>
+                            <option value="ace/theme/sqlserver">SQL Server</option>
+                            <option value="ace/theme/xcode">XCode</option>
+                            <option value="ace/theme/cloud_editor">CloudEditor Light</option>
+                            <option value="ace/theme/cloud_editor_dark">CloudEditor Dark</option>
+                            <option value="ace/theme/dreamweaver">Dreamweaver</option>
+                        </optgroup>
+
+                        <optgroup label="Artistic & Atmospheric">
+                            <option value="ace/theme/solarized_dark">Solarized Dark</option>
+                            <option value="ace/theme/solarized_light">Solarized Light</option>
+                            <option value="ace/theme/katzenmilch">KatzenMilch (Warm Gray)</option>
+                            <option value="ace/theme/kuroir">Kuroir (Paper White)</option>
+                            <option value="ace/theme/dawn">Dawn (Soft Sunrise)</option>
+                            <option value="ace/theme/clouds">Clouds</option>
+                            <option value="ace/theme/clouds_midnight">Clouds Midnight</option>
+                        </optgroup>
+
+                        <optgroup label="The 'Tomorrow' Series">
+                            <option value="ace/theme/tomorrow">Tomorrow</option>
+                            <option value="ace/theme/tomorrow_night">Tomorrow Night</option>
+                            <option value="ace/theme/tomorrow_night_blue">Tomorrow Night Blue</option>
+                            <option value="ace/theme/tomorrow_night_bright">Tomorrow Night Bright</option>
+                            <option value="ace/theme/tomorrow_night_eighties">Tomorrow Night 80s</option>
+                        </optgroup>
+
+                        <optgroup label="Niche & Specialist">
+                            <option value="ace/theme/mono_industrial">Mono Industrial</option>
+                            <option value="ace/theme/merbivore">Merbivore</option>
+                            <option value="ace/theme/merbivore_soft">Merbivore Soft</option>
+                            <option value="ace/theme/idle_fingers">idle Fingers</option>
+                            <option value="ace/theme/kr_theme">krTheme</option>
+                            <option value="ace/theme/iplastic">IPlastic</option>
+                            <option value="ace/theme/crimson_editor">Crimson Editor</option>
+                        </optgroup>
+                    </select>
+                </li>
                 <li><a onclick="updatePlaceholder()" alt="Github login" class="bx bx-arrow-in-right-square-half" target="_new" href="https://github.com/settings/tokens?type=beta"></a></li>
             </ul>
         </div>

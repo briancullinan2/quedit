@@ -1,4 +1,4 @@
-.monokai {
+.theme-monokai {
     /* Main Backgrounds */
     --ace-bg: #272822;
     --ace-gutter-bg: #2F3129;
@@ -7,7 +7,6 @@
     
     /* Text & UI Colors */
     --ace-foreground: #F8F8F2;
-    --ace-gutter-color: #8F908A;
     --ace-cursor: #F8F8F0;
     --ace-selection-bg: #49483E;
     --ace-print-margin: #555651;
@@ -23,11 +22,522 @@
     --ace-yellow: #E6DB74;  /* Strings */
     --ace-white: #FFFFFF;   /* Punctuation */
 
-    /* Functional UI States */
-    --ace-fold-bg: #A6E22E;
-    --ace-bracket-border: #49483E;
-    --ace-step-bg: rgb(102, 82, 0);
 }
+
+.theme-pastels-on-dark {
+    /* Core Backgrounds */
+    --ace-bg: #2C2828;
+    --ace-gutter-bg: #353030;
+    
+    /* Primary UI & Text */
+    --ace-foreground: #8F938F;
+    --ace-comment: #A6C6FF;
+    --ace-selection-bg: rgba(221, 240, 255, 0.20);
+    
+    /* The 4 "Action" Colors */
+    --ace-pink: #757aD8;    /* Keywords (actually a muted Purple/Blue in this theme) */
+    --ace-purple: #DE8E30;  /* Constants / Language */
+    --ace-blue: #AEB2F8;    /* Functions */
+    --ace-green: #66A968;   /* Strings / Success */
+}
+
+.theme-github {
+    --ace-bg: #FFFFFF;
+    --ace-gutter-bg: #F0F0F0;
+    --ace-foreground: #000000;
+    --ace-comment: #999988;
+    --ace-selection-bg: #ADCDEC;
+    --ace-pink: #A71D5D;    /* Keywords */
+    --ace-purple: #0086B3;  /* Constants */
+    --ace-blue: #795DA3;    /* Functions */
+    --ace-green: #183691;   /* Strings */
+}
+
+.theme-chrome {
+    --ace-bg: #FFFFFF;
+    --ace-gutter-bg: #EBEBEB;
+    --ace-foreground: #000000;
+    --ace-comment: #356066;
+    --ace-selection-bg: #BDD5FC;
+    --ace-pink: #8A2BE2;
+    --ace-purple: #0000FF;
+    --ace-blue: #1A1AA6;
+    --ace-green: #008000;
+}
+
+.theme-dracula {
+    --ace-bg: #282a36;
+    --ace-gutter-bg: #282a36;
+    --ace-foreground: #f8f8f2;
+    --ace-comment: #6272a4;
+    --ace-selection-bg: #44475a;
+    --ace-pink: #ff79c6;    /* Keywords */
+    --ace-purple: #bd93f9;  /* Constants */
+    --ace-blue: #8be9fd;    /* Functions */
+    --ace-green: #50fa7b;   /* Strings */
+}
+
+.theme-twilight {
+    --ace-bg: #141414;
+    --ace-gutter-bg: #232323;
+    --ace-foreground: #F8F8F8;
+    --ace-comment: #5F5A60;
+    --ace-selection-bg: rgba(221, 240, 255, 0.20);
+    --ace-pink: #CDA869;    /* Keywords (Gold/Tan) */
+    --ace-purple: #CF6A4C;  /* Constants */
+    --ace-blue: #9B703F;    /* Functions */
+    --ace-green: #8F9D6A;   /* Strings */
+}
+
+.theme-solarized-dark {
+    --ace-bg: #002b36;
+    --ace-gutter-bg: #073642;
+    --ace-foreground: #839496;
+    --ace-comment: #586e75;
+    --ace-selection-bg: #073642;
+    --ace-pink: #859900;    /* Mapped to Solarized Green */
+    --ace-purple: #d33682;  /* Mapped to Solarized Magenta */
+    --ace-blue: #268bd2;    /* Mapped to Solarized Blue */
+    --ace-green: #2aa198;   /* Mapped to Solarized Cyan */
+}
+
+.theme-nord-dark {
+    --ace-bg: #2e3440;
+    --ace-gutter-bg: #3b4252;
+    --ace-foreground: #d8dee9;
+    --ace-comment: #4c566a;
+    --ace-selection-bg: #434c5e;
+    --ace-pink: #81a1c1;
+    --ace-purple: #b48ead;
+    --ace-blue: #88c0d0;
+    --ace-green: #a3be8c;
+}
+
+
+.theme-cobalt {
+    --ace-bg: #002240;
+    --ace-gutter-bg: #002240;
+    --ace-foreground: #FFFFFF;
+    --ace-comment: #0088FF;
+    --ace-selection-bg: rgba(179, 101, 57, 0.75);
+    --ace-pink: #FF9D00;    /* Keywords (Orange-ish) */
+    --ace-purple: #FF628C;  /* Constants */
+    --ace-blue: #80FFBB;    /* Functions */
+    --ace-green: #3AD900;   /* Strings */
+}
+
+.theme-ambiance {
+    --ace-bg: #202020;
+    --ace-gutter-bg: #3D3D3D;
+    --ace-foreground: #E6E1DC;
+    --ace-comment: #555555;
+    --ace-selection-bg: #221a0f;
+    --ace-pink: #c26230;    /* Keywords */
+    --ace-purple: #D3D0C8;  /* Constants */
+    --ace-blue: #6d9cbe;    /* Functions */
+    --ace-green: #a5c261;   /* Strings */
+}
+
+.theme-gruvbox {
+    --ace-bg: #282828;
+    --ace-gutter-bg: #282828;
+    --ace-foreground: #ebdbb2;
+    --ace-comment: #928374;
+    --ace-selection-bg: #3c3836;
+    --ace-pink: #fb4934;    /* Keywords */
+    --ace-purple: #d3869b;  /* Constants */
+    --ace-blue: #83a598;    /* Functions */
+    --ace-green: #b8bb26;   /* Strings */
+}
+
+.theme-gob {
+    --ace-bg: #080808;
+    --ace-gutter-bg: #050505;
+    --ace-foreground: #00FF00; /* Pure Green Matrix Vibe */
+    --ace-comment: #004400;
+    --ace-selection-bg: #002200;
+    --ace-pink: #FFFFFF;    /* High Contrast Keywords */
+    --ace-purple: #00AA00;  /* Muted Constants */
+    --ace-blue: #00FF00;    /* Uniform Green */
+    --ace-green: #00FF00;   /* Strings */
+}
+
+.theme-tomorrow-night-bright {
+    --ace-bg: #000000;
+    --ace-gutter-bg: #000000;
+    --ace-foreground: #eaeaea;
+    --ace-comment: #969896;
+    --ace-selection-bg: #424242;
+    --ace-pink: #d54e53;
+    --ace-purple: #b294bb;
+    --ace-blue: #7aa6da;
+    --ace-green: #b9ca4a;
+}
+
+.theme-tomorrow-night-eighties {
+    --ace-bg: #2d2d2d;
+    --ace-gutter-bg: #2d2d2d;
+    --ace-foreground: #cccccc;
+    --ace-comment: #999999;
+    --ace-selection-bg: #515151;
+    --ace-pink: #f2777a;
+    --ace-purple: #cc99cc;
+    --ace-blue: #6699cc;
+    --ace-green: #99cc99;
+}
+
+.theme-vibrant-ink {
+    --ace-bg: #000000;
+    --ace-gutter-bg: #000000;
+    --ace-foreground: #FFFFFF;
+    --ace-comment: #9933CC;
+    --ace-selection-bg: #354932;
+    --ace-pink: #FF6600;
+    --ace-purple: #339999;
+    --ace-blue: #FFCC00;
+    --ace-green: #66FF00;
+}
+
+.theme-mono-industrial {
+    --ace-bg: #222324;
+    --ace-gutter-bg: #222324;
+    --ace-foreground: #FFFFFF;
+    --ace-comment: #666C70;
+    --ace-selection-bg: rgba(73, 72, 62, 0.99);
+    --ace-pink: #A39E9B;    /* Very Muted */
+    --ace-purple: #E9883A;
+    --ace-blue: #A8B222;
+    --ace-green: #C23B23;
+}
+
+.theme-tomorrow {
+    --ace-bg: #FFFFFF;
+    --ace-gutter-bg: #F6F6F6;
+    --ace-foreground: #4D4D4C;
+    --ace-comment: #8E908C;
+    --ace-selection-bg: #D6D6D6;
+    --ace-pink: #C82829;    /* Keywords */
+    --ace-purple: #8959A8;  /* Constants */
+    --ace-blue: #4271AE;    /* Functions */
+    --ace-green: #718C00;   /* Strings */
+}
+
+.theme-solarized-light {
+    --ace-bg: #FDF6E3;
+    --ace-gutter-bg: #EEE8D5;
+    --ace-foreground: #657B83;
+    --ace-comment: #93A1A1;
+    --ace-selection-bg: #EEE8D5;
+    --ace-pink: #CB4B16;    /* Orange/Red mix */
+    --ace-purple: #D33682;  /* Magenta */
+    --ace-blue: #268BD2;    /* Blue */
+    --ace-green: #859900;   /* Green */
+}
+
+.theme-xcode {
+    --ace-bg: #FFFFFF;
+    --ace-gutter-bg: #FFFFFF;
+    --ace-foreground: #000000;
+    --ace-comment: #008040;
+    --ace-selection-bg: #A5CDFF;
+    --ace-pink: #C800A4;
+    --ace-purple: #3B0080;
+    --ace-blue: #703DAA;
+    --ace-green: #D12F1B;
+}
+
+.theme-tomorrow-night-blue {
+    --ace-bg: #002451;
+    --ace-gutter-bg: #002451;
+    --ace-foreground: #FFFFFF;
+    --ace-comment: #7285B7;
+    --ace-selection-bg: #003F8E;
+    --ace-pink: #FF9DA4;
+    --ace-purple: #EBBBFF;
+    --ace-blue: #BBDAFF;
+    --ace-green: #D1F1A9;
+}
+
+.theme-terminal {
+    --ace-bg: #000000;
+    --ace-gutter-bg: #1A1A1A;
+    --ace-foreground: #D2D2D2;
+    --ace-comment: #707070;
+    --ace-selection-bg: #444444;
+    --ace-pink: #A0A0FF;
+    --ace-purple: #FFA0A0;
+    --ace-blue: #A0FFA0;
+    --ace-green: #FFFFA0;
+}
+
+.theme-chaos {
+    --ace-bg: #161616;
+    --ace-gutter-bg: #1B1B1B;
+    --ace-foreground: #FFFFFF;
+    --ace-comment: #999999;
+    --ace-selection-bg: #4d4d4d;
+    --ace-pink: #F92672;
+    --ace-purple: #AE81FF;
+    --ace-blue: #66D9EF;
+    --ace-green: #A6E22E;
+}
+
+.theme-idle-fingers {
+    --ace-bg: #323232;
+    --ace-gutter-bg: #323232;
+    --ace-foreground: #FFFFFF;
+    --ace-comment: #BC9458;
+    --ace-selection-bg: rgba(73, 72, 62, 0.52);
+    --ace-pink: #CC7833;
+    --ace-purple: #6C99BB;
+    --ace-blue: #DA4939;
+    --ace-green: #A5C261;
+}
+
+
+.theme-cloud-editor {
+    --ace-bg: #FFFFFF;
+    --ace-gutter-bg: #F0F0F0;
+    --ace-foreground: #000000;
+    --ace-comment: #008000;
+    --ace-selection-bg: #D4D4D4;
+    --ace-pink: #AF00DB;
+    --ace-purple: #0000FF;
+    --ace-blue: #795DA3;
+    --ace-green: #09885A;
+}
+
+.theme-cloud-editor-dark {
+    --ace-bg: #222222;
+    --ace-gutter-bg: #333333;
+    --ace-foreground: #FFFFFF;
+    --ace-comment: #608B4E;
+    --ace-selection-bg: #3A3D41;
+    --ace-pink: #C586C0;
+    --ace-purple: #B5CEA8;
+    --ace-blue: #569CD6;
+    --ace-green: #CE9178;
+}
+
+.theme-kuroir {
+    --ace-bg: #E8E9E8;
+    --ace-gutter-bg: #D6D6D6;
+    --ace-foreground: #363636;
+    --ace-comment: #949494;
+    --ace-selection-bg: #F5C2C1;
+    --ace-pink: #D03620;
+    --ace-purple: #23575C;
+    --ace-blue: #23575C;
+    --ace-green: #3D7A49;
+}
+
+.theme-merbivore-soft {
+    --ace-bg: #1C1C1C;
+    --ace-gutter-bg: #262626;
+    --ace-foreground: #E6E1DC;
+    --ace-comment: #AD2EA4;
+    --ace-selection-bg: #454545;
+    --ace-pink: #FC6F09;
+    --ace-purple: #B3E43B;
+    --ace-blue: #6D9CBE;
+    --ace-green: #8D9906;
+}
+
+.theme-twilight {
+    --ace-bg: #141414;
+    --ace-gutter-bg: #232323;
+    --ace-foreground: #F8F8F8;
+    --ace-comment: #5F5A60;
+    --ace-selection-bg: rgba(221, 240, 255, 0.20);
+    --ace-pink: #CDA869;
+    --ace-purple: #CF6A4C;
+    --ace-blue: #9B703F;
+    --ace-green: #8F9D6A;
+}
+
+.theme-kr-theme {
+    --ace-bg: #0B0A09;
+    --ace-gutter-bg: #141411;
+    --ace-foreground: #FCFFE1;
+    --ace-comment: #706D5B;
+    --ace-selection-bg: rgba(122, 122, 122, 0.5);
+    --ace-pink: #949C8B;
+    --ace-purple: #3399CC;
+    --ace-blue: #869A95;
+    --ace-green: #AD9361;
+}
+
+.theme-sqlserver {
+    --ace-bg: #FFFFFF;
+    --ace-gutter-bg: #F0F0F0;
+    --ace-foreground: #000000;
+    --ace-comment: #008080;
+    --ace-selection-bg: #3399FF;
+    --ace-pink: #0000FF;
+    --ace-purple: #808080;
+    --ace-blue: #FF00FF;
+    --ace-green: #FF0000;
+}
+
+.theme-textmate {
+    --ace-bg: #FFFFFF;
+    --ace-gutter-bg: #F0F0F0;
+    --ace-foreground: #000000;
+    --ace-comment: #008000;
+    --ace-selection-bg: #B5D5FF;
+    --ace-pink: #0000FF;    /* Keywords */
+    --ace-purple: #0000FF;  /* Constants (Shared with pink in old TM) */
+    --ace-blue: #0000A2;    /* Functions */
+    --ace-green: #008000;   /* Strings */
+}
+
+.theme-iplastic {
+    --ace-bg: #EEEEEE;
+    --ace-gutter-bg: #E0E0E0;
+    --ace-foreground: #000000;
+    --ace-comment: #0066FF;
+    --ace-selection-bg: #BAD6FD;
+    --ace-pink: #0000FF;
+    --ace-purple: #008000;
+    --ace-blue: #FF8000;
+    --ace-green: #009900;
+}
+
+.theme-crimson-editor {
+    --ace-bg: #FFFFFF;
+    --ace-gutter-bg: #EBEBEB;
+    --ace-foreground: #000000;
+    --ace-comment: #008000;
+    --ace-selection-bg: #3399FF;
+    --ace-pink: #0000FF;
+    --ace-purple: #FF0000;
+    --ace-blue: #0000FF;
+    --ace-green: #008000;
+}
+
+
+.theme-vibrant-ink {
+    --ace-bg: #000000;
+    --ace-gutter-bg: #000000;
+    --ace-foreground: #FFFFFF;
+    --ace-comment: #9933CC;
+    --ace-selection-bg: #354932;
+    --ace-pink: #FF6600;
+    --ace-purple: #339999;
+    --ace-blue: #FFCC00;
+    --ace-green: #66FF00;
+}
+
+.theme-merbivore {
+    --ace-bg: #161616;
+    --ace-gutter-bg: #262626;
+    --ace-foreground: #E6E1DC;
+    --ace-comment: #AD2EA4;
+    --ace-selection-bg: #454545;
+    --ace-pink: #FC6F09;
+    --ace-purple: #B3E43B;
+    --ace-blue: #6D9CBE;
+    --ace-green: #8D9906;
+}
+
+.theme-eclipse {
+    --ace-bg: #FFFFFF;
+    --ace-gutter-bg: #EBEBEB;
+    --ace-foreground: #000000;
+    --ace-comment: #3F7F5F;
+    --ace-selection-bg: #B2D7FF;
+    --ace-pink: #7F0055;
+    --ace-purple: #0000C0;
+    --ace-blue: #000000;
+    --ace-green: #2A00FF;
+}
+
+.theme-dawn {
+    --ace-bg: #F9F9F9;
+    --ace-gutter-bg: #EBEBEB;
+    --ace-foreground: #080808;
+    --ace-comment: #5A525F;
+    --ace-selection-bg: rgba(39, 95, 255, 0.29);
+    --ace-pink: #794938;
+    --ace-purple: #811F24;
+    --ace-blue: #234A97;
+    --ace-green: #0B6125;
+}
+
+
+
+.theme-chaos {
+    --ace-bg: #161616;
+    --ace-gutter-bg: #1B1B1B;
+    --ace-foreground: #FFFFFF;
+    --ace-comment: #999999;
+    --ace-selection-bg: #4d4d4d;
+    --ace-pink: #F92672;
+    --ace-purple: #AE81FF;
+    --ace-blue: #66D9EF;
+    --ace-green: #A6E22E;
+}
+
+.theme-idle-fingers {
+    --ace-bg: #323232;
+    --ace-gutter-bg: #323232;
+    --ace-foreground: #FFFFFF;
+    --ace-comment: #BC9458;
+    --ace-selection-bg: rgba(73, 72, 62, 0.52);
+    --ace-pink: #CC7833;
+    --ace-purple: #6C99BB;
+    --ace-blue: #DA4939;
+    --ace-green: #A5C261;
+}
+
+.theme-merbivore {
+    --ace-bg: #161616;
+    --ace-gutter-bg: #262626;
+    --ace-foreground: #E6E1DC;
+    --ace-comment: #AD2EA4;
+    --ace-selection-bg: #454545;
+    --ace-pink: #FC6F09;
+    --ace-purple: #B3E43B;
+    --ace-blue: #6D9CBE;
+    --ace-green: #8D9906;
+}
+
+.theme-dreamweaver {
+    --ace-bg: #FFFFFF;
+    --ace-gutter-bg: #FFFFFF;
+    --ace-foreground: #000000;
+    --ace-comment: #999999;
+    --ace-selection-bg: #DAE2E8;
+    --ace-pink: #0056D5;
+    --ace-purple: #000000;
+    --ace-blue: #0056D5;
+    --ace-green: #008000;
+}
+
+.theme-crimson-editor {
+    --ace-bg: #FFFFFF;
+    --ace-gutter-bg: #EBEBEB;
+    --ace-foreground: #000000;
+    --ace-comment: #008000;
+    --ace-selection-bg: #3399FF;
+    --ace-pink: #0000FF;
+    --ace-purple: #FF0000;
+    --ace-blue: #0000FF;
+    --ace-green: #008000;
+}
+
+.theme-katzenmilch {
+    --ace-bg: #E8E8E8;
+    --ace-gutter-bg: #D3D3D3;
+    --ace-foreground: #0F0F0F;
+    --ace-comment: #404040;
+    --ace-selection-bg: #C1D1F1;
+    --ace-pink: #674917;
+    --ace-purple: #5D90CD;
+    --ace-blue: #3E7B72;
+    --ace-green: #D12F1B;
+}
+
 
 body
 {
@@ -51,7 +561,7 @@ body
 
 #filelist {
     background-color: var(--ace-gutter-bg); /* Darker than editor */
-    color: var(--ace-gutter-color);
+    color: var(--ace-foreground);
 }
 
 .treejs-node__open > .treejs-label {
@@ -68,7 +578,7 @@ body
     background-color: var(--ace-bg);
 }
 ::-webkit-scrollbar-thumb {
-    background: var(--ace-print-margin);
+    background: var(--ace-selection-bg);
     border-radius: 4px;
 }
 
@@ -83,7 +593,7 @@ body
 }
 
 .xterm-viewport::-webkit-scrollbar-thumb {
-    background: var(--ace-print-margin);
+    background: var(--ace-selection-bg);
     border-radius: 4px;
 }
 
