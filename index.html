@@ -8,25 +8,81 @@
 
 </head>
 <body>
-    <div id="main" class="panel-row">
-        <div class="panel-column">
-            <div id="toolbar">
-
+    <div id="main" class="panel-column">
+        <div id="toolbar">
+            <ul>
+                <li><select name="user" id="user">
+                    <option value="briancullinan2">briancullinan2</option>
+                    <option value="ec-">ec-</option>
+                </select></li>
+                <li><select name="repository" id="repository">
+                    <option value="Quake3e">Quake3e</option>
+                </select></li>
+                <li><select name="branch" id="branch">
+                    <option value="main">main</option>
+                </select></li>
+                <li><a href="#save" class="bx bx-save"></a></li>
+                <li><a href="#upload" class="bx bx-folder-up-arrow"></a></li>
+                <li><a href="#undo" class="bx bx-undo"></a></li>
+                <li><a href="#redo" class="bx bx-redo"></a></li>
+                <li><select name="filename" id="filename">
+                    <option value="">Current filename</option>
+                </select></li>
+                <li><a href="#play" class="bx bx-play"></a></li>
+                <li><a href="#pause" class="bx bx-pause"></a></li>
+                <li><a href="#stop" class="bx bx-stop"></a></li>
+                <li><a href="#reload" class="bx bx-refresh-cw-alt"></a></li>
+                <li><select name="spawn" id="spawn">
+                    <option value="">Spawn point</option>
+                </select></li>
+                <li><select name="map" id="map">
+                    <option value="">Current map</option>
+                </select></li>
+                <li><select name="wasi" id="wasi">
+                    <option value="">WASI-SDK v33 (Not downloaded)</option>
+                </select></li>
+            </ul>
+        </div>
+        <div id="main-body" class="panel-row">
+            <div id="tabs">
+                <ul>
+                    <li><a href="#filesearch" class="bx bx-search"></a></li>
+                    <li><a href="#filelist" class="bx bx-folder-code"></a></li>
+                    <li><a href="#gamelist" class="bx bx-handheld-alt"></a></li>
+                    <li><a href="#assetlist" class="bx bx-treasure-chest"></a></li>
+                    <li><a href="#database" class="bx bx-database"></a></li>
+                </ul>
             </div>
             <div id="editor-container" class="panel-row">
+                <div id="filesearch">
+
+                </div>
                 <div id="filelist">
+
+                </div>
+                <div id="gamelist">
+
+                </div>
+                <div id="assetlist">
+
+                </div>
+                <div id="database">
 
                 </div>
                 <div id="editor">
     some text
                 </div>
             </div>
-            <div id="terminal">
+            <div id="engine">
 
             </div>
         </div>
-        <div id="engine">
+        <div id="terminal">
 
+        </div>
+        <div id="statusbar">
+            <span>Status: </span>
+            <span>No engine</span>
         </div>
     </div>
 

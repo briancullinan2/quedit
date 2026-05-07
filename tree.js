@@ -728,6 +728,7 @@ Tree.createLiEle = function (node, closed) {
   label.appendChild(text);
   li.appendChild(label);
   li.nodeId = node.id;
+  li.setAttribute('data-id', node.id);
   li.setAttribute('data-extension', hasChildren ? 'folder' : node.text.split('.').pop().toLowerCase());
   return li;
 };

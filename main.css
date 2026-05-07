@@ -13,13 +13,30 @@ html, body
     box-sizing: border-box;
 }
 
-#editor-wrapper,
+#main-body
+{
+    flex-basis: 100%;
+}
+
+#editor-container
+{
+    flex: 1 1 auto;
+    flex-basis: calc(50% - 54px);
+    min-height: 0;
+}
+
 #engine
 {
     flex-basis: 50%;
 }
 
-#editor-container,
+#editor-wrapper,
+#engine
+{
+    overflow:hidden;
+    scroll-margin-top: 100vh;
+}
+
 #editor
 {
     flex: 1 1 auto;
@@ -39,6 +56,11 @@ html, body
     flex-direction: column;
 }
 
+*[id]
+{
+    scroll-margin-top: 100vh;
+}
+
 #filelist
 {
     overflow: scroll;
@@ -54,12 +76,38 @@ html, body
 #main > * {
     flex-shrink: 1;
     flex-grow: 1;
+    min-height: 0;
+}
+
+#statusbar > *
+{
+    flex-basis: 50%;
+}
+
+#statusbar
+{
+    display:flex;
+    flex-direction: row;
+    justify-content: stretch;
+}
+
+
+#tabs
+{
+    width: 54px;
+}
+
+
+#statusbar,
+#toolbar
+{
+    flex-shrink: 0;
 }
 
 #terminal
 {
     flex: 1 1 auto;
-    flex-basis: 300px;
+    flex-basis: 400px;
     min-height: 0;
 }
 
@@ -68,21 +116,108 @@ html, body
     align-items: center;
 }
 
+#filelist .treejs > .treejs-nodes
+{
+    padding:10px;
+    margin:0;
+}
+
 .treejs-label::before {
     font-family: 'boxicons' !important;
     content: "\f413"; /* Boxicons 'file' code */
     color: #555;
     position: relative;
-    top: 2px;
+    top: 3px;
     padding-right: 4px;
 }
+
+input,
+select,
+button
+{
+    border: 2px solid #666;
+    background: white;
+    padding: 3px;
+    margin: 0;
+}
+
+
+
+#statusbar
+{
+    background-color: #666;
+}
+
+
+
+#toolbar input,
+#toolbar select,
+#toolbar button
+{
+    margin: 3px 5px;
+}
+
 
 .treejs-node__checked
 {
     background: #ccc;
 }
 
-.treejs .treejs-checkbox
+#tabs ul
+{
+    display:flex;
+    flex-direction: column;
+}
+
+#toolbar ul
+{
+    display:flex;
+    flex-direction: row;
+}
+
+#toolbar ul,
+#toolbar li,
+#tabs ul,
+#tabs li {
+    list-style: none;
+    margin:0;
+    padding:0;
+}
+
+#toolbar a {
+    text-decoration: none;
+    color:#666;
+    padding: 3px 5px;
+    font-size: 24px;
+}
+
+#tabs a {
+    text-decoration: none;
+    color:#666;
+    padding: 5px 10px;
+    font-size: 32px;
+    border-left:2px solid transparent;
+}
+
+
+#tabs a.active,
+#toolbar a.active,
+#tabs a:active,
+#toolbar a:active,
+#tabs a:hover,
+#toolbar a:hover {
+    background: rgba(0,0,0,.1)
+}
+
+
+#tabs a.active,
+#toolbar a.active,
+#tabs a:active,
+#toolbar a:active {
+    border-left-color: #333;
+}
+
+#filelist .treejs .treejs-checkbox
 {
     display:none;
 }
@@ -99,10 +234,12 @@ html, body
     color: #f1c40f;
 }
 
+/*
 .treejs-node[data-extension="js"] .treejs-label::before {
-   content: "\ea71"; /* JS icon */
+   content: "\ea71";
    color: #f7df1e;
 }
+*/
 
 #editor
 {
