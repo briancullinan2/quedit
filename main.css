@@ -1,0 +1,111 @@
+html, body
+{
+    margin:0;
+    padding:0;
+    height: 100%;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+*, *::before, *::after
+{
+    box-sizing: border-box;
+}
+
+#editor-wrapper,
+#engine
+{
+    flex-basis: 50%;
+}
+
+#editor-container,
+#editor
+{
+    flex: 1 1 auto;
+    flex-basis: 100%;
+    min-height: 0;
+}
+
+.panel-row
+{
+    display:flex;
+    flex-direction: row;
+}
+
+.panel-column
+{
+    display:flex;
+    flex-direction: column;
+}
+
+#filelist
+{
+    overflow: scroll;
+}
+
+#main
+{
+    height: 100vh;
+    max-height: calc(100vh);
+    overflow: hidden;
+}
+
+#main > * {
+    flex-shrink: 1;
+    flex-grow: 1;
+}
+
+#terminal
+{
+    flex: 1 1 auto;
+    flex-basis: 300px;
+    min-height: 0;
+}
+
+.treejs-label
+{
+    align-items: center;
+}
+
+.treejs-label::before {
+    font-family: 'boxicons' !important;
+    content: "\f413"; /* Boxicons 'file' code */
+    color: #555;
+    position: relative;
+    top: 2px;
+    padding-right: 4px;
+}
+
+.treejs-node__checked
+{
+    background: #ccc;
+}
+
+.treejs .treejs-checkbox
+{
+    display:none;
+}
+
+  /* Folder Icon (When node has children) */
+.treejs-node__close[data-extension="folder"] > .treejs-label::before
+{
+    content: "\f440"; /* Boxicons 'folder' code */
+    color: #f1c40f;
+}
+
+.treejs-node__open[data-extension="folder"] > .treejs-label::before {
+    content: "\f439"; /* Boxicons 'folder' code */
+    color: #f1c40f;
+}
+
+.treejs-node[data-extension="js"] .treejs-label::before {
+   content: "\ea71"; /* JS icon */
+   color: #f7df1e;
+}
+
+#editor
+{
+    height: 100%;
+    flex-basis: 100%;
+}
