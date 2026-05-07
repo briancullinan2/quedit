@@ -12,7 +12,7 @@
     <div id="main" class="panel-column">
         <div id="toolbar">
             <ul>
-                <li><select name="user" id="user">
+                <li><select name="owner" id="owner">
                     <option value="briancullinan2">briancullinan2</option>
                     <option value="ec-">ec-</option>
                 </select></li>
@@ -44,6 +44,10 @@
                 <li><select name="wasi" id="wasi">
                     <option value="">WASI-SDK v33 (Not downloaded)</option>
                 </select></li>
+                <li><select name="theme" id="theme">
+                    <option value="">Monokai</option>
+                </select></li>
+                <li><a onclick="updatePlaceholder()" alt="Github login" class="bx bx-arrow-in-right-square-half" target="_new" href="https://github.com/settings/tokens?type=beta"></a></li>
             </ul>
         </div>
         <div id="main-body" class="panel-row">
@@ -93,6 +97,18 @@ int main() {
         <div id="statusbar">
             <span>Status: </span>
             <span>No engine</span>
+        </div>
+    </div>
+
+    <div id="token-modal" class="hidden">
+        <div class="modal-content">
+            <h3>GitHub Access Token</h3>
+            <p>Required for API access</p>
+            <input type="password" id="gh-token-input" />
+            <div class="actions">
+                <button onclick="saveToken()">Save Token</button>
+                <button onclick="clearToken()" class="danger">Clear</button>
+            </div>
         </div>
     </div>
 

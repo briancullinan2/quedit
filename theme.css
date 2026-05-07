@@ -140,6 +140,7 @@ select option {
     color:var(--ace-foreground);
 }
 
+
 #tabs a.active,
 #toolbar a.active,
 #tabs a:active,
@@ -186,4 +187,24 @@ select option {
 #filelist .treejs .treejs-switcher:before
 {
     border-top-color: var(--ace-foreground);
+}
+
+#toolbar a
+{
+    color: var(--ace-foreground)
+}
+
+.modal-content {
+    background: var(--ace-bg);
+    color: var(--ace-foreground);
+    border: 2px solid var(--ace-gutter-bg);
+}
+
+.modal-content h3 {
+    color: var(--ace-foreground);
+    border-bottom: 2px solid var(--ace-gutter-bg);
+}
+
+.modal-content p {
+    color: #aaa;
 }

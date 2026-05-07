@@ -1,3 +1,10 @@
+const owner = document.getElementById('owner');
+const repo = document.getElementById('repository');
+const branch = document.getElementById('branch');
+
+let savedToken;
+
+
 var term = new Terminal();
 term.open(document.getElementById('terminal'));
 term.write('Hello from \x1B[1;3;31mxterm.js\x1B[0m $ ')
@@ -115,11 +122,20 @@ function getOrCreateAceSession(fileId, content) {
 
 
 let myTree;
-async function loadGitHubTree() {
-  const url = 'https://api.github.com/repos/briancullinan2/Quake3e/git/trees/main?recursive=1';
+async function loadGitHubTree(repoOwner, repoName, branch) {
+  savedToken = localStorage.getItem('github_token');
+
+  const url = `https://api.github.com/repos/${repoOwner}/${repoName}/git/trees/${branch}?recursive=1`;
   
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: savedToken ? {
+            'Authorization': `Bearer ${savedToken}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        } : {}
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     
     const data = await response.json();
@@ -166,7 +182,6 @@ observer.observe(treeContainer, {
     subtree: true
 });
 
-loadGitHubTree();
 
 var editor = ace.edit("editor");
 editor.session.setUseWorker(false);
@@ -267,11 +282,113 @@ const getModeByFileId = (fileId) => {
     return `ace/mode/${modes[ext] || 'text'}`;
 };
 
-async function openFile(fileId, recordHistory = true) {
-    const rawUrl = `https://raw.githubusercontent.com/briancullinan2/Quake3e/main/${myTree.nodesById[fileId].path}`;
+async function getDefaultBranch(owner, repo) {
+    const savedToken = localStorage.getItem('github_token');
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+        headers: savedToken ? { 'Authorization': `Bearer ${savedToken}` } : {}
+    });
+    const data = await response.json();
+    return data.default_branch; // Usually "main" or "master"
+}
+
+
+async function getBranches(repoOwner, repoName) {
+    const savedToken = localStorage.getItem('github_token');
+    const url = `https://api.github.com/repos/${repoOwner}/${repoName}/branches`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: savedToken ? {
+                'Authorization': `Bearer ${savedToken}`,
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            } : {}
+        });
+
+        if (!response.ok) throw new Error(`GitHub API Error: ${response.status}`);
+
+        const branches = await response.json();
+        const defaultName = await getDefaultBranch(repoOwner, repoName)
+
+        const sortedBranches = branches.sort((a, b) => {
+          if (a.name === defaultName) return -1;
+          if (b.name === defaultName) return 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        updateSelectOptions('branch', branches)
+        return branches;
+    } catch (error) {
+        console.error("Failed to fetch branches:", error);
+        return [];
+    }
+}
+
+
+getBranches(owner.value, repo.value)
+  .then(branches => loadGitHubTree(owner.value, repo.value, branches[0]?.name))
+
+  
+
+
+function updateSelectOptions(elementId, items, selectedValue = 'main') {
+    const selector = document.getElementById(elementId);
+    if (!selector) return;
+
+    // 1. Clear existing options
+    selector.innerHTML = '';
+
+    // 2. Create and append new options
+    items.forEach(item => {
+        // Handle both simple strings or GitHub branch objects
+        const name = typeof item === 'object' ? item.name : item;
+        const option = document.createElement('option');
+        
+        option.value = name;
+        option.textContent = name;
+        
+        if (name === selectedValue) {
+            option.selected = true;
+        }
+        
+        selector.appendChild(option);
+    });
+
+    // 3. Force layout recalculation 
+    // This helps with the "wont shrink" issue if the new text is shorter
+    selector.style.minWidth = '0'; 
+}
+
+
+
+async function openFile(repoOwner, repoName, fileId, recordHistory = true) {
+    savedToken = localStorage.getItem('github_token');
+
+    const rawUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${myTree.nodesById[fileId].path}`;
     currentOpenFileId = fileId;
-    var result = await fetch(rawUrl)
-    var content = await result.text()
+    var result = await fetch(rawUrl, {
+        method: 'GET',
+        headers: savedToken ? {
+            'Authorization': `Bearer ${savedToken}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        } : {}
+    })
+
+    if (!result.ok) throw new Error(`HTTP error! status: ${result.status}`);
+
+    const jsonResponse = await result.json();
+    
+    // --- DECODING LOGIC ---
+    // GitHub wraps the file content in a JSON object and encodes it in Base64
+    // We strip newlines and decode it back to a standard UTF-8 string
+    let content = "";
+    if (jsonResponse.encoding === 'base64') {
+        content = atob(jsonResponse.content.replace(/\n/g, ''));
+    } else {
+        content = jsonResponse.content || ""; 
+    }
     
     // 1. Update your TreeJS selection
     myTree.values = [fileId];
@@ -295,23 +412,94 @@ treeContainer.addEventListener('click', (e) => {
     const node = e.target.closest('.treejs-node');
     if (node && node.classList.contains('treejs-placeholder')) {
         const fileId = node.getAttribute('data-id'); // Assuming you set this
-        openFile(fileId);
+        openFile(owner.value, repo.value, fileId);
     }
 });
 
-// Dockview Tab Switch (if the user clicks a tab)
-/*
-dockviewApi.onDidActivePanelChange((event) => {
-    const panel = event.panel;
-    if (panel) {
-        openFile(panel.id, true);
-    }
-});
-*/
 
-/*
-window.addEventListener("hashchange", function(e) {
-    // This stops the browser from doing its "helpful" scrolling
-    e.preventDefault();
-}, false);
-*/
+const originalConsole = {
+    log: console.log,
+    warn: console.warn,
+    error: console.error,
+    info: console.info
+};
+
+// ANSI Escape Code Definitions
+const colors = {
+    reset: "\x1b[0m",
+    log:   "\x1b[32m", // Green
+    warn:  "\x1b[33m", // Yellow
+    error: "\x1b[31m", // Red
+    info:  "\x1b[36m", // Cyan
+    gray:  "\x1b[90m"  // Gray for timestamps/meta
+};
+
+const formatMessage = (level, args) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const prefix = `${colors.gray}[${timestamp}]${colors.reset} ${colors[level]}[${level.toUpperCase()}]${colors.reset} `;
+    
+    // Convert objects to strings so they don't show up as [object Object] in xterm
+    const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+    ).join(' ');
+
+    return `${prefix}${message}\r\n`;
+};
+
+window.console.log = (...args) => {
+    term.write(formatMessage('log', args));
+    originalConsole.log.apply(console, args);
+};
+
+window.console.warn = (...args) => {
+    term.write(formatMessage('warn', args));
+    originalConsole.warn.apply(console, args);
+};
+
+window.console.error = (...args) => {
+    term.write(formatMessage('error', args));
+    originalConsole.error.apply(console, args);
+};
+
+window.console.info = (...args) => {
+    term.write(formatMessage('info', args));
+    originalConsole.info.apply(console, args);
+};
+
+
+const tokenInput = document.getElementById('gh-token-input');
+const modal = document.getElementById('token-modal');
+
+function updatePlaceholder() {
+    savedToken = localStorage.getItem('github_token');
+    
+    if (savedToken && savedToken.length > 0) {
+        // Show a masked version so the user knows it's set
+        const masked = savedToken.substring(0, 4) + "•".repeat(12);
+        tokenInput.placeholder = `Currently set: ${masked}`;
+        tokenInput.classList.add('has-token');
+    } else {
+        tokenInput.placeholder = "Enter ghp_your_token_here...";
+        tokenInput.classList.remove('has-token');
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function saveToken() {
+    savedToken = tokenInput.value.trim();
+    if (savedToken) {
+        localStorage.setItem('github_token', savedToken);
+        tokenInput.value = ''; // Clear input for security
+        updatePlaceholder();
+        alert('Token saved to local storage.');
+    }
+    modal.classList.add('hidden');
+}
+
+function clearToken() {
+    localStorage.removeItem('github_token');
+    updatePlaceholder();
+}
+
+

@@ -105,6 +105,7 @@ html, body
 #toolbar
 {
     flex-shrink: 0;
+    max-width: 100%;
 }
 
 #terminal
@@ -140,7 +141,7 @@ button
 {
     border: 2px solid #666;
     background: white;
-    padding: 3px;
+    padding: 3px 5px;
     margin: 0;
 }
 
@@ -176,7 +177,29 @@ button
 {
     display:flex;
     flex-direction: row;
+    max-width: 100%;
 }
+
+#toolbar ul > *
+{
+    flex-shrink: 1;
+    min-width: 0;
+    flex-basis: 32px;
+    flex-grow: 1;
+    max-width: min-content;
+}
+
+#toolbar input,
+#toolbar select,
+#toolbar button
+{
+    overflow:hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: stretch;
+}
+
 
 #toolbar ul,
 #toolbar li,
@@ -289,5 +312,70 @@ button
 [alt]:hover::after,
 [data-tooltip]:hover::after {
     opacity: 1;
+}
+
+#gh-token-input {
+    width: 100%;
+    box-sizing: border-box;
+    /* Prevent the input from collapsing below a usable size */
+    min-width: 200px; 
+}
+
+#gh-token-input::placeholder {
+    color: #888;
+    font-style: italic;
+}
+
+#gh-token-input.has-token::placeholder {
+    color: #4CAF50; /* Greenish to indicate "Success/Set" */
+}
+
+#token-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85); /* Dim the rest of the UI */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000; /* Stay above xterm and everything else */
+    backdrop-filter: blur(4px); /* Modern touch */
+}
+
+/* The actual box */
+.modal-content {
+    background: #1e1e1e;
+    color: #e0e0e0;
+    border: 1px solid #333;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    max-width: 400px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    color: #fff;
+    border-bottom: 2px solid #333;
+    padding-bottom: 0.5rem;
+}
+
+.modal-content p {
+    color: #aaa;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 1.5rem;
+    justify-content: flex-end;
+}
+
+#token-modal.hidden {
+    display: none;
 }
 
