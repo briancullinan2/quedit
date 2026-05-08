@@ -1,44 +1,44 @@
 
-var term = new Terminal();
+var term = new Terminal({convertEol: true});
 term.open(document.getElementById('terminal'));
 
 const container = document.getElementById('terminal');
 
 window.addEventListener('resize', () => {
-    forceFit(term, container); 
+    forceFit(term, container);
 });
 let currentLine = '';
 
 term.onData(data => {
-  switch (data) {
-    case '\r': // Enter
-      term.write('\r\n');
-      handleCommand(currentLine);
-      currentLine = ''; // Reset the buffer
-      term.write('\r\n> '); // New prompt
-      break;
-    case '\u007f': // Backspace (DEL)
-      if (currentLine.length > 0) {
-        currentLine = currentLine.slice(0, -1);
-        // Move cursor back, print space to clear, move cursor back again
-        term.write('\b \b');
-      }
-      break;
-    default: // Standard typing
-      // Only echo and buffer printable characters
-      if (data >= String.fromCharCode(0x20) && data <= String.fromCharCode(0x7e)) {
-        currentLine += data;
-        term.write(data);
-      }
-  }
+    switch (data) {
+        case '\r': // Enter
+            term.write('\r\n');
+            handleCommand(currentLine);
+            currentLine = ''; // Reset the buffer
+            term.write('\r\n> '); // New prompt
+            break;
+        case '\u007f': // Backspace (DEL)
+            if (currentLine.length > 0) {
+                currentLine = currentLine.slice(0, -1);
+                // Move cursor back, print space to clear, move cursor back again
+                term.write('\b \b');
+            }
+            break;
+        default: // Standard typing
+            // Only echo and buffer printable characters
+            if (data >= String.fromCharCode(0x20) && data <= String.fromCharCode(0x7e)) {
+                currentLine += data;
+                term.write(data);
+            }
+    }
 });
 
 function handleCommand(command) {
-  if (command.trim() === 'help') {
-    term.write('Available commands: help, clear, hello');
-  } else if (command.trim() === 'hello') {
-    term.write('Hello, Brian!');
-  }
+    if (command.trim() === 'help') {
+        term.write('Available commands: help, clear, hello');
+    } else if (command.trim() === 'hello') {
+        term.write('Hello, Brian!');
+    }
 }
 
 // Initial prompt
@@ -70,7 +70,7 @@ function forceFit(term, container) {
 
 term.onRender(() => {
     // Now the core services are guaranteed to exist
-    setTimeout(() => forceFit(term, container), 100); 
+    setTimeout(() => forceFit(term, container), 100);
 });
 
 const originalConsole = {
@@ -83,23 +83,42 @@ const originalConsole = {
 // ANSI Escape Code Definitions
 const colors = {
     reset: "\x1b[0m",
-    log:   "\x1b[32m", // Green
-    warn:  "\x1b[33m", // Yellow
+    log: "\x1b[32m", // Green
+    warn: "\x1b[33m", // Yellow
     error: "\x1b[31m", // Red
-    info:  "\x1b[36m", // Cyan
-    gray:  "\x1b[90m"  // Gray for timestamps/meta
+    info: "\x1b[36m", // Cyan
+    gray: "\x1b[90m"  // Gray for timestamps/meta
 };
 
 const formatMessage = (level, args) => {
     const timestamp = new Date().toLocaleTimeString();
     const prefix = `${colors.gray}[${timestamp}]${colors.reset} ${colors[level]}[${level.toUpperCase()}]${colors.reset} `;
-    
-    // Convert objects to strings so they don't show up as [object Object] in xterm
-    const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-    ).join(' ');
 
-    return `${prefix}${message}\r\n`;
+    const cache = new Set(); // To handle circular references
+
+    const processed = args.map(arg => {
+        // 1. Handle Errors (JSON.stringify ignores message/stack by default)
+        if (arg instanceof Error) {
+            return {
+                name: arg.name,
+                message: arg.message,
+                stack: arg.stack,
+                ...arg // Get any custom properties you added
+            };
+        }
+        return arg;
+    });
+
+    const output = JSON.stringify(processed, (key, value) => {
+        // 2. Prevent "Circular reference" crashes
+        if (typeof value === 'object' && value !== null) {
+            if (cache.has(value)) return '[Circular]';
+            cache.add(value);
+        }
+        return value;
+    }, 2);
+
+    return `${prefix}${output}\r\n`;
 };
 
 window.console.log = (...args) => {

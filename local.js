@@ -1,7 +1,18 @@
 ﻿
 const DB_VERSION = 1 // Increment this when you add new C# Entities!
-const LOCAL_DB_NAME = "AtriumCache" + DB_VERSION
-const DB_NAME = "AtriumOffline"
+const LOCAL_DB_NAME = "Quedit" + DB_VERSION
+const DB_NAME = "QueditOffline"
+const DB_STORE_NAME = 'FILE_DATA';
+
+const DB_SCHEME = [
+    {key: DB_STORE_NAME, value: {
+        item1: 'path', item2: [{
+            key: 'timestamp', value: ['path', 'timestamp', 'mode']
+        }, {
+            key: 'path', value: ['path', 'timestamp', 'mode', 'contents']
+        }]
+    }}
+]
 
 async function getDB(dbName = null, dbVersion = null) {
     return new Promise((rs, rj) => {
@@ -21,7 +32,7 @@ async function deleteOldDatabase(dbName = null) {
         const req = indexedDB.deleteDatabase(dbName || LOCAL_DB_NAME)
         req.onsuccess = () => rs(true)
         req.onerror = () => rs(false) // Silent fail is usually fine for cleanup
-        req.onblocked = () => rs(true) 
+        req.onblocked = () => rs(true)
     })
 }
 
@@ -74,7 +85,7 @@ async function setupDatabase(dbName, stores) {
     var error = null
     return new Promise((rs, rj) => {
         const request = indexedDB.open(dbName || LOCAL_DB_NAME, DB_VERSION)
-        
+
         request.onupgradeneeded = (event) => {
             const db = event.target.result
 
@@ -116,13 +127,13 @@ async function setupDatabase(dbName, stores) {
 }
 
 
-async function putRecord(storeName, record) {
-    const db = await getDB()
+async function putRecord(storeName, record, dbName = null) {
+    const db = await getDB(dbName)
     const tx = db.transaction(storeName, 'readwrite')
     const store = tx.objectStore(storeName)
     return new Promise((rs, rj) => {
-        const req = store.put(record) 
-        tx.oncomplete = function() { rs(req.result) }
+        const req = store.put(record)
+        tx.oncomplete = function () { rs(req.result) }
         req.onerror = () => {
             console.log(req.error)
             return rj(req.error)
@@ -131,8 +142,8 @@ async function putRecord(storeName, record) {
     })
 }
 
-async function getRecord(storeName, key) {
-    const db = await getDB()
+async function getRecord(storeName, key, dbName = null) {
+    const db = await getDB(dbName)
     const tx = db.transaction(storeName, 'readonly')
     const store = tx.objectStore(storeName)
     return new Promise((rs, rj) => {
@@ -151,7 +162,7 @@ async function queryIndex(storeName, indexName, exactIndex = null, lower = null,
     const db = await getDB()
     const tx = db.transaction(storeName, 'readonly')
     const store = tx.objectStore(storeName)
-    
+
     var range = null
     if (exactIndex !== null) {
         range = IDBKeyRange.only([exactIndex])
@@ -194,7 +205,7 @@ async function deleteRecord(storeName, key) {
     const store = tx.objectStore(storeName)
     return new Promise((rs, rj) => {
         const req = store.delete(key)
-        tx.oncomplete = function() { rs(true) }
+        tx.oncomplete = function () { rs(true) }
         req.onerror = () => {
             console.log(req.error)
             return rj(req.error)

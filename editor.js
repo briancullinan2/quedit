@@ -8,9 +8,9 @@ function getOrCreateAceSession(fileId, content) {
 
     // Create a new session with the file content
     const session = ace.createEditSession(content);
-    
+
     // Set the language mode based on the file extension
-    const mode = getModeByFileId(fileId);
+    const mode = getModeByFilename(fileId);
     session.setMode(mode);
 
     // Optional: Set tab size or wrap mode for specific languages
@@ -30,14 +30,14 @@ editor.session.setUseWorker(false);
 editor.session.setMode("ace/mode/c_cpp");
 
 setTimeout(() => {
-  savedTheme = localStorage.getItem('theme');
-  const newtheme = savedTheme || theme.value || 'ace/theme/monokai'
-  const themeName = newtheme.split('/').pop(); // Gets 'monokai' or 'dracula'
+    savedTheme = localStorage.getItem('theme');
+    const newtheme = savedTheme || theme.value || 'ace/theme/monokai'
+    const themeName = newtheme.split('/').pop(); // Gets 'monokai' or 'dracula'
     // Clean up old classes and add new one
-  document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
-  editor.setTheme(newtheme);
-  editor.resize();
-  editor.renderer.updateFull();
+    document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
+    editor.setTheme(newtheme);
+    editor.resize();
+    editor.renderer.updateFull();
 }, 300)
 
 
@@ -54,14 +54,14 @@ theme.addEventListener('change', (e) => {
 
 let currentOpenFileId;
 let navTimer;
-editor.on("changeSelection", function() {
+editor.on("changeSelection", function () {
     if (NavHistory.isNavigating) return;
 
     clearTimeout(navTimer);
     navTimer = setTimeout(() => {
         const pos = editor.getCursorPosition();
         const currentFile = currentOpenFileId; // Your global var
-        
+
         // Only push if it's a different file or a significantly different line
         const lastPoint = NavHistory.stack[NavHistory.index];
         if (!lastPoint || lastPoint.fileId !== currentFile || Math.abs(lastPoint.row - pos.row) > 5) {
@@ -110,8 +110,8 @@ const NavHistory = {
     apply() {
         const point = this.stack[this.index];
         // 1. Switch file in your UI (Dockview/TreeJS logic)
-        loadFileById(point.fileId); 
-        
+        loadFileById(point.fileId);
+
         // 2. Move Ace cursor
         editor.gotoLine(point.row + 1, point.column);
     }
@@ -122,8 +122,7 @@ window.addEventListener('keydown', (e) => {
     if (e.altKey && e.key === 'ArrowRight') NavHistory.forward();
 });
 
-const getModeByFileId = (fileId) => {
-    const filePath = myTree.nodesById[fileId].path;
+const getModeByFilename = (filePath) => {
     const ext = filePath.split('.').pop().toLowerCase();
     const modes = {
         'js': 'javascript',

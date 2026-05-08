@@ -4,7 +4,7 @@
     --ace-gutter-bg: #2F3129;
     --ace-active-line-bg: #202020;
     --ace-gutter-active-bg: #272727;
-    
+
     /* Text & UI Colors */
     --ace-foreground: #F8F8F2;
     --ace-cursor: #F8F8F0;
@@ -14,13 +14,20 @@
     --ace-comment: #75715E;
 
     /* Syntax Colors (The "Monokai" Brand) */
-    --ace-pink: #F92672;    /* Keywords, Tags, Storage */
-    --ace-purple: #AE81FF;  /* Constants, Numbers */
-    --ace-blue: #66D9EF;    /* Functions, Classes, Types */
-    --ace-green: #A6E22E;   /* Entities, Variable Names */
-    --ace-orange: #FD971F;  /* Parameters */
-    --ace-yellow: #E6DB74;  /* Strings */
-    --ace-white: #FFFFFF;   /* Punctuation */
+    --ace-pink: #F92672;
+    /* Keywords, Tags, Storage */
+    --ace-purple: #AE81FF;
+    /* Constants, Numbers */
+    --ace-blue: #66D9EF;
+    /* Functions, Classes, Types */
+    --ace-green: #A6E22E;
+    /* Entities, Variable Names */
+    --ace-orange: #FD971F;
+    /* Parameters */
+    --ace-yellow: #E6DB74;
+    /* Strings */
+    --ace-white: #FFFFFF;
+    /* Punctuation */
 
 }
 
@@ -28,17 +35,21 @@
     /* Core Backgrounds */
     --ace-bg: #2C2828;
     --ace-gutter-bg: #353030;
-    
+
     /* Primary UI & Text */
     --ace-foreground: #8F938F;
     --ace-comment: #A6C6FF;
     --ace-selection-bg: rgba(221, 240, 255, 0.20);
-    
+
     /* The 4 "Action" Colors */
-    --ace-pink: #757aD8;    /* Keywords (actually a muted Purple/Blue in this theme) */
-    --ace-purple: #DE8E30;  /* Constants / Language */
-    --ace-blue: #AEB2F8;    /* Functions */
-    --ace-green: #66A968;   /* Strings / Success */
+    --ace-pink: #757aD8;
+    /* Keywords (actually a muted Purple/Blue in this theme) */
+    --ace-purple: #DE8E30;
+    /* Constants / Language */
+    --ace-blue: #AEB2F8;
+    /* Functions */
+    --ace-green: #66A968;
+    /* Strings / Success */
 }
 
 .theme-github {
@@ -47,10 +58,14 @@
     --ace-foreground: #000000;
     --ace-comment: #999988;
     --ace-selection-bg: #ADCDEC;
-    --ace-pink: #A71D5D;    /* Keywords */
-    --ace-purple: #0086B3;  /* Constants */
-    --ace-blue: #795DA3;    /* Functions */
-    --ace-green: #183691;   /* Strings */
+    --ace-pink: #A71D5D;
+    /* Keywords */
+    --ace-purple: #0086B3;
+    /* Constants */
+    --ace-blue: #795DA3;
+    /* Functions */
+    --ace-green: #183691;
+    /* Strings */
 }
 
 .theme-chrome {
@@ -71,10 +86,14 @@
     --ace-foreground: #f8f8f2;
     --ace-comment: #6272a4;
     --ace-selection-bg: #44475a;
-    --ace-pink: #ff79c6;    /* Keywords */
-    --ace-purple: #bd93f9;  /* Constants */
-    --ace-blue: #8be9fd;    /* Functions */
-    --ace-green: #50fa7b;   /* Strings */
+    --ace-pink: #ff79c6;
+    /* Keywords */
+    --ace-purple: #bd93f9;
+    /* Constants */
+    --ace-blue: #8be9fd;
+    /* Functions */
+    --ace-green: #50fa7b;
+    /* Strings */
 }
 
 .theme-twilight {
@@ -83,10 +102,14 @@
     --ace-foreground: #F8F8F8;
     --ace-comment: #5F5A60;
     --ace-selection-bg: rgba(221, 240, 255, 0.20);
-    --ace-pink: #CDA869;    /* Keywords (Gold/Tan) */
-    --ace-purple: #CF6A4C;  /* Constants */
-    --ace-blue: #9B703F;    /* Functions */
-    --ace-green: #8F9D6A;   /* Strings */
+    --ace-pink: #CDA869;
+    /* Keywords (Gold/Tan) */
+    --ace-purple: #CF6A4C;
+    /* Constants */
+    --ace-blue: #9B703F;
+    /* Functions */
+    --ace-green: #8F9D6A;
+    /* Strings */
 }
 
 .theme-solarized-dark {
@@ -95,10 +118,14 @@
     --ace-foreground: #839496;
     --ace-comment: #586e75;
     --ace-selection-bg: #073642;
-    --ace-pink: #859900;    /* Mapped to Solarized Green */
-    --ace-purple: #d33682;  /* Mapped to Solarized Magenta */
-    --ace-blue: #268bd2;    /* Mapped to Solarized Blue */
-    --ace-green: #2aa198;   /* Mapped to Solarized Cyan */
+    --ace-pink: #859900;
+    /* Mapped to Solarized Green */
+    --ace-purple: #d33682;
+    /* Mapped to Solarized Magenta */
+    --ace-blue: #268bd2;
+    /* Mapped to Solarized Blue */
+    --ace-green: #2aa198;
+    /* Mapped to Solarized Cyan */
 }
 
 .theme-nord-dark {
@@ -113,9 +140,8 @@
     --ace-green: #a3be8c;
 }
 
-#editor-container .hidden
-{
-    display:none;
+#editor-container .hidden {
+    display: none;
 }
 
 
@@ -125,10 +151,14 @@
     --ace-foreground: #FFFFFF;
     --ace-comment: #0088FF;
     --ace-selection-bg: rgba(179, 101, 57, 0.75);
-    --ace-pink: #FF9D00;    /* Keywords (Orange-ish) */
-    --ace-purple: #FF628C;  /* Constants */
-    --ace-blue: #80FFBB;    /* Functions */
-    --ace-green: #3AD900;   /* Strings */
+    --ace-pink: #FF9D00;
+    /* Keywords (Orange-ish) */
+    --ace-purple: #FF628C;
+    /* Constants */
+    --ace-blue: #80FFBB;
+    /* Functions */
+    --ace-green: #3AD900;
+    /* Strings */
 }
 
 .theme-ambiance {
@@ -137,10 +167,14 @@
     --ace-foreground: #E6E1DC;
     --ace-comment: #555555;
     --ace-selection-bg: #221a0f;
-    --ace-pink: #c26230;    /* Keywords */
-    --ace-purple: #D3D0C8;  /* Constants */
-    --ace-blue: #6d9cbe;    /* Functions */
-    --ace-green: #a5c261;   /* Strings */
+    --ace-pink: #c26230;
+    /* Keywords */
+    --ace-purple: #D3D0C8;
+    /* Constants */
+    --ace-blue: #6d9cbe;
+    /* Functions */
+    --ace-green: #a5c261;
+    /* Strings */
 }
 
 .theme-gruvbox {
@@ -149,22 +183,31 @@
     --ace-foreground: #ebdbb2;
     --ace-comment: #928374;
     --ace-selection-bg: #3c3836;
-    --ace-pink: #fb4934;    /* Keywords */
-    --ace-purple: #d3869b;  /* Constants */
-    --ace-blue: #83a598;    /* Functions */
-    --ace-green: #b8bb26;   /* Strings */
+    --ace-pink: #fb4934;
+    /* Keywords */
+    --ace-purple: #d3869b;
+    /* Constants */
+    --ace-blue: #83a598;
+    /* Functions */
+    --ace-green: #b8bb26;
+    /* Strings */
 }
 
 .theme-gob {
     --ace-bg: #080808;
     --ace-gutter-bg: #050505;
-    --ace-foreground: #00FF00; /* Pure Green Matrix Vibe */
+    --ace-foreground: #00FF00;
+    /* Pure Green Matrix Vibe */
     --ace-comment: #004400;
     --ace-selection-bg: #002200;
-    --ace-pink: #FFFFFF;    /* High Contrast Keywords */
-    --ace-purple: #00AA00;  /* Muted Constants */
-    --ace-blue: #00FF00;    /* Uniform Green */
-    --ace-green: #00FF00;   /* Strings */
+    --ace-pink: #FFFFFF;
+    /* High Contrast Keywords */
+    --ace-purple: #00AA00;
+    /* Muted Constants */
+    --ace-blue: #00FF00;
+    /* Uniform Green */
+    --ace-green: #00FF00;
+    /* Strings */
 }
 
 .theme-tomorrow-night-bright {
@@ -209,7 +252,8 @@
     --ace-foreground: #FFFFFF;
     --ace-comment: #666C70;
     --ace-selection-bg: rgba(73, 72, 62, 0.99);
-    --ace-pink: #A39E9B;    /* Very Muted */
+    --ace-pink: #A39E9B;
+    /* Very Muted */
     --ace-purple: #E9883A;
     --ace-blue: #A8B222;
     --ace-green: #C23B23;
@@ -221,10 +265,14 @@
     --ace-foreground: #4D4D4C;
     --ace-comment: #8E908C;
     --ace-selection-bg: #D6D6D6;
-    --ace-pink: #C82829;    /* Keywords */
-    --ace-purple: #8959A8;  /* Constants */
-    --ace-blue: #4271AE;    /* Functions */
-    --ace-green: #718C00;   /* Strings */
+    --ace-pink: #C82829;
+    /* Keywords */
+    --ace-purple: #8959A8;
+    /* Constants */
+    --ace-blue: #4271AE;
+    /* Functions */
+    --ace-green: #718C00;
+    /* Strings */
 }
 
 .theme-solarized-light {
@@ -233,10 +281,14 @@
     --ace-foreground: #657B83;
     --ace-comment: #93A1A1;
     --ace-selection-bg: #EEE8D5;
-    --ace-pink: #CB4B16;    /* Orange/Red mix */
-    --ace-purple: #D33682;  /* Magenta */
-    --ace-blue: #268BD2;    /* Blue */
-    --ace-green: #859900;   /* Green */
+    --ace-pink: #CB4B16;
+    /* Orange/Red mix */
+    --ace-purple: #D33682;
+    /* Magenta */
+    --ace-blue: #268BD2;
+    /* Blue */
+    --ace-green: #859900;
+    /* Green */
 }
 
 .theme-xcode {
@@ -390,10 +442,14 @@
     --ace-foreground: #000000;
     --ace-comment: #008000;
     --ace-selection-bg: #B5D5FF;
-    --ace-pink: #0000FF;    /* Keywords */
-    --ace-purple: #0000FF;  /* Constants (Shared with pink in old TM) */
-    --ace-blue: #0000A2;    /* Functions */
-    --ace-green: #008000;   /* Strings */
+    --ace-pink: #0000FF;
+    /* Keywords */
+    --ace-purple: #0000FF;
+    /* Constants (Shared with pink in old TM) */
+    --ace-blue: #0000A2;
+    /* Functions */
+    --ace-green: #008000;
+    /* Strings */
 }
 
 .theme-iplastic {
@@ -544,24 +600,23 @@
 }
 
 
-body
-{
+body {
     background-color: var(--ace-bg);
-    font-family: 
-    /* 1. MacOS/iOS: The gold standard for modern screens */
-    "SF Mono", 
-    /* 2. MacOS Legacy: Still looks great */
-    "Menlo", 
-    /* 3. Windows 10/11: Built specifically for coding */
-    "Cascadia Code", 
-    /* 4. Windows Legacy: The classic VS look */
-    "Consolas", 
-    /* 5. Linux: Clean and highly readable */
-    "Liberation Mono", 
-    /* 6. General Linux: Wide support */
-    "DejaVu Sans Mono", 
-    /* 7. The Final Safety Net */
-    monospace;
+    font-family:
+        /* 1. MacOS/iOS: The gold standard for modern screens */
+        "SF Mono",
+        /* 2. MacOS Legacy: Still looks great */
+        "Menlo",
+        /* 3. Windows 10/11: Built specifically for coding */
+        "Cascadia Code",
+        /* 4. Windows Legacy: The classic VS look */
+        "Consolas",
+        /* 5. Linux: Clean and highly readable */
+        "Liberation Mono",
+        /* 6. General Linux: Wide support */
+        "DejaVu Sans Mono",
+        /* 7. The Final Safety Net */
+        monospace;
 }
 
 
@@ -570,16 +625,18 @@ body
 #database,
 #searchlist,
 #filelist {
-    background-color: var(--ace-gutter-bg); /* Darker than editor */
+    background-color: var(--ace-gutter-bg);
+    /* Darker than editor */
     color: var(--ace-foreground);
 }
 
-.treejs-node__open > .treejs-label {
-    color: var(--ace-green); /* Use the Monokai green for active folder */
+.treejs-node__open>.treejs-label {
+    color: var(--ace-green);
+    /* Use the Monokai green for active folder */
 }
 
 /* Style your custom data-extension icons from earlier */
-.treejs-node[data-extension="c"] > .treejs-label::before {
+.treejs-node[data-extension="c"]>.treejs-label::before {
     color: var(--ace-blue);
 }
 
@@ -587,6 +644,7 @@ body
     width: 8px;
     background-color: var(--ace-bg);
 }
+
 ::-webkit-scrollbar-thumb {
     background: var(--ace-selection-bg);
     border-radius: 4px;
@@ -612,18 +670,17 @@ input,
 select,
 button {
     /* Use the Gutter background for a distinct UI look */
-    background: var(--ace-gutter-bg); 
-    
+    background: var(--ace-gutter-bg);
+
     /* Subtle border using the selection/bracket color */
-    border: 2px solid var(--ace-selection-bg); 
-    
+    border: 2px solid var(--ace-selection-bg);
+
     /* Text color from the editor foreground */
     color: var(--ace-foreground);
     font-family: inherit;
 }
 
-#statusbar
-{
+#statusbar {
     background-color: var(--ace-gutter-bg);
     color: var(--ace-foreground);
 }
@@ -631,7 +688,8 @@ button {
 input:focus,
 select:focus {
     border-color: var(--ace-blue);
-    background: var(--ace-bg); /* Pop to the main editor bg when active */
+    background: var(--ace-bg);
+    /* Pop to the main editor bg when active */
 }
 
 button:hover {
@@ -642,7 +700,8 @@ button:hover {
 
 button:active {
     background: var(--ace-active-line-bg);
-    transform: translateY(1px); /* Simple physical feedback */
+    transform: translateY(1px);
+    /* Simple physical feedback */
 }
 
 /* Style for placeholders to match comments */
@@ -657,7 +716,7 @@ select option {
 }
 
 #tabs a {
-    color:var(--ace-foreground);
+    color: var(--ace-foreground);
 }
 
 
@@ -680,26 +739,26 @@ select option {
 
 
 [alt]::after,
-[data-tooltip]::after
-{
-    background: var(--ace-gutter-bg); /* Use your Monokai variables! */
+[data-tooltip]::after {
+    background: var(--ace-gutter-bg);
+    /* Use your Monokai variables! */
     color: var(--ace-foreground);
     border: 2px solid var(--ace-selection-bg);
-    font-family: 
-    /* 1. MacOS/iOS: The gold standard for modern screens */
-    "SF Mono", 
-    /* 2. MacOS Legacy: Still looks great */
-    "Menlo", 
-    /* 3. Windows 10/11: Built specifically for coding */
-    "Cascadia Code", 
-    /* 4. Windows Legacy: The classic VS look */
-    "Consolas", 
-    /* 5. Linux: Clean and highly readable */
-    "Liberation Mono", 
-    /* 6. General Linux: Wide support */
-    "DejaVu Sans Mono", 
-    /* 7. The Final Safety Net */
-    monospace;
+    font-family:
+        /* 1. MacOS/iOS: The gold standard for modern screens */
+        "SF Mono",
+        /* 2. MacOS Legacy: Still looks great */
+        "Menlo",
+        /* 3. Windows 10/11: Built specifically for coding */
+        "Cascadia Code",
+        /* 4. Windows Legacy: The classic VS look */
+        "Consolas",
+        /* 5. Linux: Clean and highly readable */
+        "Liberation Mono",
+        /* 6. General Linux: Wide support */
+        "DejaVu Sans Mono",
+        /* 7. The Final Safety Net */
+        monospace;
 }
 
 
@@ -707,13 +766,11 @@ select option {
 #gamelist .treejs .treejs-switcher:before,
 #database .treejs .treejs-switcher:before,
 #searchlist .treejs .treejs-switcher:before,
-#filelist .treejs .treejs-switcher:before
-{
+#filelist .treejs .treejs-switcher:before {
     border-top-color: var(--ace-foreground);
 }
 
-#toolbar a
-{
+#toolbar a {
     color: var(--ace-foreground)
 }
 

@@ -1,66 +1,59 @@
-html, body
-{
-    margin:0;
-    padding:0;
+html,
+body {
+    margin: 0;
+    padding: 0;
     height: 100%;
     width: 100%;
     height: 100vh;
     overflow: hidden;
 }
 
-*, *::before, *::after
-{
+*,
+*::before,
+*::after {
     box-sizing: border-box;
     outline: none;
     box-shadow: none;
     font-family: inherit;
 }
 
-#main-body
-{
+#main-body {
     flex-basis: 100%;
 }
 
-#editor-container
-{
+#editor-container {
     flex: 1 1 auto;
     flex-basis: calc(50% - 54px);
     min-height: 0;
 }
 
-#engine
-{
+#engine {
     flex-basis: 50%;
 }
 
 #editor-wrapper,
-#engine
-{
-    overflow:hidden;
+#engine {
+    overflow: hidden;
     scroll-margin-top: 100vh;
 }
 
-#editor
-{
+#editor {
     flex: 1 1 auto;
     flex-basis: 100%;
     min-height: 0;
 }
 
-.panel-row
-{
-    display:flex;
+.panel-row {
+    display: flex;
     flex-direction: row;
 }
 
-.panel-column
-{
-    display:flex;
+.panel-column {
+    display: flex;
     flex-direction: column;
 }
 
-*[id]
-{
+*[id] {
     scroll-margin-top: 100vh;
 }
 
@@ -68,88 +61,78 @@ html, body
 #gamelist,
 #database,
 #searchlist,
-#filelist
-{
+#filelist {
     overflow: scroll;
     flex-basis: 300px;
 }
 
 
-.treejs .treejs-node
-{
+.treejs .treejs-node {
     white-space: nowrap;
     overflow: visible;
 }
 
-.treejs .treejs-node__close > .treejs-nodes
-{
+.treejs .treejs-node__close>.treejs-nodes {
     overflow: hidden;
 }
 
-#main
-{
+#main {
     height: 100vh;
     max-height: calc(100vh);
     overflow: hidden;
 }
 
-#main > * {
+#main>* {
     flex-shrink: 1;
     flex-grow: 1;
     min-height: 0;
 }
 
-#statusbar > *
-{
+#statusbar>* {
     flex-basis: 50%;
 }
 
-#statusbar
-{
-    display:flex;
+#statusbar {
+    display: flex;
     flex-direction: row;
     justify-content: stretch;
 }
 
 
-#tabs
-{
+#tabs {
     width: 54px;
 }
 
 
 #statusbar,
-#toolbar
-{
+#toolbar {
     flex-shrink: 0;
     max-width: 100%;
 }
 
-#terminal
-{
+#terminal {
     flex: 1 1 auto;
     flex-basis: 400px;
     min-height: 0;
 }
 
-.treejs-label
-{
+.treejs-label {
     align-items: center;
 }
 
-#assetlist .treejs > .treejs-nodes,
-#gamelist .treejs > .treejs-nodes,
-#database .treejs > .treejs-nodes,
-#searchlist .treejs > .treejs-nodes,
-#filelist .treejs > .treejs-nodes
-{
-    padding:10px;
-    margin:0;
+#assetlist .treejs>.treejs-nodes,
+#gamelist .treejs>.treejs-nodes,
+#database .treejs>.treejs-nodes,
+#searchlist .treejs>.treejs-nodes,
+#filelist .treejs>.treejs-nodes {
+    padding: 10px;
+    margin: 0;
 }
 
 .treejs-label::before {
     font-family: 'boxicons' !important;
-    content: "\f413"; /* Boxicons 'file' code */
+    content: "\f413";
+    /* Boxicons 'file' code */
     color: #555;
     position: relative;
     top: 3px;
@@ -158,8 +141,7 @@ html, body
 
 input,
 select,
-button
-{
+button {
     border: 2px solid #666;
     background: white;
     padding: 3px 5px;
@@ -168,8 +150,7 @@ button
 
 
 
-#statusbar
-{
+#statusbar {
     background-color: #666;
 }
 
@@ -177,39 +158,33 @@ button
 
 #toolbar input,
 #toolbar select,
-#toolbar button
-{
+#toolbar button {
     margin: 3px 5px;
 }
 
 
-.treejs-node__checked
-{
+.treejs-node__checked {
     background: #ccc;
 }
 
-#tabs ul
-{
-    display:flex;
+#tabs ul {
+    display: flex;
     flex-direction: column;
 }
 
-#toolbar ul
-{
-    display:flex;
+#toolbar ul {
+    display: flex;
     flex-direction: row;
     max-width: 100%;
     flex-wrap: wrap;
     justify-content: end;
 }
 
-#toolbar ul > *:has(select)
-{
+#toolbar ul>*:has(select) {
     min-width: 100px;
 }
 
-#toolbar ul > *
-{
+#toolbar ul>* {
     flex-shrink: 1;
     min-width: 0;
     flex-basis: 32px;
@@ -219,9 +194,8 @@ button
 
 #toolbar input,
 #toolbar select,
-#toolbar button
-{
-    overflow:hidden;
+#toolbar button {
+    overflow: hidden;
     min-width: 0;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -234,23 +208,23 @@ button
 #tabs ul,
 #tabs li {
     list-style: none;
-    margin:0;
-    padding:0;
+    margin: 0;
+    padding: 0;
 }
 
 #toolbar a {
     text-decoration: none;
-    color:#666;
+    color: #666;
     padding: 3px 5px;
     font-size: 24px;
 }
 
 #tabs a {
     text-decoration: none;
-    color:#666;
+    color: #666;
     padding: 5px 10px;
     font-size: 32px;
-    border-left:2px solid transparent;
+    border-left: 2px solid transparent;
 }
 
 
@@ -260,7 +234,7 @@ button
 #toolbar a:active,
 #tabs a:hover,
 #toolbar a:hover {
-    background: rgba(0,0,0,.1)
+    background: rgba(0, 0, 0, .1)
 }
 
 
@@ -275,20 +249,20 @@ button
 #assetlist .treejs .treejs-checkbox,
 #gamelist .treejs .treejs-checkbox,
 #searchlist .treejs .treejs-checkbox,
-#filelist .treejs .treejs-checkbox
-{
-    display:none;
+#filelist .treejs .treejs-checkbox {
+    display: none;
 }
 
-  /* Folder Icon (When node has children) */
-.treejs-node__close[data-extension="folder"] > .treejs-label::before
-{
-    content: "\f440"; /* Boxicons 'folder' code */
+/* Folder Icon (When node has children) */
+.treejs-node__close[data-extension="folder"]>.treejs-label::before {
+    content: "\f440";
+    /* Boxicons 'folder' code */
     color: #f1c40f;
 }
 
-.treejs-node__open[data-extension="folder"] > .treejs-label::before {
-    content: "\f439"; /* Boxicons 'folder' code */
+.treejs-node__open[data-extension="folder"]>.treejs-label::before {
+    content: "\f439";
+    /* Boxicons 'folder' code */
     color: #f1c40f;
 }
 
@@ -299,8 +273,7 @@ button
 }
 */
 
-#editor
-{
+#editor {
     height: 100%;
     flex-basis: 100%;
 }
@@ -312,8 +285,7 @@ button
 }
 
 #toolbar [alt]::after,
-#toolbar [data-tooltip]::after
-{
+#toolbar [data-tooltip]::after {
     top: 100%;
     bottom: auto;
 }
@@ -325,7 +297,7 @@ button
     bottom: 50%;
     /*left: max(10px, 50%);
     transform: translateX(-50%); */
-    display:inline-block;
+    display: inline-block;
     padding: 5px 10px;
     border-radius: 4px;
     white-space: nowrap;
@@ -336,8 +308,7 @@ button
     z-index: 9999;
 }
 
-[alt]::after
-{
+[alt]::after {
     content: attr(alt);
 }
 
@@ -350,7 +321,7 @@ button
     width: 100%;
     box-sizing: border-box;
     /* Prevent the input from collapsing below a usable size */
-    min-width: 200px; 
+    min-width: 200px;
 }
 
 #gh-token-input::placeholder {
@@ -359,7 +330,8 @@ button
 }
 
 #gh-token-input.has-token::placeholder {
-    color: #4CAF50; /* Greenish to indicate "Success/Set" */
+    color: #4CAF50;
+    /* Greenish to indicate "Success/Set" */
 }
 
 #token-modal {
@@ -368,12 +340,15 @@ button
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.85); /* Dim the rest of the UI */
+    background: rgba(0, 0, 0, 0.85);
+    /* Dim the rest of the UI */
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000; /* Stay above xterm and everything else */
-    backdrop-filter: blur(4px); /* Modern touch */
+    z-index: 10000;
+    /* Stay above xterm and everything else */
+    backdrop-filter: blur(4px);
+    /* Modern touch */
 }
 
 /* The actual box */
@@ -410,4 +385,3 @@ button
 #token-modal.hidden {
     display: none;
 }
-

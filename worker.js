@@ -81,6 +81,19 @@ const onAnyMessage = async event => {
     break;
   }
 
+  case 'compile': {
+    const responseId = event.data.responseId;
+    let output = null;
+    let transferList;
+    try {
+      output = await api.compile(event.data.data);
+    } finally {
+      port.postMessage({id : 'runAsync', responseId, data : output},
+                       transferList);
+    }
+    break;
+  }
+
   case 'compileLinkRun':
     if (currentApp) {
       console.log('First, disallowing rAF from previous app.');
