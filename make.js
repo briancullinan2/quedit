@@ -59,6 +59,45 @@ const commonObjects = [
     "cmd.c", "common.c", "cvar.c", "files.c", "md4.c", "md5.c", "msg.c"
 ].map(file => path.join(dirs.CMDIR, file));
 
+const q3eCommonHeaders = [
+  // --- QCommon (The Engine Core) ---
+  "qcommon/q_shared.h",
+  "qcommon/q_platform.h",
+  "qcommon/qcommon.h",    // The "God" header for the engine
+  "qcommon/qfiles.h",     // File format definitions (.bsp, .md3, etc.)
+  "qcommon/surfaceflags.h", // Shared world/surface bitflags
+  "qcommon/unzip.h",      // Internal PK3/Zip handling
+  "qcommon/cm_local.h",
+  "qcommon/cm_public.h",
+
+  // --- Client & Server ---
+  "client/client.h",      // Client-side engine state
+  "server/server.h",      // Server-side engine state
+
+  // --- Renderer (Internal) ---
+  "renderer2/tr_local.h",  // Core renderer internal state
+  "renderercommon/tr_public.h", // Public interface to the renderer
+  "renderer2/qgl.h",       // OpenGL function pointers/wrappers
+
+  // --- BotLib ---
+  "botlib/botlib.h",      // Core bot library interface
+  "botlib/be_aas.h",      // Area Awareness System (Navigation)
+  "botlib/be_ai_char.h",  // Bot characteristics/personality
+
+  // --- Shared / Game Layer ---
+  "game/g_public.h",      // Engine <-> Game VM interface
+  "game/bg_public.h",     // Shared Game/CGame logic (physics, items)
+  "cgame/cg_public.h",    // Engine <-> CGame VM interface
+  
+  // --- UI Layer ---
+  "ui/ui_public.h",       // Engine <-> UI VM interface
+  //"q3_ui/ui_local.h",     // Classic Q3 UI local definitions
+
+  // --- System Layer ---
+  //"sys/sys_local.h",      // System-specific (Win/Linux) low-level stuff
+  //"sys/sys_loadlib.h"     // Dynamic library loading
+].map(file => path.join(config.MOUNT_DIR, file));
+
 function getBaseFlags() {
     let flags = ["-Wall", "-Wimplicit", "-Wstrict-prototypes"];
 
@@ -97,28 +136,73 @@ async function build() {
     });
 
     // init database
-    await readAll(owner.value, repo.value)
+    let startTime = Date.now()
+    FS.isSyncing = 1
+    // FIX FOR "QKEY could not open" ERROR
+    FS.virtual['home'] = {
+        timestamp: new Date(),
+        mode: FS_DIR,
+    }
+    console.log('sync started at ', new Date())
+
+    await readAll(owner.value + '/' + repo.value, loadEntry)
+    let tookTime = Date.now() - startTime
+
+    console.log('sync completed', new Date())
+    console.log('sync took',
+        (tookTime > 60 * 1000 ? (Math.floor(tookTime / 1000 / 60) + ' minutes, ') : '')
+        + Math.floor(tookTime / 1000) % 60 + ' seconds, '
+        + (tookTime % 1000) + ' milliseconds')
+
+    FS.isSyncing = 0
 
     term.write('\n\r')
+
+    await downloadHeaders(q3eCommonHeaders)
+
+    await api.upload(owner.value + '/' + repo.value)
 
     for(let obj of [...clientObjects, ...commonObjects])
     {
 
-        let content = await cacheFile(owner.value, repo.value, obj)
+        try {
+            let content = await cacheFile(owner.value, repo.value, obj)
+            
+            term.write('\n\r')
+            let filename = obj //obj.split('/').pop()
+            let result = await api.compile({
+                contents: content, 
+                width: term.cols, 
+                input: filename, 
+                obj: filename.replace('.c', '.o')
+            })
 
-        term.write('\n\r')
-        let filename = obj.split('/').pop()
-        let result = await api.compile({
-            contents: content, 
-            width: term.cols, 
-            input: filename, 
-            obj: filename.replace('.c', '.o')
-        })
+        } catch {}
 
-        
     }
 
 
+}
+
+async function downloadHeaders(headers, batchSize = 10) {
+    const ownerVal = owner.value;
+    const repoVal = repo.value;
+
+    // Process in chunks to avoid slamming the network/API
+    for (let i = 0; i < headers.length; i += batchSize) {
+        const batch = headers.slice(i, i + batchSize);
+        
+        await Promise.all(batch.map(async (header) => {
+            try {
+                // cacheFile handles the storage logic
+                await cacheFile(ownerVal, repoVal, header);
+            } catch (e) {
+                console.warn(`Failed to cache ${header}:`, e);
+            }
+        }));
+        
+        console.log(`Finished batch ${Math.ceil((i + batchSize) / batchSize)}`);
+    }
 }
 
 
@@ -156,52 +240,6 @@ function loadEntry(cursor) {
     return cursor.continue()
 }
 
-
-async function readAll(owner, repo) {
-    let startTime = Date.now()
-    FS.isSyncing = 1
-    // FIX FOR "QKEY could not open" ERROR
-    FS.virtual['home'] = {
-        timestamp: new Date(),
-        mode: FS_DIR,
-    }
-    console.log('sync started at ', new Date())
-    let databases = await getDatabaseMetadata()
-    if (databases.filter(d => d.key == owner + '/' + repo).length == 0
-        || (await needsInstall(owner + '/' + repo, DB_SCHEME)).item3) {
-        await deleteOldDatabase(owner + '/' + repo)
-        await setupDatabase(owner + '/' + repo, DB_SCHEME)
-    }
-    let db = await getDB(owner + '/' + repo)
-    let transaction = db.transaction([DB_STORE_NAME], 'readonly')
-    let objStore = transaction.objectStore(DB_STORE_NAME)
-    let tranCursor = objStore.openCursor()
-    await new Promise(function (resolve) {
-        tranCursor.onsuccess = function (event) {
-            let cursor = event.target.result
-            if (!cursor) {
-                return resolve()
-            }
-            loadEntry(cursor)
-        }
-        tranCursor.onerror = function (error) {
-            console.error(error)
-            resolve(error)
-        }
-    })
-
-    transaction.commit()
-    let tookTime = Date.now() - startTime
-
-    console.log('sync completed', new Date())
-    console.log('sync took',
-        (tookTime > 60 * 1000 ? (Math.floor(tookTime / 1000 / 60) + ' minutes, ') : '')
-        + Math.floor(tookTime / 1000) % 60 + ' seconds, '
-        + (tookTime % 1000) + ' milliseconds')
-
-    FS.isSyncing = 0
-
-}
 
 
 async function cacheFile(repoOwner, repoName, filePath, sha) {

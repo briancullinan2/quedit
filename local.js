@@ -213,3 +213,34 @@ async function deleteRecord(storeName, key) {
         tx.commit()
     })
 }
+
+
+async function readAll(database, callback) {
+    let databases = await getDatabaseMetadata()
+    if (databases.filter(d => d.key == database).length == 0
+        || (await needsInstall(database, DB_SCHEME)).item3) {
+        await deleteOldDatabase(database)
+        await setupDatabase(database, DB_SCHEME)
+    }
+    let db = await getDB(database)
+    let transaction = db.transaction([DB_STORE_NAME], 'readonly')
+    let objStore = transaction.objectStore(DB_STORE_NAME)
+    let tranCursor = objStore.openCursor()
+    await new Promise(function (resolve) {
+        tranCursor.onsuccess = async function (event) {
+            let cursor = event.target.result
+            if (!cursor) {
+                return resolve()
+            }
+            await callback(cursor)
+        }
+        tranCursor.onerror = function (error) {
+            console.error(error)
+            resolve(error)
+        }
+    })
+
+    transaction.commit()
+    
+
+}

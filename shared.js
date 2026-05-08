@@ -184,15 +184,67 @@ const API = (function () {
       this.exports.AddDirectoryNode(path.length);
     }
 
+    directoryExists(path) {
+      try {
+        this.mem.check();
+        this.mem.write(this.exports.GetPathBuf(), path);
+        const inode = this.exports.FindNode(path.length);
+
+        // 0 or a specific constant usually represents INVALID_INODE
+        return inode !== 0;
+      }
+      catch (e) {
+        return false
+      }
+    }
+
+    mkdirp(path) {
+      // Ensure we have a clean array of directory segments
+      // Filter(Boolean) removes empty strings from leading/double slashes
+      const parts = path.split('/').filter(Boolean);
+      let currentPath = path.startsWith('/') ? '/' : '';
+
+      for (const part of parts) {
+        // If we're at the root, don't double up the slash
+        currentPath = currentPath === '' ? `${part}` : `${currentPath}/${part}`;
+
+        try {
+          this.mem.check();
+          this.mem.write(this.exports.GetPathBuf(), currentPath);
+
+          // We call the Wasm export to create the directory node
+          // Note: If your Wasm AddDirectoryNode asserts on existing dirs, 
+          // you'll need to check existence first or wrap this in a try/catch.
+          if (!this.directoryExists(currentPath))
+            this.exports.AddDirectoryNode(currentPath.length);
+        } catch (e) {
+          // Log only if it's a real crash, not just an "already exists" error
+          if (!e.message.includes("exists")) {
+            console.warn(`mkdirp segment failed: ${currentPath}`, e);
+          }
+        }
+      }
+    }
+
     addFile(path, contents) {
-      const length =
-        contents instanceof ArrayBuffer ? contents.byteLength : contents.length;
-      this.mem.check();
-      this.mem.write(this.exports.GetPathBuf(), path);
-      const inode = this.exports.AddFileNode(path.length, length);
-      const addr = this.exports.GetFileNodeAddress(inode);
-      this.mem.check();
-      this.mem.write(addr, contents);
+      try {
+        const dirPath = path.substring(0, path.lastIndexOf('/'));
+        if (dirPath) {
+          this.mkdirp(dirPath);
+        }
+
+        const length =
+          contents instanceof ArrayBuffer ? contents.byteLength : contents.length;
+        this.mem.check();
+        this.mem.write(this.exports.GetPathBuf(), path);
+        const inode = this.exports.AddFileNode(path.length, length);
+        const addr = this.exports.GetFileNodeAddress(inode);
+        this.mem.check();
+        this.mem.write(addr, contents);
+      }
+      catch (e) {
+        console.error(path + ' - ' + e)
+      }
     }
 
     getFileContents(path) {
@@ -718,20 +770,38 @@ const API = (function () {
       await this.hostLogAsync(`Untarring ${filename}`, promise);
     }
 
+    async loadEntry(cursor)
+    {
+      if (!cursor) {
+        return resolve()
+      }
+      this.memfs.addFile(cursor.value.path, cursor.value.contents);
+      return cursor.continue()
+    }
+
+
+    async upload(database) {
+      await this.ready;
+      await readAll(database, this.loadEntry.bind(this))
+    }
+
+
     async compile(options) {
       const input = options.input;
       const contents = options.contents;
       const obj = options.obj;
       const opt = options.opt || '2';
+      const dirPath = obj.substring(0, obj.lastIndexOf('/'));
 
       await this.ready;
       this.memfs.addFile(input, contents);
+      this.memfs.mkdirp(dirPath)
       const clang = await this.getModule(this.clangFilename);
       return await this.run(clang, 'clang', '-cc1', '-emit-obj',
-        ...this.clangCommonArgs, 
+        ...this.clangCommonArgs,
         '-fmessage-length', '' + (options.width || '80'),
-        '-O2', '-o', obj, '-x',
-        'c++', input);
+        '-O2', '-o', obj, '-x', 'c++',
+        input);
     }
 
     async compileToAssembly(options) {

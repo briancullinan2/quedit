@@ -40,6 +40,10 @@ class WorkerAPI {
         return this.runAsync('compileTo6502', options);
     }
 
+    async upload(options) {
+        return this.runAsync('upload', options);
+    }
+
     async compile(options) {
         return this.runAsync('compile', options);
     }

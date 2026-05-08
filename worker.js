@@ -15,6 +15,7 @@
  */
 
 self.importScripts('shared.js');
+self.importScripts('local.js');
 
 let api;
 let port;
@@ -74,6 +75,19 @@ const onAnyMessage = async event => {
     let transferList;
     try {
       output = await api.compileTo6502(event.data.data);
+    } finally {
+      port.postMessage({id : 'runAsync', responseId, data : output},
+                       transferList);
+    }
+    break;
+  }
+
+  case 'upload': {
+    const responseId = event.data.responseId;
+    let output = null;
+    let transferList;
+    try {
+      output = await api.upload(event.data.data);
     } finally {
       port.postMessage({id : 'runAsync', responseId, data : output},
                        transferList);
