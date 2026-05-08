@@ -64,9 +64,26 @@ html, body
     scroll-margin-top: 100vh;
 }
 
+#assetlist,
+#gamelist,
+#database,
+#searchlist,
 #filelist
 {
     overflow: scroll;
+    flex-basis: 300px;
+}
+
+
+.treejs .treejs-node
+{
+    white-space: nowrap;
+    overflow: visible;
+}
+
+.treejs .treejs-node__close > .treejs-nodes
+{
+    overflow: hidden;
 }
 
 #main
@@ -120,6 +137,10 @@ html, body
     align-items: center;
 }
 
+#assetlist .treejs > .treejs-nodes,
+#gamelist .treejs > .treejs-nodes,
+#database .treejs > .treejs-nodes,
+#searchlist .treejs > .treejs-nodes,
 #filelist .treejs > .treejs-nodes
 {
     padding:10px;
@@ -250,6 +271,10 @@ button
     border-left-color: #333;
 }
 
+#database .treejs .treejs-checkbox,
+#assetlist .treejs .treejs-checkbox,
+#gamelist .treejs .treejs-checkbox,
+#searchlist .treejs .treejs-checkbox,
 #filelist .treejs .treejs-checkbox
 {
     display:none;

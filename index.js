@@ -122,7 +122,7 @@ function getOrCreateAceSession(fileId, content) {
 
 
 let myTree;
-async function loadGitHubTree(repoOwner, repoName, branch) {
+async function loadGitHubTree(repoOwner, repoName, branch, selector) {
   savedToken = localStorage.getItem('github_token');
 
   const url = `https://api.github.com/repos/${repoOwner}/${repoName}/git/trees/${branch}?recursive=1`;
@@ -145,7 +145,7 @@ async function loadGitHubTree(repoOwner, repoName, branch) {
 
     // Initialize Tree.js with the transformed data
     // Note: Use 'data' property instead of 'url' to provide the object directly
-    myTree = new Tree('#filelist', {
+    myTree = new Tree(selector, {
       data: nestedData,
       autoOpen: false,
       closeDepth: 2,
@@ -156,31 +156,6 @@ async function loadGitHubTree(repoOwner, repoName, branch) {
     console.error('Failed to load GitHub tree:', error);
   }
 }
-
-const treeContainer = document.querySelector('#filelist');
-
-const observer = new MutationObserver(() => {
-    // This runs every single time the library touches the HTML
-    const nodes = treeContainer.querySelectorAll('.treejs-node');
-    
-    nodes.forEach(node => {
-        // Skip files/placeholders
-        if (node.querySelector('.treejs-placeholder')) return;
-
-        // If it's NOT closed, force the open class
-        if (!node.classList.contains('treejs-node__close')) {
-            node.classList.add('treejs-node__open');
-        } else {
-            node.classList.remove('treejs-node__open');
-        }
-    });
-});
-
-// Start watching the tree for any internal "erasing"
-observer.observe(treeContainer, {
-    childList: true,
-    subtree: true
-});
 
 
 var editor = ace.edit("editor");
@@ -326,9 +301,26 @@ async function getBranches(repoOwner, repoName) {
 }
 
 
-getBranches(owner.value, repo.value)
-  .then(branches => loadGitHubTree(owner.value, repo.value, branches[0]?.name))
+async function initializeFiletrees()
+{
+    var parts = document.getElementById('filelist').dataset['repository']?.split('/')
+    var newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    var newOwner = parts.length == 2 ? parts[0] : owner.value
+    var branches = await getBranches(newOwner, newRepo)
 
+    await loadGitHubTree(newOwner, newRepo, branches[0]?.name || 'main', '#filelist')
+
+    var parts2 = document.getElementById('gamelist').dataset['repository']?.split('/')
+    var newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repo.value
+    var newOwner2 = parts2.length == 2 ? parts2[0] : owner.value
+    var branches2 = await getBranches(newOwner2, newRepo2)
+
+    await loadGitHubTree(newOwner2, newRepo2, branches2[0]?.name || 'main', '#gamelist')
+
+    
+}
+
+initializeFiletrees();
   
 
 
@@ -408,7 +400,7 @@ async function openFile(repoOwner, repoName, fileId, recordHistory = true) {
     }
 }
 
-treeContainer.addEventListener('click', (e) => {
+document.getElementById('filelist').addEventListener('click', (e) => {
     const node = e.target.closest('.treejs-node');
     if (node && node.classList.contains('treejs-placeholder')) {
         const fileId = node.getAttribute('data-id'); // Assuming you set this
@@ -511,4 +503,77 @@ document.getElementById('theme').addEventListener('change', (e) => {
     // Actually tell Ace to change its internal theme too
     editor.setTheme(e.target.value);
 });
+
+
+var panels = document.querySelectorAll('#filesearch, #filelist, #gamelist, #assetlist, #database')
+
+document.getElementById('tabs').addEventListener('click', (e) => {
+
+  if(e.target.href?.split('#').pop() == 'collapse')
+  {
+    let hasOpen = hideOpenPanels()
+    if(!hasOpen)
+      document.getElementById('filelist').classList.remove('hidden')
+  }
+  else 
+  {
+    let panel = e.target.href?.split('#').pop()
+    if(panel)
+    {
+      hideOpenPanels()
+      document.getElementById(panel).classList.remove('hidden')
+    }
+  }
+
+});
+
+
+function hideOpenPanels()
+{
+  var hasOpen = false;
+  for(let panel of panels)
+  {
+    if(!panel.classList.contains('hidden'))
+    {
+      panel.classList.add('hidden')
+      hasOpen = true
+    }
+  }
+  return hasOpen
+}
+
+
+function setRepository(newRepo)
+{
+  let parts = repo.split('/')
+  let newOwner
+  if(parts.length === 2)
+  {
+    newOwner = parts[1]
+    newRepo = parts[0]
+  }
+
+  if(document.querySelector(`#repository option[value="${newRepo}"]`))
+  {
+    const option = document.createElement('option');
+    
+    option.value = newRepo;
+    option.textContent = newRepo;
+    option.selected = true;
+
+    repo.appendChild(option);
+  }
+
+  if(newOwner && document.querySelector(`#owner option[value="${newOwner}"]`))
+  {
+    const option = document.createElement('option');
+    
+    option.value = newOwner;
+    option.textContent = newOwner;
+    option.selected = true;
+
+    owner.appendChild(option);
+  }
+
+}
 

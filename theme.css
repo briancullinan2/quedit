@@ -113,10 +113,15 @@
     --ace-green: #a3be8c;
 }
 
+#editor-container .hidden
+{
+    display:none;
+}
+
 
 .theme-cobalt {
     --ace-bg: #002240;
-    --ace-gutter-bg: #002240;
+    --ace-gutter-bg: #011e3a;
     --ace-foreground: #FFFFFF;
     --ace-comment: #0088FF;
     --ace-selection-bg: rgba(179, 101, 57, 0.75);
@@ -559,6 +564,11 @@ body
     monospace;
 }
 
+
+#assetlist,
+#gamelist,
+#database,
+#searchlist,
 #filelist {
     background-color: var(--ace-gutter-bg); /* Darker than editor */
     color: var(--ace-foreground);
@@ -693,7 +703,10 @@ select option {
 }
 
 
-
+#assetlist .treejs .treejs-switcher:before,
+#gamelist .treejs .treejs-switcher:before,
+#database .treejs .treejs-switcher:before,
+#searchlist .treejs .treejs-switcher:before,
 #filelist .treejs .treejs-switcher:before
 {
     border-top-color: var(--ace-foreground);
