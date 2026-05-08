@@ -23,16 +23,33 @@ function getOrCreateAceSession(fileId, content) {
     return session;
 }
 
-
+let savedTheme
+var theme = document.getElementById('theme')
 var editor = ace.edit("editor");
 editor.session.setUseWorker(false);
-editor.setTheme("ace/theme/monokai");
 editor.session.setMode("ace/mode/c_cpp");
 
 setTimeout(() => {
+  savedTheme = localStorage.getItem('theme');
+  const newtheme = savedTheme || theme.value || 'ace/theme/monokai'
+  const themeName = newtheme.split('/').pop(); // Gets 'monokai' or 'dracula'
+    // Clean up old classes and add new one
+  document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
+  editor.setTheme(newtheme);
   editor.resize();
   editor.renderer.updateFull();
 }, 300)
+
+
+
+theme.addEventListener('change', (e) => {
+    const themeName = e.target.value.split('/').pop(); // Gets 'monokai' or 'dracula'
+    // Clean up old classes and add new one
+    document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
+    localStorage.setItem('theme', e.target.value)
+    // Actually tell Ace to change its internal theme too
+    editor.setTheme(e.target.value);
+});
 
 
 let currentOpenFileId;

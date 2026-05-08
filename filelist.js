@@ -92,21 +92,54 @@ async function loadGitHubTree(repoOwner, repoName, branch, selector) {
 
 async function initializeFiletrees()
 {
-    var parts = document.getElementById('filelist').dataset['repository']?.split('/')
-    var newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
-    var newOwner = parts.length == 2 ? parts[0] : owner.value
-    var branches = await getBranches(newOwner, newRepo)
+    if(window.location.pathname)
+    {
+        await setRepository(window.location.pathname.trim().replace(/\/$|^\//, ''))
+    }
 
-    await loadGitHubTree(newOwner, newRepo, branches[0]?.name || 'main', '#filelist')
 
-    var parts2 = document.getElementById('gamelist').dataset['repository']?.split('/')
-    var newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repo.value
-    var newOwner2 = parts2.length == 2 ? parts2[0] : owner.value
-    var branches2 = await getBranches(newOwner2, newRepo2)
+    var engineRepo = localStorage.getItem('engine_repository');
 
-    await loadGitHubTree(newOwner2, newRepo2, branches2[0]?.name || 'main', '#gamelist')
+    var parts = engineRepo?.split('/') || document.getElementById('filelist').dataset['repository']?.split('/')
+    
+    if(parts)
+    {
+        var newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
+        var newOwner = parts.length == 2 ? parts[0] : owner.value
+        var branches = await getBranches(newOwner, newRepo)
+        updateSelectOptions('branch', branches)
+        if(newOwner && newRepo)
+            await loadGitHubTree(newOwner, newRepo, branches[0]?.name || 'main', '#filelist')
+    }
+
+    var gameRepo = localStorage.getItem('game_repository');
+
+    var parts2 = gameRepo?.split('/') || document.getElementById('gamelist').dataset['repository']?.split('/')
+    if(parts2) {
+
+        var newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repo.value
+        var newOwner2 = parts2.length == 2 ? parts2[0] : owner.value
+        var branches2 = await getBranches(newOwner2, newRepo2)
+
+        if(newOwner2 && newRepo2)
+            await loadGitHubTree(newOwner2, newRepo2, branches2[0]?.name || 'main', '#gamelist')
+    }
 
     
+    var assetRepo = localStorage.getItem('asset_repository');
+
+    var parts3 = assetRepo?.split('/') || document.getElementById('assetlist').dataset['repository']?.split('/')
+    
+    if(parts3) {
+
+        var newRepo3 = parts3.length == 2 ? parts3[1] : parts3[0] || repo.value
+        var newOwner3 = parts3.length == 2 ? parts3[0] : owner.value
+        var branches3 = await getBranches(newOwner3, newRepo3)
+
+        if(newOwner3 && newRepo3)
+            await loadGitHubTree(newOwner3, newRepo3, branches3[0]?.name || 'main', '#assetlist')
+
+    }
 }
 
 initializeFiletrees();
@@ -171,22 +204,31 @@ document.getElementById('filelist').addEventListener('click', (e) => {
 
 var panels = document.querySelectorAll('#filesearch, #filelist, #gamelist, #assetlist, #database')
 
-document.getElementById('tabs').addEventListener('click', (e) => {
+document.getElementById('tabs').addEventListener('click', async (e) => {
 
-  if(e.target.href?.split('#').pop() == 'collapse')
+  var panelId = e.target.href?.split('#').pop()
+
+  if(panelId == 'collapse')
   {
     let hasOpen = hideOpenPanels()
     if(!hasOpen)
       document.getElementById('filelist').classList.remove('hidden')
   }
-  else 
+  else if(panelId)
   {
-    let panel = e.target.href?.split('#').pop()
-    if(panel)
-    {
-      hideOpenPanels()
-      document.getElementById(panel).classList.remove('hidden')
-    }
+    
+    hideOpenPanels()
+    var panel = document.getElementById(panelId)
+    panel.classList.remove('hidden')
+    var repo = panel.dataset['repository']
+    if(panelId == 'filelist')
+        repo = localStorage.getItem('engine_repository') || repo
+    if(panelId == 'gamelist')
+        repo = localStorage.getItem('game_repository') || repo
+    if(panelId == 'assetlist')
+        repo = localStorage.getItem('asset_repository') || repo
+
+    await setRepository(repo)
   }
 
 });

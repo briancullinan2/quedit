@@ -3,6 +3,19 @@ const repo = document.getElementById('repository');
 const branch = document.getElementById('branch');
 
 
+branch.addEventListener('change', (e) => {
+
+    let fileList = 'engine_repository'
+    if(!document.getElementById('gamelist').classList.contains('hidden'))
+        fileList = 'game_repository'
+    if(!document.getElementById('assetlist').classList.contains('hidden'))
+        fileList = 'asset_repository'
+
+    localStorage.setItem(fileList, owner.value + '/' + repo.value)
+})
+
+
+
 
 async function getDefaultBranch(owner, repo) {
     const savedToken = localStorage.getItem('github_token');
@@ -39,7 +52,7 @@ async function getBranches(repoOwner, repoName) {
           return a.name.localeCompare(b.name);
         });
 
-        updateSelectOptions('branch', branches)
+        
         return branches;
     } catch (error) {
         console.error("Failed to fetch branches:", error);
@@ -115,28 +128,10 @@ function clearToken() {
 }
 
 
-document.getElementById('theme').addEventListener('change', (e) => {
-    const themeName = e.target.value.split('/').pop(); // Gets 'monokai' or 'dracula'
-    // Clean up old classes and add new one
-    document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
-    
-    // Actually tell Ace to change its internal theme too
-    editor.setTheme(e.target.value);
-});
-
-
-
-function setRepository(newRepo)
+function addRepoIfNotExists(newRepo)
 {
-  let parts = repo.split('/')
-  let newOwner
-  if(parts.length === 2)
-  {
-    newOwner = parts[1]
-    newRepo = parts[0]
-  }
 
-  if(document.querySelector(`#repository option[value="${newRepo}"]`))
+  if(newRepo.trim().length > 0 && !document.querySelector(`#repository option[value="${newRepo}"]`))
   {
     const option = document.createElement('option');
     
@@ -145,9 +140,15 @@ function setRepository(newRepo)
     option.selected = true;
 
     repo.appendChild(option);
+    localStorage.setItem('repositories', Array.from(repo.children).map(c => c.value).join(';'))
   }
+}
 
-  if(newOwner && document.querySelector(`#owner option[value="${newOwner}"]`))
+
+function addOwnerIfNotExists(newOwner)
+{
+    
+  if(newOwner && newOwner.trim().length > 0 && !document.querySelector(`#owner option[value="${newOwner}"]`))
   {
     const option = document.createElement('option');
     
@@ -156,11 +157,47 @@ function setRepository(newRepo)
     option.selected = true;
 
     owner.appendChild(option);
+    localStorage.setItem('owners', Array.from(owner.children).map(c => c.value).join(';'))
+  }
+}
+
+
+async function setRepository(newRepo)
+{
+  if(newRepo.trim().replace(/\/$|^\//, '').length == 0) return
+  let parts = newRepo.split('/')
+  let newOwner
+  if(parts.length === 2)
+  {
+    newOwner = parts[0]
+    newRepo = parts[1]
   }
 
+  addRepoIfNotExists(newRepo)
+  addOwnerIfNotExists(newOwner)
+  if(newOwner.trim())
+      owner.value = newOwner;
+  repo.value = newRepo;
+  var branches = await getBranches(owner.value, repo.value)
+  updateSelectOptions('branch', branches)
 }
 
 window.addEventListener('beforeunload', event => {
   event.preventDefault();
   event.returnValue = '';
 });
+
+
+let owners = localStorage.getItem('owners')?.split(';')
+let repos = localStorage.getItem('repositories')?.split(';')
+for(let o of owners || [])
+{
+    if(o && o.trim().length > 0)
+        addOwnerIfNotExists(o)
+}
+for(let r of repos || [])
+{
+    if(r && r.trim().length > 0)
+        addRepoIfNotExists(r)
+}
+
