@@ -247,6 +247,62 @@ const API = (function () {
       }
     }
 
+    directoryList(fd) {
+      // 1. Use your established scratch space
+      const bufPtr = this.exports.GetPathBuf();
+      const bufLen = this.exports.GetPathBufLen();
+
+      // 2. We'll use the last 4 bytes of the scratch buffer for nreadPtr
+      // to avoid a separate allocation or hardcoded address.
+      const nreadPtr = bufPtr + bufLen - 4;
+      const PAGE_SIZE = bufLen - 4;
+
+      const results = [];
+      let cookie = 0n;
+
+      while (true) {
+        // Call WASI export using the scratch buffer
+        const errno = this.exports.fd_readdir(fd, bufPtr, PAGE_SIZE, cookie, nreadPtr);
+
+        if (errno !== 0) {
+          console.error(`readdir failed with errno: ${errno}`);
+          break;
+        }
+
+        const view = new DataView(this.exports.memory.buffer);
+        const nread = view.getUint32(nreadPtr, true);
+        if (nread === 0) break;
+
+        let offset = 0;
+        while (offset < nread) {
+          // WASI Dirent Header (24 bytes):
+          // 0-7: d_next (8) | 8-15: d_ino (8) | 16-19: d_namlen (4) | 20: d_type (1)
+          const d_next = view.getBigUint64(offset, true);
+          const d_namlen = view.getUint32(offset + 16, true);
+          const d_type = view.getUint8(offset + 20);
+
+          // Name immediately follows the 24-byte header
+          const namePtr = bufPtr + offset + 24;
+          const nameBuffer = new Uint8Array(this.exports.memory.buffer, namePtr, d_namlen);
+          const name = new TextDecoder().decode(nameBuffer);
+
+          results.push({
+            name: name,
+            type: d_type, // 4 = Dir, 8 = File
+            inode: view.getBigUint64(offset + 8, true)
+          });
+
+          cookie = d_next;
+          offset += 24 + d_namlen;
+        }
+
+        if (nread < PAGE_SIZE) break;
+      }
+
+      return results;
+    }
+
+    
     async recursiveDir(dirFd, pathStr = "") {
       // 1. Get the scratch space provided by your Wasm module
       const scratchPtr = this.exports.GetPathBuf();
@@ -256,7 +312,7 @@ const API = (function () {
         throw new Error("Scratch buffer too small for readdir");
       }
 
-      const entries = directoryList(dirFd, scratchPtr, scratchLen);
+      const entries = this.directoryList(dirFd, scratchPtr, scratchLen);
 
       for (const entry of entries) {
         const fullPath = pathStr ? `${pathStr}/${entry.name}` : entry.name;
@@ -296,13 +352,13 @@ const API = (function () {
     }
 
     openPath(pathString) {
-      const scratchPtr = Module.GetPathBuf();
-      const scratchLen = Module.GetPathBufLen();
+      const scratchPtr = this.exports.GetPathBuf();
+      const scratchLen = this.exports.GetPathBufLen();
 
       // 1. Write the path string into the Wasm memory
       const encoder = new TextEncoder();
       const encodedPath = encoder.encode(pathString);
-      new Uint8Array(Module.memory.buffer).set(encodedPath, scratchPtr);
+      new Uint8Array(this.exports.memory.buffer).set(encodedPath, scratchPtr);
 
       // 2. Prepare space for the returned FD (4 bytes)
       // We'll put it at the end of the scratch buffer
@@ -310,7 +366,7 @@ const API = (function () {
 
       // 3. Call path_open
       // We use FD 3 as the base (the first pre-opened directory)
-      const errno = Module.path_open(
+      const errno = this.exports.path_open(
         3,                    // dirfd (The first pre-open)
         1,                    // lookupflags (1 = symlink follow)
         scratchPtr,           // path_ptr
@@ -328,7 +384,7 @@ const API = (function () {
       }
 
       // 4. Read the new FD from memory
-      return new DataView(Module.memory.buffer).getUint32(resultFdPtr, true);
+      return new DataView(this.exports.memory.buffer).getUint32(resultFdPtr, true);
     }
 
     getFileContents(path) {
@@ -858,15 +914,6 @@ const API = (function () {
       this.sysrootFilename = options.sysroot || 'sysroot.tar';
       this.showTiming = options.showTiming || false;
 
-      this.clangCommonArgs = [
-        '-disable-free',
-        '-isysroot', '/',
-        '-internal-isystem', '/include/c++/v1',
-        '-internal-isystem', '/include',
-        '-internal-isystem', '/lib/clang/8.0.1/include',
-        '-ferror-limit', '19',
-        '-fcolor-diagnostics',
-      ];
 
       this.memfs = new MemFS({
         compileStreaming: this.compileStreaming,
@@ -918,6 +965,7 @@ const API = (function () {
       if (!cursor) {
         return resolve()
       }
+      this.memfs.hostWrite('\n\rLoading: ' + cursor.key + '\n\r')
       this.memfs.addFile(cursor.value.path, cursor.value.contents);
       return cursor.continue()
     }
@@ -928,11 +976,23 @@ const API = (function () {
       await readAll(database, this.loadEntry.bind(this))
     }
 
+    /*
+    async stringify(shader, stringifyPath) {
+      await this.ready;
+      if(!this.stringifyModule)
+      {
+        var bytes = this.memfs.getFileContents(stringifyPath)
+        this.stringifyModule = await WebAssembly.instantiate(bytes, {})
+        
+      }
+    }
+    */
+
 
     async download(database) {
       await this.ready;
       var fd = this.memfs.openPath('/')
-      var directories = recursiveDir(fd)
+      var directories = await this.memfs.recursiveDir(fd)
       debugger
       for (let file of directories) {
         var bytes = this.memfs.getFileContents(file)
@@ -953,14 +1013,15 @@ const API = (function () {
       const contents = options.contents;
       const obj = options.obj;
       const opt = options.opt || '2';
+      const inDir = input.substring(0, obj.lastIndexOf('/'));
       const dirPath = obj.substring(0, obj.lastIndexOf('/'));
 
       await this.ready;
+      this.memfs.mkdirp(inDir)
       this.memfs.addFile(input, contents);
       this.memfs.mkdirp(dirPath)
       const clang = await this.getModule(this.clangFilename);
-      var result = await this.run(clang, 'clang', '-cc1', '-emit-obj',
-        ...this.clangCommonArgs,
+      var result = await this.run(clang, 'clang',
         ...options.CFLAGS || [],
         '-fmessage-length', '' + (options.width || '80'),
         '-o', obj,
@@ -987,7 +1048,7 @@ const API = (function () {
       await this.ready;
       this.memfs.addFile(input, contents);
       const clang = await this.getModule(this.clangFilename);
-      await this.run(clang, 'clang', '-cc1', '-S', ...this.clangCommonArgs,
+      await this.run(clang, 'clang', '-cc1', '-S',
         `-triple=${triple}`, '-mllvm',
         '--x86-asm-syntax=intel', `-O${opt}`,
         '-o', output, '-x', 'c++', input);
@@ -1011,17 +1072,30 @@ const API = (function () {
       const stackSize = 1024 * 1024;
       const obj = options.obj;
       const wasm = options.wasm;
+      const dirPath = wasm.substring(0, wasm.lastIndexOf('/'));
 
       const libdir = 'lib/wasm32-wasi';
       const crt1 = `${libdir}/crt1.o`;
       await this.ready;
       const lld = await this.getModule(this.lldFilename);
-      return await this.run(
+      this.memfs.mkdirp(dirPath)
+      var result = await this.run(
         lld, 'wasm-ld', '--no-threads',
         ...options.LDFLAGS || [],
         '--export-dynamic',  // TODO required?
-        '-z', `stack-size=${stackSize}`, `-L${libdir}`, crt1, ...(obj instanceof Array ? obj : [obj]), '-lc',
+        '-z', `stack-size=${stackSize}`, `-L${libdir}`, crt1,
+        ...(obj instanceof Array ? obj : [obj]),
+        '-lc',
         '-lc++', '-lc++abi', '-lcanvas', '-o', wasm)
+      var bytes = this.memfs.getFileContents(wasm)
+      var newFile = {
+        timestamp: new Date(),
+        mode: FS_FILE,
+        contents: bytes,
+        path: wasm,
+      }
+      await putRecord(DB_STORE_NAME, newFile, options.database)
+      return result;
     }
 
     async run(module, ...args) {

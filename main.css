@@ -133,6 +133,8 @@ body {
 #filelist .treejs>.treejs-nodes {
     padding: 10px;
     margin: 0;
+    overflow:visible;
+    max-width: none;
 }
 
 .treejs-label::before {
@@ -259,6 +261,16 @@ button {
     display: none;
 }
 
+#database .treejs .treejs-node,
+#assetlist .treejs .treejs-node,
+#gamelist .treejs .treejs-node,
+#searchlist .treejs .treejs-node,
+#filelist .treejs .treejs-node
+{
+    overflow: visible;
+    max-width: none;
+}
+
 /* Folder Icon (When node has children) */
 .treejs-node__close[data-extension="folder"]>.treejs-label::before {
     content: "\f440";
@@ -270,6 +282,12 @@ button {
     content: "\f439";
     /* Boxicons 'folder' code */
     color: #f1c40f;
+}
+
+.treejs .treejs-node__open>.treejs-nodes
+{
+    overflow:visible;
+    max-width: none;
 }
 
 /*

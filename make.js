@@ -54,6 +54,16 @@ const CFLAGS = [
     "-cc1",
     "-emit-obj",
     "-triple", "wasm32-wasi",
+
+    '-isysroot', '/',
+    '-internal-isystem', '/include/c++/v1',
+    '-internal-isystem', '/include',
+    '-internal-isystem', '/lib/clang/8.0.1/include',
+    '-disable-free',
+    '-ferror-limit', '100',
+    '-fcolor-diagnostics',
+
+
     "-D__WASM__=1",
     "-D__wasi__=1",
     "-D__wasm32__=1",
@@ -148,6 +158,7 @@ const sysObjects = [
     "sys_main.c",
     "dlmalloc.c",
     "sbrk.c",
+    //"stack_ops.c",
 ].map(file => path.join(dirs.WASMDIR, file));
 
 // Combined for the full build
@@ -165,36 +176,36 @@ const allQ3Objects = [
 
 // Shadows & Masking
 const shaderShadowObjects = [
-    "pshadow_fp.c", "pshadow_vp.c",
-    "shadowfill_fp.c", "shadowfill_vp.c",
-    "shadowmask_fp.c", "shadowmask_vp.c"
+    "pshadow_fp.glsl", "pshadow_vp.glsl",
+    "shadowfill_fp.glsl", "shadowfill_vp.glsl",
+    "shadowmask_fp.glsl", "shadowmask_vp.glsl"
 ].map(file => path.join(dirs.R2DIR, "glsl", file));
 
 // Lighting & Fog
 const shaderLightObjects = [
-    "dlight_fp.c", "dlight_vp.c",
-    "lightall_fp.c", "lightall_vp.c",
-    "fogpass_fp.c", "fogpass_vp.c"
+    "dlight_fp.glsl", "dlight_vp.glsl",
+    "lightall_fp.glsl", "lightall_vp.glsl",
+    "fogpass_fp.glsl", "fogpass_vp.glsl"
 ].map(file => path.join(dirs.R2DIR, "glsl", file));
 
 // Post-Processing (Bloom/Bokeh/Tone)
 const shaderPostProcessObjects = [
-    "bokeh_fp.c", "bokeh_vp.c",
-    "tonemap_fp.c", "tonemap_vp.c",
-    "ssao_fp.c", "ssao_vp.c",
-    "depthblur_fp.c", "depthblur_vp.c"
+    "bokeh_fp.glsl", "bokeh_vp.glsl",
+    "tonemap_fp.glsl", "tonemap_vp.glsl",
+    "ssao_fp.glsl", "ssao_vp.glsl",
+    "depthblur_fp.glsl", "depthblur_vp.glsl"
 ].map(file => path.join(dirs.R2DIR, "glsl", file));
 
 // Scaling & Downsampling
 const shaderScaleObjects = [
-    "calclevels4x_fp.c", "calclevels4x_vp.c",
-    "down4x_fp.c", "down4x_vp.c"
+    "calclevels4x_fp.glsl", "calclevels4x_vp.glsl",
+    "down4x_fp.glsl", "down4x_vp.glsl"
 ].map(file => path.join(dirs.R2DIR, "glsl", file));
 
 // Generic & Utilities
 const shaderUtilityObjects = [
-    "generic_fp.c", "generic_vp.c",
-    "texturecolor_fp.c", "texturecolor_vp.c"
+    "generic_fp.glsl", "generic_vp.glsl",
+    "texturecolor_fp.glsl", "texturecolor_vp.glsl"
 ].map(file => path.join(dirs.R2DIR, "glsl", file));
 
 // Combined Renderer Shaders
@@ -218,6 +229,7 @@ const rendererImageObjects = [
 
 // Geometry, Meshes & Animation
 const rendererGeometryObjects = [
+    "tr_image_dds.c",
     "tr_image.c", "tr_animation.c", "tr_curve.c", "tr_mesh.c",
     "tr_model.c", "tr_model_iqm.c", "tr_surface.c",
     "tr_world.c", "tr_bsp.c"
@@ -245,7 +257,8 @@ const rendererEffectObjects = [
 
 // Shared Render Files
 const rendererCommon = [
-    "tr_font.c", "tr_noise.c", "tr_manipulation.c"
+    "tr_font.c", "tr_noise.c", "tr_manipulation.c",
+    "tr_image_tga.c"
 ].map(file => path.join(dirs.RCDIR, file));
 
 // Shared dependencies (used if USE_RENDERER_DLOPEN is true)
@@ -261,7 +274,7 @@ const allRend2Objects = [
     ...rendererGLObjects,
     ...rendererEffectObjects,
     ...rendererCommon,
-    ...rendererSharedObjects
+    //...rendererSharedObjects
 ];
 
 
@@ -365,7 +378,6 @@ const q3eCommonHeaders = [
     "wasm/sys_local.h",
     "wasm/khrplatform.h",
     "wasm/wasm.syms",
-    "wasm/stack_ops.S",
     //"sys/sys_local.h",      // System-specific (Win/Linux) low-level stuff
     //"sys/sys_loadlib.h"     // Dynamic library loading
 ].map(file => path.join(config.MOUNT_DIR, file))
@@ -451,8 +463,10 @@ const undefinedFlags = [
 
 // Final Assembly based on platform
 const LDFLAGS = [
-    ...baseLdFlags, "code/wasm/stack_ops.o",
-    ...wasmPlatformFlags, ...exportFlags, ...undefinedFlags
+    ...baseLdFlags,
+    ...wasmPlatformFlags,
+    ...exportFlags,
+    ...undefinedFlags
 ];
 
 // For the Shared Libs (Renderer/VMs)
@@ -467,6 +481,24 @@ const shLibLdFlags = [
     ...undefinedFlags
 ];
 */
+function generateFallbackC(fileName, content) {
+    // Strip path and extension (basename equivalent)
+    const base = fileName.split('/').pop().split('.').shift();
+
+    let output = `const char *fallbackShader_${base} =\n`;
+
+    const lines = content.split(/\r?\n/);
+
+    lines.forEach(line => {
+        // Trim trailing whitespace and escape double quotes
+        const trimmed = line.trimEnd().replace(/"/g, '\\"');
+        output += `"${trimmed}\\n"\n`;
+    });
+
+    output += ";\n";
+    return output;
+}
+
 
 async function build() {
 
@@ -520,6 +552,44 @@ async function build() {
 
     await api.upload(database)
 
+    let stringify = 'code/renderer2/stringify.c'
+    let sha = files['#filelist'][stringify].sha
+    let content = await cacheFile(owner.value, repo.value, stringify, sha)
+
+    try {
+        await api.compile({
+            CFLAGS: [
+                '-cc1', '-triple', 'wasm32-wasi',
+                '-emit-obj',
+                '-isysroot', '/',
+                '-internal-isystem', '/include/c++/v1',
+                '-internal-isystem', '/include',
+                '-internal-isystem', '/lib/clang/8.0.1/include',
+                "-std=gnu11",
+            ],
+            contents: content,
+            width: term.cols,
+            input: stringify,
+            database,
+            obj: dirs.BD + '/stringify.o'
+        })
+    } catch (e) {
+        console.error(e)
+    }
+
+    
+    try {
+        await api.link({
+            obj: [dirs.BD + '/stringify.o'],
+            database,
+            wasm: dirs.BD + '/stringify.js.wasm'
+        })
+    } catch (e) {
+        console.error(e)
+    }
+
+
+
     var objs = []
 
     for (let file of [...allCompileObjects]) {
@@ -535,9 +605,13 @@ async function build() {
                 CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
 
             let obj = dirs.BD + '/' + filename.replace('.c', '.o')
+            term.write('CC: ' + obj + '\n\r')
 
-            let record = await getRecord(DB_STORE_NAME, obj, repoOwner + '/' + repoName)
-            if(record) continue
+            //let record = await getRecord(DB_STORE_NAME, obj, repoOwner + '/' + repoName)
+            if (FS.virtual[obj]) {
+                objs[objs.length] = obj
+                continue
+            }
 
             await api.compile({
                 CFLAGS: CCFLAGS,
@@ -548,30 +622,63 @@ async function build() {
                 obj
             })
 
-            objs.add(obj)
+            objs[objs.length] = obj
         } catch { }
 
     }
 
+    for (let shader of allRend2ShaderObjects) {
+        try {
+            let sha = files['#filelist'][shader].sha
+            let content = await cacheFile(owner.value, repo.value, shader, sha)
+            const cCode = generateFallbackC(shader, content);
+            let obj = dirs.BD + '/' + shader.replace('.glsl', '.o')
+            term.write('GLSL: ' + obj + '\n\r')
+            if (FS.virtual[obj]) {
+                objs[objs.length] = obj
+                continue
+            }
+            await api.compile({
+                CFLAGS: [...CFLAGS],
+                contents: cCode,
+                width: term.cols,
+                input: shader.replace('.glsl', '.c'),
+                database,
+                obj
+            })
+
+            objs[objs.length] = obj
+        } catch { }
+    }
+
+
     try {
-        
+
+        /*
         let sha = files['#filelist']['code/wasm/stack_ops.S'].sha
         let content = await cacheFile(owner.value, repo.value, 'code/wasm/stack_ops.S', sha)
         let obj = dirs.BD + '/' + 'code/wasm/stack_ops.o'
 
         await api.compile({
-            CFLAGS: CFLAGS,
+            CFLAGS: [
+                ...CFLAGS,
+                '-x', 'assembler-with-cpp', 
+                '-faddrsig', '-mllvm', 
+                '-no-integrated-as=false'
+            ],
             contents: content,
             width: term.cols,
             input: 'code/wasm/stack_ops.S',
             database,
             obj
         })
+        */
 
         await api.link({
             LDFLAGS: LDFLAGS,
             width: term.cols,
             obj: objs,
+            database,
             wasm: dirs.BD + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
         })
     } catch (e) {
@@ -579,7 +686,7 @@ async function build() {
     }
 
 
-    await api.download(database)
+    //await api.download(database)
 
 
 }
@@ -632,6 +739,7 @@ function loadEntry(cursor) {
         // embedded file is newer, start with that
         return cursor.continue()
     }
+    term.write('\n\rLoading: ' + cursor.key + '\n\r');
     FS.virtual[cursor.key] = {
         timestamp: cursor.value.timestamp,
         mode: cursor.value.mode,
