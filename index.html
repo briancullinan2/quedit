@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Quake 3 Editor</title>
     <link href='/boxicons.min.css' rel='stylesheet'>
@@ -7,29 +8,33 @@
     <link href="/xterm.css" rel="stylesheet" />
     <link href="/theme.css" rel="stylesheet" />
     <link rel="icon" type="image/png" href="/quakejs-bnw.png">
+    <script type="text/javascript">
+		if(typeof window.preFS == 'undefined') window.preFS={};
+	</script>
 </head>
+
 <body class="theme-monokai">
     <div id="main" class="panel-column">
         <div id="toolbar">
             <ul>
                 <li><select name="owner" id="owner">
-                    <option value="briancullinan2">briancullinan2</option>
-                    <option value="ec-">ec-</option>
-                </select></li>
+                        <option value="briancullinan2">briancullinan2</option>
+                        <option value="ec-">ec-</option>
+                    </select></li>
                 <li><select name="repository" id="repository">
-                    <option value="Quake3e">Quake3e</option>
-                    <option value="baseq3a">baseq3a</option>
-                </select></li>
+                        <option value="Quake3e">Quake3e</option>
+                        <option value="baseq3a">baseq3a</option>
+                    </select></li>
                 <li><select name="branch" id="branch">
-                    <option value="main">main</option>
-                </select></li>
+                        <option value="main">main</option>
+                    </select></li>
                 <li><a alt="Save file" href="#save" class="bx bx-save"></a></li>
                 <li><a alt="Upload file" href="#upload" class="bx bx-folder-up-arrow"></a></li>
                 <li><a alt="Back" href="#back" class="bx bx-undo"></a></li>
                 <li><a alt="Next" href="#next" class="bx bx-redo"></a></li>
                 <li><select name="filename" id="filename">
-                    <option value="">Current filename</option>
-                </select></li>
+                        <option value="">Current filename</option>
+                    </select></li>
                 <li><a alt="Compile" href="#build" class="bx bx-code"></a></li>
                 <li><a alt="Run" href="#play" class="bx bx-play"></a></li>
                 <li><a alt="Pause" href="#pause" class="bx bx-pause"></a></li>
@@ -37,14 +42,14 @@
                 <li><a alt="Reload" href="#reload" class="bx bx-refresh-cw-alt"></a></li>
                 <li><a alt="Console" href="#console" class="bx bx-terminal"></a></li>
                 <li><select name="spawn" id="spawn">
-                    <option value="">Spawn point</option>
-                </select></li>
+                        <option value="">Spawn point</option>
+                    </select></li>
                 <li><select name="map" id="map">
-                    <option value="">Current map</option>
-                </select></li>
+                        <option value="">Current map</option>
+                    </select></li>
                 <li><select name="wasi" id="wasi">
-                    <option value="">WASI-SDK v33 (Not downloaded)</option>
-                </select></li>
+                        <option value="">WASI-SDK v33 (Not downloaded)</option>
+                    </select></li>
                 <li>
                     <select id="theme" name="theme">
                         <optgroup label="The Classics & Defaults">
@@ -112,7 +117,8 @@
                         </optgroup>
                     </select>
                 </li>
-                <li><a onclick="updatePlaceholder()" alt="Github login" class="bx bx-arrow-in-right-square-half" target="_new" href="https://github.com/settings/tokens?type=beta"></a></li>
+                <li><a onclick="updatePlaceholder()" alt="Github login" class="bx bx-arrow-in-right-square-half"
+                        target="_new" href="https://github.com/settings/tokens?type=beta"></a></li>
             </ul>
         </div>
         <div id="main-body" class="panel-row">
@@ -134,7 +140,7 @@
                 <div id="filelist" data-repository="briancullinan2/Quake3e">
 
                 </div>
-                <div id="gamelist" data-repository="ec-/baseq3a"  class="hidden">
+                <div id="gamelist" data-repository="ec-/baseq3a" class="hidden">
 
                 </div>
                 <div id="assetlist" class="hidden">
@@ -154,9 +160,24 @@ int main() {
 
 </div>
             </div>
-            <div id="engine">
-
+            <div id="viewport-frame">
+                <div id="dialog">
+                    <h4 class="title"></h4>
+                    <p class="description"></p>
+                </div>
+                <div id="flipper">
+                    <div class="front">
+                        <!-- front content -->
+                    </div>
+                    <div class="back">
+                        <!-- back content -->
+                    </div>
+                </div>
+                <div id="left-joystick"></div>
+                <div id="right-joystick"></div>
+                <canvas></canvas>
             </div>
+            <canvas id="scratch"></canvas>
         </div>
         <div id="terminal">
 
@@ -189,5 +210,17 @@ int main() {
     <script src="/toolbar.js" type="text/javascript" defer></script>
     <script src="/filelist.js" type="text/javascript" defer></script>
     <script src="/compiler.js" type="text/javascript" defer></script>
+
+    <script defer type="text/javascript" src="nipplejs.js"></script>
+    <script defer type="text/javascript" src="sys_emgl.js"></script>
+    <script defer type="text/javascript" src="sys_fs.js"></script>
+    <script defer type="text/javascript" src="sys_in.js"></script>
+    <script defer type="text/javascript" src="sys_net.js"></script>
+    <script defer type="text/javascript" src="sys_std.js"></script>
+    <script defer type="text/javascript" src="sys_web.js"></script>
+    <script defer type="text/javascript" src="sys_snd.js"></script>
+    <script defer type="text/javascript" src="sys_wasm.js"></script>
+
 </body>
+
 </html>

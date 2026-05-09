@@ -27,14 +27,80 @@ body {
     min-height: 0;
 }
 
-#engine {
+#viewport-frame {
     flex-basis: 50%;
 }
 
 #editor-wrapper,
-#engine {
+#viewport-frame {
     overflow: hidden;
     scroll-margin-top: 100vh;
+}
+
+
+#scratch {
+  opacity: 0;
+  z-index: -1;
+  position: absolute;
+}
+
+#viewport-frame {
+    /*position: absolute;*/
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    overflow: hidden;
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 24em;
+    z-index: 1;
+    display: flex;
+    /* padding-top:22px; */
+    flex-direction: row;
+    perspective: 1000px;
+}
+
+#viewport-frame canvas {
+    background-color: rgba(0, 0, 0, 0.0);
+    width: 0;
+    height: 100%;
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: auto;
+    display: inline-block;
+}
+
+
+#viewport-frame:focus {
+    outline: none;
+}
+
+.done-loading #viewport-frame canvas {
+    background-color: rgba(0, 0, 0, 1.0);
+}
+
+#viewport-frame:-moz-full-screen,
+#viewport-frame canvas:-moz-full-screen {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#viewport-frame:-webkit-full-screen,
+#viewport-frame canvas:-webkit-full-screen {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
 }
 
 #editor {
@@ -92,7 +158,8 @@ body {
     flex-basis: 50%;
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1; /* The number of lines to show before the ellipsis */
+    -webkit-line-clamp: 1;
+    /* The number of lines to show before the ellipsis */
     overflow: hidden;
 }
 
@@ -133,7 +200,7 @@ body {
 #filelist .treejs>.treejs-nodes {
     padding: 10px;
     margin: 0;
-    overflow:visible;
+    overflow: visible;
     max-width: none;
 }
 
@@ -265,8 +332,7 @@ button {
 #assetlist .treejs .treejs-node,
 #gamelist .treejs .treejs-node,
 #searchlist .treejs .treejs-node,
-#filelist .treejs .treejs-node
-{
+#filelist .treejs .treejs-node {
     overflow: visible;
     max-width: none;
 }
@@ -284,9 +350,8 @@ button {
     color: #f1c40f;
 }
 
-.treejs .treejs-node__open>.treejs-nodes
-{
-    overflow:visible;
+.treejs .treejs-node__open>.treejs-nodes {
+    overflow: visible;
     max-width: none;
 }
 

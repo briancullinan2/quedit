@@ -1013,7 +1013,7 @@ const API = (function () {
       const contents = options.contents;
       const obj = options.obj;
       const opt = options.opt || '2';
-      const inDir = input.substring(0, obj.lastIndexOf('/'));
+      const inDir = input.substring(0, input.lastIndexOf('/'));
       const dirPath = obj.substring(0, obj.lastIndexOf('/'));
 
       await this.ready;

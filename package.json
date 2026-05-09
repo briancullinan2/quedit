@@ -8,7 +8,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node dev.js"
+    "start": "node dev.js",
+    "set-google": "gcloud storage buckets update gs://quake.games --cors-file=cors-json-file.json"
   },
   "dependencies": {
     "@wasmer/wasi": "^1.2.2",

@@ -201,5 +201,7 @@ document.getElementById('toolbar').addEventListener('click', async (e) => {
     if(buttonId == 'build')
         return build()
 
+    if(buttonId == 'play')
+        return run()
 });
 

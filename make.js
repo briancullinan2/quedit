@@ -76,6 +76,7 @@ const CFLAGS = [
     //"-DLACKS_ERRNO_H",
     "-D_Thread_local=",
     "-DEMSCRIPTEN_NO_ERRNO=1",
+    "-DUSE_OPENGL_API=1",
     "-fno-rtti",
     "-fno-common",
     "-fno-use-init-array",
@@ -530,6 +531,7 @@ async function build() {
     FS.virtual['home'] = {
         timestamp: new Date(),
         mode: FS_DIR,
+        path: 'home'
     }
     console.log('sync started at ', new Date())
 
@@ -577,7 +579,7 @@ async function build() {
         console.error(e)
     }
 
-    
+
     try {
         await api.link({
             obj: [dirs.BD + '/stringify.o'],
@@ -687,9 +689,9 @@ async function build() {
 
 
     //await api.download(database)
-
-
 }
+
+
 
 async function downloadHeaders(headers, batchSize = 10) {
     const ownerVal = owner.value;
@@ -714,6 +716,7 @@ async function downloadHeaders(headers, batchSize = 10) {
 }
 
 
+/*
 const ST_FILE = 8
 const ST_DIR = 4
 const FS_DEFAULT = (6 << 3) + (6 << 6) + (6)
@@ -723,6 +726,7 @@ const FS_DIR = (ST_DIR << 12) + FS_DEFAULT
 const FS = {
     virtual: {},
 }
+*/
 
 function loadEntry(cursor) {
     if (!cursor) {
