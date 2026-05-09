@@ -81,6 +81,7 @@ const CFLAGS = [
     "-fno-common",
     "-fno-use-init-array",
     "-fno-threadsafe-statics",
+    //"-fno-inline",
     "-mrelocation-model",
     "static",
     //"-target-feature",
@@ -528,11 +529,12 @@ async function build() {
     let startTime = Date.now()
     FS.isSyncing = 1
     // FIX FOR "QKEY could not open" ERROR
-    FS.virtual['home'] = {
+    FS.virtual['/home'] = {
         timestamp: new Date(),
         mode: FS_DIR,
-        path: 'home'
+        path: '/home'
     }
+    await putRecord(DB_STORE_NAME, FS.virtual['/home'], owner.value + '/' + repo.value)
     console.log('sync started at ', new Date())
 
     await readAll(owner.value + '/' + repo.value, loadEntry)

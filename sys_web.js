@@ -111,11 +111,11 @@ function getQueryCommands() {
 			'+set', 'fs_basegame', MODNAME,
 			'+set', 'fs_game', MODNAME,
 		])
-		if(typeof FS.virtual[MODNAME] == 'undefined') {
-			FS.virtual[MODNAME] = {
+		if(typeof FS.virtual['/base/' + MODNAME] == 'undefined') {
+			FS.virtual['/base/' + MODNAME] = {
 				timestamp: new Date(),
 				mode: FS_DIR,
-				path: MODNAME
+				path: '/base/' + MODNAME
 			}
 		}
 	}

@@ -12,6 +12,17 @@ Quake 3 browser game editor.
 
 ## So far
 
+
+#### 5/9/2026
+
+Entire engine builds and runs with clang wasm. needs to be able to save 
+an entire commit to github, detect file mtime from logs, and #1 
+is complete.
+
+![Engine](./Screenshot%202026-05-09%20100538.png)
+
+
+
 #### 5/7/2026
 
 ace loads, treejs loads, xterm loads, no wiring between anything. 

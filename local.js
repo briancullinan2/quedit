@@ -199,8 +199,8 @@ async function queryIndex(storeName, indexName, exactIndex = null, lower = null,
 
 
 
-async function deleteRecord(storeName, key) {
-    const db = await getDB()
+async function deleteRecord(storeName, key, dbName = null) {
+    const db = await getDB(dbName)
     const tx = db.transaction(storeName, 'readwrite')
     const store = tx.objectStore(storeName)
     return new Promise((rs, rj) => {

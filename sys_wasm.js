@@ -136,6 +136,7 @@ function updateEnvironment(program, ENV) {
 async function initEngine(program) {
     // ALL THE VARIABLES WE NEED SHOULD BE ASSIGNED TO GLOBAL BY NOW
     SYS.startArgs = getQueryCommands()
+    
     await readPreFS()
     if (!program) {
         throw new Error("no program!")
@@ -273,15 +274,24 @@ async function readPreFS() {
     if (argsI > -1) {
         basegame = SYS.startArgs[argsI + 1]
     }
+
+    FS.virtual['/home'] = {
+        timestamp: new Date(),
+        mode: FS_DIR,
+        path: '/home'
+    }
+    putRecord(DB_STORE_NAME, FS.virtual['/home'], owner.value + '/' + repo.value)
+
+    
     // TODO: check for cl_dlURL
     // TODO: CL_Download(, 'pak0', )
     let responseData = await Com_DL_Begin(basegame + '/pak0.pk3',
         'https://quake.games/maps/' + basegame + '/pak0.pk3')
-    Com_DL_Perform(basegame + '/pak0.pk3',
+    Com_DL_Perform('/base/' + basegame + '/pak0.pk3',
         basegame + '/pak0.pk3', responseData)
     let responseData2 = await Com_DL_Begin(basegame + '/pak1.pk3',
         'https://quake.games/maps/' + basegame + '/pak1.pk3')
-    Com_DL_Perform(basegame + '/pak1.pk3',
+    Com_DL_Perform('/base/' + basegame + '/pak1.pk3',
         basegame + '/pak1.pk3', responseData2)
 
     // write description to pk3dir so that it loads as a pak when the engine starts

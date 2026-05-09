@@ -25,11 +25,13 @@ const F_OK = 4
 function Sys_Mkdir(filename) {
 	let fileStr = addressToString(filename)
 	let localName = fileStr
-	if (localName.startsWith('/base')
-		|| localName.startsWith('/home'))
-		localName = localName.substring('/base'.length)
-	if (localName[0] == '/')
+	if (localName.startsWith('//'))
 		localName = localName.substring(1)
+	if (localName[0] != '/')
+		localName = '/' + localName
+	if (!localName.startsWith('/base')
+		&& !localName.startsWith('/home'))
+		localName = '/base' + localName
 	// check if parent directory has been created, TODO: POSIX errno?
 	let parentDirectory = localName.substring(0, localName.lastIndexOf('/'))
 	if (parentDirectory && !FS.virtual[parentDirectory]) {
@@ -48,11 +50,13 @@ function Sys_Mkdir(filename) {
 function Sys_GetFileStats(filename, size, mtime, ctime) {
 	let fileStr = addressToString(filename)
 	let localName = fileStr
-	if (localName.startsWith('/base')
-		|| localName.startsWith('/home'))
-		localName = localName.substring('/base'.length)
-	if (localName[0] == '/')
+	if (localName.startsWith('//'))
 		localName = localName.substring(1)
+	if (localName[0] != '/')
+		localName = '/' + localName
+	if (!localName.startsWith('/base')
+		&& !localName.startsWith('/home'))
+		localName = '/base' + localName
 	if (typeof FS.virtual[localName] != 'undefined') {
 		HEAPU32[size >> 2] = (FS.virtual[localName].contents || []).length
 		HEAPU32[mtime >> 2] = FS.virtual[localName].timestamp.getTime()
@@ -79,11 +83,13 @@ function Sys_FOpen(filename, mode) {
 	}
 	let modeStr = addressToString(mode)
 	let localName = fileStr
-	if (localName.startsWith('/base')
-		|| localName.startsWith('/home'))
-		localName = localName.substring('/base'.length)
-	if (localName[0] == '/')
+	if (localName.startsWith('//'))
 		localName = localName.substring(1)
+	if (localName[0] != '/')
+		localName = '/' + localName
+	if (!localName.startsWith('/base')
+		&& !localName.startsWith('/home'))
+		localName = '/base' + localName
 
 	let createFP = function () {
 		FS.filePointer++
@@ -117,7 +123,8 @@ function Sys_FOpen(filename, mode) {
 			FS.virtual[localName] = {
 				timestamp: new Date(),
 				mode: FS_FILE,
-				contents: new Uint8Array(0)
+				contents: new Uint8Array(0),
+				path: localName
 			}
 			return createFP()
 		} else {
@@ -189,11 +196,13 @@ function Sys_FFlush(pointer) {
 function Sys_Remove(file) {
 	let fileStr = addressToString(file)
 	let localName = fileStr
-	if (localName.startsWith('/base')
-		|| localName.startsWith('/home'))
-		localName = localName.substring('/base'.length)
-	if (localName[0] == '/')
+	if (localName.startsWith('//'))
 		localName = localName.substring(1)
+	if (localName[0] != '/')
+		localName = '/' + localName
+	if (!localName.startsWith('/base')
+		&& !localName.startsWith('/home'))
+		localName = '/base' + localName
 	if (typeof FS.virtual[localName] != 'undefined') {
 		delete FS.virtual[localName]
 		// remove from IDB
@@ -204,6 +213,8 @@ function Sys_Remove(file) {
 function Sys_Rename(src, dest) {
 	let strStr = addressToString(src)
 	let srcName = strStr
+	if (srcName.startsWith('//'))
+		srcName = srcName.substring(1)
 	if (srcName.startsWith('/base')
 		|| srcName.startsWith('/home'))
 		srcName = srcName.substring('/base'.length)
@@ -211,6 +222,8 @@ function Sys_Rename(src, dest) {
 		srcName = srcName.substring(1)
 	let fileStr = addressToString(dest)
 	let destName = fileStr
+	if (destName.startsWith('//'))
+		destName = destName.substring(1)
 	if (destName.startsWith('/base')
 		|| destName.startsWith('/home'))
 		destName = destName.substring('/base'.length)
@@ -233,10 +246,13 @@ function Sys_ListFiles(directory, extension, filter, numfiles, wantsubs) {
 	let dironly = wantsubs
 	// TODO: don't combine /home and /base?
 	let localName = addressToString(directory)
-	if (localName.startsWith('/base'))
-		localName = localName.substring('/base'.length)
-	if (localName[0] == '/')
+	if (localName.startsWith('//'))
 		localName = localName.substring(1)
+	if (localName[0] != '/')
+		localName = '/' + localName
+	if (!localName.startsWith('/base')
+		&& !localName.startsWith('/home'))
+		localName = '/base' + localName
 	let extensionStr = addressToString(extension)
 	//let matches = []
 	// can't use utility because FS_* frees and moves stuff around
@@ -277,6 +293,8 @@ function Sys_ListFiles(directory, extension, filter, numfiles, wantsubs) {
 function Sys_stat(filename) {
 	let fileStr = addressToString(filename)
 	let localName = fileStr
+	if (localName.startsWith('//'))
+		localName = localName.substring(1)
 	if (localName.startsWith('/base')
 		|| localName.startsWith('/home'))
 		localName = localName.substring('/base'.length)
@@ -306,11 +324,13 @@ function Sys_stat(filename) {
 function Sys_Mkdirp(pathname) {
 	let localName = addressToString(pathname)
 	try {
-		if (localName.startsWith('/base')
-			|| localName.startsWith('/home'))
-			localName = localName.substring('/base'.length)
-		if (localName[0] == '/')
+		if (localName.startsWith('//'))
 			localName = localName.substring(1)
+		if (localName[0] != '/')
+			localName = '/' + localName
+		if (!localName.startsWith('/base')
+			&& !localName.startsWith('/home'))
+			localName = '/base' + localName
 		Sys_Mkdir(pathname, FS_DIR);
 	} catch (e) {
 		// make the subdirectory and then retry
@@ -429,6 +449,8 @@ function Sys_access(filename, i) {
 	}
 	let fileStr = addressToString(filename)
 	let localName = fileStr
+	if (localName.startsWith('//'))
+		localName = localName.substring(1)
 	if (localName.startsWith('/base')
 		|| localName.startsWith('/home'))
 		localName = localName.substring('/base'.length)
