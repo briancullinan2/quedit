@@ -502,7 +502,10 @@ function generateFallbackC(fileName, content) {
 }
 
 
-async function build() {
+async function build(database = null) {
+
+    if(!database)
+        database = owner.value + '/' + repo.value
 
     savedToken = localStorage.getItem('github_token');
 
@@ -534,10 +537,10 @@ async function build() {
         mode: FS_DIR,
         path: '/home'
     }
-    await putRecord(DB_STORE_NAME, FS.virtual['/home'], owner.value + '/' + repo.value)
+    await putRecord(DB_STORE_NAME, FS.virtual['/home'], database)
     console.log('sync started at ', new Date())
 
-    await readAll(owner.value + '/' + repo.value, loadEntry)
+    await readAll(database, loadEntry)
     let tookTime = Date.now() - startTime
 
     console.log('sync completed', new Date())
@@ -551,8 +554,6 @@ async function build() {
     term.write('\n\r')
 
     await downloadHeaders(q3eCommonHeaders)
-
-    let database = owner.value + '/' + repo.value
 
     await api.upload(database)
 
@@ -657,27 +658,6 @@ async function build() {
 
 
     try {
-
-        /*
-        let sha = files['#filelist']['code/wasm/stack_ops.S'].sha
-        let content = await cacheFile(owner.value, repo.value, 'code/wasm/stack_ops.S', sha)
-        let obj = dirs.BD + '/' + 'code/wasm/stack_ops.o'
-
-        await api.compile({
-            CFLAGS: [
-                ...CFLAGS,
-                '-x', 'assembler-with-cpp', 
-                '-faddrsig', '-mllvm', 
-                '-no-integrated-as=false'
-            ],
-            contents: content,
-            width: term.cols,
-            input: 'code/wasm/stack_ops.S',
-            database,
-            obj
-        })
-        */
-
         await api.link({
             LDFLAGS: LDFLAGS,
             width: term.cols,
@@ -753,65 +733,5 @@ function loadEntry(cursor) {
         path: cursor.value.path
     }
     return cursor.continue()
-}
-
-
-
-async function cacheFile(repoOwner, repoName, filePath, sha) {
-    savedToken = localStorage.getItem('github_token');
-
-    try {
-        let record = await getRecord(DB_STORE_NAME, filePath, repoOwner + '/' + repoName)
-        if (record && record.sha == sha) {
-            const decoder = new TextDecoder();
-            const str = decoder.decode(record.contents);
-            return str
-        }
-    } catch (e) {
-        console.error(e)
-    }
-
-    const rawUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
-
-    let result = await fetch(rawUrl, {
-        method: 'GET',
-        headers: savedToken ? {
-            'Authorization': `Bearer ${savedToken}`,
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-        } : {}
-    })
-
-    if (!result.ok) throw new Error(`HTTP error! status: ${result.status}`);
-
-    const jsonResponse = await result.json();
-
-    // --- DECODING LOGIC ---
-    // GitHub wraps the file content in a JSON object and encodes it in Base64
-    // We strip newlines and decode it back to a standard UTF-8 string
-    let bytes;
-    if (jsonResponse.encoding === 'base64') {
-        // Decode base64 string to a binary string, then map to bytes
-        const binString = atob(jsonResponse.content.replace(/\s/g, ''));
-        bytes = Uint8Array.from(binString, c => c.charCodeAt(0));
-    } else {
-        // Encode raw text to UTF-8 bytes
-        bytes = new TextEncoder().encode(jsonResponse.content || "");
-    }
-
-    FS.virtual[filePath] = {
-        timestamp: new Date(),
-        mode: FS_FILE,
-        contents: bytes,
-        path: filePath,
-        sha: jsonResponse.sha
-    }
-    // async to filesystem
-    // does it REALLY matter if it makes it? wont it just redownload?
-    await putRecord(DB_STORE_NAME, FS.virtual[filePath], repoOwner + '/' + repoName)
-
-    const decoder = new TextDecoder();
-    const str = decoder.decode(bytes);
-    return str
 }
 

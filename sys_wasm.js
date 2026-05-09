@@ -167,11 +167,14 @@ const ENV = {
 ENV.ENV = ENV
 
 
-async function run() {
+async function run(database = null) {
+
+    if(!database)
+        database = owner.value + '/' + repo.value
 
     try {
         let enginePath = dirs.BD + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
-        let record = await getRecord(DB_STORE_NAME, enginePath, owner.value + '/' + repo.value)
+        let record = await getRecord(DB_STORE_NAME, enginePath, database)
 
         if (!record)
             return alert("Compile the engine first.")

@@ -52,57 +52,6 @@ const sortNodes = (nodes) => {
     return nodes;
 };
 
-let github = {}
-let trees = {}
-let files = {}
-let savedToken;
-
-async function loadGitHubTree(repoOwner, repoName, branch, selector) {
-    savedToken = localStorage.getItem('github_token');
-
-    const url = `https://api.github.com/repos/${repoOwner}/${repoName}/git/trees/${branch}?recursive=1`;
-
-    try {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: savedToken ? {
-                'Authorization': `Bearer ${savedToken}`,
-                'Accept': 'application/vnd.github+json',
-                'X-GitHub-Api-Version': '2022-11-28'
-            } : {}
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-        const data = await response.json();
-
-        // Transform the flat GitHub 'tree' array into nested children
-        github[selector] = data.tree;
-        files[selector] = github[selector].reduce((obj, a, i, arr) => {
-            obj[a.path] = a
-            return obj
-        }, {})
-
-        // Initialize Tree.js with the transformed data
-        // Note: Use 'data' property instead of 'url' to provide the object directly
-        trees[selector] = new Tree(selector, {
-            data: convertFlatToNested(github[selector]),
-            autoOpen: false,
-            closeDepth: 2,
-        });
-
-        var databases = await getDatabaseMetadata()
-        if (databases.filter(d => d.key == repoOwner + '/' + repoName).length == 0
-            || (await needsInstall(repoOwner + '/' + repoName, DB_SCHEME)).item3) {
-            await deleteOldDatabase(repoOwner + '/' + repoName)
-            await setupDatabase(repoOwner + '/' + repoName, DB_SCHEME)
-        }
-
-    } catch (error) {
-        console.error('Failed to load GitHub tree:', error);
-    }
-}
-
-
 async function initializeFiletrees() {
     if (window.location.pathname) {
         await setRepository(window.location.pathname.trim().replace(/\/$|^\//, ''))

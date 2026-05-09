@@ -17,50 +17,6 @@ branch.addEventListener('change', (e) => {
 
 
 
-async function getDefaultBranch(owner, repo) {
-    const savedToken = localStorage.getItem('github_token');
-    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-        headers: savedToken ? { 'Authorization': `Bearer ${savedToken}` } : {}
-    });
-    const data = await response.json();
-    return data.default_branch; // Usually "main" or "master"
-}
-
-
-async function getBranches(repoOwner, repoName) {
-    const savedToken = localStorage.getItem('github_token');
-    const url = `https://api.github.com/repos/${repoOwner}/${repoName}/branches`;
-
-    try {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: savedToken ? {
-                'Authorization': `Bearer ${savedToken}`,
-                'Accept': 'application/vnd.github+json',
-                'X-GitHub-Api-Version': '2022-11-28'
-            } : {}
-        });
-
-        if (!response.ok) throw new Error(`GitHub API Error: ${response.status}`);
-
-        const branches = await response.json();
-        const defaultName = await getDefaultBranch(repoOwner, repoName)
-
-        const sortedBranches = branches.sort((a, b) => {
-            if (a.name === defaultName) return -1;
-            if (b.name === defaultName) return 1;
-            return a.name.localeCompare(b.name);
-        });
-
-
-        return branches;
-    } catch (error) {
-        console.error("Failed to fetch branches:", error);
-        return [];
-    }
-}
-
-
 
 function updateSelectOptions(elementId, items, selectedValue = 'main') {
     const selector = document.getElementById(elementId);
