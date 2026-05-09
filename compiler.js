@@ -44,8 +44,16 @@ class WorkerAPI {
         return this.runAsync('upload', options);
     }
 
+    async download(options) {
+        return this.runAsync('download', options);
+    }
+
     async compile(options) {
         return this.runAsync('compile', options);
+    }
+
+    async link(options) {
+        return this.runAsync('link', options);
     }
 
     compileLinkRun(contents, width = 80) {

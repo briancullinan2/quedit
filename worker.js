@@ -95,6 +95,32 @@ const onAnyMessage = async event => {
     break;
   }
 
+  case 'download': {
+    const responseId = event.data.responseId;
+    let output = null;
+    let transferList;
+    try {
+      output = await api.download(event.data.data);
+    } finally {
+      port.postMessage({id : 'runAsync', responseId, data : output},
+                       transferList);
+    }
+    break;
+  }
+
+  case 'link': {
+    const responseId = event.data.responseId;
+    let output = null;
+    let transferList;
+    try {
+      output = await api.link(event.data.data);
+    } finally {
+      port.postMessage({id : 'runAsync', responseId, data : output},
+                       transferList);
+    }
+    break;
+  }
+
   case 'compile': {
     const responseId = event.data.responseId;
     let output = null;

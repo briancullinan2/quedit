@@ -77,9 +77,9 @@ async function loadGitHubTree(repoOwner, repoName, branch, selector) {
 
         // Transform the flat GitHub 'tree' array into nested children
         github[selector] = data.tree;
-        files[selector] = github[selector].reduce((a, i, arr) => {
-            arr[a.path] = a
-            return arr
+        files[selector] = github[selector].reduce((obj, a, i, arr) => {
+            obj[a.path] = a
+            return obj
         }, {})
 
         // Initialize Tree.js with the transformed data

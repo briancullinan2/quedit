@@ -63,11 +63,15 @@ const CFLAGS = [
     "-D_WASI_EMULATED_SIGNAL=1",
     "-D_WASI_EMULATED_MMAN=1",
     "-DDISABLE_IPV6=1",
-    "-DLACKS_ERRNO_H",
+    //"-DLACKS_ERRNO_H",
+    "-D_Thread_local=",
     "-DEMSCRIPTEN_NO_ERRNO=1",
     "-fno-rtti",
     "-fno-common",
     "-fno-use-init-array",
+    "-fno-threadsafe-statics",
+    "-mrelocation-model",
+    "static",
     //"-target-feature",
     //"+bulk-memory",
     //"-target-feature",
@@ -268,28 +272,28 @@ const allCompileObjects = [
 
 
 const botlibCoreHeaders = [
-    "botlib.h", "be_aas.h", "aasfile.h", "be_aas_bsp.h", 
+    "botlib.h", "be_aas.h", "aasfile.h", "be_aas_bsp.h",
     "be_aas_def.h", "be_aas_funcs.h"
 ].map(file => path.join(dirs.BLIBDIR, file));
 
 // AAS (Area Awareness System) Internal Headers
 const aasInternalHeaders = [
-    "be_aas_cluster.h", "be_aas_debug.h", "be_aas_entity.h", 
-    "be_aas_file.h", "be_aas_main.h", "be_aas_move.h", 
-    "be_aas_optimize.h", "be_aas_reach.h", "be_aas_route.h", 
+    "be_aas_cluster.h", "be_aas_debug.h", "be_aas_entity.h",
+    "be_aas_file.h", "be_aas_main.h", "be_aas_move.h",
+    "be_aas_optimize.h", "be_aas_reach.h", "be_aas_route.h",
     "be_aas_routealt.h", "be_aas_sample.h"
 ].map(file => path.join(dirs.BLIBDIR, file));
 
 // AI / Behavior Engine Headers
 const botAIHeaders = [
-    "be_ai_char.h", "be_ai_chat.h", "be_ai_gen.h", 
-    "be_ai_goal.h", "be_ai_move.h", "be_ai_weap.h", 
+    "be_ai_char.h", "be_ai_chat.h", "be_ai_gen.h",
+    "be_ai_goal.h", "be_ai_move.h", "be_ai_weap.h",
     "be_ai_weight.h", "be_ea.h", "be_interface.h"
 ].map(file => path.join(dirs.BLIBDIR, file));
 
 // Botlib Library Utilities (L_)
 const botLibUtilsHeaders = [
-    "l_crc.h", "l_libvar.h", "l_log.h", "l_memory.h", 
+    "l_crc.h", "l_libvar.h", "l_log.h", "l_memory.h",
     "l_precomp.h", "l_script.h", "l_struct.h", "l_utils.h"
 ].map(file => path.join(dirs.BLIBDIR, file));
 
@@ -360,11 +364,13 @@ const q3eCommonHeaders = [
     "wasm/glext.h",
     "wasm/sys_local.h",
     "wasm/khrplatform.h",
+    "wasm/wasm.syms",
+    "wasm/stack_ops.S",
     //"sys/sys_local.h",      // System-specific (Win/Linux) low-level stuff
     //"sys/sys_loadlib.h"     // Dynamic library loading
 ].map(file => path.join(config.MOUNT_DIR, file))
     // --- BotLib ---
-.concat(allBotlibHeaders);
+    .concat(allBotlibHeaders);
 
 function getBaseFlags() {
     let flags = ["-Wall", "-Wimplicit", "-Wstrict-prototypes"];
@@ -379,6 +385,88 @@ function getBaseFlags() {
 
     return flags;
 }
+
+
+// Base LDFLAGS shared across all modules
+const baseLdFlags = [
+    //"-D__WASM__=1",
+    //"--no-standard-libraries",
+    "--export-dynamic",
+    "--error-limit=200",
+    "--import-memory",
+    "--import-table",
+    //"--growable-table",
+    // Link against the builtins and libc.a
+    //path.join(vars.WASI_BUILTINS, "lib/wasi/libclang_rt.builtins-wasm32.a"),
+    //path.join(vars.WASISDK, "share/wasi-sysroot/lib/wasm32-wasi/libc.a")
+];
+
+// Platform specific (import memory/table for WASM target)
+const wasmPlatformFlags = [
+    "--import-memory",
+    "--import-table"
+];
+
+// Emscripten/JS specific flags (-s settings)
+const emscriptenJsFlags = [
+    "-s", "MIN_WEBGL_VERSION=1",
+    "-s", "MAX_WEBGL_VERSION=3",
+    "-s", "USE_WEBGL2=1",
+    "-s", "FULL_ES2=1",
+    "-s", "FULL_ES3=1",
+    "-s", "USE_SDL=2",
+    "-s", "SINGLE_FILE=1",
+    "-s", "ALLOW_MEMORY_GROWTH=1",
+    "-s", "INITIAL_MEMORY=256MB",
+    // JS Libraries
+    "--js-library", path.join(config.MOUNT_DIR, "wasm/sys_in.js"),
+    "--js-library", path.join(config.MOUNT_DIR, "wasm/sys_wasm.js"),
+    "--js-library", path.join(config.MOUNT_DIR, "wasm/sys_snd.js"),
+    "--js-library", path.join(config.MOUNT_DIR, "wasm/sys_net.js"),
+    "--js-library", path.join(config.MOUNT_DIR, "wasm/sys_web.js"),
+    "--js-library", path.join(config.MOUNT_DIR, "wasm/sys_fs.js"),
+    "--js-library", path.join(config.MOUNT_DIR, "wasm/sys_std.js"),
+    "--js-library", path.join(config.MOUNT_DIR, "wasm/sys_emjs.js")
+];
+
+// Symbols to export to the JS environment
+const exportFlags = [
+    "sprintf", "malloc", "free", "stderr", "stdout", "errno", "_start",
+    "FS_CreatePath", "R_FindPalette", "Key_ClearStates", "Key_GetCatcher",
+    "Key_SetCatcher", "CL_PacketEvent", "s_soundStarted", "s_soundMuted",
+    "s_knownSfx", "dma", "S_SoundInfo", "Cbuf_ExecuteText", "Cbuf_AddText",
+    "gw_minimized", "FS_RecordFile", "gw_active", "Z_Free", "CL_R_FinishImage3",
+    "CL_NextDownload", "com_fullyInitialized", "Z_Malloc", "Sys_QueEvent",
+    "MSG_Init", "Com_RunAndTimeServerPacket", "Com_Frame", "Cvar_VariableValue",
+    "Cvar_VariableIntegerValue", "Cvar_VariableString", "Cvar_Get",
+    "cvar_modifiedFlags", "WindowResize", "Cvar_Set", "Cvar_SetValue",
+    "Cvar_SetIntegerValue", "Cvar_CheckRange", "FS_ReadFile", "VM_Call",
+    "FS_FreeFile", "FS_CopyString", "FS_GetCurrentGameDir", "Key_KeynumToString"
+].map(sym => `--export=${sym}`);
+
+// Undefined symbols handling
+const undefinedFlags = [
+    `--allow-undefined-file=${path.join("code/wasm/wasm.syms")}`
+];
+
+// Final Assembly based on platform
+const LDFLAGS = [
+    ...baseLdFlags, "code/wasm/stack_ops.o",
+    ...wasmPlatformFlags, ...exportFlags, ...undefinedFlags
+];
+
+// For the Shared Libs (Renderer/VMs)
+/*
+const shLibLdFlags = [
+    "--no-entry",
+    ...baseLdFlags,
+    "--export=malloc",
+    "--export=s_knownSfx",
+    "--export=stderr",
+    "--export=stdout",
+    ...undefinedFlags
+];
+*/
 
 async function build() {
 
@@ -428,30 +516,70 @@ async function build() {
 
     await downloadHeaders(q3eCommonHeaders)
 
-    await api.upload(owner.value + '/' + repo.value)
+    let database = owner.value + '/' + repo.value
 
-    for (let obj of [...allCompileObjects]) {
+    await api.upload(database)
+
+    var objs = []
+
+    for (let file of [...allCompileObjects]) {
 
         try {
-            let content = await cacheFile(owner.value, repo.value, obj)
+            let sha = files['#filelist'][file].sha
+            let content = await cacheFile(owner.value, repo.value, file, sha)
 
             term.write('\n\r')
-            let filename = obj //obj.split('/').pop()
+            let filename = file;
             let CCFLAGS = [...CFLAGS]
-            if(obj.includes('botlib'))
+            if (file.includes('botlib'))
                 CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
 
-            let result = await api.compile({
+            let obj = dirs.BD + '/' + filename.replace('.c', '.o')
+
+            let record = await getRecord(DB_STORE_NAME, obj, repoOwner + '/' + repoName)
+            if(record) continue
+
+            await api.compile({
                 CFLAGS: CCFLAGS,
                 contents: content,
                 width: term.cols,
                 input: filename,
-                obj: dirs.BD + '/' + filename.replace('.c', '.o')
+                database,
+                obj
             })
 
+            objs.add(obj)
         } catch { }
 
     }
+
+    try {
+        
+        let sha = files['#filelist']['code/wasm/stack_ops.S'].sha
+        let content = await cacheFile(owner.value, repo.value, 'code/wasm/stack_ops.S', sha)
+        let obj = dirs.BD + '/' + 'code/wasm/stack_ops.o'
+
+        await api.compile({
+            CFLAGS: CFLAGS,
+            contents: content,
+            width: term.cols,
+            input: 'code/wasm/stack_ops.S',
+            database,
+            obj
+        })
+
+        await api.link({
+            LDFLAGS: LDFLAGS,
+            width: term.cols,
+            obj: objs,
+            wasm: dirs.BD + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
+        })
+    } catch (e) {
+        console.error(e)
+    }
+
+
+    await api.download(database)
 
 
 }
@@ -467,7 +595,8 @@ async function downloadHeaders(headers, batchSize = 10) {
         await Promise.all(batch.map(async (header) => {
             try {
                 // cacheFile handles the storage logic
-                await cacheFile(ownerVal, repoVal, header);
+                let sha = files['#filelist'][header].sha
+                await cacheFile(ownerVal, repoVal, header, sha);
             } catch (e) {
                 console.warn(`Failed to cache ${header}:`, e);
             }

@@ -155,7 +155,7 @@ const API = (function () {
 
       this.hostMem_ = null;  // Set later when wired up to application.
 
-      // Imports for memfs module.
+      // Imports for memfs this.exports.
       const env = getImportObject(
         this, ['abort', 'host_write', 'host_read', 'memfs_log', 'copy_in', 'copy_out']);
 
@@ -245,6 +245,90 @@ const API = (function () {
       catch (e) {
         console.error(path + ' - ' + e)
       }
+    }
+
+    async recursiveDir(dirFd, pathStr = "") {
+      // 1. Get the scratch space provided by your Wasm module
+      const scratchPtr = this.exports.GetPathBuf();
+      const scratchLen = this.exports.GetPathBufLen();
+
+      if (scratchLen < 4096) {
+        throw new Error("Scratch buffer too small for readdir");
+      }
+
+      const entries = directoryList(dirFd, scratchPtr, scratchLen);
+
+      for (const entry of entries) {
+        const fullPath = pathStr ? `${pathStr}/${entry.name}` : entry.name;
+
+        if (entry.type === 4) { // Directory
+          // Use the scratch space to encode the directory name for path_open
+          const encoder = new TextEncoder();
+          const encoded = encoder.encode(entry.name);
+
+          // Write name to scratch space (reusing GetPathBuf)
+          new Uint8Array(this.exports.memory.buffer).set(encoded, scratchPtr);
+
+          // We need 4 bytes for the result FD. 
+          // We can put this at the very end of our scratch buffer to avoid overlap.
+          const resultFdPtr = scratchPtr + scratchLen - 4;
+
+          const errno = this.exports.path_open(
+            dirFd,
+            0,
+            scratchPtr, encoded.length,
+            0,
+            0x2000000n, 0x2000000n,
+            0,
+            resultFdPtr
+          );
+
+          if (errno === 0) {
+            const subDirFd = new DataView(this.exports.memory.buffer).getUint32(resultFdPtr, true);
+
+            await recursiveDir(subDirFd, fullPath);
+            this.exports.fd_close(subDirFd);
+          }
+        } else {
+          console.log(`File: ${fullPath}`);
+        }
+      }
+    }
+
+    openPath(pathString) {
+      const scratchPtr = Module.GetPathBuf();
+      const scratchLen = Module.GetPathBufLen();
+
+      // 1. Write the path string into the Wasm memory
+      const encoder = new TextEncoder();
+      const encodedPath = encoder.encode(pathString);
+      new Uint8Array(Module.memory.buffer).set(encodedPath, scratchPtr);
+
+      // 2. Prepare space for the returned FD (4 bytes)
+      // We'll put it at the end of the scratch buffer
+      const resultFdPtr = scratchPtr + scratchLen - 4;
+
+      // 3. Call path_open
+      // We use FD 3 as the base (the first pre-opened directory)
+      const errno = Module.path_open(
+        3,                    // dirfd (The first pre-open)
+        1,                    // lookupflags (1 = symlink follow)
+        scratchPtr,           // path_ptr
+        encodedPath.length,   // path_len
+        0,                    // oflags
+        0x2000000n,           // rights (DIRECTORY_LIST / OPEN)
+        0x2000000n,           // inheriting rights
+        0,                    // fdflags
+        resultFdPtr           // output pointer
+      );
+
+      if (errno !== 0) {
+        console.error(`Failed to open path "${pathString}": Errno ${errno}`);
+        return -1;
+      }
+
+      // 4. Read the new FD from memory
+      return new DataView(Module.memory.buffer).getUint32(resultFdPtr, true);
     }
 
     getFileContents(path) {
@@ -499,7 +583,7 @@ const API = (function () {
 
     clock_time_get(id, precision, result_ptr) {
       this.mem.check();
-       // id: 0 = REALTIME, 1 = MONOTONIC
+      // id: 0 = REALTIME, 1 = MONOTONIC
       // result_ptr: index in WASM memory where the 64-bit timestamp goes
 
       let timeInNanoseconds;
@@ -845,6 +929,25 @@ const API = (function () {
     }
 
 
+    async download(database) {
+      await this.ready;
+      var fd = this.memfs.openPath('/')
+      var directories = recursiveDir(fd)
+      debugger
+      for (let file of directories) {
+        var bytes = this.memfs.getFileContents(file)
+        var newFile = {
+          timestamp: new Date(),
+          mode: FS_FILE,
+          contents: bytes,
+          path: file,
+        }
+        await putRecord(DB_STORE_NAME, newFile, database)
+      }
+      return directories
+    }
+
+
     async compile(options) {
       const input = options.input;
       const contents = options.contents;
@@ -856,12 +959,21 @@ const API = (function () {
       this.memfs.addFile(input, contents);
       this.memfs.mkdirp(dirPath)
       const clang = await this.getModule(this.clangFilename);
-      return await this.run(clang, 'clang', '-cc1', '-emit-obj',
+      var result = await this.run(clang, 'clang', '-cc1', '-emit-obj',
         ...this.clangCommonArgs,
         ...options.CFLAGS || [],
         '-fmessage-length', '' + (options.width || '80'),
         '-o', obj,
         input);
+      var bytes = this.memfs.getFileContents(obj)
+      var newFile = {
+        timestamp: new Date(),
+        mode: FS_FILE,
+        contents: bytes,
+        path: obj,
+      }
+      await putRecord(DB_STORE_NAME, newFile, options.database)
+      return result
     }
 
     async compileToAssembly(options) {
@@ -895,8 +1007,10 @@ const API = (function () {
       return this.memfs.getFileContents(output);
     }
 
-    async link(obj, wasm) {
+    async link(options) {
       const stackSize = 1024 * 1024;
+      const obj = options.obj;
+      const wasm = options.wasm;
 
       const libdir = 'lib/wasm32-wasi';
       const crt1 = `${libdir}/crt1.o`;
@@ -904,8 +1018,9 @@ const API = (function () {
       const lld = await this.getModule(this.lldFilename);
       return await this.run(
         lld, 'wasm-ld', '--no-threads',
+        ...options.LDFLAGS || [],
         '--export-dynamic',  // TODO required?
-        '-z', `stack-size=${stackSize}`, `-L${libdir}`, crt1, obj, '-lc',
+        '-z', `stack-size=${stackSize}`, `-L${libdir}`, crt1, ...(obj instanceof Array ? obj : [obj]), '-lc',
         '-lc++', '-lc++abi', '-lcanvas', '-o', wasm)
     }
 
@@ -932,7 +1047,7 @@ const API = (function () {
       const obj = `test.o`;
       const wasm = `test.wasm`;
       await this.compile({ input, contents: options.contents, obj, width: options.width });
-      await this.link(obj, wasm);
+      await this.link({ obj, wasm });
 
       const buffer = this.memfs.getFileContents(wasm);
       const testMod = await this.hostLogAsync(`Compiling ${wasm}`,
@@ -940,6 +1055,13 @@ const API = (function () {
       return await this.run(testMod, wasm);
     }
   }
+
+
+  const ST_FILE = 8
+  const ST_DIR = 4
+  const FS_DEFAULT = (6 << 3) + (6 << 6) + (6)
+  const FS_FILE = (ST_FILE << 12) + FS_DEFAULT
+  const FS_DIR = (ST_DIR << 12) + FS_DEFAULT
 
   return API;
 
