@@ -133,7 +133,10 @@ const QVM_CFLAGS = [
 
 async function buildQVM(database = null) {
     if (!database) database = owner.value + '/' + repo.value;
-    
+    let parts =  database.split('/')
+    let ownerName = parts.length == 2 ? parts[0] : owner.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
     const log = (msg) => {
         if (typeof term !== 'undefined') term.write(`\x1b[36m[QVM-BUILD]\x1b[0m ${msg}\r\n`);
         else console.log(msg);
@@ -167,7 +170,7 @@ async function buildQVM(database = null) {
             
             try {
                 const sha = files['#filelist'][srcPath].sha;
-                const content = await cacheFile(owner.value, repo.value, srcPath, sha);
+                const content = await cacheFile(ownerName, repoName, srcPath, sha);
 
                 await api.compile({
                     CFLAGS: [...QVM_CFLAGS, ...extraDefines.map(d => `-D${d}`)],

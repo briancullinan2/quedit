@@ -1,3 +1,12 @@
+:root {
+    --global-line-height: 1.6em;
+}
+
+/* Global Styles */
+body, html {
+    line-height: var(--global-line-height);
+}
+
 .theme-monokai {
     /* Main Backgrounds */
     --ace-bg: #272822;
@@ -678,6 +687,7 @@ button {
     /* Text color from the editor foreground */
     color: var(--ace-foreground);
     font-family: inherit;
+    line-height: var(--global-line-height);
 }
 
 #statusbar {
@@ -715,11 +725,19 @@ select option {
     color: var(--ace-foreground);
 }
 
+#terminals a,
 #tabs a {
     color: var(--ace-foreground);
 }
 
 
+#toolbar
+{
+    color: var(--ace-foreground);
+}
+
+#terminals a:active,
+#terminals a.active,
 #tabs a.active,
 #toolbar a.active,
 #tabs a:active,
@@ -729,6 +747,12 @@ select option {
     background: rgb(from var(--ace-foreground) r g b / 20%);
 }
 
+
+#terminals a.active,
+#terminals a:active
+{
+    border-top-color: rgb(from var(--ace-blue) r g b / 50%);
+}
 
 #tabs a.active,
 #toolbar a.active,
@@ -787,4 +811,46 @@ select option {
 
 .modal-content p {
     color: #aaa;
+}
+
+
+
+input[type="checkbox"] {
+    background-color: var(--ace-gutter-bg);
+    border-color: var(--ace-blue);
+    box-shadow: 1px 2px 5px rgb(from var(--ace-foreground) r g b / 50%);
+    height: calc(var(--global-line-height) + 4px);
+}
+
+input[type="checkbox"]::before
+{
+    background-color: var(--ace-bg);
+    box-shadow: -1px -2px 5px inset rgba(0, 0, 0, 0.5);
+    width: calc(var(--global-line-height) - 4px);
+    height: calc(var(--global-line-height) - 4px);
+
+}
+
+input[type="checkbox"]::after
+{
+    color: var(--ace-foreground);
+}
+
+input[type="checkbox"]:checked::after
+{
+    color: var(--ace-bg);
+}
+
+input[type="checkbox"]:checked {
+    background-color: var(--ace-blue); /* iOS Green */
+    border-color: var(--ace-blue);
+}
+
+input[type="checkbox"]:checked::before {
+    transform: translateX(26px);
+    transform: translateX(calc(60px - var(--global-line-height) - 2px));
+}
+
+input[type="checkbox"]:focus-visible {
+    box-shadow: 0 0 0 2px rgb(from var(--ace-green) r g b / 50%);
 }

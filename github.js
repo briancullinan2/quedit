@@ -74,28 +74,29 @@ let files = {}
 async function loadGitHubTree(repoOwner, repoName, branch, selector) {
 
     try {
+        let database = repoOwner + '/' + repoName
         const data = await githubRequest(repoOwner, repoName, `git/trees/${branch}?recursive=1`);
 
         // Transform the flat GitHub 'tree' array into nested children
         github[selector] = data.tree;
-        files[selector] = github[selector].reduce((obj, a, i, arr) => {
+        files[selector] = files[database] = github[selector].reduce((obj, a, i, arr) => {
             obj[a.path] = a
             return obj
         }, {})
 
         // Initialize Tree.js with the transformed data
         // Note: Use 'data' property instead of 'url' to provide the object directly
-        trees[selector] = new Tree(selector, {
+        trees[selector] = trees[database] = new Tree(selector, {
             data: convertFlatToNested(github[selector]),
             autoOpen: false,
             closeDepth: 2,
         });
 
         var databases = await getDatabaseMetadata()
-        if (databases.filter(d => d.key == repoOwner + '/' + repoName).length == 0
-            || (await needsInstall(repoOwner + '/' + repoName, DB_SCHEME)).item3) {
-            await deleteOldDatabase(repoOwner + '/' + repoName)
-            await setupDatabase(repoOwner + '/' + repoName, DB_SCHEME)
+        if (databases.filter(d => d.key == database).length == 0
+            || (await needsInstall(database, DB_SCHEME)).item3) {
+            await deleteOldDatabase(database)
+            await setupDatabase(database, DB_SCHEME)
         }
 
         //downloadRepoZip(repoOwner, repoName, branch)
@@ -226,6 +227,25 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
 
     } catch (err) {
         log(`\x1b[31m[ERROR]\x1b[0m Failed to download repo: ${err.message}`);
+    }
+}
+
+async function listReleases(owner, repo) {
+    try {
+        const releases = await githubRequest(owner, repo, 'releases');
+        
+        releases.forEach(release => {
+            console.log(`Release: ${release.name} (${release.tag_name})`);
+            
+            // If you want the assets (like your compiled zip)
+            release.assets.forEach(asset => {
+                console.log(` - Asset: ${asset.name} | URL: ${asset.browser_download_url}`);
+            });
+        });
+        
+        return releases;
+    } catch (err) {
+        console.error("Failed to list releases:", err);
     }
 }
 

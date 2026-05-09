@@ -506,6 +506,9 @@ async function build(database = null) {
 
     if(!database)
         database = owner.value + '/' + repo.value
+    let parts =  database.split('/')
+    let ownerName = parts.length == 2 ? parts[0] : owner.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
     savedToken = localStorage.getItem('github_token');
 
@@ -559,7 +562,7 @@ async function build(database = null) {
 
     let stringify = 'code/renderer2/stringify.c'
     let sha = files['#filelist'][stringify].sha
-    let content = await cacheFile(owner.value, repo.value, stringify, sha)
+    let content = await cacheFile(ownerName, repoName, stringify, sha)
 
     try {
         await api.compile({
@@ -601,7 +604,7 @@ async function build(database = null) {
 
         try {
             let sha = files['#filelist'][file].sha
-            let content = await cacheFile(owner.value, repo.value, file, sha)
+            let content = await cacheFile(ownerName, repoName, file, sha)
 
             term.write('\n\r')
             let filename = file;
@@ -613,7 +616,10 @@ async function build(database = null) {
             term.write('CC: ' + obj + '\n\r')
 
             //let record = await getRecord(DB_STORE_NAME, obj, repoOwner + '/' + repoName)
-            if (FS.virtual[obj]) {
+            if (FS.virtual[obj]
+                // compare input and output mtime
+                && FS.virtual[filename]?.timestamp < FS.virtual[obj]?.timestamp
+            ) {
                 objs[objs.length] = obj
                 continue
             }
@@ -635,11 +641,13 @@ async function build(database = null) {
     for (let shader of allRend2ShaderObjects) {
         try {
             let sha = files['#filelist'][shader].sha
-            let content = await cacheFile(owner.value, repo.value, shader, sha)
+            let content = await cacheFile(ownerName, repoName, shader, sha)
             const cCode = generateFallbackC(shader, content);
             let obj = dirs.BD + '/' + shader.replace('.glsl', '.o')
             term.write('GLSL: ' + obj + '\n\r')
-            if (FS.virtual[obj]) {
+            if (FS.virtual[obj]
+                && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
+            ) {
                 objs[objs.length] = obj
                 continue
             }
@@ -675,9 +683,12 @@ async function build(database = null) {
 
 
 
-async function downloadHeaders(headers, batchSize = 10) {
-    const ownerVal = owner.value;
-    const repoVal = repo.value;
+async function downloadHeaders(headers, batchSize = 10, database = null) {
+    if(!database)
+        database = owner.value + '/' + repo.value
+    let parts =  database.split('/')
+    let ownerName = parts.length == 2 ? parts[0] : owner.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
     // Process in chunks to avoid slamming the network/API
     for (let i = 0; i < headers.length; i += batchSize) {
@@ -687,7 +698,7 @@ async function downloadHeaders(headers, batchSize = 10) {
             try {
                 // cacheFile handles the storage logic
                 let sha = files['#filelist'][header].sha
-                await cacheFile(ownerVal, repoVal, header, sha);
+                await cacheFile(ownerName, repoName, header, sha);
             } catch (e) {
                 console.warn(`Failed to cache ${header}:`, e);
             }
@@ -725,7 +736,8 @@ function loadEntry(cursor) {
         // embedded file is newer, start with that
         return cursor.continue()
     }
-    term.write('\n\rLoading: ' + cursor.key + '\n\r');
+    //term.write('\n\rLoading: ' + cursor.key + '\n\r');
+    
     FS.virtual[cursor.key] = {
         timestamp: cursor.value.timestamp,
         mode: cursor.value.mode,

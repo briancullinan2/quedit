@@ -28,19 +28,37 @@
                 <li><select name="branch" id="branch">
                         <option value="main">main</option>
                     </select></li>
+                <li><a alt="New file" href="#new" class="bx bx-file-plus"></a></li>
                 <li><a alt="Save file" href="#save" class="bx bx-save"></a></li>
                 <li><a alt="Upload file" href="#upload" class="bx bx-folder-up-arrow"></a></li>
                 <li><a alt="Back" href="#back" class="bx bx-undo"></a></li>
                 <li><a alt="Next" href="#next" class="bx bx-redo"></a></li>
-                <li><select name="filename" id="filename">
+                <li style="min-width: 200px;"><select name="filename" id="filename">
                         <option value="">Current filename</option>
                     </select></li>
-                <li><a alt="Compile" href="#build" class="bx bx-code"></a></li>
+                <li><a alt="Compile" href="#compile" class="bx bx-code"></a></li>
                 <li><a alt="Run" href="#play" class="bx bx-play"></a></li>
                 <li><a alt="Pause" href="#pause" class="bx bx-pause"></a></li>
                 <li><a alt="Stop" href="#stop" class="bx bx-stop"></a></li>
                 <li><a alt="Reload" href="#reload" class="bx bx-refresh-cw-alt"></a></li>
                 <li><a alt="Console" href="#console" class="bx bx-terminal"></a></li>
+                <li style="min-width: 200px;">
+                    <div style="display: flex; align-items: center;">
+                        <span>Hot reload: &nbsp; </span>
+                        <input type="checkbox" name="reload" id="reload" checked="checked" />
+                    </div>
+                </li>
+                <li><select name="configuration" id="configuration">
+                        <option value="">Build configuration</option>
+                        <option value="debug">Debug</option>
+                        <option value="release">Release</option>
+                        <option value="pre">Preprocess</option>
+                        <option value="qvms">QVMs Only</option>
+                        <option value="assets">Assets Only</option>
+                        <option value="publish">Publish</option>
+                        <option value="sanitize">Sanitize</option>
+                        <option value="analyze">Analyze</option>
+                    </select></li>
                 <li><select name="spawn" id="spawn">
                         <option value="">Spawn point</option>
                     </select></li>
@@ -126,10 +144,11 @@
                 <ul>
                     <li><a alt="Collapse" href="#collapse" class="bx bx-arrow-in-left-square-half"></a></li>
                     <li><a alt="Search files" href="#filesearch" class="bx bx-search"></a></li>
-                    <li><a alt="Engine files" href="#filelist" class="bx bx-folder-code"></a></li>
+                    <li><a alt="Engine files" href="#filelist" class="active bx bx-folder-code"></a></li>
                     <li><a alt="Game files" href="#gamelist" class="bx bx-handheld-alt"></a></li>
                     <li><a alt="Assets" href="#assetlist" class="bx bx-treasure-chest"></a></li>
                     <li><a alt="Local database" href="#database" class="bx bx-database"></a></li>
+                    <li><a alt="Github commit" href="#github" class="bx bx-git-repo-forked"></a></li>
                     <li><a alt="Edit settings" href="#settings" class="bx bx-gear"></a></li>
                 </ul>
             </div>
@@ -147,6 +166,9 @@
 
                 </div>
                 <div id="database" class="hidden">
+
+                </div>
+                <div id="github" class="hidden">
 
                 </div>
 <div id="editor">
@@ -178,6 +200,17 @@ int main() {
                 <canvas></canvas>
             </div>
             <canvas id="scratch"></canvas>
+        </div>
+        <div id="terminals">
+            <ul>
+                <li><a class="active" href="#all">All</a></li>
+                <li><a href="#error">Error</a></li>
+                <li><a href="#warn">Warn</a></li>
+                <li><a href="#info">Info</a></li>
+                <li><a href="#soft">CLI Render</a></li>
+                <li><a href="#immediate">Immediate</a></li>
+                <li><a href="#build">Build</a></li>
+            </ul>
         </div>
         <div id="terminal">
 

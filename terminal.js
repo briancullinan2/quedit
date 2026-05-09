@@ -141,3 +141,24 @@ window.console.info = (...args) => {
     originalConsole.info.apply(console, args);
 };
 
+
+
+function renderTerminalsCommand(panelId) {
+
+    var buttons = document.getElementById('terminals').children[0].children
+
+    for (let button of buttons) {
+        button.children[0].classList.remove('active')
+    }
+        
+    document.querySelector(`#terminals [href*="${panelId}"]`).classList.add('active')
+
+}
+
+
+document.getElementById('terminals').addEventListener('click', async (e) => {
+
+    renderTerminalsCommand(e.target.href?.split('#').pop())
+
+});
+

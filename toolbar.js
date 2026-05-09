@@ -150,14 +150,30 @@ for (let r of repos || []) {
 }
 
 
-document.getElementById('toolbar').addEventListener('click', async (e) => {
+function renderToolbarCommand(buttonId)
+{
+    let engineRepo = localStorage.getItem('engine_repository') || document.getElementById('filelist').dataset['repository'] || 'briancullinan2/Quake3e'
 
-    var buttonId = e.target.href?.split('#').pop()
-
-    if(buttonId == 'build')
-        return build()
+    if(buttonId == 'compile')
+        return build(engineRepo)
 
     if(buttonId == 'play')
         return run()
+
+    if(buttonId == 'back')
+        return NavHistory.back()
+
+    if(buttonId == 'next')
+        return NavHistory.forward()
+
+    if(buttonId == 'new')
+        return newFile()
+}
+
+
+
+document.getElementById('toolbar').addEventListener('click', async (e) => {
+    renderToolbarCommand(e.target.href?.split('#').pop())
+
 });
 

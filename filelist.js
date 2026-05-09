@@ -9,7 +9,7 @@ const convertFlatToNested = (data) => {
 
             if (!existingPath) {
                 existingPath = {
-                    id: `${item.sha}-${i}`,
+                    id: `${item.sha}`,
                     text: part,
                     state: {
                         open: false,
@@ -128,6 +128,16 @@ async function initializeFiletrees() {
 
 initializeFiletrees();
 
+let tempCount = 1;
+async function newFile()
+{
+    const session = getOrCreateAceSession('temp' + (++tempCount), '');
+    editor.setSession(session);
+    editor.resize();
+    editor.renderer.updateFull();
+
+}
+
 
 
 async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true) {
@@ -144,15 +154,78 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     editor.renderer.updateFull();
 
     // 3. Record it in history if this isn't a "Back/Forward" action
+    let selector = document.getElementById('filename')
     if (recordHistory) {
+        let placeholder = selector.children[0]
+        if (placeholder.value == '')
+            placeholder.remove()
+        if (!selector.querySelector(`[value="${filePath}"]`)) {
+            const option = document.createElement('option');
+
+            option.value = filePath;
+            option.textContent = filePath;
+
+            //if (filePath === selector.value) {
+            option.selected = true;
+            //}
+
+            if (selector.children.length > 0)
+                selector.insertBefore(option, selector.children[0]);
+            else
+                selector.appendChild(option);
+        }
         const pos = editor.getCursorPosition();
         NavHistory.push(sha, pos.row, pos.column);
+        history.pushState({ location: window.location.toString() }, filePath, '#' + filePath)
+    }
+    else {
+        selector.value == filePath
     }
 }
 
 
-function treeHandler(selector, e)
-{
+let hashDebounce = null
+function renderHashCommand(fileName, noBounce = false) {
+
+    if(hashDebounce) {
+        clearTimeout(hashDebounce)
+    }
+    if(!noBounce)
+    {
+        hashDebounce = setTimeout(() => renderHashCommand(fileName, true), 200)
+        return
+    }
+
+    let database = owner.value + '/' + repo.value
+    const filePath = files[database][fileName]?.path
+    if (filePath) {
+        const fileId = files[database][fileName].sha
+        currentOpenFileId = fileId;
+        trees[database].values = [fileId];
+        openFile(owner.value, repo.value, filePath, fileId, false);
+
+    }
+    else if (document.getElementById('toolbar')
+        .querySelector(`[href*="${fileName}"]`)) {
+        renderToolbarCommand(fileName)
+    }
+    else if (document.getElementById('tabs')
+        .querySelector(`[href*="${fileName}"]`)) {
+        renderTabsCommand(fileName)
+    }
+    else if (document.getElementById('terminals')
+        .querySelector(`[href*="${fileName}"]`)) {
+        renderTerminalsCommand(fileName)
+    }
+}
+
+
+window.addEventListener('popstate', (event) => {
+    renderHashCommand(window.location.hash.substring(1))
+});
+
+
+function treeHandler(selector, e) {
     const node = e.target.closest('.treejs-node');
     if (node && node.classList.contains('treejs-placeholder')) {
         const fileId = node.getAttribute('data-id'); // Assuming you set this
@@ -169,11 +242,7 @@ document.getElementById('assetlist').addEventListener('click', treeHandler.bind(
 
 
 
-var panels = document.querySelectorAll('#filesearch, #filelist, #gamelist, #assetlist, #database')
-
-document.getElementById('tabs').addEventListener('click', async (e) => {
-
-    var panelId = e.target.href?.split('#').pop()
+function renderTabsCommand(panelId) {
 
     if (panelId == 'collapse') {
         let hasOpen = hideOpenPanels()
@@ -183,6 +252,9 @@ document.getElementById('tabs').addEventListener('click', async (e) => {
     else if (panelId) {
 
         hideOpenPanels()
+
+        document.querySelector(`#tabs [href*="${panelId}"]`).classList.add('active')
+
         var panel = document.getElementById(panelId)
         panel.classList.remove('hidden')
         var repo = panel.dataset['repository']
@@ -193,15 +265,34 @@ document.getElementById('tabs').addEventListener('click', async (e) => {
         if (panelId == 'assetlist')
             repo = localStorage.getItem('asset_repository') || repo
 
-        if(repo)
-            await setRepository(repo)
+        if (repo)
+            setRepository(repo)
     }
+
+
+}
+
+
+
+
+var panels = document.querySelectorAll('#filesearch, #filelist, #gamelist, #assetlist, #database, #github')
+
+document.getElementById('tabs').addEventListener('click', async (e) => {
+
+    renderTabsCommand(e.target.href?.split('#').pop())
 
 });
 
 
 function hideOpenPanels() {
     var hasOpen = false;
+
+    var buttons = document.getElementById('tabs').children[0].children
+
+    for (let button of buttons) {
+        button.children[0].classList.remove('active')
+    }
+
     for (let panel of panels) {
         if (!panel.classList.contains('hidden')) {
             panel.classList.add('hidden')

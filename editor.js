@@ -109,10 +109,12 @@ const NavHistory = {
 
     apply() {
         const point = this.stack[this.index];
-        // 1. Switch file in your UI (Dockview/TreeJS logic)
-        loadFileById(point.fileId);
+        let database = owner.value + '/' + repo.value
+        const filePath = trees[database].nodesById[point.fileId].path
+        currentOpenFileId = point.fileId;
+        trees[database].values = [point.fileId];
+        openFile(owner.value, repo.value, filePath, trees[database].nodesById[point.fileId].sha, false);
 
-        // 2. Move Ace cursor
         editor.gotoLine(point.row + 1, point.column);
     }
 };
@@ -120,7 +122,31 @@ const NavHistory = {
 window.addEventListener('keydown', (e) => {
     if (e.altKey && e.key === 'ArrowLeft') NavHistory.back();
     if (e.altKey && e.key === 'ArrowRight') NavHistory.forward();
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        saveFile();
+    }
 });
+
+
+async function saveFile()
+{
+    var database = owner.value + '/' + repo.value
+    var filePath = trees[database].nodesById[currentOpenFileId].path
+    var content = editor.getValue()
+    var newSha = await getGitShaBrowser(content)
+    FS.virtual[filePath] = {
+        timestamp: new Date(),
+        mode: FS_FILE,
+        contents: new TextEncoder().encode(content),
+        path: filePath,
+        sha: newSha
+    }
+    await putRecord(DB_STORE_NAME, FS.virtual[filePath], database)
+    currentOpenFileId = newSha
+    trees[database].nodesById[newSha] = files[database][filePath]
+}
+
 
 const getModeByFilename = (filePath) => {
     const ext = filePath.split('.').pop().toLowerCase();
@@ -134,7 +160,10 @@ const getModeByFilename = (filePath) => {
         'css': 'css',
         'json': 'json',
         'md': 'markdown',
-        'txt': 'text'
+        'txt': 'text',
+        's': 'assembly_x86',
+        'S': 'assembly_x86',
+        'asm': 'assembly_x86',
     };
     return `ace/mode/${modes[ext] || 'text'}`;
 };
