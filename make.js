@@ -42,61 +42,329 @@ const dirs = {
     CDIR: path.join(config.MOUNT_DIR, "client"),
     SDIR: path.join(config.MOUNT_DIR, "server"),
     CMDIR: path.join(config.MOUNT_DIR, "qcommon"),
-    R1DIR: path.join(config.MOUNT_DIR, "renderer"),
+    //R1DIR: path.join(config.MOUNT_DIR, "renderer"),
     R2DIR: path.join(config.MOUNT_DIR, "renderer2"),
-    RVDIR: path.join(config.MOUNT_DIR, "renderervk"),
+    RCDIR: path.join(config.MOUNT_DIR, "renderercommon"),
+    //RVDIR: path.join(config.MOUNT_DIR, "renderervk"),
+    BLIBDIR: path.join(config.MOUNT_DIR, "botlib"),
+    WASMDIR: path.join(config.MOUNT_DIR, "wasm"),
 };
 
+const CFLAGS = [
+    "-cc1",
+    "-emit-obj",
+    "-triple", "wasm32-wasi",
+    "-D__WASM__=1",
+    "-D__wasi__=1",
+    "-D__wasm32__=1",
+    "-DNO_VM_COMPILED=1",
+    "-D__EMSCRIPTEN__=1",
+    "-D_XOPEN_SOURCE=700",
+    "-D_WASI_EMULATED_SIGNAL=1",
+    "-D_WASI_EMULATED_MMAN=1",
+    "-DDISABLE_IPV6=1",
+    "-DLACKS_ERRNO_H",
+    "-DEMSCRIPTEN_NO_ERRNO=1",
+    "-fno-rtti",
+    "-fno-common",
+    "-fno-use-init-array",
+    //"-target-feature",
+    //"+bulk-memory",
+    //"-target-feature",
+    //"+atomics",
+    "-pthread",
+    "-O3",
+    "-std=gnu11",
+
+    "-I/code/wasm",
+    "-I/code/qcommon",
+    "-I/code/client",
+    "-I/code/game"
+];
+
 // replicatng the file structure for the linker
+// Client Core
 const clientObjects = [
     "cl_cgame.c", "cl_cin.c", "cl_console.c", "cl_input.c",
     "cl_keys.c", "cl_main.c", "cl_net_chan.c", "cl_parse.c",
     "cl_scrn.c", "cl_ui.c", "cl_avi.c", "cl_jpeg.c"
 ].map(file => path.join(dirs.CDIR, file));
 
-const commonObjects = [
-    "cm_load.c", "cm_patch.c", "cm_polylib.c", "cm_test.c", "cm_trace.c",
-    "cmd.c", "common.c", "cvar.c", "files.c", "md4.c", "md5.c", "msg.c"
+// Collision Manager
+const collisionObjects = [
+    "cm_load.c", "cm_patch.c", "cm_polylib.c",
+    "cm_test.c", "cm_trace.c"
 ].map(file => path.join(dirs.CMDIR, file));
 
+// QCommon / Shared
+const commonObjects = [
+    "cmd.c", "common.c", "cvar.c", "files.c", "history.c",
+    "keys.c", "md4.c", "md5.c", "msg.c", "net_chan.c",
+    "net_ip.c", "huffman.c", "huffman_static.c", "splines.c",
+    "q_math.c", "q_shared.c", "unzip.c", "puff.c"
+].map(file => path.join(dirs.CMDIR, file));
+
+// Sound System
+const soundObjects = [
+    "snd_adpcm.c", "snd_dma.c", "snd_mem.c", "snd_mix.c",
+    "snd_wavelet.c", "snd_main.c", "snd_codec.c", "snd_codec_wav.c"
+].map(file => path.join(dirs.CDIR, file));
+
+// Server
+const serverObjects = [
+    "sv_bot.c", "sv_bsp_mini.c", "sv_ccmds.c", "sv_client.c",
+    "sv_filter.c", "sv_game.c", "sv_init.c", "sv_main.c",
+    "sv_net_chan.c", "sv_snapshot.c", "sv_teleport.c", "sv_world.c"
+].map(file => path.join(dirs.SDIR, file));
+
+// Virtual Machine
+const vmObjects = [
+    "vm.c", "vm_interpreted.c"
+].map(file => path.join(dirs.CMDIR, file));
+
+// Bot Engine / AI (AAS)
+const botObjects = [
+    "be_aas_bspq3.c", "be_aas_cluster.c", "be_aas_debug.c",
+    "be_aas_entity.c", "be_aas_file.c", "be_aas_main.c",
+    "be_aas_move.c", "be_aas_optimize.c", "be_aas_reach.c",
+    "be_aas_route.c", "be_aas_routealt.c", "be_aas_sample.c",
+    "be_ai_char.c", "be_ai_chat.c", "be_ai_gen.c",
+    "be_ai_goal.c", "be_ai_move.c", "be_ai_weap.c",
+    "be_ai_weight.c", "be_ea.c", "be_interface.c"
+].map(file => path.join(dirs.BLIBDIR, file));
+
+// Internal Libraries (L_)
+const libObjects = [
+    "l_crc.c", "l_libvar.c", "l_log.c", "l_memory.c",
+    "l_precomp.c", "l_script.c", "l_struct.c"
+].map(file => path.join(dirs.BLIBDIR, file));
+
+
+const sysObjects = [
+    "sys_main.c",
+    "dlmalloc.c",
+    "sbrk.c",
+].map(file => path.join(dirs.WASMDIR, file));
+
+// Combined for the full build
+const allQ3Objects = [
+    ...clientObjects,
+    ...collisionObjects,
+    ...commonObjects,
+    ...soundObjects,
+    ...serverObjects,
+    ...vmObjects,
+    ...botObjects,
+    ...libObjects,
+    ...sysObjects
+];
+
+// Shadows & Masking
+const shaderShadowObjects = [
+    "pshadow_fp.c", "pshadow_vp.c",
+    "shadowfill_fp.c", "shadowfill_vp.c",
+    "shadowmask_fp.c", "shadowmask_vp.c"
+].map(file => path.join(dirs.R2DIR, "glsl", file));
+
+// Lighting & Fog
+const shaderLightObjects = [
+    "dlight_fp.c", "dlight_vp.c",
+    "lightall_fp.c", "lightall_vp.c",
+    "fogpass_fp.c", "fogpass_vp.c"
+].map(file => path.join(dirs.R2DIR, "glsl", file));
+
+// Post-Processing (Bloom/Bokeh/Tone)
+const shaderPostProcessObjects = [
+    "bokeh_fp.c", "bokeh_vp.c",
+    "tonemap_fp.c", "tonemap_vp.c",
+    "ssao_fp.c", "ssao_vp.c",
+    "depthblur_fp.c", "depthblur_vp.c"
+].map(file => path.join(dirs.R2DIR, "glsl", file));
+
+// Scaling & Downsampling
+const shaderScaleObjects = [
+    "calclevels4x_fp.c", "calclevels4x_vp.c",
+    "down4x_fp.c", "down4x_vp.c"
+].map(file => path.join(dirs.R2DIR, "glsl", file));
+
+// Generic & Utilities
+const shaderUtilityObjects = [
+    "generic_fp.c", "generic_vp.c",
+    "texturecolor_fp.c", "texturecolor_vp.c"
+].map(file => path.join(dirs.R2DIR, "glsl", file));
+
+// Combined Renderer Shaders
+const allRend2ShaderObjects = [
+    ...shaderShadowObjects,
+    ...shaderLightObjects,
+    ...shaderPostProcessObjects,
+    ...shaderScaleObjects,
+    ...shaderUtilityObjects
+];
+
+
+// Image Loading & Formats
+/*
+const rendererImageObjects = [
+    "tr_image_bmp.c", "tr_image_jpg.c",
+    "tr_image_pcx.c", "tr_image_png.c", "tr_image_tga.c",
+    "tr_image_dds.c"
+].map(file => path.join(dirs.R2DIR, file));
+*/
+
+// Geometry, Meshes & Animation
+const rendererGeometryObjects = [
+    "tr_image.c", "tr_animation.c", "tr_curve.c", "tr_mesh.c",
+    "tr_model.c", "tr_model_iqm.c", "tr_surface.c",
+    "tr_world.c", "tr_bsp.c"
+].map(file => path.join(dirs.R2DIR, file));
+
+// Core Pipeline & Backend
+const rendererCoreObjects = [
+    "tr_backend.c", "tr_cmds.c", "tr_main.c",
+    "tr_init.c", "tr_scene.c", "tr_shade.c",
+    "tr_shade_calc.c", "tr_shader.c"
+].map(file => path.join(dirs.R2DIR, file));
+
+// Buffers & Extensions (GL specific)
+const rendererGLObjects = [
+    "tr_dsa.c", "tr_extensions.c", "tr_fbo.c",
+    "tr_glsl.c", "tr_vbo.c"
+].map(file => path.join(dirs.R2DIR, file));
+
+// Effects & Lighting
+const rendererEffectObjects = [
+    "tr_extramath.c", "tr_flares.c",
+    "tr_light.c", "tr_marks.c",
+    "tr_postprocess.c", "tr_shadows.c", "tr_sky.c"
+].map(file => path.join(dirs.R2DIR, file));
+
+// Shared Render Files
+const rendererCommon = [
+    "tr_font.c", "tr_noise.c", "tr_manipulation.c"
+].map(file => path.join(dirs.RCDIR, file));
+
+// Shared dependencies (used if USE_RENDERER_DLOPEN is true)
+const rendererSharedObjects = [
+    "q_shared.c", "puff.c", "q_math.c"
+].map(file => path.join(dirs.CMDIR, file));
+
+// Combined Renderer Array
+const allRend2Objects = [
+    //...rendererImageObjects,
+    ...rendererGeometryObjects,
+    ...rendererCoreObjects,
+    ...rendererGLObjects,
+    ...rendererEffectObjects,
+    ...rendererCommon,
+    ...rendererSharedObjects
+];
+
+
+const allCompileObjects = [
+    ...allQ3Objects,
+    ...allRend2Objects
+]
+
+
+const botlibCoreHeaders = [
+    "botlib.h", "be_aas.h", "aasfile.h", "be_aas_bsp.h", 
+    "be_aas_def.h", "be_aas_funcs.h"
+].map(file => path.join(dirs.BLIBDIR, file));
+
+// AAS (Area Awareness System) Internal Headers
+const aasInternalHeaders = [
+    "be_aas_cluster.h", "be_aas_debug.h", "be_aas_entity.h", 
+    "be_aas_file.h", "be_aas_main.h", "be_aas_move.h", 
+    "be_aas_optimize.h", "be_aas_reach.h", "be_aas_route.h", 
+    "be_aas_routealt.h", "be_aas_sample.h"
+].map(file => path.join(dirs.BLIBDIR, file));
+
+// AI / Behavior Engine Headers
+const botAIHeaders = [
+    "be_ai_char.h", "be_ai_chat.h", "be_ai_gen.h", 
+    "be_ai_goal.h", "be_ai_move.h", "be_ai_weap.h", 
+    "be_ai_weight.h", "be_ea.h", "be_interface.h"
+].map(file => path.join(dirs.BLIBDIR, file));
+
+// Botlib Library Utilities (L_)
+const botLibUtilsHeaders = [
+    "l_crc.h", "l_libvar.h", "l_log.h", "l_memory.h", 
+    "l_precomp.h", "l_script.h", "l_struct.h", "l_utils.h"
+].map(file => path.join(dirs.BLIBDIR, file));
+
+// Combined for easy reference
+const allBotlibHeaders = [
+    ...botlibCoreHeaders,
+    ...aasInternalHeaders,
+    ...botAIHeaders,
+    ...botLibUtilsHeaders
+];
+
+
 const q3eCommonHeaders = [
-  // --- QCommon (The Engine Core) ---
-  "qcommon/q_shared.h",
-  "qcommon/q_platform.h",
-  "qcommon/qcommon.h",    // The "God" header for the engine
-  "qcommon/qfiles.h",     // File format definitions (.bsp, .md3, etc.)
-  "qcommon/surfaceflags.h", // Shared world/surface bitflags
-  "qcommon/unzip.h",      // Internal PK3/Zip handling
-  "qcommon/cm_local.h",
-  "qcommon/cm_public.h",
 
-  // --- Client & Server ---
-  "client/client.h",      // Client-side engine state
-  "server/server.h",      // Server-side engine state
+    // --- QCommon (The Engine Core) ---
+    "qcommon/q_shared.h",
+    "qcommon/q_platform.h",
+    "qcommon/qcommon.h",    // The "God" header for the engine
+    "qcommon/qfiles.h",     // File format definitions (.bsp, .md3, etc.)
+    "qcommon/surfaceflags.h", // Shared world/surface bitflags
+    "qcommon/unzip.h",      // Internal PK3/Zip handling
+    "qcommon/cm_local.h",
+    "qcommon/cm_public.h",
+    "qcommon/cm_polylib.h",
+    "qcommon/cm_patch.h",
+    "qcommon/vm_local.h",
+    "qcommon/files_checksums.h",
+    "qcommon/puff.h",
+    "qcommon/json.h",
 
-  // --- Renderer (Internal) ---
-  "renderer2/tr_local.h",  // Core renderer internal state
-  "renderercommon/tr_public.h", // Public interface to the renderer
-  "renderer2/qgl.h",       // OpenGL function pointers/wrappers
+    // --- Client & Server ---
+    "client/client.h",      // Client-side engine state
+    "client/snd_public.h",
+    "client/snd_local.h",
+    "client/snd_codec.h",
+    "client/keys.h",
+    "client/keycodes.h",
+    "server/server.h",      // Server-side engine state
+    "server/tlds.h",
 
-  // --- BotLib ---
-  "botlib/botlib.h",      // Core bot library interface
-  "botlib/be_aas.h",      // Area Awareness System (Navigation)
-  "botlib/be_ai_char.h",  // Bot characteristics/personality
 
-  // --- Shared / Game Layer ---
-  "game/g_public.h",      // Engine <-> Game VM interface
-  "game/bg_public.h",     // Shared Game/CGame logic (physics, items)
-  "cgame/cg_public.h",    // Engine <-> CGame VM interface
-  
-  // --- UI Layer ---
-  "ui/ui_public.h",       // Engine <-> UI VM interface
-  //"q3_ui/ui_local.h",     // Classic Q3 UI local definitions
+    // --- Renderer (Internal) ---
+    "renderer/iqm.h",
+    "renderer2/tr_local.h",  // Core renderer internal state
+    "renderercommon/tr_public.h", // Public interface to the renderer
+    "renderercommon/tr_types.h",
+    "renderer2/tr_common.h",
+    "renderer2/tr_dsa.h",
+    "renderer2/tr_extramath.h",
+    "renderer2/tr_extratypes.h",
+    "renderer2/tr_fbo.h",
+    "renderer2/tr_postprocess.h",
+    "renderer2/qgl.h",       // OpenGL function pointers/wrappers
 
-  // --- System Layer ---
-  //"sys/sys_local.h",      // System-specific (Win/Linux) low-level stuff
-  //"sys/sys_loadlib.h"     // Dynamic library loading
-].map(file => path.join(config.MOUNT_DIR, file));
+    // --- Shared / Game Layer ---
+    "game/g_public.h",      // Engine <-> Game VM interface
+    "game/bg_public.h",     // Shared Game/CGame logic (physics, items)
+    "cgame/cg_public.h",    // Engine <-> CGame VM interface
+
+    // --- UI Layer ---
+    "ui/ui_public.h",       // Engine <-> UI VM interface
+    //"q3_ui/ui_local.h",     // Classic Q3 UI local definitions
+
+    // --- System Layer ---
+    "wasm/sys_overrides.h",
+    "wasm/setjmp.h",
+    "wasm/gl.h",
+    "wasm/glext.h",
+    "wasm/sys_local.h",
+    "wasm/khrplatform.h",
+    //"sys/sys_local.h",      // System-specific (Win/Linux) low-level stuff
+    //"sys/sys_loadlib.h"     // Dynamic library loading
+].map(file => path.join(config.MOUNT_DIR, file))
+    // --- BotLib ---
+.concat(allBotlibHeaders);
 
 function getBaseFlags() {
     let flags = ["-Wall", "-Wimplicit", "-Wstrict-prototypes"];
@@ -124,7 +392,7 @@ async function build() {
     const output = [
         `Building ${config.CNAME} for ${COMPILE_PLATFORM} (${COMPILE_ARCH})`,
         `Flags: ${getBaseFlags().join(' ')}`,
-        `Total source files mapped: ${[...clientObjects, ...commonObjects].length}`
+        `Total source files mapped: ${[...allCompileObjects].length}`
     ];
 
     output.forEach(line => {
@@ -162,22 +430,26 @@ async function build() {
 
     await api.upload(owner.value + '/' + repo.value)
 
-    for(let obj of [...clientObjects, ...commonObjects])
-    {
+    for (let obj of [...allCompileObjects]) {
 
         try {
             let content = await cacheFile(owner.value, repo.value, obj)
-            
+
             term.write('\n\r')
             let filename = obj //obj.split('/').pop()
+            let CCFLAGS = [...CFLAGS]
+            if(obj.includes('botlib'))
+                CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
+
             let result = await api.compile({
-                contents: content, 
-                width: term.cols, 
-                input: filename, 
-                obj: filename.replace('.c', '.o')
+                CFLAGS: CCFLAGS,
+                contents: content,
+                width: term.cols,
+                input: filename,
+                obj: dirs.BD + '/' + filename.replace('.c', '.o')
             })
 
-        } catch {}
+        } catch { }
 
     }
 
@@ -191,7 +463,7 @@ async function downloadHeaders(headers, batchSize = 10) {
     // Process in chunks to avoid slamming the network/API
     for (let i = 0; i < headers.length; i += batchSize) {
         const batch = headers.slice(i, i + batchSize);
-        
+
         await Promise.all(batch.map(async (header) => {
             try {
                 // cacheFile handles the storage logic
@@ -200,7 +472,7 @@ async function downloadHeaders(headers, batchSize = 10) {
                 console.warn(`Failed to cache ${header}:`, e);
             }
         }));
-        
+
         console.log(`Finished batch ${Math.ceil((i + batchSize) / batchSize)}`);
     }
 }
@@ -247,8 +519,7 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
 
     try {
         let record = await getRecord(DB_STORE_NAME, filePath, repoOwner + '/' + repoName)
-        if(record && record.sha == sha)
-        {
+        if (record && record.sha == sha) {
             const decoder = new TextDecoder();
             const str = decoder.decode(record.contents);
             return str
@@ -286,11 +557,11 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
     }
 
     FS.virtual[filePath] = {
-      timestamp: new Date(),
-      mode: FS_FILE,
-      contents: bytes,
-      path: filePath,
-      sha: jsonResponse.sha
+        timestamp: new Date(),
+        mode: FS_FILE,
+        contents: bytes,
+        path: filePath,
+        sha: jsonResponse.sha
     }
     // async to filesystem
     // does it REALLY matter if it makes it? wont it just redownload?

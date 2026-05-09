@@ -497,12 +497,72 @@ const API = (function () {
       }
     }
 
-    clock_time_get(clock_id, precision, time_out) {
-      throw new NotImplemented('wasi_unstable', 'clock_time_get');
+    clock_time_get(id, precision, result_ptr) {
+      this.mem.check();
+       // id: 0 = REALTIME, 1 = MONOTONIC
+      // result_ptr: index in WASM memory where the 64-bit timestamp goes
+
+      let timeInNanoseconds;
+
+      if (id === 1) { // MONOTONIC
+        timeInNanoseconds = BigInt(Math.floor(performance.now() * 1000000));
+      } else { // REALTIME
+        timeInNanoseconds = BigInt(Date.now()) * 1000000n;
+      }
+
+      // Use BigUint64Array to write the 8-byte value into memory
+      // result_ptr is the offset in the shared buffer
+      const memory = new BigUint64Array(this.mem.buffer);
+      memory[result_ptr >> 3] = timeInNanoseconds;
+
+      return 0; // 0 is the WASI 'success' code (errno.SUCCESS)
     }
 
+
     poll_oneoff(in_ptr, out_ptr, nsubscriptions, nevents_out) {
-      throw new NotImplemented('wasi_unstable', 'poll_oneoff');
+      this.mem.check();
+      const mem = new DataView(this.mem.buffer);
+      let eventsCreated = 0;
+
+      for (let i = 0; i < nsubscriptions; i++) {
+        // WASI Subscription struct is 40 bytes
+        const subPtr = in_ptr + (i * 40);
+        const userdata = mem.getBigUint64(subPtr, true);
+        const type = mem.getUint8(subPtr + 8); // 0 = Clock, 1 = FD_READ, 2 = FD_WRITE
+
+        if (type === 0) { // EVENTTYPE_CLOCK
+          // Clock subscription starts at offset 16
+          const clockId = mem.getUint32(subPtr + 16, true);
+          const timeout = mem.getBigUint64(subPtr + 24, true);
+          const precision = mem.getBigUint64(subPtr + 32, true);
+          const flags = mem.getUint16(subPtr + 40, true);
+
+          // In a browser, we can't actually "sleep" synchronously 
+          // without blocking the UI thread, so we just report success 
+          // immediately or check if the timeout is valid.
+
+          // Write the Event back to out_ptr (32 bytes)
+          const eventPtr = out_ptr + (eventsCreated * 32);
+          mem.setBigUint64(eventPtr, userdata, true); // Userdata
+          mem.setUint16(eventPtr + 8, 0, true);       // error (0 = Success)
+          mem.setUint8(eventPtr + 10, 0);             // type (Clock)
+
+          eventsCreated++;
+        } else {
+          // For FD_READ/WRITE, we usually just report success for standard streams
+          const eventPtr = out_ptr + (eventsCreated * 32);
+          mem.setBigUint64(eventPtr, userdata, true);
+          mem.setUint16(eventPtr + 8, 0, true);
+          mem.setUint8(eventPtr + 10, type);
+          eventsCreated++;
+        }
+      }
+
+      // Write number of events created to the output pointer
+      const outEventsView = new Uint32Array(this.mem.buffer, nevents_out, 1);
+      outEventsView[0] = eventsCreated;
+
+      return 0; // errno.SUCCESS
     }
 
     canvas_destroyHandle(handle) {
@@ -770,8 +830,7 @@ const API = (function () {
       await this.hostLogAsync(`Untarring ${filename}`, promise);
     }
 
-    async loadEntry(cursor)
-    {
+    async loadEntry(cursor) {
       if (!cursor) {
         return resolve()
       }
@@ -799,8 +858,9 @@ const API = (function () {
       const clang = await this.getModule(this.clangFilename);
       return await this.run(clang, 'clang', '-cc1', '-emit-obj',
         ...this.clangCommonArgs,
+        ...options.CFLAGS || [],
         '-fmessage-length', '' + (options.width || '80'),
-        '-O2', '-o', obj, '-x', 'c++',
+        '-o', obj,
         input);
     }
 

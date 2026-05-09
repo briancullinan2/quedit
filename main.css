@@ -90,12 +90,18 @@ body {
 
 #statusbar>* {
     flex-basis: 50%;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1; /* The number of lines to show before the ellipsis */
+    overflow: hidden;
 }
 
 #statusbar {
     display: flex;
     flex-direction: row;
     justify-content: stretch;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 
