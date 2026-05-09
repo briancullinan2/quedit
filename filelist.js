@@ -192,7 +192,7 @@ function renderHashCommand(fileName, noBounce = false) {
     }
     if(!noBounce)
     {
-        hashDebounce = setTimeout(() => renderHashCommand(fileName, true), 200)
+        hashDebounce = setTimeout(() => renderHashCommand(fileName, true), 500)
         return
     }
 

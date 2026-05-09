@@ -502,7 +502,20 @@ function generateFallbackC(fileName, content) {
 }
 
 
-async function build(database = null) {
+let buildDebounce = null
+async function build(database = null, noBounce = false) {
+
+    if(buildDebounce)
+    {
+        clearTimeout(buildDebounce)
+    }
+
+    if(!noBounce)
+    {
+        buildDebounce = setTimeout(() => build(database, true), 500)
+        return
+    }
+
 
     if(!database)
         database = owner.value + '/' + repo.value
@@ -737,7 +750,7 @@ function loadEntry(cursor) {
         return cursor.continue()
     }
     //term.write('\n\rLoading: ' + cursor.key + '\n\r');
-    
+
     FS.virtual[cursor.key] = {
         timestamp: cursor.value.timestamp,
         mode: cursor.value.mode,

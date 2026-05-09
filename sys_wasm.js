@@ -9,7 +9,7 @@ function initEnvironment(ENGINE) {
     }
     if (!ENV.memory) {
         ENV.memory = new WebAssembly.Memory({
-            initial: 3200,
+            initial: 4096,
             maximum: 32000,
             /* 'shared': true */
         })
@@ -166,8 +166,21 @@ const ENV = {
 }
 ENV.ENV = ENV
 
+let runDebounce = null
+async function run(database = null, noBounce = false) {
+    if(runDebounce)
+    {
+        clearTimeout(runDebounce)
+    }
 
-async function run(database = null) {
+    if(!noBounce)
+    {
+        runDebounce = setTimeout(() => run(database, true), 500)
+        return
+    }
+
+    if(GL.canvas != null)
+        return
 
     if(!database)
         database = owner.value + '/' + repo.value
@@ -188,12 +201,12 @@ async function run(database = null) {
             SND: SND,
         })
 
-        let startKeys = Object.keys(ENV)
+        let startKeys = ['MATH', 'FS', 'SYS', 'GL', 'EMGL', 'INPUT', 'NET', 'STD', 'DATE', 'SND', 'ENV']
         let startValues = Object.values(ENV)
         updateGlobalFunctions(ENV) // ASSIGN STD, FS, GL, ETC
         for (let i = 0; i < startKeys.length; i++) {
             try {
-                updateGlobalFunctions(startValues[i])
+                updateGlobalFunctions(startValues[startKeys[i]])
             } catch (e) { }
         }
         const viewport = document.getElementById('viewport-frame')
@@ -204,6 +217,12 @@ async function run(database = null) {
             GL: GL,
             EMGL: EMGL,
             INPUT: INPUT,
+            FS: FS,
+            DATE: DATE,
+            NET: NET,
+            STD: STD,
+            SND: SND,
+            MATH: MATHS,
         })
         ENGINE.canvas = GL.canvas
 
