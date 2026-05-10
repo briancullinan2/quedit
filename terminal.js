@@ -27,7 +27,7 @@ term.onData(async data => {
             try {
                 await handleCommand(currentLine);
             } catch (e) {
-                term.write(e)
+                term.write(e.toString())
             }
             currentLine = ''; // Reset the buffer
             term.write('\r\n> '); // New prompt
@@ -90,6 +90,13 @@ function tokenize(input) {
 async function handleCommand(input) {
     const database = owner.value + '/' + repo.value
     const tokens = tokenize(input.trim());
+
+
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
+
     if (tokens.length === 0) return;
 
     const [command, ...args] = tokens;
@@ -123,7 +130,57 @@ async function handleCommand(input) {
 
             build(argv[1] || engineRepo || database);
         },
-        compile: (argv) => commands['build'](argv),
+        header: async (argv) => {
+            let selected = toolsRepo || argv[1] || database
+            let parts = selected.split('/')
+            let ownerName = parts.length == 2 ? parts[0] : owner.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+            let headers = [argv[0]]
+
+            if (!argv[0])
+                headers = [...lccToolHeaders]
+
+            if (!files[selected]) {
+                let branch = await getDefaultBranch(ownerName, repoName)
+                await loadGitHubTree(ownerName, repoName, branch)
+            }
+
+            for (let header of headers) {
+                let sha = files[selected][header].sha
+
+                await cacheFile(ownerName, repoName, header, sha);
+                await api.header(ownerName, repoName, header, selected)
+            }
+        },
+        compile: async (argv) => {
+            let selected = toolsRepo || argv[1] || database
+            let parts = selected.split('/')
+            let ownerName = parts.length == 2 ? parts[0] : owner.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+            if (!files[selected]) {
+                let branch = await getDefaultBranch(ownerName, repoName)
+                await loadGitHubTree(ownerName, repoName, branch)
+            }
+
+            let sha = files[selected][argv[0]].sha
+
+            let contents = await cacheFile(ownerName, repoName, argv[0], sha);
+
+            let obj = CONFIGURATION + '/' + argv[0].replace('.c', '.o')
+
+            return await api.compile({
+                CFLAGS: [
+                    ...LCC_CFLAGS, `-Icode`, `-Isrc`,
+                    '-o', obj, argv[0]
+                ],
+                contents: contents,
+                width: term.cols,
+                input: argv[0],
+                database,
+                obj
+            })
+        },
         clang: async (argv) => {
             let file = currentSession()
             return await api.compile({
@@ -132,7 +189,7 @@ async function handleCommand(input) {
                 width: term.cols,
                 input: file,
                 database,
-                obj: CONFIGURATION + '/' + file.replace('.c', '.o')
+                obj: file ? CONFIGURATION + '/' + file.replace('.c', '.o') : ''
             })
         },
         'lcc': (argv) => commands['clang'](argv),
@@ -341,11 +398,11 @@ terminalContainer.addEventListener('mousedown', async (event) => {
 
 function updateLineFromHistory(specificValue = null) {
     // 1. Erase current line in terminal: Move to start, clear to end
-    term.write('\r\x1b[K> '); 
-    
+    term.write('\r\x1b[K> ');
+
     // 2. Update the buffer
     currentLine = specificValue !== null ? specificValue : history[historyIndex];
-    
+
     // 3. Write the new line
     term.write(currentLine);
 }

@@ -46,6 +46,7 @@ const LCC_CFLAGS = [
     '-internal-isystem', '/include/c++/v1',
     "-internal-isystem", "/include",
     "-internal-isystem", "/lib/clang/8.0.1/include", // Path varies by your Clang version
+    '-isystem', '/include/wasi-emulated-signal',
 
     "-O2",
     "-Wall",
@@ -53,6 +54,15 @@ const LCC_CFLAGS = [
     '-ferror-limit', '100',
     //'-c',
     //"-fno-strict-aliasing",
+    '-ftls-model=global-dynamic',
+    '-D_REENTRANT=0',
+    "-DSIGINT=2",
+    '-D_Thread_local=',
+    //"-Derrno=(*__errno_location())",
+    "-D__errno_location=void",
+    "-DSIG_IGN=(void (*)(int))1",
+    "-Dsignal(s,h)=SIG_IGN",
+    "-D_WASI_EMULATED_SIGNAL=1",
     "-D_XOPEN_SOURCE=700",
     "-D__wasi__=1",
     "-std=gnu11",
@@ -113,7 +123,8 @@ async function buildTools(database = null) {
 
             await api.compile({
                 CFLAGS: [
-                    ...LCC_CFLAGS, `-I${includeDir}`, ...extraFlags,
+                    ...LCC_CFLAGS, `-I${includeDir}`, 
+                    ...extraFlags,
                     '-o', obj, src
                 ],
                 contents: content,

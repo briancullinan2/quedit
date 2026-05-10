@@ -1025,19 +1025,23 @@ const API = (function () {
       const contents = options.contents;
       const obj = options.obj;
       const opt = options.opt || '2';
-      const inDir = input.substring(0, input.lastIndexOf('/'));
-      const dirPath = obj.substring(0, obj.lastIndexOf('/'));
+      if(input)
+      {
+        const inDir = input.substring(0, input.lastIndexOf('/'));
+        this.memfs.mkdirp(inDir)
+        if (input && contents)
+          this.memfs.addFile(input, contents);
+      }
+      if(obj)
+      {
+        const dirPath = obj.substring(0, obj.lastIndexOf('/'));
+        this.memfs.mkdirp(dirPath)
+      }
 
       await this.ready;
 
       if (!this.memfs.exists('tmp'))
         this.memfs.mkdirp('tmp')
-
-      this.memfs.mkdirp(dirPath)
-      this.memfs.mkdirp(inDir)
-      if (input && contents)
-        this.memfs.addFile(input, contents);
-
 
 
       if (options.CFLAGS) {
