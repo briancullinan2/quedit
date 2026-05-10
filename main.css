@@ -222,6 +222,7 @@ button {
     background: white;
     padding: 3px 5px;
     margin: 0;
+    width: stretch;
 }
 
 
@@ -290,6 +291,7 @@ button {
     list-style: none;
     margin: 0;
     padding: 0;
+    white-space: nowrap;
 }
 
 

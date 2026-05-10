@@ -145,6 +145,8 @@ window.console.info = (...args) => {
 
 function renderTerminalsCommand(panelId) {
 
+    if(!panelId) return
+
     var buttons = document.getElementById('terminals').children[0].children
 
     for (let button of buttons) {

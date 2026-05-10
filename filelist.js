@@ -116,6 +116,8 @@ async function initializeFiletrees() {
                 if (target.classList.contains('treejs-node__open')) {
                     const folderId = target.getAttribute('data-id');
 
+                    if(!trees['#database'].nodesById[folderId]) return
+
                     try {
                         if(loadedDatabases[folderId]) return
 
@@ -205,15 +207,15 @@ function loadTree(database, cursor) {
     }
     // already exists on filesystem, 
     //   it must have come with page
-    if (files[database][cursor.key]
-        && files[database][cursor.key].timestamp
+    if (files[database][cursor.path]
+        && files[database][cursor.path].timestamp
         > cursor.timestamp) {
         // embedded file is newer, start with that
         return
     }
-    //term.write('\n\rLoading: ' + cursor.key + '\n\r');
+    //term.write('\n\rLoading: ' + cursor.path + '\n\r');
 
-    files[database][cursor.key] = {
+    files[database][cursor.path] = {
         timestamp: cursor.timestamp,
         mode: cursor.mode,
         contents: cursor.contents,
@@ -325,6 +327,8 @@ document.getElementById('assetlist').addEventListener('click', treeHandler.bind(
 
 
 function renderTabsCommand(panelId) {
+
+    if(!panelId) return
 
     if (panelId == 'collapse') {
         let hasOpen = hideOpenPanels()

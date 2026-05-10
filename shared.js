@@ -965,7 +965,7 @@ const API = (function () {
       if (!cursor) {
         return resolve()
       }
-      this.memfs.hostWrite('\n\rLoading: ' + cursor.key + '\n\r')
+      this.memfs.hostWrite('\n\rLoading: ' + cursor.path + '\n\r')
       this.memfs.addFile(cursor.path, cursor.contents);
     }
 
@@ -1072,6 +1072,14 @@ const API = (function () {
       const obj = options.obj;
       const wasm = options.wasm;
       const dirPath = wasm.substring(0, wasm.lastIndexOf('/'));
+
+      for(var filePath of obj instanceof Array ? obj : [obj])
+      {
+        if(!filePath) continue
+        var record = await getRecord(DB_STORE_NAME, filePath, options.database)
+        this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+        this.memfs.addFile(record.path, record.contents);
+      }
 
       const libdir = 'lib/wasm32-wasi';
       const crt1 = `${libdir}/crt1.o`;

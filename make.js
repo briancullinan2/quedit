@@ -2,6 +2,8 @@
  * Quake3e Build Configuration Script - Browser Version
  */
 
+const configuration = document.getElementById('configuration')
+
 // 1. Implementation of path.join for the browser
 const path = {
     join: (...parts) => {
@@ -89,7 +91,6 @@ const CFLAGS = [
     //"-target-feature",
     //"+atomics",
     "-pthread",
-    "-O3",
     "-std=gnu11",
 
     "-I/code/wasm",
@@ -520,6 +521,25 @@ async function build(database = null, noBounce = false) {
     if(building) return
     building = true
 
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.BR
+        : dirs.BD
+
+    let DEBUG_CFLAGS =  configuration.value != 'debug'
+        ? ['-DNDEBUG', '-O3', '-ffast-math']
+        : ['-DDEBUG', '-D_DEBUG', '-g', '-O0']
+
+    let PRE = configuration.value == 'pre'
+        ? ['-E', '-P']
+        : configuration.value == 'analyze'
+        ? ['--analyze']
+        : configuration.value == 'sanitize'
+        ? ['-fsanitize=address']
+        : []
+
+
+    // TODO: publish binaryen zero-filled, zip, download uri
+
     if(!database)
         database = owner.value + '/' + repo.value
     let parts =  database.split('/')
@@ -577,7 +597,7 @@ async function build(database = null, noBounce = false) {
 
     await downloadHeaders(q3eCommonHeaders)
 
-    await api.upload(database)
+    //await api.upload(database)
 
     let stringify = 'code/renderer2/stringify.c'
     let sha = files['#filelist'][stringify].sha
@@ -593,12 +613,14 @@ async function build(database = null, noBounce = false) {
                 '-internal-isystem', '/include',
                 '-internal-isystem', '/lib/clang/8.0.1/include',
                 "-std=gnu11",
+                ...DEBUG_CFLAGS,
+                ...PRE
             ],
             contents: content,
             width: term.cols,
             input: stringify,
             database,
-            obj: dirs.BD + '/stringify.o'
+            obj: CONFIGURATION + '/stringify.o'
         })
     } catch (e) {
         console.error(e)
@@ -607,9 +629,9 @@ async function build(database = null, noBounce = false) {
 
     try {
         await api.link({
-            obj: [dirs.BD + '/stringify.o'],
+            obj: [CONFIGURATION + '/stringify.o'],
             database,
-            wasm: dirs.BD + '/stringify.js.wasm'
+            wasm: CONFIGURATION + '/stringify.js.wasm'
         })
     } catch (e) {
         console.error(e)
@@ -627,11 +649,11 @@ async function build(database = null, noBounce = false) {
 
             term.write('\n\r')
             let filename = file;
-            let CCFLAGS = [...CFLAGS]
+            let CCFLAGS = [...CFLAGS, ...DEBUG_CFLAGS, ...PRE]
             if (file.includes('botlib'))
                 CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
 
-            let obj = dirs.BD + '/' + filename.replace('.c', '.o')
+            let obj = CONFIGURATION + '/' + filename.replace('.c', '.o')
             term.write('CC: ' + obj + '\n\r')
 
             let objRecord = await getRecord(DB_STORE_NAME, obj, database)
@@ -666,7 +688,7 @@ async function build(database = null, noBounce = false) {
             let sha = files['#filelist'][shader].sha
             let content = await cacheFile(ownerName, repoName, shader, sha)
             const cCode = generateFallbackC(shader, content);
-            let obj = dirs.BD + '/' + shader.replace('.glsl', '.o')
+            let obj = CONFIGURATION + '/' + shader.replace('.glsl', '.o')
             term.write('GLSL: ' + obj + '\n\r')
 
             let objRecord = await getRecord(DB_STORE_NAME, obj, database)
@@ -701,7 +723,7 @@ async function build(database = null, noBounce = false) {
             width: term.cols,
             obj: objs,
             database,
-            wasm: dirs.BD + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
+            wasm: CONFIGURATION + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
         })
     } catch (e) {
         console.error(e)
@@ -756,20 +778,20 @@ function loadEntry(cursor) {
     if (!cursor) {
         return resolve()
     }
-    if (cursor.key.endsWith('default.cfg')) {
-        FS.hadDefault = cursor.key
+    if (cursor.path.endsWith('default.cfg')) {
+        FS.hadDefault = cursor.path
     }
     // already exists on filesystem, 
     //   it must have come with page
-    if (FS.virtual[cursor.key]
-        && FS.virtual[cursor.key].timestamp
+    if (FS.virtual[cursor.path]
+        && FS.virtual[cursor.path].timestamp
         > cursor.timestamp) {
         // embedded file is newer, start with that
         return
     }
-    //term.write('\n\rLoading: ' + cursor.key + '\n\r');
+    //term.write('\n\rLoading: ' + cursor.path + '\n\r');
 
-    FS.virtual[cursor.key] = {
+    FS.virtual[cursor.path] = {
         timestamp: cursor.timestamp,
         mode: cursor.mode,
         contents: cursor.contents,
