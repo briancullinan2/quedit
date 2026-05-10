@@ -213,10 +213,13 @@ terminalContainer.addEventListener('mousedown', async (event) => {
     const row = Math.floor(y / term._core._renderService.dimensions.css.cell.height) + term.buffer.active.viewportY;
 
     // 2. Grab the text from the clicked line
-    const line = term.buffer.active.getLine(row);
-    if (!line) return;
+    const lineText = 
+        term.buffer.active.getLine(row-2)?.translateToString(true)
+        + term.buffer.active.getLine(row-1)?.translateToString(true)
+        + term.buffer.active.getLine(row)?.translateToString(true)
+        + term.buffer.active.getLine(row + 2)?.translateToString(true);
+    if (lineText.trim().length == 0) return;
 
-    const lineText = line.translateToString(true);
 
     // 3. Regex to find "filename.ext:line" or "filename.ext:line:col"
     // This matches standard compiler/error output formats

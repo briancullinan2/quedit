@@ -55,6 +55,7 @@ function setTheme(theme) {
     localStorage.setItem('theme', theme)
     // Actually tell Ace to change its internal theme too
     editor.setTheme(theme);
+    savedTheme = theme
 }
 
 

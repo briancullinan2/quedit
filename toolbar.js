@@ -87,8 +87,7 @@ function clearToken() {
 
 function addRepoIfNotExists(newRepo) {
 
-    if(newRepo.includes('briancullinan2'))
-    {
+    if (newRepo.includes('briancullinan2')) {
         console.error('Assertion repo name is briancullinan2')
         debugger
     }
@@ -98,7 +97,7 @@ function addRepoIfNotExists(newRepo) {
 
         option.value = newRepo;
         option.textContent = newRepo;
-        option.selected = true;
+        //option.selected = true;
 
         repo.appendChild(option);
         localStorage.setItem('repositories', Array.from(repo.children).map(c => c.value).join(';'))
@@ -107,8 +106,7 @@ function addRepoIfNotExists(newRepo) {
 
 
 function addOwnerIfNotExists(newOwner) {
-    if(newOwner.includes('Quake3e'))
-    {
+    if (newOwner.includes('Quake3e')) {
         console.error('Assertion owner name is Quake3e should be briancullinan2')
         debugger
     }
@@ -137,8 +135,7 @@ async function setRepository(newRepo) {
 
     addRepoIfNotExists(newRepo)
     addOwnerIfNotExists(newOwner)
-    if(newOwner === 'Quake3e')
-    {
+    if (newOwner === 'Quake3e') {
         console.error('Assertion: newOwner set to Quake3e should be ec- or briancullinan2')
         debugger
     }
@@ -156,50 +153,56 @@ window.addEventListener('beforeunload', event => {
 
 
 let owners = localStorage.getItem('owners')?.split(';')
+updateSelectOptions(owner, owners)
+owner.value = localStorage.getItem('default_owner') || owners[0]
 let repos = localStorage.getItem('repositories')?.split(';')
-for (let o of owners || []) {
-    if (o && o.trim().length > 0)
-        addOwnerIfNotExists(o)
-}
-for (let r of repos || []) {
-    if (r && r.trim().length > 0)
-        addRepoIfNotExists(r)
-}
+updateSelectOptions(repo, repos)
+repo.value = localStorage.getItem('default_repository') || repos[0]
 
 
-function renderToolbarCommand(buttonId)
-{
+function renderToolbarCommand(buttonId) {
     let engineRepo = localStorage.getItem('engine_repository') || document.getElementById('filelist').dataset['repository'] || 'briancullinan2/Quake3e'
 
-    if(buttonId == 'compile')
-    {
-        if(configuration.value == 'tools')
+    if (buttonId == 'compile') {
+        if (configuration.value == 'tools')
             return buildTools(toolsRepo)
-        if(configuration.value == 'qvms')
+        if (configuration.value == 'qvms')
             return buildQVM(gameRepo)
         return build(engineRepo)
     }
 
-    if(buttonId == 'play')
+    if (buttonId == 'play')
         return run()
 
-    if(buttonId == 'back')
+    if (buttonId == 'back')
         return NavHistory.back()
 
-    if(buttonId == 'next')
+    if (buttonId == 'next')
         return NavHistory.forward()
 
-    if(buttonId == 'new')
+    if (buttonId == 'new')
         return newFile()
 
-    if(buttonId == 'save')
+    if (buttonId == 'save')
         return saveFile()
 
-    if(buttonId == 'settings')
+    if (buttonId == 'settings')
         return settings()
 
-    if(buttonId == 'reload')
+    if (buttonId == 'reload')
         localStorage.setItem('hot_reload', !!document.getElementById('reload').checked);
+
+    if (buttonId == 'repository')
+        localStorage.setItem('default_repository', repo.value)
+
+    if (buttonId == 'owner')
+        localStorage.setItem('default_owner', owner.value)
+
+    if(currentSession().includes('settings.json'))
+    {
+        //saveFile()
+        settings()
+    }
 
     renderTabsCommand(buttonId)
 }
@@ -231,12 +234,10 @@ configuration.addEventListener('change', async (e) => {
 
 
 
-function settings()
-{
+function settings() {
     const database = owner.value + '/' + repo.value
     const filePath = 'settings.json' + (++tempCount)
-    if(engineRepo.startsWith('Quake3e'))
-    {
+    if (engineRepo.startsWith('Quake3e')) {
         console.error('Assertion owner set to Quake3e instead of briancullinan')
         debugger
     }
@@ -249,17 +250,20 @@ function settings()
         github_token: savedToken,
         hot_reload: !!document.getElementById('reload').checked,
         repositories: Array.from(repo.children).map(c => c.value),
-        owners: Array.from(owner.children).map(c => c.value)
+        owners: Array.from(owner.children).map(c => c.value),
+        default_repository: repo.value,
+        default_owner: owner.value,
     }, null, 4)
     const newSha = getGitShaBrowser(settings)
-    files[database][filePath] = {
-        timestamp: new Date(),
-        mode: FS_FILE,
-        contents: new TextEncoder().encode(settings),
-        path: filePath,
-        sha: newSha
+    if (files[database]) {
+        files[database][filePath] = {
+            timestamp: new Date(),
+            mode: FS_FILE,
+            contents: new TextEncoder().encode(settings),
+            path: filePath,
+            sha: newSha
+        }
     }
-    
 
     const session = getOrCreateAceSession(filePath, settings);
     editor.setSession(session);
@@ -271,44 +275,41 @@ function settings()
 }
 
 
-function saveSettings(content)
-{
-    try
-    {
+function saveSettings(content) {
+    try {
         var settings = JSON.parse(content)
 
         engineRepo = settings.engine_repository
         // TODO: make this a loop
-        if(engineRepo.startsWith('Quake3e'))
-        {
+        if (engineRepo.startsWith('Quake3e')) {
             console.error('Assertion engineRepo is Quake3e should start with ec- or briancullinan2')
             debugger
         }
-        if(!engineRepo)
+        if (!engineRepo)
             localStorage.removeItem('engine_repository')
         else
             localStorage.setItem('engine_repository', engineRepo)
-        if(!document.getElementById('filelist').classList.contains('hidden'))
+        if (!document.getElementById('filelist').classList.contains('hidden'))
             setRepository(engineRepo)
 
         gameRepo = settings.game_repository
-        if(!gameRepo)
+        if (!gameRepo)
             localStorage.removeItem('game_repository')
         else
             localStorage.setItem('game_repository', gameRepo)
-        if(!document.getElementById('filelist').classList.contains('hidden'))
+        if (!document.getElementById('filelist').classList.contains('hidden'))
             setRepository(gameRepo)
-        
+
         assetRepo = settings.asset_repository
-        if(!assetRepo)
+        if (!assetRepo)
             localStorage.removeItem('asset_repository')
         else
             localStorage.setItem('asset_repository', assetRepo)
         // TODO: set whatever were viewing, filelist
-        if(!document.getElementById('filelist').classList.contains('hidden'))
+        if (!document.getElementById('filelist').classList.contains('hidden'))
             setRepository(assetRepo)
 
-        savedTheme = settings.github_token
+        savedTheme = settings.theme
         setTheme(settings.theme)
 
         savedToken = settings.github_token
@@ -316,15 +317,21 @@ function saveSettings(content)
 
         configuration.value = currentConfig = settings.configuration
         localStorage.setItem('configuration', currentConfig)
-        
+
         document.getElementById('reload').checked = !!settings.hot_reload
         localStorage.setItem('hot_reload', !!settings.hot_reload)
 
-        updateSelectOptions('owner', settings.owners)
-        updateSelectOptions('repository', settings.repositories)
+        updateSelectOptions('owner', settings.owners || [])
+        localStorage.setItem('owners', (settings.owners || []).join(';'))
+        updateSelectOptions('repository', settings.repositories || [])
+        localStorage.setItem('repositories', (settings.repositories || []).join(';'))
+        
+        localStorage.setItem('default_owner', settings.default_owner)
+        owner.value = settings.default_owner
+        localStorage.setItem('default_repository', settings.default_repository)
+        repo.value = settings.default_repository
     }
-    catch(e)
-    {
+    catch (e) {
         console.log(e)
     }
 
