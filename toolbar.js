@@ -19,7 +19,7 @@ branch.addEventListener('change', (e) => {
 
 
 function updateSelectOptions(elementId, items, selectedValue = 'main') {
-    const selector = document.getElementById(elementId);
+    const selector = elementId instanceof Element ? elementId : document.getElementById(elementId);
     if (!selector) return;
 
     // 1. Clear existing options
@@ -87,6 +87,12 @@ function clearToken() {
 
 function addRepoIfNotExists(newRepo) {
 
+    if(newRepo.includes('briancullinan2'))
+    {
+        console.error('Assertion repo name is briancullinan2')
+        debugger
+    }
+
     if (newRepo.trim().length > 0 && !document.querySelector(`#repository option[value="${newRepo}"]`)) {
         const option = document.createElement('option');
 
@@ -101,6 +107,11 @@ function addRepoIfNotExists(newRepo) {
 
 
 function addOwnerIfNotExists(newOwner) {
+    if(newOwner.includes('Quake3e'))
+    {
+        console.error('Assertion owner name is Quake3e should be briancullinan2')
+        debugger
+    }
 
     if (newOwner && newOwner.trim().length > 0 && !document.querySelector(`#owner option[value="${newOwner}"]`)) {
         const option = document.createElement('option');
@@ -222,6 +233,13 @@ configuration.addEventListener('change', async (e) => {
 
 function settings()
 {
+    const database = owner.value + '/' + repo.value
+    const filePath = 'settings.json' + (++tempCount)
+    if(engineRepo.startsWith('Quake3e'))
+    {
+        console.error('Assertion owner set to Quake3e instead of briancullinan')
+        debugger
+    }
     const settings = JSON.stringify({
         configuration: currentConfig,
         engine_repository: engineRepo,
@@ -229,10 +247,21 @@ function settings()
         asset_repository: assetRepo,
         theme: savedTheme,
         github_token: savedToken,
-        hot_reload: !!document.getElementById('reload').checked
+        hot_reload: !!document.getElementById('reload').checked,
+        repositories: Array.from(repo.children).map(c => c.value),
+        owners: Array.from(owner.children).map(c => c.value)
     }, null, 4)
+    const newSha = getGitShaBrowser(settings)
+    files[database][filePath] = {
+        timestamp: new Date(),
+        mode: FS_FILE,
+        contents: new TextEncoder().encode(settings),
+        path: filePath,
+        sha: newSha
+    }
+    
 
-    const session = getOrCreateAceSession('settings.json' + (++tempCount), settings);
+    const session = getOrCreateAceSession(filePath, settings);
     editor.setSession(session);
     editor.resize();
     editor.renderer.updateFull();
@@ -290,6 +319,9 @@ function saveSettings(content)
         
         document.getElementById('reload').checked = !!settings.hot_reload
         localStorage.setItem('hot_reload', !!settings.hot_reload)
+
+        updateSelectOptions('owner', settings.owners)
+        updateSelectOptions('repository', settings.repositories)
     }
     catch(e)
     {

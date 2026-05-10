@@ -595,7 +595,7 @@ async function build(database = null, noBounce = false) {
 
     term.write('\n\r')
 
-    await downloadHeaders(q3eCommonHeaders)
+    await downloadHeaders(q3eCommonHeaders, 10, database)
 
     //await api.upload(database)
 

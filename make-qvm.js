@@ -143,7 +143,7 @@ async function buildQVM(database = null) {
     };
 
     log("Syncing QVM Headers...");
-    await downloadHeaders(qvmHeaders);
+    await downloadHeaders(qvmHeaders, 10, database);
 
     // 2. Upload to compilation API
     await api.upload(database);

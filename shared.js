@@ -302,7 +302,7 @@ const API = (function () {
       return results;
     }
 
-    
+
     async recursiveDir(dirFd, pathStr = "") {
       // 1. Get the scratch space provided by your Wasm module
       const scratchPtr = this.exports.GetPathBuf();
@@ -1073,21 +1073,21 @@ const API = (function () {
       const wasm = options.wasm;
       const dirPath = wasm.substring(0, wasm.lastIndexOf('/'));
 
-      for(var filePath of obj instanceof Array ? obj : [obj])
-      {
-        if(!filePath) continue
+      for (var filePath of obj instanceof Array ? obj : [obj]) {
+        if (!filePath) continue
         var record = await getRecord(DB_STORE_NAME, filePath, options.database)
         this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
         this.memfs.addFile(record.path, record.contents);
       }
 
-      let syms = options.LDFLAGS.filter(f => f.startsWith('--allow-undefined-file='))
-      if(syms.length > 0)
-      {
-        let symsPath = syms[0].substring('--allow-undefined-file='.length)
-        var record = await getRecord(DB_STORE_NAME, symsPath, options.database)
-        this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
-        this.memfs.addFile(record.path, record.contents);
+      if (options.LDFLAGS) {
+        let syms = options.LDFLAGS.filter(f => f.startsWith('--allow-undefined-file='))
+        if (syms.length > 0) {
+          let symsPath = syms[0].substring('--allow-undefined-file='.length)
+          var record = await getRecord(DB_STORE_NAME, symsPath, options.database)
+          this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+          this.memfs.addFile(record.path, record.contents);
+        }
       }
 
 

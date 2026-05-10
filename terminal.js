@@ -38,11 +38,29 @@ term.onData(data => {
     }
 });
 
+
+function tokenize(input) {
+    // Regex matches words, or strings inside single/double quotes
+    const regex = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
+    const tokens = [];
+    let match;
+
+    while ((match = regex.exec(input)) !== null) {
+        // match[1] is double-quoted content, match[2] is single-quoted
+        // match[0] is the unquoted word
+        tokens.push(match[1] || match[2] || match[0]);
+    }
+    return tokens;
+}
+
+
+
 function handleCommand(command) {
-    if (command.trim() === 'help') {
+    var tokens = tokenize(command)
+    if (tokens[0] === 'help') {
         term.write('Available commands: help, clear, hello');
-    } else if (command.trim() === 'hello') {
-        term.write('Hello, Brian!');
+    } else if (tokens[0] === 'hello') {
+        term.write('Hello!');
     }
 }
 

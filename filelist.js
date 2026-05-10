@@ -76,7 +76,7 @@ async function initializeFiletrees() {
         var newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
         var newOwner = parts.length == 2 ? parts[0] : owner.value
         var branches = await getBranches(newOwner, newRepo)
-        engineRepo = newRepo + '/' + newOwner
+        engineRepo = newOwner + '/' + newRepo 
         updateSelectOptions('branch', branches)
         if (newOwner && newRepo)
             await loadGitHubTree(newOwner, newRepo, branches[0]?.name || 'main', '#filelist')
@@ -90,7 +90,7 @@ async function initializeFiletrees() {
         var newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repo.value
         var newOwner2 = parts2.length == 2 ? parts2[0] : owner.value
         var branches2 = await getBranches(newOwner2, newRepo2)
-        gameRepo = newRepo2 + '/' + newOwner2
+        gameRepo = newOwner2 + '/' + newRepo2
 
         if (newOwner2 && newRepo2)
             await loadGitHubTree(newOwner2, newRepo2, branches2[0]?.name || 'main', '#gamelist')
@@ -106,7 +106,7 @@ async function initializeFiletrees() {
         var newRepo3 = parts3.length == 2 ? parts3[1] : parts3[0] || repo.value
         var newOwner3 = parts3.length == 2 ? parts3[0] : owner.value
         var branches3 = await getBranches(newOwner3, newRepo3)
-        assetRepo = newRepo3 + '/' + newOwner3
+        assetRepo = newOwner3 + '/' + newRepo3
 
         if (newOwner3 && newRepo3)
             await loadGitHubTree(newOwner3, newRepo3, branches3[0]?.name || 'main', '#assetlist')
