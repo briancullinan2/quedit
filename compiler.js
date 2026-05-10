@@ -48,6 +48,10 @@ class WorkerAPI {
         return this.runAsync('download', options);
     }
 
+    async header(owner, repo, header, database) {
+        return this.runAsync('header', ({owner, repo, header, database}));
+    }
+
     async compile(options) {
         return this.runAsync('compile', options);
     }

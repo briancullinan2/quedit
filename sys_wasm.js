@@ -185,8 +185,12 @@ async function run(database = null, noBounce = false) {
     if(!database)
         database = owner.value + '/' + repo.value
 
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
     try {
-        let enginePath = dirs.BD + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
+        let enginePath = CONFIGURATION + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
         let record = await getRecord(DB_STORE_NAME, enginePath, database)
 
         if (!record)

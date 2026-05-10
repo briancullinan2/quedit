@@ -2,34 +2,6 @@
  * Quake3e Build Configuration Script - QVM Version
  */
 
-const path = {
-    join: (...parts) => {
-        return parts
-            .map((part, index) => {
-                if (index > 0) return part.replace(/^\//, ''); 
-                return part.replace(/\/$/, '');
-            })
-            .filter(part => part.length > 0)
-            .join('/');
-    }
-};
-
-const COMPILE_PLATFORM = 'qvm';
-const COMPILE_ARCH = 'bytecode';
-
-const config = {
-    MOD: "baseq3a",
-    BUILD_DIR: "build",
-    MOUNT_DIR: "code"
-};
-
-const dirs = {
-    BD: path.join(config.BUILD_DIR, `debug-${COMPILE_PLATFORM}`),
-    BR: path.join(config.BUILD_DIR, `release-${COMPILE_PLATFORM}`),
-    CDIR: path.join(config.MOUNT_DIR, "cgame"),
-    QADIR: path.join(config.MOUNT_DIR, "game"),
-    UIDIR: path.join(config.MOUNT_DIR, "q3_ui"),
-};
 
 // Shared files used across all modules
 const commonFiles = [
@@ -137,6 +109,12 @@ async function buildQVM(database = null) {
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
+    
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
+        
     const log = (msg) => {
         if (typeof term !== 'undefined') term.write(`\x1b[36m[QVM-BUILD]\x1b[0m ${msg}\r\n`);
         else console.log(msg);

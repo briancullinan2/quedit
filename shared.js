@@ -184,7 +184,7 @@ const API = (function () {
       this.exports.AddDirectoryNode(path.length);
     }
 
-    directoryExists(path) {
+    exists(path) {
       try {
         this.mem.check();
         this.mem.write(this.exports.GetPathBuf(), path);
@@ -215,7 +215,7 @@ const API = (function () {
           // We call the Wasm export to create the directory node
           // Note: If your Wasm AddDirectoryNode asserts on existing dirs, 
           // you'll need to check existence first or wrap this in a try/catch.
-          if (!this.directoryExists(currentPath))
+          if (!this.exists(currentPath))
             this.exports.AddDirectoryNode(currentPath.length);
         } catch (e) {
           // Log only if it's a real crash, not just an "already exists" error
@@ -970,6 +970,19 @@ const API = (function () {
     }
 
 
+    async header(options) {
+      await this.ready;
+      let filePath = options.header
+      let record = await getRecord(DB_STORE_NAME, filePath, options.database)
+      if (!record) return
+
+      const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
+      this.memfs.mkdirp(fileDir)
+
+      this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+      this.memfs.addFile(record.path, record.contents);
+    }
+
     async upload(database) {
       await this.ready;
       await readAll(database, this.loadEntry.bind(this))
@@ -1016,8 +1029,13 @@ const API = (function () {
       const dirPath = obj.substring(0, obj.lastIndexOf('/'));
 
       await this.ready;
+
+      if (!this.memfs.exists('tmp'))
+        this.memfs.mkdirp('tmp')
+
+      this.memfs.mkdirp(dirPath)
       this.memfs.mkdirp(inDir)
-      if(input && contents)
+      if (input && contents)
         this.memfs.addFile(input, contents);
 
 
@@ -1025,12 +1043,17 @@ const API = (function () {
       if (options.CFLAGS) {
         for (var filePath of options.CFLAGS) {
           if (!filePath) continue
+          if (this.memfs.exists(filePath)) continue
           try {
             if (filePath.startsWith('--allow-undefined-file=')) {
               filePath = syms[0].substring('--allow-undefined-file='.length)
             }
             var record = await getRecord(DB_STORE_NAME, filePath, options.database)
-            if(!record) continue
+            if (!record) continue
+
+            const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
+            this.memfs.mkdirp(fileDir)
+
             this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
             this.memfs.addFile(record.path, record.contents);
           } catch (e) {
@@ -1040,7 +1063,6 @@ const API = (function () {
       }
 
 
-      this.memfs.mkdirp(dirPath)
       const clang = await this.getModule(this.clangFilename);
       var result = await this.run(clang, 'clang', ...options.CFLAGS || []);
       var bytes = this.memfs.getFileContents(obj)
@@ -1063,7 +1085,7 @@ const API = (function () {
       const opt = options.opt || '2';
 
       await this.ready;
-      if(input && contents)
+      if (input && contents)
         this.memfs.addFile(input, contents);
 
       const clang = await this.getModule(this.clangFilename);
@@ -1092,15 +1114,23 @@ const API = (function () {
       const obj = options.obj;
       const wasm = options.wasm;
       const dirPath = wasm.substring(0, wasm.lastIndexOf('/'));
-      
-      
+
       await this.ready;
+
+      this.memfs.mkdirp(dirPath)
+
       const lld = await this.getModule(this.lldFilename);
 
       for (var filePath of obj instanceof Array ? obj : [obj]) {
         if (!filePath) continue
         try {
           var record = await getRecord(DB_STORE_NAME, filePath, options.database)
+          if (!record) continue
+
+          const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
+          this.memfs.mkdirp(fileDir)
+
+
           this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
           this.memfs.addFile(record.path, record.contents);
         } catch (e) {
@@ -1111,12 +1141,17 @@ const API = (function () {
       if (options.LDFLAGS) {
         for (var filePath of options.LDFLAGS) {
           if (!filePath) continue
+          if (this.memfs.exists(filePath)) continue
           try {
             if (filePath.startsWith('--allow-undefined-file=')) {
               filePath = filePath.substring('--allow-undefined-file='.length)
             }
             var record = await getRecord(DB_STORE_NAME, filePath, options.database)
-            if(!record) continue
+            if (!record) continue
+
+            const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
+            this.memfs.mkdirp(fileDir)
+
             this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
             this.memfs.addFile(record.path, record.contents);
           } catch (e) {
@@ -1130,8 +1165,7 @@ const API = (function () {
       //const libdir = 'lib/wasm32-wasi';
       //const crt1 = `${libdir}/crt1.o`;
 
-      
-      this.memfs.mkdirp(dirPath)
+
       var result = await this.run(
         lld, 'wasm-ld', ...options.LDFLAGS || [])
       var bytes = this.memfs.getFileContents(wasm)

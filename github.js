@@ -67,30 +67,17 @@ async function getBranches(repoOwner, repoName) {
 }
 
 
-let github = {}
-let trees = {}
-let files = {}
-
-async function loadGitHubTree(repoOwner, repoName, branch, selector) {
-
+async function loadGitHubTree(repoOwner, repoName, branch) {
+    
     try {
         let database = repoOwner + '/' + repoName
         const data = await githubRequest(repoOwner, repoName, `git/trees/${branch}?recursive=1`);
 
         // Transform the flat GitHub 'tree' array into nested children
-        github[selector] = data.tree;
-        files[selector] = files[database] = github[selector].reduce((obj, a, i, arr) => {
+       files[database] = data.tree.reduce((obj, a, i, arr) => {
             obj[a.path] = a
             return obj
         }, {})
-
-        // Initialize Tree.js with the transformed data
-        // Note: Use 'data' property instead of 'url' to provide the object directly
-        trees[selector] = trees[database] = new Tree(selector, {
-            data: convertFlatToNested(github[selector]),
-            autoOpen: false,
-            closeDepth: 2,
-        });
 
         var databases = await getDatabaseMetadata()
         if (databases.filter(d => d.key == database).length == 0
@@ -99,10 +86,38 @@ async function loadGitHubTree(repoOwner, repoName, branch, selector) {
             await setupDatabase(database, DB_SCHEME)
         }
 
+        return files[database]
+    } catch (error) {
+        console.error('Failed to load GitHub tree:', error);
+    }
+
+}
+
+
+
+let github = {}
+let trees = {}
+let files = {}
+
+async function loadFileTree(repoOwner, repoName, branch, selector) {
+
+    try {
+        let database = repoOwner + '/' + repoName
+
+        files[selector] = await loadGitHubTree(repoOwner, repoName, branch)
+
+        // Initialize Tree.js with the transformed data
+        // Note: Use 'data' property instead of 'url' to provide the object directly
+        trees[selector] = trees[database] = new Tree(selector, {
+            data: convertFlatToNested(Object.values(files[selector])),
+            autoOpen: false,
+            closeDepth: 2,
+        });
+
         //downloadRepoZip(repoOwner, repoName, branch)
 
     } catch (error) {
-        console.error('Failed to load GitHub tree:', error);
+        console.error('Failed to load file list tree:', error);
     }
 }
 

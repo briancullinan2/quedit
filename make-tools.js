@@ -4,28 +4,13 @@
  */
 
 
-// TODO: run this directly from shared.js upon missing tooling
-// TODO: needs github keys to grab .c files
-
-const COMPILE_PLATFORM = 'wasm'; // Or your target platform
-const COMPILE_ARCH = 'js';
-
-const config = {
-    BUILD_DIR: "build",
-    MOUNT_DIR: "code/tools", // Path to the tools source
-    TEMPDIR: "/tmp"
-};
-
-const dirs = {
-    BD: path.join(config.BUILD_DIR, `tools-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
-};
 
 // Tool-specific subdirectories
 const toolDirs = {
-    RCC: path.join(dirs.BD, "rcc"),
-    LBURG: path.join(dirs.BD, "lburg"),
-    CPP: path.join(dirs.BD, "cpp"),
-    ETC: path.join(dirs.BD, "etc")
+    RCC: 'rcc',
+    LBURG: 'lburg',
+    CPP: 'cpp',
+    ETC: 'etc'
 };
 
 // --- Object Arrays ---
@@ -53,12 +38,50 @@ const lccFiles = [
 ];
 
 const LCC_CFLAGS = [
+    '-cc1',
+    '-emit-obj',
+    '-triple', 'wasm32-wasi',
+
+    "-isysroot", "/",
+    '-internal-isystem', '/include/c++/v1',
+    "-internal-isystem", "/include",
+    "-internal-isystem", "/lib/clang/8.0.1/include", // Path varies by your Clang version
+
     "-O2",
     "-Wall",
-    "-fno-strict-aliasing",
+    "-Wno-dangling-else",
+    '-ferror-limit', '100',
+    //'-c',
+    //"-fno-strict-aliasing",
+    "-D_XOPEN_SOURCE=700",
+    "-D__wasi__=1",
+    "-std=gnu11",
+
+    '-disable-free',
+    '-fno-common',
     "-Isrc",
     ...(COMPILE_PLATFORM === 'darwin' ? ["-DMACOS_X"] : [])
 ];
+
+
+const lccToolHeaders = [
+    // src
+    "src/c.h",
+    "src/config.h",
+    "src/token.h",
+    "src/ops.h",
+
+    // cpp
+    "cpp/cpp.h",
+
+    // lburg
+    "lburg/lburg.h",
+
+    // etc
+    //"etc/lcc.h"
+];
+
+
 
 // --- Build Logic ---
 
@@ -68,6 +91,15 @@ async function buildTools(database = null) {
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
 
+    let BRANCH = await getDefaultBranch(ownerName, repoName)
+    let FILELIST = await loadGitHubTree(ownerName, repoName, BRANCH)
+
+
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
+
     const log = (msg) => {
         if (typeof term !== 'undefined') term.write(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
         else console.log(msg);
@@ -76,11 +108,14 @@ async function buildTools(database = null) {
     // Helper to compile a single tool component
     const compileToolFile = async (src, obj, includeDir, extraFlags = []) => {
         try {
-            const sha = files['#filelist'][src].sha;
+            const sha = FILELIST[src].sha;
             const content = await cacheFile(ownerName, repoName, src, sha);
 
             await api.compile({
-                CFLAGS: [...LCC_CFLAGS, `-I${includeDir}`, ...extraFlags],
+                CFLAGS: [
+                    ...LCC_CFLAGS, `-I${includeDir}`, ...extraFlags,
+                    '-o', obj, src
+                ],
                 contents: content,
                 width: term.cols,
                 input: src,
@@ -96,66 +131,115 @@ async function buildTools(database = null) {
 
     log("Starting Toolchain Build...");
 
+    await downloadHeaders(lccToolHeaders, 10, database)
+
+
     // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
     log("Building LBURG...");
     const lburgObjs = [];
     for (const file of lburgFiles) {
-        const src = path.join("lburg", file.replace('.o', '.c'));
-        const obj = path.join(toolDirs.LBURG, file);
-        lburgObjs.push(await compileToolFile(src, obj, "lburg"));
+        try {
+
+            const src = path.join("lburg", file.replace('.o', '.c'));
+            const obj = path.join(CONFIGURATION + '/' + toolDirs.LBURG, file);
+            lburgObjs.push(await compileToolFile(src, obj, "lburg"));
+        } catch (e) {
+            console.log(e)
+        }
     }
-    const lburgExe = path.join(dirs.BD, "lburg");
-    await api.link({ LDFLAGS: ["-o", lburgExe], obj: lburgObjs, database, wasm: lburgExe });
+    const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
+    await api.link({
+        LDFLAGS: [
+            ...baseLdFlags,
+            "-o", lburgExe,
+            ...lburgObjs,
+            ...includeFlags
+        ], obj: lburgObjs, database, wasm: lburgExe
+    });
 
     // 2. Build RCC (The Compiler Core)
     log("Building RCC...");
     const rccObjs = [];
     for (const file of rccFiles) {
-        const obj = path.join(toolDirs.RCC, file);
-        if (file === 'dagcheck.o') {
-            // Special case: Generate dagcheck.c using lburg
-            log("Generating dagcheck.c via lburg...");
-            const dagMd = "src/dagcheck.md";
-            const dagC = path.join(toolDirs.RCC, "dagcheck.c");
-            
-            // Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
-            await api.run({
-                tool: lburgExe,
-                args: [dagMd, dagC],
-                database
-            });
-            
-            rccObjs.push(await compileToolFile(dagC, obj, "src", ["-Wno-unused"]));
-        } else {
-            const src = path.join("src", file.replace('.o', '.c'));
-            rccObjs.push(await compileToolFile(src, obj, "src"));
+        const obj = path.join(CONFIGURATION + '/' + toolDirs.RCC, file);
+        try {
+            if (file === 'dagcheck.o') {
+                // Special case: Generate dagcheck.c using lburg
+                log("Generating dagcheck.c via lburg...");
+                const dagMd = "src/dagcheck.md";
+                const dagC = path.join(CONFIGURATION + '/' + toolDirs.RCC, "dagcheck.c");
+
+                // Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
+                await api.run({
+                    tool: lburgExe,
+                    args: [dagMd, dagC],
+                    database
+                });
+
+                rccObjs.push(await compileToolFile(dagC, obj, "src", ["-Wno-unused"]));
+            } else {
+                const src = path.join("src", file.replace('.o', '.c'));
+                rccObjs.push(await compileToolFile(src, obj, "src"));
+            }
+        } catch (e) {
+            console.log(e)
         }
     }
-    const rccExe = path.join(dirs.BD, "q3rcc");
-    await api.link({ LDFLAGS: ["-o", rccExe], obj: rccObjs, database, wasm: rccExe });
+    const rccExe = path.join(CONFIGURATION, "q3rcc" + config.BINEXT);
+    await api.link({
+        LDFLAGS: [
+            ...baseLdFlags,
+            "-o", rccExe,
+            ...rccObjs,
+            ...includeFlags
+        ], obj: rccObjs, database, wasm: rccExe
+    });
 
     // 3. Build CPP (Preprocessor)
     log("Building CPP...");
     const cppObjs = [];
     for (const file of cppFiles) {
-        const src = path.join("cpp", file.replace('.o', '.c'));
-        const obj = path.join(toolDirs.CPP, file);
-        cppObjs.push(await compileToolFile(src, obj, "cpp"));
+        try {
+            const src = path.join("cpp", file.replace('.o', '.c'));
+            const obj = path.join(CONFIGURATION + '/' + toolDirs.CPP, file);
+            cppObjs.push(await compileToolFile(src, obj, "cpp"));
+        } catch (e) {
+            console.log(e)
+        }
     }
-    const cppExe = path.join(dirs.BD, "q3cpp");
-    await api.link({ LDFLAGS: ["-o", cppExe], obj: cppObjs, database, wasm: cppExe });
+    const cppExe = path.join(CONFIGURATION, "q3cpp" + config.BINEXT);
+    await api.link({
+        LDFLAGS: [
+            ...baseLdFlags,
+            "-o", cppExe,
+            ...cppObjs,
+            ...includeFlags
+
+        ], obj: cppObjs, database, wasm: cppExe
+    });
 
     // 4. Build LCC (Frontend)
     log("Building LCC...");
     const lccObjs = [];
     for (const file of lccFiles) {
-        const src = path.join("etc", file.replace('.o', '.c'));
-        const obj = path.join(toolDirs.ETC, file);
-        const lccFlags = [`-DTEMPDIR=\"${config.TEMPDIR}\"`, `-DSYSTEM=\"\"`];
-        lccObjs.push(await compileToolFile(src, obj, "src", lccFlags));
+        try {
+            const src = path.join("etc", file.replace('.o', '.c'));
+            const obj = path.join(CONFIGURATION + '/' + toolDirs.ETC, file);
+            const lccFlags = [`-DTEMPDIR=\"${config.TEMPDIR}\"`, `-DSYSTEM=\"\"`];
+            lccObjs.push(await compileToolFile(src, obj, "src", lccFlags));
+        } catch (e) {
+            console.log(e)
+        }
     }
-    const lccExe = path.join(dirs.BD, "q3lcc");
-    await api.link({ LDFLAGS: ["-o", lccExe], obj: lccObjs, database, wasm: lccExe });
+    const lccExe = path.join(CONFIGURATION, "q3lcc" + config.BINEXT);
+    await api.link({
+        LDFLAGS: [
+            ...baseLdFlags,
+            "-o", lccExe,
+            ...lccObjs,
+            ...includeFlags
+        ], obj: lccObjs, database, wasm: lccExe
+    });
 
     log("Toolchain build complete.");
 }
@@ -177,7 +261,6 @@ const Q3ASM_CFLAGS = [
     "-Wall",
     "-Werror",
     "-fno-strict-aliasing",
-    ...(COMPILE_PLATFORM === 'darwin' ? ["-DMACOS_X=1"] : [])
 ];
 
 /**
@@ -185,11 +268,16 @@ const Q3ASM_CFLAGS = [
  */
 async function buildAsmTool(database = null) {
     if (!database) database = owner.value + '/' + repo.value;
-    
+
     const log = (msg) => {
         if (typeof term !== 'undefined') term.write(`\x1b[35m[Q3ASM-BUILD]\x1b[0m ${msg}\r\n`);
         else console.log(msg);
     };
+
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
 
     log("Building q3asm...");
 
@@ -198,15 +286,18 @@ async function buildAsmTool(database = null) {
 
     for (const file of q3asmFiles) {
         const src = path.join(toolSourceDir, file);
-        const obj = path.join(dirs.BD, file.replace('.c', '.o'));
+        const obj = path.join(CONFIGURATION, file.replace('.c', '.o'));
 
         try {
-            const sha = files['#filelist'][src].sha;
+            const sha = files[database][src].sha;
             const content = await cacheFile(ownerName, repoName, src, sha);
 
             log(`CC: ${file}`);
             await api.compile({
-                CFLAGS: QVM_CFLAGS,
+                CFLAGS: [
+                    ...QVM_CFLAGS,
+                    '-o', obj, src
+                ],
                 contents: content,
                 width: term.cols,
                 input: src,
@@ -219,12 +310,17 @@ async function buildAsmTool(database = null) {
         }
     }
 
-    const q3asmExe = path.join(dirs.BD, "q3asm");
-    
+    const q3asmExe = path.join(CONFIGURATION, "q3asm" + config.BINEXT);
+
     try {
         log("Linking q3asm...");
         await api.link({
-            LDFLAGS: ["-o", q3asmExe],
+            LDFLAGS: [
+                ...baseLdFlags,
+                "-o", q3asmExe,
+                ...objs,
+                ...includeFlags
+            ],
             obj: objs,
             database,
             wasm: q3asmExe

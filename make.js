@@ -20,6 +20,9 @@ const path = {
 const COMPILE_PLATFORM = 'wasm';
 const COMPILE_ARCH = 'js';
 
+const GAME_PLATFORM = 'qvm';
+const GAME_ARCH = 'bytecode';
+
 const config = {
     BUILD_CLIENT: 1,
     BUILD_SERVER: 1,
@@ -36,11 +39,20 @@ const config = {
     DNAME: "quake3e.ded",
     MOUNT_DIR: "code",
     BUILD_DIR: "build",
+    BINEXT: `.${COMPILE_ARCH}.${COMPILE_PLATFORM}`
 };
 
 const dirs = {
-    BD: path.join(config.BUILD_DIR, `debug-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
-    BR: path.join(config.BUILD_DIR, `release-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
+    ENGINE_DEBUG: path.join(config.BUILD_DIR, `debug-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
+    ENGINE_RELEASE: path.join(config.BUILD_DIR, `release-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
+    
+    GAME_DEBUG: path.join(config.BUILD_DIR, `debug-${GAME_PLATFORM}-${GAME_ARCH}`),
+    GAME_RELEASE: path.join(config.BUILD_DIR, `release-${GAME_PLATFORM}-${GAME_ARCH}`),
+
+    CDIR: path.join(config.MOUNT_DIR, "cgame"),
+    QADIR: path.join(config.MOUNT_DIR, "game"),
+    UIDIR: path.join(config.MOUNT_DIR, "q3_ui"),
+
     CDIR: path.join(config.MOUNT_DIR, "client"),
     SDIR: path.join(config.MOUNT_DIR, "server"),
     CMDIR: path.join(config.MOUNT_DIR, "qcommon"),
@@ -530,8 +542,8 @@ async function build(database = null, noBounce = false) {
     building = true
 
     let CONFIGURATION = configuration.value == 'release'
-        ? dirs.BR
-        : dirs.BD
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
 
     let DEBUG_CFLAGS =  configuration.value != 'debug'
         ? ['-DNDEBUG', '-O3', '-ffast-math']
@@ -589,7 +601,13 @@ async function build(database = null, noBounce = false) {
         path: '/home'
     }
     await putRecord(DB_STORE_NAME, FS.virtual['/home'], database)
-    
+    FS.virtual['/tmp'] = {
+        timestamp: new Date(),
+        mode: 16877, // ST_DIR + standard permissions
+        path: '/tmp'
+    };
+    await putRecord(DB_STORE_NAME, FS.virtual['/tmp'], database)
+
     /*
     console.log('sync started at ', new Date())
 
@@ -627,7 +645,9 @@ async function build(database = null, noBounce = false) {
                 "-std=gnu11",
                 ...DEBUG_CFLAGS,
                 ...PRE,
-                '-o', CONFIGURATION + '/stringify.o',
+                ...(configuration.value == 'pre' ? [
+                    '-o', CONFIGURATION + '/stringify.a',
+                ] : ['-o', CONFIGURATION + '/stringify.o']),
                 stringify
             ],
             contents: content,
@@ -646,12 +666,12 @@ async function build(database = null, noBounce = false) {
             LDFLAGS: [
                 ...baseLdFlags,
                 CONFIGURATION + '/stringify.o',
-                '-o', CONFIGURATION + '/stringify.js.wasm',
+                '-o', CONFIGURATION + '/stringify' + config.BINEXT,
                 ...includeFlags
             ],
             obj: [CONFIGURATION + '/stringify.o'],
             database,
-            wasm: CONFIGURATION + '/stringify.js.wasm'
+            wasm: CONFIGURATION + '/stringify' + config.BINEXT
         })
     } catch (e) {
         console.error(e)
@@ -670,8 +690,11 @@ async function build(database = null, noBounce = false) {
 
             term.write('\n\r')
             let CCFLAGS = [
-                ...CFLAGS, ...DEBUG_CFLAGS, ...PRE,
-                '-o', obj,
+                ...CFLAGS, ...DEBUG_CFLAGS, 
+                ...PRE,
+                ...(configuration.value == 'pre' ? [
+                    '-o', CONFIGURATION + '/' + file.replace('.c', '.a')
+                ] : ['-o', obj]),
                 file
             ]
             if (file.includes('botlib'))
@@ -749,13 +772,13 @@ async function build(database = null, noBounce = false) {
             LDFLAGS: [
                 ...LDFLAGS,
                 ...(objs instanceof Array ? objs : [objs]),
-                '-o', CONFIGURATION + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM,
+                '-o', CONFIGURATION + '/' + config.CNAME + config.BINEXT,
                 ...includeFlags
             ],
             width: term.cols,
             obj: objs,
             database,
-            wasm: CONFIGURATION + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
+            wasm: CONFIGURATION + '/' + config.CNAME + config.BINEXT
         })
     } catch (e) {
         console.error(e)
@@ -784,6 +807,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                 // cacheFile handles the storage logic
                 let sha = files[database][header].sha
                 await cacheFile(ownerName, repoName, header, sha);
+                await api.header(ownerName, repoName, header, database)
             } catch (e) {
                 console.warn(`Failed to cache ${header}:`, e);
             }

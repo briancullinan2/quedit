@@ -79,7 +79,7 @@ async function initializeFiletrees() {
         engineRepo = newOwner + '/' + newRepo 
         updateSelectOptions('branch', branches)
         if (newOwner && newRepo)
-            await loadGitHubTree(newOwner, newRepo, branches[0]?.name || 'main', '#filelist')
+            await loadFileTree(newOwner, newRepo, branches[0]?.name || 'main', '#filelist')
     }
 
     gameRepo = localStorage.getItem('game_repository');
@@ -93,7 +93,7 @@ async function initializeFiletrees() {
         gameRepo = newOwner2 + '/' + newRepo2
 
         if (newOwner2 && newRepo2)
-            await loadGitHubTree(newOwner2, newRepo2, branches2[0]?.name || 'main', '#gamelist')
+            await loadFileTree(newOwner2, newRepo2, branches2[0]?.name || 'main', '#gamelist')
     }
 
 
@@ -109,7 +109,7 @@ async function initializeFiletrees() {
         assetRepo = newOwner3 + '/' + newRepo3
 
         if (newOwner3 && newRepo3)
-            await loadGitHubTree(newOwner3, newRepo3, branches3[0]?.name || 'main', '#assetlist')
+            await loadFileTree(newOwner3, newRepo3, branches3[0]?.name || 'main', '#assetlist')
 
     }
 

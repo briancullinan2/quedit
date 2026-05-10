@@ -12,16 +12,27 @@ window.addEventListener('resize', () => {
 
     updateMaxLines()
 });
+let history = [];
+let historyIndex = -1;
 let currentLine = '';
 
 term.onData(async data => {
     switch (data) {
         case '\r': // Enter
+            if (currentLine.trim().length > 0) {
+                history.push(currentLine); // Save to history
+                historyIndex = -1; // Reset index
+            }
             term.write('\r\n');
-            await handleCommand(currentLine);
+            try {
+                await handleCommand(currentLine);
+            } catch (e) {
+                term.write(e)
+            }
             currentLine = ''; // Reset the buffer
             term.write('\r\n> '); // New prompt
             break;
+
         case '\u007f': // Backspace (DEL)
             if (currentLine.length > 0) {
                 currentLine = currentLine.slice(0, -1);
@@ -29,6 +40,28 @@ term.onData(async data => {
                 term.write('\b \b');
             }
             break;
+
+        case '\u001b[A': // Up Arrow
+            if (history.length > 0) {
+                if (historyIndex === -1) historyIndex = history.length - 1;
+                else if (historyIndex > 0) historyIndex--;
+
+                updateLineFromHistory();
+            }
+            break;
+
+        case '\u001b[B': // Down Arrow
+            if (historyIndex !== -1) {
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    updateLineFromHistory();
+                } else {
+                    historyIndex = -1;
+                    updateLineFromHistory(""); // Clear if we go past the end
+                }
+            }
+            break;
+
         default: // Standard typing
             // Only echo and buffer printable characters
             if (data >= String.fromCharCode(0x20) && data <= String.fromCharCode(0x7e)) {
@@ -73,17 +106,22 @@ async function handleCommand(input) {
 
         build: (argv) => {
             const mode = argv[0] || 'release';
+
+            if (configuration.querySelector(`[value="${mode}"]`))
+                configuration.value = mode
+            else if (mode) {
+                let modes = Array.from(configuration.children).map(m => m.value)
+                term.write(`Valid modes ${modes.join('|')}: ${mode} given.`);
+                return;
+            }
+
             term.write(`Starting ${mode} build...`);
-            // Trigger your build logic here
-            if (configuration.querySelector(`[value="${argv[0]}"]`))
-                configuration.value = argv[0]
-
             if (configuration.value === 'qvms')
-                return buildQVM(argv[1] || database)
+                return buildQVM(argv[1] || gameRepo || database)
             if (configuration.value === 'tools')
-                return buildTools(argv[1] || database)
+                return buildTools(argv[1] || toolsRepo || database)
 
-            build(argv[1] || database);
+            build(argv[1] || engineRepo || database);
         },
         compile: (argv) => commands['build'](argv),
         clang: async (argv) => {
@@ -300,4 +338,15 @@ terminalContainer.addEventListener('mousedown', async (event) => {
         editor.focus();
     }
 });
+
+function updateLineFromHistory(specificValue = null) {
+    // 1. Erase current line in terminal: Move to start, clear to end
+    term.write('\r\x1b[K> '); 
+    
+    // 2. Update the buffer
+    currentLine = specificValue !== null ? specificValue : history[historyIndex];
+    
+    // 3. Write the new line
+    term.write(currentLine);
+}
 
