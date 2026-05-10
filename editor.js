@@ -35,6 +35,7 @@ var theme = document.getElementById('theme')
 var editor = ace.edit("editor");
 editor.session.setUseWorker(false);
 editor.session.setMode("ace/mode/c_cpp");
+updateMaxLines()
 
 setTimeout(() => {
     savedTheme = localStorage.getItem('theme');

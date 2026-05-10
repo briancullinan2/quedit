@@ -250,3 +250,30 @@ async function listReleases(owner, repo) {
     }
 }
 
+async function getAuthenticatedUser() {
+    const token = localStorage.getItem('github_token');
+    if (!token) return null;
+
+    try {
+        const response = await fetch('https://api.github.com/user', {
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+
+        if (response.status === 401) {
+            console.error("Token is invalid or expired.");
+            return null;
+        }
+
+        const userData = await response.json();
+        console.log(`Authenticated as: ${userData.login}`);
+        
+        // You can now use userData.avatar_url, userData.name, etc.
+        return userData;
+    } catch (err) {
+        console.error("Failed to fetch user data:", err);
+    }
+}
+

@@ -198,7 +198,9 @@ function renderToolbarCommand(buttonId) {
     if (buttonId == 'owner')
         localStorage.setItem('default_owner', owner.value)
 
-    if(currentSession().includes('settings.json'))
+
+    let filename = currentSession()
+    if(filename?.includes('settings.json'))
     {
         //saveFile()
         settings()

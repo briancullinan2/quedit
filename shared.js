@@ -1017,14 +1017,32 @@ const API = (function () {
 
       await this.ready;
       this.memfs.mkdirp(inDir)
-      this.memfs.addFile(input, contents);
+      if(input && contents)
+        this.memfs.addFile(input, contents);
+
+
+
+      if (options.CFLAGS) {
+        for (var filePath of options.CFLAGS) {
+          if (!filePath) continue
+          try {
+            if (filePath.startsWith('--allow-undefined-file=')) {
+              filePath = syms[0].substring('--allow-undefined-file='.length)
+            }
+            var record = await getRecord(DB_STORE_NAME, filePath, options.database)
+            if(!record) continue
+            this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+            this.memfs.addFile(record.path, record.contents);
+          } catch (e) {
+            console.log(e)
+          }
+        }
+      }
+
+
       this.memfs.mkdirp(dirPath)
       const clang = await this.getModule(this.clangFilename);
-      var result = await this.run(clang, 'clang',
-        ...options.CFLAGS || [],
-        '-fmessage-length', '' + (options.width || '80'),
-        '-o', obj,
-        input);
+      var result = await this.run(clang, 'clang', ...options.CFLAGS || []);
       var bytes = this.memfs.getFileContents(obj)
       var newFile = {
         timestamp: new Date(),
@@ -1045,7 +1063,9 @@ const API = (function () {
       const opt = options.opt || '2';
 
       await this.ready;
-      this.memfs.addFile(input, contents);
+      if(input && contents)
+        this.memfs.addFile(input, contents);
+
       const clang = await this.getModule(this.clangFilename);
       await this.run(clang, 'clang', '-cc1', '-S',
         `-triple=${triple}`, '-mllvm',
@@ -1072,38 +1092,48 @@ const API = (function () {
       const obj = options.obj;
       const wasm = options.wasm;
       const dirPath = wasm.substring(0, wasm.lastIndexOf('/'));
+      
+      
+      await this.ready;
+      const lld = await this.getModule(this.lldFilename);
 
       for (var filePath of obj instanceof Array ? obj : [obj]) {
         if (!filePath) continue
-        var record = await getRecord(DB_STORE_NAME, filePath, options.database)
-        this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
-        this.memfs.addFile(record.path, record.contents);
+        try {
+          var record = await getRecord(DB_STORE_NAME, filePath, options.database)
+          this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+          this.memfs.addFile(record.path, record.contents);
+        } catch (e) {
+          console.log(e)
+        }
       }
 
       if (options.LDFLAGS) {
-        let syms = options.LDFLAGS.filter(f => f.startsWith('--allow-undefined-file='))
-        if (syms.length > 0) {
-          let symsPath = syms[0].substring('--allow-undefined-file='.length)
-          var record = await getRecord(DB_STORE_NAME, symsPath, options.database)
-          this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
-          this.memfs.addFile(record.path, record.contents);
+        for (var filePath of options.LDFLAGS) {
+          if (!filePath) continue
+          try {
+            if (filePath.startsWith('--allow-undefined-file=')) {
+              filePath = filePath.substring('--allow-undefined-file='.length)
+            }
+            var record = await getRecord(DB_STORE_NAME, filePath, options.database)
+            if(!record) continue
+            this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+            this.memfs.addFile(record.path, record.contents);
+          } catch (e) {
+            console.log(e)
+          }
         }
       }
 
 
-      const libdir = 'lib/wasm32-wasi';
-      const crt1 = `${libdir}/crt1.o`;
-      await this.ready;
-      const lld = await this.getModule(this.lldFilename);
+
+      //const libdir = 'lib/wasm32-wasi';
+      //const crt1 = `${libdir}/crt1.o`;
+
+      
       this.memfs.mkdirp(dirPath)
       var result = await this.run(
-        lld, 'wasm-ld', '--no-threads',
-        ...options.LDFLAGS || [],
-        '--export-dynamic',  // TODO required?
-        '-z', `stack-size=${stackSize}`, `-L${libdir}`, crt1,
-        ...(obj instanceof Array ? obj : [obj]),
-        '-lc',
-        '-lc++', '-lc++abi', '-lcanvas', '-o', wasm)
+        lld, 'wasm-ld', ...options.LDFLAGS || [])
       var bytes = this.memfs.getFileContents(wasm)
       var newFile = {
         timestamp: new Date(),
@@ -1137,7 +1167,7 @@ const API = (function () {
       const input = `test.cc`;
       const obj = `test.o`;
       const wasm = `test.wasm`;
-      await this.compile({ input, contents: options.contents, obj, width: options.width });
+      await this.compile({ input, contents: options.contents, obj });
       await this.link({ obj, wasm });
 
       const buffer = this.memfs.getFileContents(wasm);

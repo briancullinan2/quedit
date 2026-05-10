@@ -1,5 +1,5 @@
 
-var term = new Terminal({convertEol: true});
+var term = new Terminal({ convertEol: true });
 term.open(document.getElementById('terminal'));
 
 const container = document.getElementById('terminal');
@@ -14,11 +14,11 @@ window.addEventListener('resize', () => {
 });
 let currentLine = '';
 
-term.onData(data => {
+term.onData(async data => {
     switch (data) {
         case '\r': // Enter
             term.write('\r\n');
-            handleCommand(currentLine);
+            await handleCommand(currentLine);
             currentLine = ''; // Reset the buffer
             term.write('\r\n> '); // New prompt
             break;
@@ -54,15 +54,74 @@ function tokenize(input) {
 }
 
 
+async function handleCommand(input) {
+    const database = owner.value + '/' + repo.value
+    const tokens = tokenize(input.trim());
+    if (tokens.length === 0) return;
 
-function handleCommand(command) {
-    var tokens = tokenize(command)
-    if (tokens[0] === 'help') {
-        term.write('Available commands: help, clear, hello');
-    } else if (tokens[0] === 'hello') {
-        term.write('Hello!');
+    const [command, ...args] = tokens;
+
+    const commands = {
+        help: () => {
+            term.write('Available commands: help, clear, build, set');
+        },
+        hello: async (argv) => {
+            const name = argv[0] || 'User';
+            let user = (await getAuthenticatedUser()).login
+            term.write(`Hello, ${user || name}!`);
+        },
+
+        build: (argv) => {
+            const mode = argv[0] || 'release';
+            term.write(`Starting ${mode} build...`);
+            // Trigger your build logic here
+            if (configuration.querySelector(`[value="${argv[0]}"]`))
+                configuration.value = argv[0]
+
+            if (configuration.value === 'qvms')
+                return buildQVM(argv[1] || database)
+            if (configuration.value === 'tools')
+                return buildTools(argv[1] || database)
+
+            build(argv[1] || database);
+        },
+        compile: (argv) => commands['build'](argv),
+        clang: async (argv) => {
+            let file = currentSession()
+            return await api.compile({
+                CFLAGS: argv,
+                contents: editor.getValue(),
+                width: term.cols,
+                input: file,
+                database,
+                obj: CONFIGURATION + '/' + file.replace('.c', '.o')
+            })
+        },
+        'lcc': (argv) => commands['clang'](argv),
+        'rcc': (argv) => commands['clang'](argv),
+        'ld': (argv) => commands['clang'](argv),
+        'cc1': (argv) => commands['clang'](argv),
+        'as': (argv) => commands['clang'](argv),
+        'cpp': (argv) => commands['clang'](argv),
+        'clang++': (argv) => commands['clang'](argv),
+        'wasm-ld': async (argv) => {
+            return await api.link({
+                LDFLAGS: argv,
+                database,
+            })
+        },
+        reser: () => term.reset(),
+        clear: () => term.clear(),
+
+    };
+
+    if (commands[command]) {
+        await commands[command](args);
+    } else {
+        term.write(`Command not found: ${command}`);
     }
 }
+
 
 // Initial prompt
 //term.write('> ');
@@ -84,16 +143,16 @@ function forceFit(term, container) {
     const width = window.document.body.clientWidth - scrollbarWidth
         - (window.document.body.clientWidth < 800 ? 60 : 0);
     const height = width >= 800
-    ? window.innerHeight 
+        ? window.innerHeight
         //- document.getElementById('toolbar').clientHeight
         * 0.25
-    : Math.max(window.innerHeight 
-        - document.getElementById('toolbar').clientHeight
-        - document.getElementById('statusbar').clientHeight
-        - document.getElementById('terminals').clientHeight
-        - 2, 
-        term.buffer.active.baseY + term.rows
-    );
+        : Math.max(window.innerHeight
+            - document.getElementById('toolbar').clientHeight
+            - document.getElementById('statusbar').clientHeight
+            - document.getElementById('terminals').clientHeight
+            - 2,
+            term.buffer.active.baseY + term.rows
+        );
 
     const cols = Math.max(2, Math.floor(width / dims.css.cell.width));
     const rows = Math.max(1, Math.floor(height / dims.css.cell.height));
@@ -179,14 +238,14 @@ window.console.info = (...args) => {
 
 function renderTerminalsCommand(panelId) {
 
-    if(!panelId) return
+    if (!panelId) return
 
     var buttons = document.getElementById('terminals').children[0].children
 
     for (let button of buttons) {
         button.children[0].classList.remove('active')
     }
-        
+
     document.querySelector(`#terminals [href="#${panelId}"]`).classList.add('active')
 
 }
@@ -202,7 +261,7 @@ const terminalContainer = document.getElementById('terminal');
 
 terminalContainer.addEventListener('mousedown', async (event) => {
     // 1. Convert pixel click to row/column
-    const coords = term.selectionManager?._model.selectionStart || [0, 0]; 
+    const coords = term.selectionManager?._model.selectionStart || [0, 0];
     // A cleaner way using xterm's internal mouse report:
     const rect = terminalContainer.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -213,9 +272,9 @@ terminalContainer.addEventListener('mousedown', async (event) => {
     const row = Math.floor(y / term._core._renderService.dimensions.css.cell.height) + term.buffer.active.viewportY;
 
     // 2. Grab the text from the clicked line
-    const lineText = 
-        term.buffer.active.getLine(row-2)?.translateToString(true)
-        + term.buffer.active.getLine(row-1)?.translateToString(true)
+    const lineText =
+        term.buffer.active.getLine(row - 2)?.translateToString(true)
+        + term.buffer.active.getLine(row - 1)?.translateToString(true)
         + term.buffer.active.getLine(row)?.translateToString(true)
         + term.buffer.active.getLine(row + 2)?.translateToString(true);
     if (lineText.trim().length == 0) return;
@@ -231,7 +290,7 @@ terminalContainer.addEventListener('mousedown', async (event) => {
         const lineNumber = parseInt(match[2], 10);
         // TODO: whatever project the console output is initiated on
         let database = owner.value + '/' + repo.value
-        let parts =  database.split('/')
+        let parts = database.split('/')
         let ownerName = parts.length == 2 ? parts[0] : owner.value
         let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
         let sha = files[database][filePath].sha

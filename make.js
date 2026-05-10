@@ -406,10 +406,14 @@ function getBaseFlags() {
 const baseLdFlags = [
     //"-D__WASM__=1",
     //"--no-standard-libraries",
+    '--no-threads',
     "--export-dynamic",
     "--error-limit=200",
     "--import-memory",
     "--import-table",
+    '-z', `stack-size=${1024*1024}`, 
+    '-Llib/wasm32-wasi', 
+    'lib/wasm32-wasi/crt1.o',
     //"--growable-table",
     // Link against the builtins and libc.a
     //path.join(vars.WASI_BUILTINS, "lib/wasi/libclang_rt.builtins-wasm32.a"),
@@ -463,6 +467,10 @@ const exportFlags = [
 const undefinedFlags = [
     `--allow-undefined-file=${'code/wasm/wasm.syms'}`
 ];
+
+const includeFlags = [
+    '-lc', '-lc++', '-lc++abi', '-lcanvas'
+]
 
 // Final Assembly based on platform
 const LDFLAGS = [
@@ -536,6 +544,10 @@ async function build(database = null, noBounce = false) {
         : configuration.value == 'sanitize'
         ? ['-fsanitize=address']
         : []
+
+    PRE = PRE.concat([
+        '-fmessage-length', '' + (term.cols || '80')
+    ])
 
 
     // TODO: publish binaryen zero-filled, zip, download uri
@@ -614,7 +626,9 @@ async function build(database = null, noBounce = false) {
                 '-internal-isystem', '/lib/clang/8.0.1/include',
                 "-std=gnu11",
                 ...DEBUG_CFLAGS,
-                ...PRE
+                ...PRE,
+                '-o', CONFIGURATION + '/stringify.o',
+                stringify
             ],
             contents: content,
             width: term.cols,
@@ -629,6 +643,12 @@ async function build(database = null, noBounce = false) {
 
     try {
         await api.link({
+            LDFLAGS: [
+                ...baseLdFlags,
+                CONFIGURATION + '/stringify.o',
+                '-o', CONFIGURATION + '/stringify.js.wasm',
+                ...includeFlags
+            ],
             obj: [CONFIGURATION + '/stringify.o'],
             database,
             wasm: CONFIGURATION + '/stringify.js.wasm'
@@ -646,14 +666,17 @@ async function build(database = null, noBounce = false) {
         try {
             let sha = files['#filelist'][file].sha
             let content = await cacheFile(ownerName, repoName, file, sha)
+            let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
 
             term.write('\n\r')
-            let filename = file;
-            let CCFLAGS = [...CFLAGS, ...DEBUG_CFLAGS, ...PRE]
+            let CCFLAGS = [
+                ...CFLAGS, ...DEBUG_CFLAGS, ...PRE,
+                '-o', obj,
+                file
+            ]
             if (file.includes('botlib'))
                 CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
 
-            let obj = CONFIGURATION + '/' + filename.replace('.c', '.o')
             term.write('CC: ' + obj + '\n\r')
 
             let objRecord = await getRecord(DB_STORE_NAME, obj, database)
@@ -661,7 +684,7 @@ async function build(database = null, noBounce = false) {
 
             if (FS.virtual[obj]
                 // compare input and output mtime
-                && FS.virtual[filename]?.timestamp < FS.virtual[obj]?.timestamp
+                && FS.virtual[file]?.timestamp < FS.virtual[obj]?.timestamp
             ) {
                 objs[objs.length] = obj
                 continue
@@ -671,7 +694,7 @@ async function build(database = null, noBounce = false) {
                 CFLAGS: CCFLAGS,
                 contents: content,
                 width: term.cols,
-                input: filename,
+                input: file,
                 database,
                 obj
             })
@@ -702,7 +725,11 @@ async function build(database = null, noBounce = false) {
                 continue
             }
             await api.compile({
-                CFLAGS: [...CFLAGS],
+                CFLAGS: [
+                    ...CFLAGS,
+                    '-o', obj,
+                    shader.replace('.glsl', '.c')
+                ],
                 contents: cCode,
                 width: term.cols,
                 input: shader.replace('.glsl', '.c'),
@@ -719,7 +746,12 @@ async function build(database = null, noBounce = false) {
 
     try {
         await api.link({
-            LDFLAGS: LDFLAGS,
+            LDFLAGS: [
+                ...LDFLAGS,
+                ...(objs instanceof Array ? objs : [objs]),
+                '-o', CONFIGURATION + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM,
+                ...includeFlags
+            ],
             width: term.cols,
             obj: objs,
             database,
