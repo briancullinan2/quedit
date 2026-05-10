@@ -145,6 +145,7 @@ async function saveFile()
     await putRecord(DB_STORE_NAME, FS.virtual[filePath], database)
     currentOpenFileId = newSha
     trees[database].nodesById[newSha] = files[database][filePath]
+    files[database][filePath].sha = newSha
 }
 
 

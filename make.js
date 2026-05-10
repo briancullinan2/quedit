@@ -502,6 +502,7 @@ function generateFallbackC(fileName, content) {
 }
 
 
+let building = false
 let buildDebounce = null
 async function build(database = null, noBounce = false) {
 
@@ -516,6 +517,8 @@ async function build(database = null, noBounce = false) {
         return
     }
 
+    if(building) return
+    building = true
 
     if(!database)
         database = owner.value + '/' + repo.value
@@ -545,8 +548,8 @@ async function build(database = null, noBounce = false) {
     });
 
     // init database
-    let startTime = Date.now()
-    FS.isSyncing = 1
+    //let startTime = Date.now()
+    //FS.isSyncing = 1
     // FIX FOR "QKEY could not open" ERROR
     FS.virtual['/home'] = {
         timestamp: new Date(),
@@ -554,6 +557,8 @@ async function build(database = null, noBounce = false) {
         path: '/home'
     }
     await putRecord(DB_STORE_NAME, FS.virtual['/home'], database)
+    
+    /*
     console.log('sync started at ', new Date())
 
     await readAll(database, loadEntry)
@@ -566,6 +571,7 @@ async function build(database = null, noBounce = false) {
         + (tookTime % 1000) + ' milliseconds')
 
     FS.isSyncing = 0
+    */
 
     term.write('\n\r')
 
@@ -628,7 +634,9 @@ async function build(database = null, noBounce = false) {
             let obj = dirs.BD + '/' + filename.replace('.c', '.o')
             term.write('CC: ' + obj + '\n\r')
 
-            //let record = await getRecord(DB_STORE_NAME, obj, repoOwner + '/' + repoName)
+            let objRecord = await getRecord(DB_STORE_NAME, obj, database)
+            FS.virtual[obj] = objRecord
+
             if (FS.virtual[obj]
                 // compare input and output mtime
                 && FS.virtual[filename]?.timestamp < FS.virtual[obj]?.timestamp
@@ -647,7 +655,9 @@ async function build(database = null, noBounce = false) {
             })
 
             objs[objs.length] = obj
-        } catch { }
+        } catch (e) { 
+            console.error(e)
+        }
 
     }
 
@@ -658,6 +668,11 @@ async function build(database = null, noBounce = false) {
             const cCode = generateFallbackC(shader, content);
             let obj = dirs.BD + '/' + shader.replace('.glsl', '.o')
             term.write('GLSL: ' + obj + '\n\r')
+
+            let objRecord = await getRecord(DB_STORE_NAME, obj, database)
+            FS.virtual[obj] = objRecord
+
+
             if (FS.virtual[obj]
                 && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
             ) {
@@ -674,7 +689,9 @@ async function build(database = null, noBounce = false) {
             })
 
             objs[objs.length] = obj
-        } catch { }
+        } catch (e) { 
+            console.error(e)
+        }
     }
 
 
@@ -690,6 +707,7 @@ async function build(database = null, noBounce = false) {
         console.error(e)
     }
 
+    building = false
 
     //await api.download(database)
 }
@@ -710,7 +728,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
         await Promise.all(batch.map(async (header) => {
             try {
                 // cacheFile handles the storage logic
-                let sha = files['#filelist'][header].sha
+                let sha = files[database][header].sha
                 await cacheFile(ownerName, repoName, header, sha);
             } catch (e) {
                 console.warn(`Failed to cache ${header}:`, e);

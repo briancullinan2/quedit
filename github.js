@@ -134,7 +134,8 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
 
     try {
         let record = await getRecord(DB_STORE_NAME, filePath, repoOwner + '/' + repoName)
-        if (record && record.sha == sha) {
+        FS.virtual[filePath] = record
+        if (record /*&& (record.sha == sha)*/) {
             const decoder = new TextDecoder();
             const str = decoder.decode(record.contents);
             return str

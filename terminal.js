@@ -162,3 +162,43 @@ document.getElementById('terminals').addEventListener('click', async (e) => {
 
 });
 
+const terminalContainer = document.getElementById('terminal');
+
+terminalContainer.addEventListener('mousedown', async (event) => {
+    // 1. Convert pixel click to row/column
+    const coords = term.selectionManager?._model.selectionStart || [0, 0]; 
+    // A cleaner way using xterm's internal mouse report:
+    const rect = terminalContainer.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Calculate row and col based on character dimensions
+    const col = Math.floor(x / term._core._renderService.dimensions.css.cell.width);
+    const row = Math.floor(y / term._core._renderService.dimensions.css.cell.height) + term.buffer.active.viewportY;
+
+    // 2. Grab the text from the clicked line
+    const line = term.buffer.active.getLine(row);
+    if (!line) return;
+
+    const lineText = line.translateToString(true);
+
+    // 3. Regex to find "filename.ext:line" or "filename.ext:line:col"
+    // This matches standard compiler/error output formats
+    const filePattern = /([\w\d\._\-\/]+\.\w+):(\d+)(?::(\d+))?/;
+    const match = lineText.match(filePattern);
+
+    if (match) {
+        const filePath = match[1];
+        const lineNumber = parseInt(match[2], 10);
+        // TODO: whatever project the console output is initiated on
+        let database = owner.value + '/' + repo.value
+        let parts =  database.split('/')
+        let ownerName = parts.length == 2 ? parts[0] : owner.value
+        let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+        let sha = files[database][filePath].sha
+        await openFile(owner.value, repo.value, filePath, sha)
+        editor.gotoLine(lineNumber, 0, true);
+        editor.focus();
+    }
+});
+
