@@ -461,7 +461,7 @@ const exportFlags = [
 
 // Undefined symbols handling
 const undefinedFlags = [
-    `--allow-undefined-file=${path.join("code/wasm/wasm.syms")}`
+    `--allow-undefined-file=${'code/wasm/wasm.syms'}`
 ];
 
 // Final Assembly based on platform
@@ -527,7 +527,7 @@ async function build(database = null, noBounce = false) {
 
     let DEBUG_CFLAGS =  configuration.value != 'debug'
         ? ['-DNDEBUG', '-O3', '-ffast-math']
-        : ['-DDEBUG', '-D_DEBUG', '-g', '-O0']
+        : ['-DDEBUG', '-D_DEBUG', /* '-g',*/ '-O0']
 
     let PRE = configuration.value == 'pre'
         ? ['-E', '-P']

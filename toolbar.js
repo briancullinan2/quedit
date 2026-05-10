@@ -126,6 +126,11 @@ async function setRepository(newRepo) {
 
     addRepoIfNotExists(newRepo)
     addOwnerIfNotExists(newOwner)
+    if(newOwner === 'Quake3e')
+    {
+        console.error('Assertion: newOwner set to Quake3e should be ec- or briancullinan2')
+        debugger
+    }
     if (newOwner.trim())
         owner.value = newOwner;
     repo.value = newRepo;
@@ -245,6 +250,11 @@ function saveSettings(content)
 
         engineRepo = settings.engine_repository
         // TODO: make this a loop
+        if(engineRepo.startsWith('Quake3e'))
+        {
+            console.error('Assertion engineRepo is Quake3e should start with ec- or briancullinan2')
+            debugger
+        }
         if(!engineRepo)
             localStorage.removeItem('engine_repository')
         else

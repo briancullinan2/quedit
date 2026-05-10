@@ -1081,6 +1081,16 @@ const API = (function () {
         this.memfs.addFile(record.path, record.contents);
       }
 
+      let syms = options.LDFLAGS.filter(f => f.startsWith('--allow-undefined-file='))
+      if(syms.length > 0)
+      {
+        let symsPath = syms[0].substring('--allow-undefined-file='.length)
+        var record = await getRecord(DB_STORE_NAME, symsPath, options.database)
+        this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+        this.memfs.addFile(record.path, record.contents);
+      }
+
+
       const libdir = 'lib/wasm32-wasi';
       const crt1 = `${libdir}/crt1.o`;
       await this.ready;
