@@ -168,6 +168,8 @@ function renderToolbarCommand(buttonId)
 
     if(buttonId == 'new')
         return newFile()
+
+    renderTabsCommand(buttonId)
 }
 
 

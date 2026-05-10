@@ -4,8 +4,13 @@ term.open(document.getElementById('terminal'));
 
 const container = document.getElementById('terminal');
 
+
+
+
 window.addEventListener('resize', () => {
     forceFit(term, container);
+
+    updateMaxLines()
 });
 let currentLine = '';
 
@@ -58,8 +63,19 @@ function forceFit(term, container) {
 
     // 2. Calculate based on the parent's actual pixel size
     const scrollbarWidth = 15; // Standard buffer for the scrollbar
-    const width = container.clientWidth - scrollbarWidth;
-    const height = container.clientHeight;
+    const width = window.document.body.clientWidth - scrollbarWidth
+        - (window.document.body.clientWidth < 800 ? 60 : 0);
+    const height = width >= 800
+    ? window.innerHeight 
+        //- document.getElementById('toolbar').clientHeight
+        * 0.25
+    : Math.max(window.innerHeight 
+        - document.getElementById('toolbar').clientHeight
+        - document.getElementById('statusbar').clientHeight
+        - document.getElementById('terminals').clientHeight
+        - 2, 
+        term.buffer.active.baseY + term.rows
+    );
 
     const cols = Math.max(2, Math.floor(width / dims.css.cell.width));
     const rows = Math.max(1, Math.floor(height / dims.css.cell.height));

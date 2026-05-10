@@ -145,7 +145,16 @@ async function initializeFiletrees() {
     });
 }
 
-initializeFiletrees();
+
+document.addEventListener('DOMContentLoaded', async (event) => {
+
+    await initializeFiletrees();
+
+    renderHashCommand(window.location.hash.substring(1))
+
+});
+
+
 
 let tempCount = 1;
 async function newFile() {
@@ -237,6 +246,8 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     editor.setSession(session);
     editor.resize();
     editor.renderer.updateFull();
+    hideOpenPanels()
+    document.getElementById('editor').classList.add('not-hidden')
 
     // 3. Record it in history if this isn't a "Back/Forward" action
     let selector = document.getElementById('filename')
@@ -295,7 +306,7 @@ function renderHashCommand(fileName, noBounce = false) {
     }
     else if (document.getElementById('tabs')
         .querySelector(`[href*="${fileName}"]`)) {
-        renderTabsCommand(fileName)
+        renderTabsCommand(fileName || 'filelist')
     }
     else if (document.getElementById('terminals')
         .querySelector(`[href*="${fileName}"]`)) {
@@ -307,6 +318,7 @@ function renderHashCommand(fileName, noBounce = false) {
 window.addEventListener('popstate', (event) => {
     renderHashCommand(window.location.hash.substring(1))
 });
+
 
 
 function treeHandler(selector, e) {
@@ -329,6 +341,7 @@ document.getElementById('assetlist').addEventListener('click', treeHandler.bind(
 function renderTabsCommand(panelId) {
 
     if(!panelId) return
+    //    panelId = 'filelist'
 
     if (panelId == 'collapse') {
         let hasOpen = hideOpenPanels()
@@ -343,6 +356,8 @@ function renderTabsCommand(panelId) {
 
         var panel = document.getElementById(panelId)
         panel.classList.remove('hidden')
+        panel.classList.add('not-hidden')
+
         var repo = panel.dataset['repository']
         if (panelId == 'filelist')
             repo = localStorage.getItem('engine_repository') || repo
@@ -356,6 +371,7 @@ function renderTabsCommand(panelId) {
 
         if(panelId == 'database')
             showDatabases()
+
     }
 
 
@@ -378,6 +394,10 @@ function hideOpenPanels() {
 
     var buttons = document.getElementById('tabs').children[0].children
 
+    document.getElementById('viewport-frame').classList.remove('not-hidden')
+    document.getElementById('editor').classList.remove('not-hidden')
+    document.getElementById('terminal-container').classList.remove('not-hidden')
+
     for (let button of buttons) {
         button.children[0].classList.remove('active')
     }
@@ -385,6 +405,7 @@ function hideOpenPanels() {
     for (let panel of panels) {
         if (!panel.classList.contains('hidden')) {
             panel.classList.add('hidden')
+            panel.classList.remove('not-hidden')
             hasOpen = true
         }
     }

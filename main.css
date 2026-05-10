@@ -39,9 +39,9 @@ body {
 
 
 #scratch {
-  opacity: 0;
-  z-index: -1;
-  position: absolute;
+    opacity: 0;
+    z-index: -1;
+    position: absolute;
 }
 
 #viewport-frame {
@@ -64,7 +64,7 @@ body {
 
 #viewport-frame canvas {
     background-color: rgba(0, 0, 0, 0.0);
-    width: 0;
+    width: 100%;
     height: 100%;
     flex-grow: 1;
     flex-shrink: 1;
@@ -148,6 +148,10 @@ body {
     overflow: hidden;
 }
 
+#main-body {
+    flex-basis: 100%;
+}
+
 #main>* {
     flex-shrink: 1;
     flex-grow: 1;
@@ -169,6 +173,7 @@ body {
     justify-content: stretch;
     overflow: hidden;
     white-space: nowrap;
+    width: 100%;
 }
 
 
@@ -180,13 +185,17 @@ body {
 #statusbar,
 #toolbar {
     flex-shrink: 0;
+    flex-grow: 0;
     max-width: 100%;
+    max-height: min-content;
+    flex-basis: min-content;
 }
 
 #terminal {
     flex: 1 1 auto;
     flex-basis: 400px;
-    min-height: 0;
+    min-height: min-content;
+    max-height: none;
 }
 
 .treejs-label {
@@ -229,14 +238,14 @@ button {
 
 #statusbar {
     background-color: #666;
+    max-height: 1.6em;
 }
 
 
 
 #toolbar input,
 #toolbar select,
-#toolbar button {
-}
+#toolbar button {}
 
 
 .treejs-node__checked {
@@ -248,12 +257,21 @@ button {
     flex-direction: column;
 }
 
+#toolbar ul>*:has(ul) {
+    flex-basis: fit-content;
+}
+
 #toolbar ul {
     display: flex;
     flex-direction: row;
     max-width: 100%;
     flex-wrap: wrap;
-    justify-content: end;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#toolbar ul ul {
+    flex-wrap: nowrap;
 }
 
 #toolbar ul>*:has(select) {
@@ -295,21 +313,19 @@ button {
 }
 
 
-#terminals
-{
+#terminals {
     flex-shrink: 0;
+    flex-grow: 0;
     height: fit-content;
 }
 
-#terminals ul
-{
-    display:flex;
+#terminals ul {
+    display: flex;
     flex-direction: row;
 }
 
-#toolbar li
-{
-    padding: 2px 5px;
+#toolbar li {
+    padding: 0 5px;
 }
 
 #toolbar a {
@@ -328,14 +344,13 @@ button {
     border-left: 2px solid transparent;
 }
 
-#terminals a
-{
+#terminals a {
     text-decoration: none;
     color: #666;
     padding: 5px 10px;
     font-size: 16px;
     border-top: 2px solid transparent;
-    display:block;
+    display: block;
 }
 
 
@@ -352,10 +367,10 @@ button {
 
 
 #terminals a.active,
-#terminals a:active
-{
+#terminals a:active {
     border-top-color: #333;
 }
+
 #tabs a.active,
 #toolbar a.active,
 #tabs a:active,
@@ -525,16 +540,18 @@ input[type="checkbox"] {
     -webkit-appearance: none;
     width: 60px;
     max-width: 60px;
-    background-color: #e9e9ea; /* Off state gray */
+    background-color: #e9e9ea;
+    /* Off state gray */
     border-radius: 50px;
     position: relative;
     cursor: pointer;
     transition: background-color 0.3s ease;
     outline: none;
-    border: 2px solid #d1d1d6; /* Light border */
+    border: 2px solid #d1d1d6;
+    /* Light border */
     box-shadow: 1px 2px 5px rgba(0, 0, 0, 0.5);
     align-items: center;
-    display:flex;
+    display: flex;
     padding: 0;
 }
 
@@ -554,8 +571,7 @@ input[type="checkbox"]::before {
     box-shadow: -1px -2px 5px inset rgba(0, 0, 0, 0.5);
 }
 
-input[type="checkbox"]::after
-{
+input[type="checkbox"]::after {
     content: "OFF";
     left: 30px;
     position: relative;
@@ -572,7 +588,8 @@ input[type="checkbox"]:checked::after {
 
 /* Active state (Background turns green) */
 input[type="checkbox"]:checked {
-    background-color: #34c759; /* iOS Green */
+    background-color: #34c759;
+    /* iOS Green */
     border-color: #34c759;
 }
 
@@ -588,6 +605,145 @@ input[type="checkbox"]:focus-visible {
 }
 
 
+@media all and (max-width: 800px) {
+
+
+    /*
+    #toolbar 
+    {
+        position: sticky;
+        top: 0;
+        right: 0;
+        left: 0;
+        width: 100%;
+    }
+    */
+
+    #toolbar {
+        min-width: 100%;
+        width: 100%;
+    }
+
+    #toolbar .engine,
+    #toolbar .setting {
+        display: none;
+    }
+
+    #terminal-container,
+    #editor,
+    #assetlist,
+    #gamelist,
+    #database,
+    #searchlist,
+    #filelist {
+        display: none;
+    }
+
+    html,
+    body {
+        overflow: scroll;
+    }
+
+    #editor-container {
+        flex-basis: calc(100% - 54px);
+    }
+
+    #editor-container:has(~ .not-hidden) {
+        display: none;
+    }
+
+    #editor-container:not(:has(.not-hidden)) {
+        display: none;
+    }
+
+    #viewport-frame {
+        position: absolute;
+        z-index: -1;
+        visibility: hidden;
+        flex-basis: calc(100% - 54px);
+    }
+
+    #viewport-frame.not-hidden {
+        visibility: visible;
+        position: static;
+        z-index: 100;
+    }
+
+    #main {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    html,
+    body,
+    #main {
+        height: max-content;
+        max-height: none;
+        min-height: 100vh;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    #main-body {
+        min-height: max-content;
+        height: stretch;
+        max-height: none;
+        max-width: 100%;
+        width: auto;
+        min-width: min-content;
+        overflow: visible;
+        flex-basis: min-content;
+        flex-grow: 1;
+    }
+
+    .not-hidden {
+        display: block !important;
+        overflow: visible !important;
+        max-width: none !important;
+        max-height: none !important;
+    }
+
+    #terminal-container,
+    #terminal,
+    #terminals {
+        width: calc(100% - 60px);
+    }
+
+
+    #terminal-container.not-hidden {
+        display: flex !important;
+        justify-content: stretch;
+    }
+
+    #statusbar {
+        flex-basis: 100%;
+    }
+
+    .xterm-screen,
+    .xterm-viewport {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    /* Hide the xterm-provided scrollbar element entirely */
+    .xterm-scrollbar {
+        display: none !important;
+    }
+}
 
 
 
+
+@media all and (max-height: 800px) {
+
+    #toolbar .engine,
+    #toolbar .setting {
+        display: none;
+    }
+
+    #terminal,
+    #terminals {
+        display: none;
+    }
+
+}

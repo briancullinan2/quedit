@@ -549,7 +549,7 @@ async function build(database = null, noBounce = false) {
     savedToken = localStorage.getItem('github_token');
 
     if (!savedToken)
-        return alert("Must enter Github token first by clicking the doorway on the right.")
+        return alert("Must enter Github token first by clicking the doorway on the left.")
 
 
     // Log directly to your xterm.js instance if available

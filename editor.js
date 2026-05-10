@@ -36,6 +36,7 @@ setTimeout(() => {
     // Clean up old classes and add new one
     document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
     editor.setTheme(newtheme);
+    updateMaxLines()
     editor.resize();
     editor.renderer.updateFull();
 }, 300)
@@ -168,3 +169,29 @@ const getModeByFilename = (filePath) => {
     };
     return `ace/mode/${modes[ext] || 'text'}`;
 };
+
+
+function updateMaxLines() {
+    const lineHeight = editor.renderer.lineHeight;
+    const availableHeight = document.getElementById('editor-container').clientHeight; 
+    
+    // Calculate how many lines fit in that space
+    const calculatedMax = Math.floor(availableHeight / lineHeight);
+
+    if(window.document.body.clientWidth < 800)
+    {
+        editor.setOptions({
+            maxLines: Infinity,
+            minLines: 10 // Optional: ensure it doesn't disappear
+        });
+    }
+    else
+    {
+        editor.setOptions({
+            maxLines: calculatedMax,
+            minLines: calculatedMax // Optional: ensure it doesn't disappear
+        });
+    }
+}
+
+

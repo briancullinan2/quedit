@@ -548,9 +548,12 @@ function IN_Init() {
   window.addEventListener('resize', resizeViewport, false)
   //window.addEventListener('popstate', CL_ModifyMenu, false)
 
+  /*
   document.addEventListener('mousemove', InputPushMouseEvent, false)
   document.addEventListener('mousedown', InputPushMouseEvent, false)
   document.addEventListener('mouseup', InputPushMouseEvent, false)
+  */
+
 
   document.addEventListener('mousewheel', InputPushWheelEvent, { capture: false, passive: true })
   document.addEventListener('visibilitychange', InputPushFocusEvent, false)
