@@ -23,6 +23,13 @@ function getOrCreateAceSession(fileId, content) {
     return session;
 }
 
+
+function currentSession()
+{
+    return Object.keys(sessionCache).find(k => sessionCache[k] === editor.getSession())
+}
+
+
 let savedTheme
 var theme = document.getElementById('theme')
 var editor = ace.edit("editor");
@@ -42,14 +49,20 @@ setTimeout(() => {
 }, 300)
 
 
+function setTheme(theme) {
+    const themeName = theme.split('/').pop(); // Gets 'monokai' or 'dracula'
+    document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
+    localStorage.setItem('theme', theme)
+    // Actually tell Ace to change its internal theme too
+    editor.setTheme(theme);
+}
+
+
 
 theme.addEventListener('change', (e) => {
-    const themeName = e.target.value.split('/').pop(); // Gets 'monokai' or 'dracula'
     // Clean up old classes and add new one
-    document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
-    localStorage.setItem('theme', e.target.value)
-    // Actually tell Ace to change its internal theme too
-    editor.setTheme(e.target.value);
+    setTheme(e.target.value)
+
 });
 
 
@@ -127,13 +140,17 @@ window.addEventListener('keydown', (e) => {
         e.preventDefault();
         saveFile();
     }
+    if (e.key === 'Escape') {
+        modal.classList.add('hidden')
+    }
 });
 
 
-async function saveFile()
-{
+async function saveFile() {
     var database = owner.value + '/' + repo.value
-    var filePath = trees[database].nodesById[currentOpenFileId].path
+    var filePath = 
+        currentSession()
+        || trees[database].nodesById[currentOpenFileId].path
     var content = editor.getValue()
     var newSha = await getGitShaBrowser(content)
     FS.virtual[filePath] = {
@@ -143,10 +160,19 @@ async function saveFile()
         path: filePath,
         sha: newSha
     }
-    await putRecord(DB_STORE_NAME, FS.virtual[filePath], database)
     currentOpenFileId = newSha
-    trees[database].nodesById[newSha] = files[database][filePath]
-    files[database][filePath].sha = newSha
+    if(files[database])
+    {
+        await putRecord(DB_STORE_NAME, FS.virtual[filePath], database)
+        if(files[database][filePath])
+            files[database][filePath].sha = newSha
+        else
+            files[database][filePath] = FS.virtual[filePath]
+        trees[database].nodesById[newSha] = files[database][filePath]
+    }
+
+    if (filePath.includes('settings.json'))
+        saveSettings(content)
 }
 
 
@@ -173,23 +199,21 @@ const getModeByFilename = (filePath) => {
 
 function updateMaxLines() {
     const lineHeight = editor.renderer.lineHeight;
-    const availableHeight = document.getElementById('editor-container').clientHeight; 
-    
+    const availableHeight = document.getElementById('editor-container').clientHeight;
+
     // Calculate how many lines fit in that space
     const calculatedMax = Math.floor(availableHeight / lineHeight);
 
-    if(window.document.body.clientWidth < 800)
-    {
+    if (window.document.body.clientWidth < 800) {
         editor.setOptions({
             maxLines: Infinity,
             minLines: 10 // Optional: ensure it doesn't disappear
         });
     }
-    else
-    {
+    else {
         editor.setOptions({
-            maxLines: calculatedMax,
-            minLines: calculatedMax // Optional: ensure it doesn't disappear
+            maxLines: calculatedMax - 1,
+            minLines: calculatedMax - 1 // Optional: ensure it doesn't disappear
         });
     }
 }

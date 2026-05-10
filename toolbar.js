@@ -64,7 +64,8 @@ function updatePlaceholder() {
         tokenInput.classList.remove('has-token');
     }
 
-    modal.classList.remove('hidden');
+    // because hideOpenPanels() hides it in the same sequence
+    setTimeout(() => modal.classList.remove('hidden'), 200);
 }
 
 function saveToken() {
@@ -155,7 +156,13 @@ function renderToolbarCommand(buttonId)
     let engineRepo = localStorage.getItem('engine_repository') || document.getElementById('filelist').dataset['repository'] || 'briancullinan2/Quake3e'
 
     if(buttonId == 'compile')
+    {
+        if(configuration.value == 'tools')
+            return buildTools(toolsRepo)
+        if(configuration.value == 'qvms')
+            return buildQVM(gameRepo)
         return build(engineRepo)
+    }
 
     if(buttonId == 'play')
         return run()
@@ -169,13 +176,116 @@ function renderToolbarCommand(buttonId)
     if(buttonId == 'new')
         return newFile()
 
+    if(buttonId == 'save')
+        return saveFile()
+
+    if(buttonId == 'settings')
+        return settings()
+
+    if(buttonId == 'reload')
+        localStorage.setItem('hot_reload', !!document.getElementById('reload').checked);
+
     renderTabsCommand(buttonId)
 }
 
 
-
-document.getElementById('toolbar').addEventListener('click', async (e) => {
-    renderToolbarCommand(e.target.href?.split('#').pop())
+document.getElementById('toolbar').addEventListener('change', async (e) => {
+    renderToolbarCommand(
+        e.target.href?.split('#').pop() || e.target.id)
 
 });
+
+
+document.getElementById('toolbar').addEventListener('click', async (e) => {
+    renderToolbarCommand(
+        e.target.href?.split('#').pop() || e.target.id)
+
+});
+
+
+
+let currentConfig = localStorage.getItem('configuration');
+configuration.value = currentConfig
+document.getElementById('reload').checked = localStorage.getItem('hot_reload') !== 'false';
+
+configuration.addEventListener('change', async (e) => {
+    localStorage.setItem('configuration', configuration.value);
+
+});
+
+
+
+function settings()
+{
+    const settings = JSON.stringify({
+        configuration: currentConfig,
+        engine_repository: engineRepo,
+        game_repository: gameRepo,
+        asset_repository: assetRepo,
+        theme: savedTheme,
+        github_token: savedToken,
+        hot_reload: !!document.getElementById('reload').checked
+    }, null, 4)
+
+    const session = getOrCreateAceSession('settings.json' + (++tempCount), settings);
+    editor.setSession(session);
+    editor.resize();
+    editor.renderer.updateFull();
+    hideOpenPanels()
+    document.getElementById('editor').classList.add('not-hidden')
+
+}
+
+
+function saveSettings(content)
+{
+    try
+    {
+        var settings = JSON.parse(content)
+
+        engineRepo = settings.engine_repository
+        // TODO: make this a loop
+        if(!engineRepo)
+            localStorage.removeItem('engine_repository')
+        else
+            localStorage.setItem('engine_repository', engineRepo)
+        if(!document.getElementById('filelist').classList.contains('hidden'))
+            setRepository(engineRepo)
+
+        gameRepo = settings.game_repository
+        if(!gameRepo)
+            localStorage.removeItem('game_repository')
+        else
+            localStorage.setItem('game_repository', gameRepo)
+        if(!document.getElementById('filelist').classList.contains('hidden'))
+            setRepository(gameRepo)
+        
+        assetRepo = settings.asset_repository
+        if(!assetRepo)
+            localStorage.removeItem('asset_repository')
+        else
+            localStorage.setItem('asset_repository', assetRepo)
+        // TODO: set whatever were viewing, filelist
+        if(!document.getElementById('filelist').classList.contains('hidden'))
+            setRepository(assetRepo)
+
+        savedTheme = settings.github_token
+        setTheme(settings.theme)
+
+        savedToken = settings.github_token
+        localStorage.setItem('github_token', savedToken)
+
+        configuration.value = currentConfig = settings.configuration
+        localStorage.setItem('configuration', currentConfig)
+        
+        document.getElementById('reload').checked = !!settings.hot_reload
+        localStorage.setItem('hot_reload', !!settings.hot_reload)
+    }
+    catch(e)
+    {
+        console.log(e)
+    }
+
+}
+
 

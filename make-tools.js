@@ -3,6 +3,10 @@
  * Handles: q3rcc, lburg, q3cpp, q3lcc
  */
 
+
+// TODO: run this directly from shared.js upon missing tooling
+// TODO: needs github keys to grab .c files
+
 const COMPILE_PLATFORM = 'wasm'; // Or your target platform
 const COMPILE_ARCH = 'js';
 

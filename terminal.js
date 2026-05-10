@@ -169,7 +169,7 @@ function renderTerminalsCommand(panelId) {
         button.children[0].classList.remove('active')
     }
         
-    document.querySelector(`#terminals [href*="${panelId}"]`).classList.add('active')
+    document.querySelector(`#terminals [href="#${panelId}"]`).classList.add('active')
 
 }
 

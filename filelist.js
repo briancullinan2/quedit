@@ -23,7 +23,7 @@ const convertFlatToNested = (data) => {
                 }
                 currentLevel.push(existingPath);
             }
-            if(!existingPath.children)
+            if (!existingPath.children)
                 return
             currentLevel = existingPath.children;
         });
@@ -56,6 +56,11 @@ const sortNodes = (nodes) => {
 
 
 const loadedDatabases = {}
+let engineRepo = 'briancullinan2/Quake3e'
+let gameRepo = 'ec-/baseq3a'
+let assetRepo = null
+let toolsRepo = 'ec-/q3lcc'
+let toolsRepo2 = 'ec-/q3asm'
 
 async function initializeFiletrees() {
     if (window.location.pathname) {
@@ -63,7 +68,7 @@ async function initializeFiletrees() {
     }
 
 
-    var engineRepo = localStorage.getItem('engine_repository');
+    engineRepo = localStorage.getItem('engine_repository');
 
     var parts = engineRepo?.split('/') || document.getElementById('filelist').dataset['repository']?.split('/')
 
@@ -71,12 +76,13 @@ async function initializeFiletrees() {
         var newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
         var newOwner = parts.length == 2 ? parts[0] : owner.value
         var branches = await getBranches(newOwner, newRepo)
+        engineRepo = newRepo + '/' + newOwner
         updateSelectOptions('branch', branches)
         if (newOwner && newRepo)
             await loadGitHubTree(newOwner, newRepo, branches[0]?.name || 'main', '#filelist')
     }
 
-    var gameRepo = localStorage.getItem('game_repository');
+    gameRepo = localStorage.getItem('game_repository');
 
     var parts2 = gameRepo?.split('/') || document.getElementById('gamelist').dataset['repository']?.split('/')
     if (parts2) {
@@ -84,13 +90,14 @@ async function initializeFiletrees() {
         var newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repo.value
         var newOwner2 = parts2.length == 2 ? parts2[0] : owner.value
         var branches2 = await getBranches(newOwner2, newRepo2)
+        gameRepo = newRepo2 + '/' + newOwner2
 
         if (newOwner2 && newRepo2)
             await loadGitHubTree(newOwner2, newRepo2, branches2[0]?.name || 'main', '#gamelist')
     }
 
 
-    var assetRepo = localStorage.getItem('asset_repository');
+    assetRepo = localStorage.getItem('asset_repository');
 
     var parts3 = assetRepo?.split('/') || document.getElementById('assetlist').dataset['repository']?.split('/')
 
@@ -99,6 +106,7 @@ async function initializeFiletrees() {
         var newRepo3 = parts3.length == 2 ? parts3[1] : parts3[0] || repo.value
         var newOwner3 = parts3.length == 2 ? parts3[0] : owner.value
         var branches3 = await getBranches(newOwner3, newRepo3)
+        assetRepo = newRepo3 + '/' + newOwner3
 
         if (newOwner3 && newRepo3)
             await loadGitHubTree(newOwner3, newRepo3, branches3[0]?.name || 'main', '#assetlist')
@@ -116,10 +124,10 @@ async function initializeFiletrees() {
                 if (target.classList.contains('treejs-node__open')) {
                     const folderId = target.getAttribute('data-id');
 
-                    if(!trees['#database'].nodesById[folderId]) return
+                    if (!trees['#database'].nodesById[folderId]) return
 
                     try {
-                        if(loadedDatabases[folderId]) return
+                        if (loadedDatabases[folderId]) return
 
                         await readAll(folderId, loadTree.bind(null, folderId))
                         const newChildren = convertFlatToNested(Object.values(files[folderId]));
@@ -162,6 +170,8 @@ async function newFile() {
     editor.setSession(session);
     editor.resize();
     editor.renderer.updateFull();
+    hideOpenPanels()
+    document.getElementById('editor').classList.add('not-hidden')
 
 }
 
@@ -180,17 +190,17 @@ async function showDatabases() {
             expanded: false
         },
         path: d.key,
-        children: loadedDatabases[d.key] 
-        ? loadedDatabases[d.key] 
-        : [{
-            id: `${d.key}`,
-            text: 'Loading...',
-            state: {
-                open: false,
-                expanded: false
-            },
-            path: d.key + '/' + 'loading',
-        }]
+        children: loadedDatabases[d.key]
+            ? loadedDatabases[d.key]
+            : [{
+                id: `${d.key}`,
+                text: 'Loading...',
+                state: {
+                    open: false,
+                    expanded: false
+                },
+                path: d.key + '/' + 'loading',
+            }]
     }))
 
     if (!trees['#database']) {
@@ -292,24 +302,28 @@ function renderHashCommand(fileName, noBounce = false) {
     }
 
     let database = owner.value + '/' + repo.value
-    const filePath = files[database][fileName]?.path
-    if (filePath) {
-        const fileId = files[database][fileName].sha
-        currentOpenFileId = fileId;
-        trees[database].values = [fileId];
-        openFile(owner.value, repo.value, filePath, fileId, false);
-
+    if (files[database]) {
+        const filePath = files[database][fileName]?.path
+        if (filePath) {
+            const fileId = files[database][fileName].sha
+            currentOpenFileId = fileId;
+            trees[database].values = [fileId];
+            openFile(owner.value, repo.value, filePath, fileId, false);
+        }
     }
-    else if (document.getElementById('toolbar')
-        .querySelector(`[href*="${fileName}"]`)) {
+    
+    if (document.getElementById('toolbar')
+        .querySelector(`[href="#${fileName}"]`)) {
         renderToolbarCommand(fileName)
     }
-    else if (document.getElementById('tabs')
-        .querySelector(`[href*="${fileName}"]`)) {
+    
+    if (document.getElementById('tabs')
+        .querySelector(`[href="#${fileName}"]`)) {
         renderTabsCommand(fileName || 'filelist')
     }
-    else if (document.getElementById('terminals')
-        .querySelector(`[href*="${fileName}"]`)) {
+    
+    if (document.getElementById('terminals')
+        .querySelector(`[href="#${fileName}"]`)) {
         renderTerminalsCommand(fileName)
     }
 }
@@ -340,8 +354,10 @@ document.getElementById('assetlist').addEventListener('click', treeHandler.bind(
 
 function renderTabsCommand(panelId) {
 
-    if(!panelId) return
+    if (!panelId) return
     //    panelId = 'filelist'
+
+    let database = owner.value + '/' + repo.value
 
     if (panelId == 'collapse') {
         let hasOpen = hideOpenPanels()
@@ -352,26 +368,32 @@ function renderTabsCommand(panelId) {
 
         hideOpenPanels()
 
-        document.querySelector(`#tabs [href*="${panelId}"]`).classList.add('active')
+        document.querySelector(`#tabs [href="#${panelId}"]`)?.classList.add('active')
 
         var panel = document.getElementById(panelId)
-        panel.classList.remove('hidden')
-        panel.classList.add('not-hidden')
+        if (panel) {
+            panel.classList.remove('hidden')
+            panel.classList.add('not-hidden')
 
-        var repo = panel.dataset['repository']
-        if (panelId == 'filelist')
-            repo = localStorage.getItem('engine_repository') || repo
-        if (panelId == 'gamelist')
-            repo = localStorage.getItem('game_repository') || repo
-        if (panelId == 'assetlist')
-            repo = localStorage.getItem('asset_repository') || repo
+            var newRepo = panel.dataset['repository']
+            if (panelId == 'filelist')
+                newRepo = localStorage.getItem('engine_repository') || newRepo
+            if (panelId == 'gamelist')
+                newRepo = localStorage.getItem('game_repository') || newRepo
+            if (panelId == 'assetlist')
+                newRepo = localStorage.getItem('asset_repository') || newRepo
 
-        if (repo)
-            setRepository(repo)
+            if (newRepo)
+                setRepository(newRepo || database)
+        }
 
-        if(panelId == 'database')
+
+        if (panelId == 'database')
             showDatabases()
 
+        if (panelId == 'viewport-frame'
+            && !GL.canvas
+        ) run()
     }
 
 
@@ -397,6 +419,8 @@ function hideOpenPanels() {
     document.getElementById('viewport-frame').classList.remove('not-hidden')
     document.getElementById('editor').classList.remove('not-hidden')
     document.getElementById('terminal-container').classList.remove('not-hidden')
+
+    modal.classList.add('hidden')
 
     for (let button of buttons) {
         button.children[0].classList.remove('active')

@@ -498,6 +498,26 @@ button {
     /* Modern touch */
 }
 
+
+.close-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 24px;
+    cursor: pointer;
+    transition: color 0.2s, transform 0.2s;
+    width: var(--global-line-height);
+    border-radius: 0 8px 0 0;
+}
+
+.close-btn:hover {
+    color: #d9230f; /* Glows with Apache Red when hovered */
+    transform: scale(1.1);
+}
+
 /* The actual box */
 .modal-content {
     background: #1e1e1e;
@@ -509,6 +529,7 @@ button {
     width: 100%;
     max-width: 400px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    position: relative;
 }
 
 .modal-content h3 {

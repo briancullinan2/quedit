@@ -67,6 +67,7 @@
                         <option value="release">Release</option>
                         <option value="pre">Preprocess</option>
                         <option value="qvms">QVMs Only</option>
+                        <option value="tools">QVM Tools Only</option>
                         <option value="assets">Assets Only</option>
                         <option value="publish">Publish</option>
                         <option value="sanitize">Sanitize</option>
@@ -259,6 +260,7 @@ int main() {
 
     <div id="token-modal" class="hidden">
         <div class="modal-content">
+            <button class="close-btn" onclick="modal.classList.add('hidden')">&times;</button>
             <h3>GitHub Access Token</h3>
             <p>Required for API access</p>
             <input type="password" id="gh-token-input" />
