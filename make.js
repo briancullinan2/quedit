@@ -763,18 +763,18 @@ function loadEntry(cursor) {
     //   it must have come with page
     if (FS.virtual[cursor.key]
         && FS.virtual[cursor.key].timestamp
-        > cursor.value.timestamp) {
+        > cursor.timestamp) {
         // embedded file is newer, start with that
-        return cursor.continue()
+        return
     }
     //term.write('\n\rLoading: ' + cursor.key + '\n\r');
 
     FS.virtual[cursor.key] = {
-        timestamp: cursor.value.timestamp,
-        mode: cursor.value.mode,
-        contents: cursor.value.contents,
-        path: cursor.value.path
+        timestamp: cursor.timestamp,
+        mode: cursor.mode,
+        contents: cursor.contents,
+        path: cursor.path,
+        sha: cursor.sha
     }
-    return cursor.continue()
 }
 

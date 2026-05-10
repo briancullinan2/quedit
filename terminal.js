@@ -196,6 +196,7 @@ terminalContainer.addEventListener('mousedown', async (event) => {
         let ownerName = parts.length == 2 ? parts[0] : owner.value
         let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
         let sha = files[database][filePath].sha
+        currentOpenFileId = sha
         await openFile(owner.value, repo.value, filePath, sha)
         editor.gotoLine(lineNumber, 0, true);
         editor.focus();

@@ -966,8 +966,7 @@ const API = (function () {
         return resolve()
       }
       this.memfs.hostWrite('\n\rLoading: ' + cursor.key + '\n\r')
-      this.memfs.addFile(cursor.value.path, cursor.value.contents);
-      return cursor.continue()
+      this.memfs.addFile(cursor.path, cursor.contents);
     }
 
 

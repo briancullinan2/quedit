@@ -23,6 +23,8 @@ const convertFlatToNested = (data) => {
                 }
                 currentLevel.push(existingPath);
             }
+            if(!existingPath.children)
+                return
             currentLevel = existingPath.children;
         });
 
@@ -51,6 +53,9 @@ const sortNodes = (nodes) => {
 
     return nodes;
 };
+
+
+const loadedDatabases = {}
 
 async function initializeFiletrees() {
     if (window.location.pathname) {
@@ -100,37 +105,48 @@ async function initializeFiletrees() {
 
     }
 
+    await showDatabases()
 
-    var databases = await getDatabaseMetadata()
-    trees['#database'] = new Tree('#database', {
-        data: databases.map((d, i) => ({
-            id: `${d.key}-${i}`,
-            text: d.key,
-            state: {
-                open: false,
-                expanded: false
-            },
-            path: d.key,
-            children: [{
-                id: `${d.key}-${i}-loading`,
-                text: 'Loading...',
-                state: {
-                    open: false,
-                    expanded: false
-                },
-                path: d.key + '/' + 'loading'
-            }]
-        })),
-        autoOpen: false,
-        closeDepth: 1,
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach(async (mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                const target = mutation.target;
+
+                // Check if the node just became expanded
+                if (target.classList.contains('treejs-node__open')) {
+                    const folderId = target.getAttribute('data-id');
+
+                    try {
+                        if(loadedDatabases[folderId]) return
+
+                        await readAll(folderId, loadTree.bind(null, folderId))
+                        const newChildren = convertFlatToNested(Object.values(files[folderId]));
+
+                        loadedDatabases[folderId] = newChildren;
+                    } catch (err) {
+                        console.error("Failed to load tree node:", err);
+                        loadedDatabases[folderId] = [{ text: 'Error loading files', id: 'err' }];
+                    }
+
+                    await showDatabases()
+
+                }
+            }
+        });
+    });
+
+    // Observe the tree container for any class changes on nodes
+    observer.observe(document.querySelector('#database'), {
+        attributes: true,
+        subtree: true,
+        attributeFilter: ['class']
     });
 }
 
 initializeFiletrees();
 
 let tempCount = 1;
-async function newFile()
-{
+async function newFile() {
     const session = getOrCreateAceSession('temp' + (++tempCount), '');
     editor.setSession(session);
     editor.resize();
@@ -138,6 +154,73 @@ async function newFile()
 
 }
 
+
+
+
+async function showDatabases() {
+    var databases = await getDatabaseMetadata()
+
+
+    var newData = databases.map((d, i) => ({
+        id: `${d.key}`,
+        text: d.key,
+        state: {
+            open: false,
+            expanded: false
+        },
+        path: d.key,
+        children: loadedDatabases[d.key] 
+        ? loadedDatabases[d.key] 
+        : [{
+            id: `${d.key}`,
+            text: 'Loading...',
+            state: {
+                open: false,
+                expanded: false
+            },
+            path: d.key + '/' + 'loading',
+        }]
+    }))
+
+    if (!trees['#database']) {
+
+        trees['#database'] = new Tree('#database', {
+
+            data: newData,
+            autoOpen: false,
+            closeDepth: 1,
+        });
+    }
+    else {
+        trees['#database'].options.data = newData
+        trees['#database'].render(trees['#database'].options.data)
+    }
+}
+
+
+
+function loadTree(database, cursor) {
+    if (!cursor) {
+        return resolve()
+    }
+    // already exists on filesystem, 
+    //   it must have come with page
+    if (files[database][cursor.key]
+        && files[database][cursor.key].timestamp
+        > cursor.timestamp) {
+        // embedded file is newer, start with that
+        return
+    }
+    //term.write('\n\rLoading: ' + cursor.key + '\n\r');
+
+    files[database][cursor.key] = {
+        timestamp: cursor.timestamp,
+        mode: cursor.mode,
+        contents: cursor.contents,
+        path: cursor.path,
+        sha: cursor.sha
+    }
+}
 
 
 async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true) {
@@ -187,11 +270,10 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
 let hashDebounce = null
 function renderHashCommand(fileName, noBounce = false) {
 
-    if(hashDebounce) {
+    if (hashDebounce) {
         clearTimeout(hashDebounce)
     }
-    if(!noBounce)
-    {
+    if (!noBounce) {
         hashDebounce = setTimeout(() => renderHashCommand(fileName, true), 500)
         return
     }
@@ -267,6 +349,9 @@ function renderTabsCommand(panelId) {
 
         if (repo)
             setRepository(repo)
+
+        if(panelId == 'database')
+            showDatabases()
     }
 
 
