@@ -222,7 +222,7 @@ const onAnyMessage = async event => {
         if (paths && api.database) {
           for (var filePath of paths) {
             if (!filePath) continue
-            if (api.memfs.exists(filePath)) continue
+            if (FS.virtual[filePath]) continue
             try {
               if (filePath.startsWith('--allow-undefined-file=')) {
                 filePath = filePath.substring('--allow-undefined-file='.length)
@@ -230,14 +230,14 @@ const onAnyMessage = async event => {
 
               const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
               if (fileDir.trim().length > 0)
-                api.memfs.mkdirp(fileDir)
+                api.mkdirp(fileDir)
 
 
               var record = await getRecord(DB_STORE_NAME, filePath, api.database)
               if (!record) continue
+              FS.virtual[record.path] = record
 
-              api.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
-              api.memfs.addFile(record.path, record.contents);
+              api.hostWrite('\n\rLoading: ' + record.path + '\n\r')
             } catch (e) {
               console.log(e)
             }

@@ -166,7 +166,7 @@ const API = (function () {
         .then(module => WebAssembly.instantiate(module, { env }))
         .then(instance => {
           this.instance = instance;
-          window.Module.exports = this.exports = instance.exports;
+          this.exports = instance.exports;
           this.mem = new Memory(this.exports.memory);
           this.exports.init();
         })
@@ -247,110 +247,6 @@ const API = (function () {
       }
       catch (e) {
         console.error(path + ' - ' + e)
-      }
-    }
-
-    directoryList(fd) {
-      // 1. Use your established scratch space
-      const bufPtr = this.exports.GetPathBuf();
-      const bufLen = this.exports.GetPathBufLen();
-
-      // 2. We'll use the last 4 bytes of the scratch buffer for nreadPtr
-      // to avoid a separate allocation or hardcoded address.
-      const nreadPtr = bufPtr + bufLen - 4;
-      const PAGE_SIZE = bufLen - 4;
-
-      const results = [];
-      let cookie = 0n;
-
-      while (true) {
-        // Call WASI export using the scratch buffer
-        const errno = this.exports.fd_readdir(fd, bufPtr, PAGE_SIZE, cookie, nreadPtr);
-
-        if (errno !== 0) {
-          console.error(`readdir failed with errno: ${errno}`);
-          break;
-        }
-
-        const view = new DataView(this.exports.memory.buffer);
-        const nread = view.getUint32(nreadPtr, true);
-        if (nread === 0) break;
-
-        let offset = 0;
-        while (offset < nread) {
-          // WASI Dirent Header (24 bytes):
-          // 0-7: d_next (8) | 8-15: d_ino (8) | 16-19: d_namlen (4) | 20: d_type (1)
-          const d_next = view.getBigUint64(offset, true);
-          const d_namlen = view.getUint32(offset + 16, true);
-          const d_type = view.getUint8(offset + 20);
-
-          // Name immediately follows the 24-byte header
-          const namePtr = bufPtr + offset + 24;
-          const nameBuffer = new Uint8Array(this.exports.memory.buffer, namePtr, d_namlen);
-          const name = new TextDecoder().decode(nameBuffer);
-
-          results.push({
-            name: name,
-            type: d_type, // 4 = Dir, 8 = File
-            inode: view.getBigUint64(offset + 8, true)
-          });
-
-          cookie = d_next;
-          offset += 24 + d_namlen;
-        }
-
-        if (nread < PAGE_SIZE) break;
-      }
-
-      return results;
-    }
-
-
-    async recursiveDir(dirFd, pathStr = "") {
-      // 1. Get the scratch space provided by your Wasm module
-      const scratchPtr = this.exports.GetPathBuf();
-      const scratchLen = this.exports.GetPathBufLen();
-
-      if (scratchLen < 4096) {
-        throw new Error("Scratch buffer too small for readdir");
-      }
-
-      const entries = this.directoryList(dirFd, scratchPtr, scratchLen);
-
-      for (const entry of entries) {
-        const fullPath = pathStr ? `${pathStr}/${entry.name}` : entry.name;
-
-        if (entry.type === 4) { // Directory
-          // Use the scratch space to encode the directory name for path_open
-          const encoder = new TextEncoder();
-          const encoded = encoder.encode(entry.name);
-
-          // Write name to scratch space (reusing GetPathBuf)
-          new Uint8Array(this.exports.memory.buffer).set(encoded, scratchPtr);
-
-          // We need 4 bytes for the result FD. 
-          // We can put this at the very end of our scratch buffer to avoid overlap.
-          const resultFdPtr = scratchPtr + scratchLen - 4;
-
-          const errno = this.exports.path_open(
-            dirFd,
-            0,
-            scratchPtr, encoded.length,
-            0,
-            0x2000000n, 0x2000000n,
-            0,
-            resultFdPtr
-          );
-
-          if (errno === 0) {
-            const subDirFd = new DataView(this.exports.memory.buffer).getUint32(resultFdPtr, true);
-
-            await recursiveDir(subDirFd, fullPath);
-            this.exports.fd_close(subDirFd);
-          }
-        } else {
-          console.log(`File: ${fullPath}`);
-        }
       }
     }
 
@@ -472,12 +368,12 @@ const API = (function () {
   const RAF_PROC_EXIT_CODE = 0xC0C0A;
 
   class App {
-    constructor(api, module, memfs, sysrootFilename, name, ...args) {
+    constructor(api, hostWrite, module, sysrootFilename, name, ...args) {
       this.api = api;
+      this.hostWrite = hostWrite
       this.sysrootFilename = sysrootFilename;
       SYS.startArgs = this.argv = [name, ...args];
       this.environ = { USER: 'alice' };
-      this.memfs = memfs;
       this.allowRequestAnimationFrame = true;
       this.handles = new Map();
       this.nextHandle = 0;
@@ -534,27 +430,29 @@ const API = (function () {
       ]);
 
       const wasi_unstable = getImportObject(this, [
-        'proc_exit', 'environ_sizes_get', 'environ_get', 'args_sizes_get',
-        'args_get', 'random_get', 'clock_time_get', 'poll_oneoff'
+        'proc_exit', 'environ_sizes_get', 'environ_get', 'args_get',
+        'args_sizes_get', 'random_get', 'clock_time_get', 'poll_oneoff'
       ]);
 
-      // Fill in some WASI implementations from memfs.
-      //Object.assign(wasi_unstable, this.memfs.exports);
-      Object.assign(wasi_unstable, FS);
-      Object.assign(wasi_unstable, SYS);
 
-      const imports = WebAssembly.Module.imports(module);
-      console.log(imports.filter(i => i.module.includes("wasi")));
+      let almostReady = this.api.memfs.ready.then(() => {
+        Object.assign(wasi_unstable, this.api.memfs.exports);
+        //Object.assign(wasi_unstable, FS);
+        //Object.assign(wasi_unstable, SYS);
 
-      this.ready = getInstance(module, { wasi_unstable, env }).then(instance => {
+        const imports = WebAssembly.Module.imports(module);
+        //console.log(imports.filter(i => i.module.includes("wasi")));
+
+      })
+
+      this.ready = almostReady.then(() => getInstance(module, { wasi_unstable, env })).then(instance => {
         this.instance = instance;
         Module.exports = this.exports = this.instance.exports;
         this.mem = new Memory(this.exports.memory);
         ENV.memory = Module.memory = this.exports.memory
         window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
         updateGlobalBufferAndViews()
-        //if(!this.memfs.hostMem_)
-        this.memfs.hostMem = this.mem;
+        this.api.memfs.hostMem = this.mem;
       });
     }
 
@@ -564,9 +462,6 @@ const API = (function () {
         this.exports._start();
       } catch (exn) {
         let writeStack = true;
-        if (exn.message.includes('memory access out of bounds')) {
-          this.api.initMemFS()
-        }
 
         if (exn instanceof ProcExit) {
           if (exn.code === RAF_PROC_EXIT_CODE) {
@@ -588,7 +483,7 @@ const API = (function () {
           msg = msg + `\n${exn.stack}`;
         }
         msg += '\x1b[0m\n';
-        this.memfs.hostWrite(msg);
+        this.hostWrite(msg);
 
         // Propagate error.
         throw exn;
@@ -911,10 +806,21 @@ const API = (function () {
       while (entry = this.readEntry()) {
         switch (entry.type) {
           case '0': // Regular file.
-            memfs.addFile(entry.filename, entry.contents);
+            FS.virtual['/base/' + entry.filename] = {
+              timestamp: new Date(),
+              mode: FS_FILE,
+              contents: entry.contents,
+              path: '/base/' + entry.filename
+            }
             break;
           case '5':
-            memfs.addDirectory(entry.filename);
+            if (entry.filename.endsWith('/'))
+              entry.filename = entry.filename.substring(0, entry.filename.length - 1)
+            FS.virtual['/base/' + entry.filename] = {
+              timestamp: new Date(),
+              mode: FS_DIR,
+              path: '/base/' + entry.filename
+            }
             break;
         }
       }
@@ -933,21 +839,21 @@ const API = (function () {
       this.sysrootFilename = options.sysroot || 'sysroot.tar';
       this.showTiming = options.showTiming || false;
 
-      this.initMemFS()
-    }
-
-
-    initMemFS() {
+      FS.virtual['/base'] = {
+        timestamp: new Date(),
+        mode: FS_DIR,
+        path: '/base'
+      }
 
       this.memfs = new MemFS({
         compileStreaming: this.compileStreaming,
         hostWrite: this.hostWrite,
-        memfsFilename: this.options.memfs || 'memfs.wasm',
+        memfsFilename: 'memfs.wasm',
       });
-      this.ready = this.memfs.ready.then(
-        () => { return this.untar(this.memfs, this.sysrootFilename); });
 
+      this.untar(this.sysrootFilename);
     }
+
 
     hostLog(message) {
       const yellowArrow = '\x1b[1;93m>\x1b[0m ';
@@ -992,8 +898,8 @@ const API = (function () {
           }
         }
 
-        if (this.memfs && this.memfs.exists(filePath)) {
-          contents = this.memfs.getFileContents(filePath)
+        if (FS.virtual[filePath]) {
+          contents = FS.virtual[filePath].contents
         }
 
         if (contents) {
@@ -1006,20 +912,19 @@ const API = (function () {
 
       }
 
-      this.memfs.hostWrite('\n\r' + name + ' not found at: ' + this.commonPaths(name).join('\n\r') + '\n\r')
+      this.hostWrite('\n\r' + name + ' not found at: ' + this.commonPaths(name).join('\n\r') + '\n\r')
 
       const module = await this.hostLogAsync(`Fetching and compiling ${name}`,
         this.compileStreaming(name));
-      if(!module) throw new Error('No module! ' + name)
+      if (!module) throw new Error('No module! ' + name)
       this.moduleCache[name] = module;
       return module;
     }
 
     async untar(memfs, filename) {
-      await this.memfs.ready;
       const promise = (async () => {
         const tar = new Tar(await this.readBuffer(filename));
-        tar.untar(this.memfs);
+        tar.untar(memfs);
       })();
       await this.hostLogAsync(`Untarring ${filename}`, promise);
     }
@@ -1028,69 +933,65 @@ const API = (function () {
       if (!cursor) {
         return resolve()
       }
-      this.memfs.hostWrite('\n\rLoading: ' + cursor.path + '\n\r')
-      this.memfs.addFile(cursor.path, cursor.contents);
+      FS.virtual[cursor.path] = cursor
+    }
+
+
+    mkdirp(path) {
+      // Ensure we have a clean array of directory segments
+      // Filter(Boolean) removes empty strings from leading/double slashes
+      const parts = path.split('/').filter(Boolean);
+      let currentPath = path.startsWith('/') ? '/' : '';
+      let previousPath = ''
+      for (const part of parts) {
+        // If we're at the root, don't double up the slash
+        previousPath = currentPath
+        currentPath = currentPath === '' ? `${part}` : `${currentPath}/${part}`;
+
+        try {
+          FS.virtual[currentPath] = {
+            timestamp: new Date(),
+            mode: FS_DIR,
+            path: currentPath
+          }
+          FS.virtual[currentPath + '/.'] = FS.virtual[currentPath]
+          if (previousPath)
+            FS.virtual[currentPath + '/..'] = FS.virtual[previousPath]
+        } catch (e) {
+          // Log only if it's a real crash, not just an "already exists" error
+          if (!e.message.includes("exists")) {
+            console.warn(`mkdirp segment failed: ${currentPath}`, e);
+          }
+        }
+      }
     }
 
 
     async header(options) {
       await this.ready;
       let filePath = options.header
-      if(options.database)
+      if (options.database)
         this.database = options.database
       else
         return
 
       let record = await getRecord(DB_STORE_NAME, filePath, options.database)
       if (!record) return
+      FS.virtual[record.path] = record
 
       const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
       if (fileDir.trim().length > 0)
-        this.memfs.mkdirp(fileDir)
+        this.mkdirp(fileDir)
 
-      this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
-      this.memfs.addFile(record.path, record.contents);
     }
 
     async upload(database) {
       await this.ready;
-      if(!database) return
+      if (!database) return
       this.database = database
       await readAll(database, this.loadEntry.bind(this))
     }
 
-    /*
-    async stringify(shader, stringifyPath) {
-      await this.ready;
-      if(!this.stringifyModule)
-      {
-        var bytes = this.memfs.getFileContents(stringifyPath)
-        this.stringifyModule = await WebAssembly.instantiate(bytes, {})
-        
-      }
-    }
-    */
-
-
-    async download(database) {
-      await this.ready;
-      if(!database) return
-      this.database = database
-      var fd = this.memfs.openPath('/')
-      var directories = await this.memfs.recursiveDir(fd)
-      debugger
-      for (let file of directories) {
-        var bytes = this.memfs.getFileContents(file)
-        var newFile = {
-          timestamp: new Date(),
-          mode: FS_FILE,
-          contents: bytes,
-          path: file,
-        }
-        await putRecord(DB_STORE_NAME, newFile, database)
-      }
-      return directories
-    }
 
 
     async compile(options) {
@@ -1101,40 +1002,45 @@ const API = (function () {
       if (input) {
         const inDir = input.substring(0, input.lastIndexOf('/'));
         if (inDir.trim().length > 0)
-          this.memfs.mkdirp(inDir)
+          this.mkdirp(inDir)
         if (input && contents)
           this.memfs.addFile(input, Uint8Array.from(contents, c => c.charCodeAt(0)));
+          FS.virtual['/base/' + input] = {
+            timestamp: new Date(),
+            mode: FS_FILE,
+            contents: Uint8Array.from(contents, c => c.charCodeAt(0)),
+            path: '/base/' + input
+          }
       }
       if (obj) {
         const dirPath = obj.substring(0, obj.lastIndexOf('/'));
         if (dirPath.trim().length > 0)
-          this.memfs.mkdirp(dirPath)
+          this.mkdirp(dirPath)
       }
 
       await this.ready;
 
-      if (!this.memfs.exists('tmp'))
-        this.memfs.mkdirp('tmp')
+      if (!FS.virtual['/tmp'])
+        this.mkdirp('tmp')
 
 
       if (options.CFLAGS && options.database) {
         this.database = options.database
         for (var filePath of options.CFLAGS) {
           if (!filePath) continue
-          if (this.memfs.exists(filePath)) continue
+          if (FS.virtual[filePath]) continue
           try {
             if (filePath.startsWith('--allow-undefined-file=')) {
               filePath = syms[0].substring('--allow-undefined-file='.length)
             }
             var record = await getRecord(DB_STORE_NAME, filePath, options.database)
             if (!record) continue
+            FS.virtual[record.path] = record
 
             const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
             if (fileDir.trim().length > 0)
-              this.memfs.mkdirp(fileDir)
+              this.mkdirp(fileDir)
 
-            this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
-            this.memfs.addFile(record.path, record.contents);
           } catch (e) {
             console.log(e)
           }
@@ -1143,15 +1049,8 @@ const API = (function () {
 
       const clang = await this.getModule(this.clangFilename);
       var result = await this.run(clang, 'clang', ...options.CFLAGS || []);
-      var bytes = this.memfs.getFileContents(obj)
-      var newFile = {
-        timestamp: new Date(),
-        mode: FS_FILE,
-        contents: bytes,
-        path: obj,
-      }
       if (options.database)
-        await putRecord(DB_STORE_NAME, newFile, options.database)
+        await putRecord(DB_STORE_NAME, FS.virtual[obj], options.database)
       return result
     }
 
@@ -1165,14 +1064,19 @@ const API = (function () {
 
       await this.ready;
       if (input && contents)
-        this.memfs.addFile(input, contents);
+        FS.virtual['/base/' + input] = {
+          timestamp: new Date(),
+          mode: FS_FILE,
+          contents: Uint8Array.from(contents, c => c.charCodeAt(0)),
+          path: '/base/' + input
+        }
 
       const clang = await this.getModule(this.clangFilename);
       await this.run(clang, 'clang', '-cc1', '-S',
         `-triple=${triple}`, '-mllvm',
         '--x86-asm-syntax=intel', `-O${opt}`,
         '-o', output, '-x', 'c++', input);
-      return this.memfs.getFileContents(output);
+      return FS.virtual[output];
     }
 
     async compileTo6502(options) {
@@ -1182,10 +1086,18 @@ const API = (function () {
       const flags = options.flags;
 
       await this.ready;
-      this.memfs.addFile(input, contents);
+
+      FS.virtual['/base/' + input] = {
+        timestamp: new Date(),
+        mode: FS_FILE,
+        contents: Uint8Array.from(contents, c => c.charCodeAt(0)),
+        path: '/base/' + input
+      }
+
+
       const vasm = await this.getModule('vasm6502_oldstyle');
       await this.run(vasm, 'vasm6502_oldstyle', ...flags, '-o', output, input);
-      return this.memfs.getFileContents(output);
+      return FS.virtual[output];
     }
 
     async link(options) {
@@ -1197,7 +1109,7 @@ const API = (function () {
       await this.ready;
 
       if (dirPath.trim().length > 0)
-        this.memfs.mkdirp(dirPath)
+        this.mkdirp(dirPath)
 
       const lld = await this.getModule(this.lldFilename);
 
@@ -1209,14 +1121,13 @@ const API = (function () {
           try {
             var record = await getRecord(DB_STORE_NAME, filePath, options.database)
             if (!record) continue
+            FS.virtual[record.path] = record
 
             const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
             if (fileDir.trim().length > 0)
-              this.memfs.mkdirp(fileDir)
+              this.mkdirp(fileDir)
 
-
-            this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
-            this.memfs.addFile(record.path, record.contents);
+            this.hostWrite('\n\rLoading: ' + record.path + '\n\r')
           } catch (e) {
             console.log(e)
           }
@@ -1226,20 +1137,20 @@ const API = (function () {
       if (options.LDFLAGS && options.database) {
         for (var filePath of options.LDFLAGS) {
           if (!filePath) continue
-          if (this.memfs.exists(filePath)) continue
+          if (FS.virtual[filePath]) continue
           try {
             if (filePath.startsWith('--allow-undefined-file=')) {
               filePath = filePath.substring('--allow-undefined-file='.length)
             }
             var record = await getRecord(DB_STORE_NAME, filePath, options.database)
             if (!record) continue
+            FS.virtual[record.path] = record
 
             const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
             if (fileDir.trim().length > 0)
-              this.memfs.mkdirp(fileDir)
+              this.mkdirp(fileDir)
 
-            this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
-            this.memfs.addFile(record.path, record.contents);
+            this.hostWrite('\n\rLoading: ' + record.path + '\n\r')
           } catch (e) {
             console.log(e)
           }
@@ -1254,15 +1165,8 @@ const API = (function () {
 
       var result = await this.run(
         lld, 'wasm-ld', ...options.LDFLAGS || [])
-      var bytes = this.memfs.getFileContents(wasm)
-      var newFile = {
-        timestamp: new Date(),
-        mode: FS_FILE,
-        contents: bytes,
-        path: wasm,
-      }
-      if(options.database)
-        await putRecord(DB_STORE_NAME, newFile, options.database)
+      if (options.database)
+        await putRecord(DB_STORE_NAME, FS.virtual[wasm], options.database)
       return result;
     }
 
@@ -1279,20 +1183,20 @@ const API = (function () {
       if (args) {
         for (var filePath of args) {
           if (!filePath) continue
-          if (this.memfs.exists(filePath)) continue
+          if (FS.virtual[filePath]) continue
           try {
             if (filePath.startsWith('--allow-undefined-file=')) {
               filePath = filePath.substring('--allow-undefined-file='.length)
             }
             var record = await getRecord(DB_STORE_NAME, filePath, this.database)
             if (!record) continue
+            FS.virtual[record.path] = record
 
             const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
             if (fileDir.trim().length > 0)
-              this.memfs.mkdirp(fileDir)
+              this.mkdirp(fileDir)
 
-            this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
-            this.memfs.addFile(record.path, record.contents);
+            this.hostWrite('\n\rLoading: ' + record.path + '\n\r')
           } catch (e) {
             console.log(e)
           }
@@ -1300,15 +1204,15 @@ const API = (function () {
       }
 
 
-      if(!args)
+      if (!args)
         args = []
 
-      if(args.length == 0)
+      if (args.length == 0)
         args[0] = module.name
 
 
       const start = +new Date();
-      const app = new App(this, module, this.memfs, this.sysrootFilename, ...args || []);
+      const app = new App(this, this.hostWrite, module, this.sysrootFilename, ...args || []);
       const instantiate = +new Date();
       const stillRunning = await app.run();
       const end = +new Date();
@@ -1330,9 +1234,8 @@ const API = (function () {
       await this.compile({ input, contents: options.contents, obj });
       await this.link({ obj, wasm });
 
-      const buffer = this.memfs.getFileContents(wasm);
       const testMod = await this.hostLogAsync(`Compiling ${wasm}`,
-        WebAssembly.compile(buffer));
+        WebAssembly.compile(FS.virtual[wasm].contents));
       return await this.run(testMod, wasm);
     }
   }

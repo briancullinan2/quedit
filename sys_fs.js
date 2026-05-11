@@ -534,7 +534,7 @@ const FS = {
 			path: '/dev/stderr',
 		}, '/dev/stderr', 2],
 	},
-	filePointer: 0,
+	filePointer: 3,
 	virtual: {}, // temporarily store items as they go in and out of memory
 	Sys_ListFiles: Sys_ListFiles,
 	Sys_FTell: Sys_FTell,
@@ -593,26 +593,26 @@ var WASI_STDERR_FILENO = 2;
 
 
 function fd_prestat_get(fd, bufPtr) {
-    // We only provide the root directory at FD 3
-    if (fd === 3) {
-        const view = new DataView(Module.memory.buffer);
-        // byte 0: pr_type (0 is prestat_dir)
-        view.setUint8(bufPtr, 0); 
-        // byte 4: pr_name_len (the length of the string "/", which is 1)
-        view.setUint32(bufPtr + 4, 1, true); 
-        return 0; // WASI_ESUCCESS
-    }
-    return 8; // WASI_EBADF (stop looking after FD 3)
+	// We only provide the root directory at FD 3
+	if (fd === 3) {
+		const view = new DataView(Module.memory.buffer);
+		// byte 0: pr_type (0 is prestat_dir)
+		view.setUint8(bufPtr, 0);
+		// byte 4: pr_name_len (the length of the string "/", which is 1)
+		view.setUint32(bufPtr + 4, 1, true);
+		return 0; // WASI_ESUCCESS
+	}
+	return 8; // WASI_EBADF (stop looking after FD 3)
 }
 
 function fd_prestat_dir_name(fd, pathPtr, pathLen) {
-    if (fd === 3) {
-        const heap = new Uint8Array(Module.memory.buffer);
-        // Write "/" into the buffer
-        heap[pathPtr] = "/".charCodeAt(0);
-        return 0; // WASI_ESUCCESS
-    }
-    return 28; // WASI_EINVAL
+	if (fd === 3) {
+		const heap = new Uint8Array(Module.memory.buffer);
+		// Write "/" into the buffer
+		heap[pathPtr] = "/".charCodeAt(0);
+		return 0; // WASI_ESUCCESS
+	}
+	return 28; // WASI_EINVAL
 }
 
 
@@ -642,55 +642,74 @@ function args_sizes_get(argcPtr, argvBufSizePtr) {
 	return 0; // WASI_ESUCCESS
 }
 function args_get(argvPtr, argvBufPtr) {
-    const args = SYS.startArgs || [];
-    let currentBufPtr = argvBufPtr;
-    const encoder = new TextEncoder();
+	const args = SYS.startArgs || [];
+	let currentBufPtr = argvBufPtr;
+	const encoder = new TextEncoder();
 
-    // Use the latest buffer from the module
-    const buffer = Module.memory.buffer;
-    const view = new DataView(buffer);
-    const heap = new Int8Array(buffer); // Create a fresh view here
+	// Use the latest buffer from the module
+	const buffer = Module.memory.buffer;
+	const view = new DataView(buffer);
+	const heap = new Int8Array(buffer); // Create a fresh view here
 
-    args.forEach((arg, i) => {
-        // 1. Write the pointer
-        view.setUint32(argvPtr + (i * 4), currentBufPtr, true);
+	args.forEach((arg, i) => {
+		// 1. Write the pointer
+		view.setUint32(argvPtr + (i * 4), currentBufPtr, true);
 
-        // 2. Encode and set
-        const bytes = encoder.encode(arg);
-        
-        // This is where the crash was happening; 
-        // using 'heap' (the fresh view) prevents the detached error.
-        heap.set(bytes, currentBufPtr);
-        
-        // 3. Null terminator
-        heap[currentBufPtr + bytes.length] = 0;
+		// 2. Encode and set
+		const bytes = encoder.encode(arg);
 
-        currentBufPtr += bytes.length + 1;
-    });
+		// This is where the crash was happening; 
+		// using 'heap' (the fresh view) prevents the detached error.
+		heap.set(bytes, currentBufPtr);
 
-    return 0;
+		// 3. Null terminator
+		heap[currentBufPtr + bytes.length] = 0;
+
+		currentBufPtr += bytes.length + 1;
+	});
+
+	return 0;
 }
 
 function fd_fdstat_get(fd, bufPtr) {
-    var view = new DataView(Module.memory.buffer);
+    const stream = FS.pointers[fd];
+    const view = new DataView(Module.memory.buffer);
 
-    // 1. Determine type: 3 is root (DIR=4), others are usually FILE=8
-    const type = (fd === 3) ? 4 : 8; 
+    // 1. Determine Type
+    // Standard WASI: 2 = char device, 3 = block, 4 = directory, 8 = regular file
+    let type = 8; 
+    if (fd <= 2) {
+        type = 2; // stdin/out/err are character devices
+    } else if (fd === 3) {
+        type = 4; // Our pre-opened root is a directory
+    } else if (stream && stream[2] && (stream[2].mode >> 12) === ST_DIR) {
+        type = 4;
+    }
+
+    // Offset 0: fs_filetype (u8)
     view.setUint8(bufPtr, type);
-    view.setUint16(bufPtr + 2, 0, true); // flags
 
-    // 2. Grant ALL rights (0xffffffffffffffffn)
-    // You need to write two 64-bit integers (Base and Inheriting)
-    // If you don't have BigInt support in this specific view, 
-    // write 0xFFFFFFFF to both low and high words.
-    view.setUint32(bufPtr + 8, 0xFFFFFFFF, true);  // Base Low
-    view.setUint32(bufPtr + 12, 0xFFFFFFFF, true); // Base High
-    view.setUint32(bufPtr + 16, 0xFFFFFFFF, true); // Inheriting Low
-    view.setUint32(bufPtr + 20, 0xFFFFFFFF, true); // Inheriting High
+    // Offset 2: fs_flags (u16)
+    // 0 = no special flags (like non-block or append)
+    view.setUint16(bufPtr + 2, 0, true);
+
+    // Offset 8: fs_rights_base (u64)
+    // Offset 16: fs_rights_inheriting (u64)
+    // We grant "All Rights" (0xFFFFFFFFFFFFFFFF)
+    // Written as two 32-bit parts for compatibility
+    const ALL_RIGHTS_LOW = 0xFFFFFFFF;
+    const ALL_RIGHTS_HIGH = 0xFFFFFFFF;
+
+    // Base Rights
+    view.setUint32(bufPtr + 8, ALL_RIGHTS_LOW, true);
+    view.setUint32(bufPtr + 12, ALL_RIGHTS_HIGH, true);
+
+    // Inheriting Rights (What files opened from this dir get)
+    view.setUint32(bufPtr + 16, ALL_RIGHTS_LOW, true);
+    view.setUint32(bufPtr + 20, ALL_RIGHTS_HIGH, true);
 
     return 0; // WASI_ESUCCESS
 }
-
 
 
 // TODO: THIS MIGHT BE A MORE COMPREHENSIVE WRITE FUNCTION
@@ -753,18 +772,18 @@ function proc_exit(rval) {
 }
 
 function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, rights_inheriting, fdflags, openedFdPtr) {
-    const path = new TextDecoder().decode(new Uint8Array(Module.memory.buffer, pathPtr, pathLen));
-    
-    // Use your existing POSIX-style opener
-    // Sys_FOpen expects a pointer, so we'll mock that or change it to take a string
-    // Here I'll assume you want to hit your internal Sys_FOpen logic:
-    const fd = Sys_FOpen(pathPtr, 0); // Warning: check if Sys_FOpen expects string address or string
+	const path = new TextDecoder().decode(new Uint8Array(Module.memory.buffer, pathPtr, pathLen));
 
-    if (fd === 0) return 44; // WASI_ENOENT
+	// Use your existing POSIX-style opener
+	// Sys_FOpen expects a pointer, so we'll mock that or change it to take a string
+	// Here I'll assume you want to hit your internal Sys_FOpen logic:
+	const fd = Sys_FOpen(pathPtr, 0); // Warning: check if Sys_FOpen expects string address or string
 
-    const view = new DataView(Module.memory.buffer);
-    view.setUint32(openedFdPtr, fd, true);
-    return 0;
+	if (fd === 0) return 44; // WASI_ENOENT
+
+	const view = new DataView(Module.memory.buffer);
+	view.setUint32(openedFdPtr, fd, true);
+	return 0;
 }
 
 
@@ -781,98 +800,124 @@ function _fd_close(fd) {
 }
 
 function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
-    const path = new TextDecoder().decode(new Uint8Array(Module.memory.buffer, pathPtr, pathLen));
-    
-    // Resolve path to your FS.virtual
-    let localName = path;
-    if (!localName.startsWith('/')) localName = '/' + localName;
-    if (!localName.startsWith('/base')) localName = '/base' + localName;
+	const path = new TextDecoder().decode(new Uint8Array(Module.memory.buffer, pathPtr, pathLen));
 
-    const file = FS.virtual[localName];
-    if (!file) return 44; // ENOENT
+	// Resolve path to your FS.virtual
+	let localName = path;
+	if (!localName.startsWith('/')) localName = '/' + localName;
+	if (!localName.startsWith('/base')) localName = '/base' + localName;
+	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
+	//if (localName.startsWith('/base/usr/local')) localName = '/base' + localName.substring('/base/usr/local'.length)
+	//if (localName.startsWith('/usr/local')) localName = '/base' + localName.substring('/usr/local'.length)
 
-    const view = new DataView(Module.memory.buffer);
-    // wasi_unstable stat struct offsets:
-    // dev (8b), ino (8b), type (1b), nlink (4b), size (8b), atime (8b), mtime (8b), ctime (8b)
-    
-    const isDir = (file.mode >> 12) === ST_DIR;
-    view.setUint8(bufPtr + 16, isDir ? 4 : 8); // filetype
-    
-    const size = BigInt(file.contents ? file.contents.length : 0);
-    view.setBigUint64(bufPtr + 24, size, true); // size
-    
-    const time = BigInt(file.timestamp.getTime()) * 1000000n; // Convert ms to ns
-    view.setBigUint64(bufPtr + 32, time, true); // atime
-    view.setBigUint64(bufPtr + 40, time, true); // mtime
-    view.setBigUint64(bufPtr + 48, time, true); // ctime
+	const file = FS.virtual[localName];
+	if (!file) {
+		return 44; // ENOENT
+	}
 
-    return 0;
+	const view = new DataView(Module.memory.buffer);
+	// wasi_unstable stat struct offsets:
+	// dev (8b), ino (8b), type (1b), nlink (4b), size (8b), atime (8b), mtime (8b), ctime (8b)
+
+	const isDir = (file.mode >> 12) === ST_DIR;
+	view.setUint8(bufPtr + 16, isDir ? 4 : 8); // filetype
+
+	let size = 0n;
+	if (!isDir && file.contents) {
+		size = BigInt(file.contents.length);
+		view.setBigUint64(bufPtr + 24, size, true);
+	}
+
+	const time = BigInt(file.timestamp.getTime()) * 1000000n; // Convert ms to ns
+	view.setBigUint64(bufPtr + 32, time, true); // atime
+	view.setBigUint64(bufPtr + 40, time, true); // mtime
+	view.setBigUint64(bufPtr + 48, time, true); // ctime
+
+	return 0;
 }
 
 
 function fd_pread(fd, iovs, iovsLen, offset, nreadPtr) {
-    const stream = FS.pointers[fd];
-    if (!stream) return 8;
+	const stream = FS.pointers[fd];
+	if (!stream) return 8;
 
-    const view = new DataView(Module.memory.buffer);
-    const contents = stream[2].contents;
-    // offset is a BigInt in many WASI implementations, cast to Number
-    let readOffset = Number(offset); 
-    let totalRead = 0;
+	const view = new DataView(Module.memory.buffer);
+	const contents = stream[2].contents;
+	// offset is a BigInt in many WASI implementations, cast to Number
+	let readOffset = Number(offset);
+	let totalRead = 0;
 
-    for (let i = 0; i < iovsLen; i++) {
-        const iovPtr = iovs + (i * 8);
-        const bufOffset = view.getUint32(iovPtr, true);
-        const bufLen = view.getUint32(iovPtr + 4, true);
+	for (let i = 0; i < iovsLen; i++) {
+		const iovPtr = iovs + (i * 8);
+		const bufOffset = view.getUint32(iovPtr, true);
+		const bufLen = view.getUint32(iovPtr + 4, true);
 
-        const available = contents.length - readOffset;
-        const toRead = Math.min(bufLen, available);
+		const available = contents.length - readOffset;
+		const toRead = Math.min(bufLen, available);
 
-        if (toRead > 0) {
-            const heap = new Uint8Array(Module.memory.buffer);
-            heap.set(contents.subarray(readOffset, readOffset + toRead), bufOffset);
-            readOffset += toRead;
-            totalRead += toRead;
-        }
-    }
+		if (toRead > 0) {
+			const heap = new Uint8Array(Module.memory.buffer);
+			heap.set(contents.subarray(readOffset, readOffset + toRead), bufOffset);
+			readOffset += toRead;
+			totalRead += toRead;
+		}
+	}
 
-    view.setUint32(nreadPtr, totalRead, true);
-    return 0;
+	view.setUint32(nreadPtr, totalRead, true);
+	return 0;
 }
 
 
 function fd_read(fd, iovs, iovsLen, nreadPtr) {
-    const stream = FS.pointers[fd];
-    if (!stream) return 8; // WASI_EBADF
+	const stream = FS.pointers[fd];
+	if (!stream) return 8; // WASI_EBADF
 
-    const view = new DataView(Module.memory.buffer);
-    const contents = stream[2].contents; // Uint8Array of file data
-    let offset = stream[0]; // Current seek position
-    let totalRead = 0;
+	const view = new DataView(Module.memory.buffer);
+	const contents = stream[2].contents; // Uint8Array of file data
+	let offset = stream[0]; // Current seek position
+	let totalRead = 0;
 
-    for (let i = 0; i < iovsLen; i++) {
-        const iovPtr = iovs + (i * 8);
-        const bufOffset = view.getUint32(iovPtr, true);
-        const bufLen = view.getUint32(iovPtr + 4, true);
+	for (let i = 0; i < iovsLen; i++) {
+		const iovPtr = iovs + (i * 8);
+		const bufOffset = view.getUint32(iovPtr, true);
+		const bufLen = view.getUint32(iovPtr + 4, true);
 
-        const available = contents.length - offset;
-        const toRead = Math.min(bufLen, available);
+		const available = contents.length - offset;
+		const toRead = Math.min(bufLen, available);
 
-        if (toRead > 0) {
-            const heap = new Uint8Array(Module.memory.buffer);
-            heap.set(contents.subarray(offset, offset + toRead), bufOffset);
-            offset += toRead;
-            totalRead += toRead;
-        }
-        
-        if (toRead < bufLen) break;
-    }
+		if (toRead > 0) {
+			const heap = new Uint8Array(Module.memory.buffer);
+			heap.set(contents.subarray(offset, offset + toRead), bufOffset);
+			offset += toRead;
+			totalRead += toRead;
+		}
 
-    stream[0] = offset; // Update seek position
-    view.setUint32(nreadPtr, totalRead, true);
-    return 0; // WASI_ESUCCESS
+		if (toRead < bufLen) break;
+	}
+
+	stream[0] = offset; // Update seek position
+	view.setUint32(nreadPtr, totalRead, true);
+	return 0; // WASI_ESUCCESS
 }
 
+function fd_readdir(fd, buf, buf_len, cookie, nread_ptr) {
+    // ... logic to get files in directory ...
+    const view = new DataView(Module.memory.buffer);
+    let offset = 0;
+    
+    // For each file:
+    view.setBigUint64(offset, next_cookie, true); // d_next
+    view.setBigUint64(offset + 8, inode, true);    // d_ino
+    view.setUint32(offset + 16, name_bytes.length, true); // d_namlen
+    view.setUint8(offset + 20, type); // d_type
+    // offset + 21, 22, 23 is padding
+    
+    // Copy name string immediately after the 24-byte header
+    const heap = new Uint8Array(Module.memory.buffer);
+    heap.set(name_bytes, offset + 24);
+    
+    offset += 24 + name_bytes.length;
+}
 
 
 const FILED = {
@@ -894,7 +939,9 @@ const FILED = {
 	fd_datasync: function () { debugger },
 	path_open: path_open,
 	fd_fdstat_set_rights: function () { debugger },
-	fd_filestat_get: function () { debugger },
+	fd_filestat_get: function () { 
+		debugger 
+	},
 	fd_filestat_set_size: function () { debugger },
 	fd_filestat_set_times: function () { debugger },
 	fd_pread: fd_pread,
@@ -902,7 +949,7 @@ const FILED = {
 	fd_read: fd_read,
 	fd_close: _fd_close,
 	fd_pwrite: function () { debugger },
-	fd_readdir: function () { debugger },
+	fd_readdir: fd_readdir,
 	fd_renumber: function () { debugger },
 	fd_sync: function () { debugger },
 	fd_tell: function () { debugger },
