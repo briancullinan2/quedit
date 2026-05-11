@@ -337,8 +337,9 @@ function Sys_Frame() {
 }
 
 function Sys_notify(ifile, path, fp) {
-	getDB(owner.value + '/' + repo.value).then(function (db) {
-		putRecord(DB_STORE_NAME, ifile, owner.value + '/' + repo.value)
+	var database = Module.database || owner.value + '/' + repo.value
+	getDB(database).then(function (db) {
+		putRecord(DB_STORE_NAME, ifile, database)
 	})
 	// TODO: ADD FILESYSTEM WATCHERS API INOTIFY 
 	//   THAT READS A LIST GENERATED HERE

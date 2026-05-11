@@ -71,9 +71,9 @@ const CFLAGS = [
     "-triple", "wasm32-wasi",
 
     '-isysroot', '/',
-    '-internal-isystem', '/include/c++/v1',
-    '-internal-isystem', '/include',
-    '-internal-isystem', '/lib/clang/8.0.1/include',
+    '-internal-isystem', 'include/c++/v1',
+    '-internal-isystem', 'include',
+    '-internal-isystem', 'lib/clang/8.0.1/include',
     '-disable-free',
     '-ferror-limit', '100',
     '-fcolor-diagnostics',
@@ -103,7 +103,7 @@ const CFLAGS = [
     //"+bulk-memory",
     //"-target-feature",
     //"+atomics",
-    "-pthread",
+    //"-pthread",
     "-std=gnu11",
 
     "-I/code/wasm",

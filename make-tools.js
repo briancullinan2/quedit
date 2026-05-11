@@ -43,10 +43,10 @@ const LCC_CFLAGS = [
     '-triple', 'wasm32-wasi',
 
     "-isysroot", "/",
-    '-internal-isystem', '/include/c++/v1',
-    "-internal-isystem", "/include",
-    "-internal-isystem", "/lib/clang/8.0.1/include", // Path varies by your Clang version
-    '-isystem', '/include/wasi-emulated-signal',
+    '-internal-isystem', 'include/c++/v1',
+    "-internal-isystem", "include",
+    "-internal-isystem", "lib/clang/8.0.1/include", // Path varies by your Clang version
+    '-isystem', 'include/wasi-emulated-signal',
 
     "-O2",
     "-Wall",
@@ -79,7 +79,7 @@ const LCC_CFLAGS = [
     //"+bulk-memory",
     //"-target-feature",
     //"+atomics",
-    "-pthread",
+    //"-pthread",
     "-std=gnu11",
 
     "-Isrc",
