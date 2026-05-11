@@ -16,6 +16,20 @@
 
 self.importScripts('shared.js');
 self.importScripts('local.js');
+self.importScripts('sys_fs.js');
+self.importScripts('sys_std.js');
+self.importScripts('sys_web.js');
+
+const Module = {
+
+}
+const ENV = {
+    wasi_unstable: {}
+}
+ENV.ENV = ENV
+const window = self
+window.Module = Module
+window.STD = STD
 
 let api;
 let port;

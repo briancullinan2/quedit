@@ -360,18 +360,21 @@ function updateGlobalBufferAndViews() {
     Module.HEAPF32 = global.HEAPF32 = new Float32Array(buf);
     Module.HEAPF64 = global.HEAPF64 = new Float64Array(buf);
   }
-  STD.sharedMemory = malloc(1024 * 1024)
+  if (typeof window.malloc !== 'undefined')
+    STD.sharedMemory = malloc(1024 * 1024)
+  else
+    STD.sharedMemory = Module.__heap_base
   STD.sharedCounter = 0
   let exports = Object.keys(window.Module.exports)
   for (let i = 0; i < exports.length; i++) {
     if (typeof window.Module.exports[exports[i]] == 'function'
       && typeof window.Module.exports[exports[i] + 'Location'] != 'undefined') {
       let funcI = HEAPU32[window[exports[i] + 'Location'] >> 2]
-      if(!window[exports[i] + 'Location'] || !funcI) {
+      if (!window[exports[i] + 'Location'] || !funcI) {
         console.error(exports[i] + 'Location missing')
         continue;
       }
-      if(window.Module.table.get(funcI)) {
+      if (window.Module.table.get(funcI)) {
         window[exports[i]] = window.Module.table.get(funcI)
       }
     }

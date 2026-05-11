@@ -100,6 +100,7 @@ const lccToolHeaders = [
     // lburg
     "lburg/lburg.h",
 
+    config.MOUNT_DIR + "/wasm/wasm.syms"
     // etc
     //"etc/lcc.h"
 ];
@@ -115,6 +116,7 @@ const toolLdFlags = [
     '-z', `stack-size=${1024*1024}`, 
     '-Llib/wasm32-wasi', 
     'lib/wasm32-wasi/crt1.o',
+    ...undefinedFlags,
     //"--growable-table",
     // Link against the builtins and libc.a
     //path.join(vars.WASI_BUILTINS, "lib/wasi/libclang_rt.builtins-wasm32.a"),

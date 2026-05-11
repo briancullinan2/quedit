@@ -805,10 +805,21 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
 
         await Promise.all(batch.map(async (header) => {
             try {
+                let thisDatabase = database
+                let thisOwner = ownerName
+                let thisRepo = repoName
+                if(header.includes('wasm.syms'))
+                {
+                    thisDatabase = engineRepo
+                    let parts =  thisDatabase.split('/')
+                    thisOwner = parts.length == 2 ? parts[0] : owner.value
+                    thisRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
+                }
+
                 // cacheFile handles the storage logic
-                let sha = files[database][header].sha
-                await cacheFile(ownerName, repoName, header, sha);
-                await api.header(ownerName, repoName, header, database)
+                let sha = files[thisDatabase][header].sha
+                await cacheFile(thisOwner, thisRepo, header, sha);
+                await api.header(thisOwner, thisRepo, header, thisDatabase)
             } catch (e) {
                 console.warn(`Failed to cache ${header}:`, e);
             }

@@ -76,7 +76,8 @@ class WorkerAPI {
     onmessage(event) {
         switch (event.data.id) {
             case 'write':
-                if (event.data.data.includes('memory access out of bounds')) {
+                if (event.data.data
+                    && event.data.data.includes('memory access out of bounds')) {
                     needsHeaders = true
                 }
                 term.write(event.data.data);

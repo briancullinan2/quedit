@@ -1,11 +1,6 @@
 // TODO: can call all EMGL functions or re.* renderer2 export functions from scripts
 //   Maybe this is where the paralel frame buffering comes in, or treat the javascript
 //   like update calls and extrapolate.
-function assert(condition, text) {
-  if (!condition) {
-    abort('Assertion failed' + (text ? ': ' + text : ''));
-  }
-}
 
 var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder() : undefined;
   

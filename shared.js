@@ -166,7 +166,7 @@ const API = (function () {
         .then(module => WebAssembly.instantiate(module, { env }))
         .then(instance => {
           this.instance = instance;
-          this.exports = instance.exports;
+          window.Module.exports = this.exports = instance.exports;
           this.mem = new Memory(this.exports.memory);
           this.exports.init();
         })
@@ -475,7 +475,7 @@ const API = (function () {
     constructor(api, module, memfs, sysrootFilename, name, ...args) {
       this.api = api;
       this.sysrootFilename = sysrootFilename;
-      this.argv = [name, ...args];
+      SYS.startArgs = this.argv = [name, ...args];
       this.environ = { USER: 'alice' };
       this.memfs = memfs;
       this.allowRequestAnimationFrame = true;
@@ -539,12 +539,20 @@ const API = (function () {
       ]);
 
       // Fill in some WASI implementations from memfs.
-      Object.assign(wasi_unstable, this.memfs.exports);
+      //Object.assign(wasi_unstable, this.memfs.exports);
+      Object.assign(wasi_unstable, FS);
+      Object.assign(wasi_unstable, SYS);
+
+      const imports = WebAssembly.Module.imports(module);
+      console.log(imports.filter(i => i.module.includes("wasi")));
 
       this.ready = getInstance(module, { wasi_unstable, env }).then(instance => {
         this.instance = instance;
-        this.exports = this.instance.exports;
+        Module.exports = this.exports = this.instance.exports;
         this.mem = new Memory(this.exports.memory);
+        ENV.memory = Module.memory = this.exports.memory
+        window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
+        updateGlobalBufferAndViews()
         //if(!this.memfs.hostMem_)
         this.memfs.hostMem = this.mem;
       });
@@ -919,7 +927,7 @@ const API = (function () {
       this.moduleCache = {};
       this.readBuffer = options.readBuffer;
       this.compileStreaming = options.compileStreaming;
-      this.hostWrite = options.hostWrite;
+      Module.hostWrite = this.hostWrite = options.hostWrite;
       this.clangFilename = options.clang || 'clang.wasm';
       this.lldFilename = options.lld || 'lld.wasm';
       this.sysrootFilename = options.sysroot || 'sysroot.tar';

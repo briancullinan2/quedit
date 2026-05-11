@@ -160,6 +160,35 @@ function Sys_FTell(pointer) {
 	return FS.pointers[pointer][0]
 }
 
+function Sys_llseek(pointer, position, mode) {
+	if (typeof FS.pointers[pointer] === 'undefined') {
+		throw new Error('EBADF');
+	}
+
+	// Convert everything to BigInt for the calculation to be safe
+	let currentPos = BigInt(FS.pointers[pointer][0]);
+	let offset = BigInt(position);
+	let fileSize = BigInt(FS.pointers[pointer][2].contents.length);
+
+	let newPos;
+	if (mode === 0 /* SEEK_SET */) {
+		newPos = offset;
+	} else if (mode === 1 /* SEEK_CUR */) {
+		newPos = currentPos + offset;
+	} else if (mode === 2 /* SEEK_END */) {
+		newPos = fileSize + offset;
+	} else {
+		return -1;
+	}
+
+	// Update the pointer (store back as Number if your VFS prefers it, 
+	// but BigInt is safer for large files)
+	FS.pointers[pointer][0] = Number(newPos);
+
+	// llseek / fd_seek usually returns the new position, not just 0
+	return newPos;
+}
+
 function Sys_FSeek(pointer, position, mode) {
 	if (typeof FS.pointers[pointer] == 'undefined') {
 		throw new Error('File IO Error') // TODO: POSIX
@@ -485,12 +514,32 @@ const FS = {
 	FS_DIR: FS_DIR,
 	ENOENT: ENOENT,
 	modeToStr: ['r', 'w', 'rw'],
-	pointers: {},
+	pointers: {
+		1: [0, 'r', {
+			timestamp: new Date(),
+			mode: FS_FILE,
+			contents: new Uint8Array(),
+			path: '/dev/stdin',
+		}, '/dev/stdin', 0],
+		2: [0, 'w', {
+			timestamp: new Date(),
+			mode: FS_FILE,
+			contents: new Uint8Array(),
+			path: '/dev/stdout',
+		}, '/dev/stdout', 1],
+		3: [0, 'w', {
+			timestamp: new Date(),
+			mode: FS_FILE,
+			contents: new Uint8Array(),
+			path: '/dev/stderr',
+		}, '/dev/stderr', 2],
+	},
 	filePointer: 0,
 	virtual: {}, // temporarily store items as they go in and out of memory
 	Sys_ListFiles: Sys_ListFiles,
 	Sys_FTell: Sys_FTell,
 	Sys_FSeek: Sys_FSeek,
+	Sys_llseek: Sys_llseek,
 	Sys_FClose: Sys_FClose,
 	Sys_FWrite: Sys_FWrite,
 	Sys_FFlush: Sys_FFlush,
@@ -502,6 +551,8 @@ const FS = {
 	Sys_Mkdir: Sys_Mkdir,
 	Sys_Mkdirp: Sys_Mkdirp,
 	Sys_FOpen: Sys_FOpen,
+	fopen: Sys_FOpen,
+	fd_open: Sys_FOpen,
 	Sys_Mkdir: Sys_Mkdir,
 	Sys_fgets: Sys_fgets,
 	Sys_fputs: Sys_fputs,
@@ -514,7 +565,23 @@ const FS = {
 	Sys_feof: Sys_feof,
 	Sys_access: Sys_access,
 	Sys_umask: function () { },
+	getStreamChecked: getStreamChecked,
 }
+
+
+function getStreamChecked(fd) {
+	// 1. Check if the file descriptor is within a valid range
+	// In your library, FS.pointers or a similar mapping tracks open files
+	var stream = FS.pointers[fd];
+
+	if (!stream) {
+		// Return a standard POSIX EBADF (Bad File Descriptor) error
+		// WASI_EBADF is usually 8
+		throw new Error('ENOENT')
+	}
+
+	return stream;
+};
 
 var WASI_ESUCCESS = 0;
 var WASI_EBADF = 8;
@@ -524,26 +591,33 @@ var WASI_ENOSYS = 52;
 var WASI_STDOUT_FILENO = 1;
 var WASI_STDERR_FILENO = 2;
 
-function getModuleMemoryDataView() {
-	// call this any time you'll be reading or writing to a module's memory 
-	// the returned DataView tends to be dissaociated with the module's memory buffer at the will of the WebAssembly engine 
-	// cache the returned DataView at your own peril!!
-
-	return new DataView(Module.memory.buffer);
-}
 
 function fd_prestat_get(fd, bufPtr) {
-	return WASI_EBADF;
+    // We only provide the root directory at FD 3
+    if (fd === 3) {
+        const view = new DataView(Module.memory.buffer);
+        // byte 0: pr_type (0 is prestat_dir)
+        view.setUint8(bufPtr, 0); 
+        // byte 4: pr_name_len (the length of the string "/", which is 1)
+        view.setUint32(bufPtr + 4, 1, true); 
+        return 0; // WASI_ESUCCESS
+    }
+    return 8; // WASI_EBADF (stop looking after FD 3)
 }
 
 function fd_prestat_dir_name(fd, pathPtr, pathLen) {
-	debugger
-	return WASI_EINVAL;
+    if (fd === 3) {
+        const heap = new Uint8Array(Module.memory.buffer);
+        // Write "/" into the buffer
+        heap[pathPtr] = "/".charCodeAt(0);
+        return 0; // WASI_ESUCCESS
+    }
+    return 28; // WASI_EINVAL
 }
 
 
 function environ_sizes_get(environCountPtr, environBufSizePtr) {
-	var view = getModuleMemoryDataView();
+	var view = new DataView(Module.memory.buffer);
 	view.setUint32(environCountPtr, 0, true);
 	view.setUint32(environBufSizePtr, 0, true);
 	return 0;
@@ -556,7 +630,7 @@ function environ_get(environPtr, environBufPtr) {
 
 function args_sizes_get(argcPtr, argvBufSizePtr) {
 	var args = SYS.startArgs || [];
-	var view = getModuleMemoryDataView();
+	var view = new DataView(Module.memory.buffer);
 
 	// Number of arguments
 	view.setUint32(argcPtr, args.length, true);
@@ -567,50 +641,54 @@ function args_sizes_get(argcPtr, argvBufSizePtr) {
 
 	return 0; // WASI_ESUCCESS
 }
-
 function args_get(argvPtr, argvBufPtr) {
-	var args = SYS.startArgs || [];
-	var currentBufPtr = argvBufPtr;
-	var view = getModuleMemoryDataView();
+    const args = SYS.startArgs || [];
+    let currentBufPtr = argvBufPtr;
+    const encoder = new TextEncoder();
 
-	args.forEach((arg, i) => {
-		// 1. Write the current buffer pointer into the argv array
-		view.setUint32(argvPtr + (i * 4), currentBufPtr, true);
+    // Use the latest buffer from the module
+    const buffer = Module.memory.buffer;
+    const view = new DataView(buffer);
+    const heap = new Int8Array(buffer); // Create a fresh view here
 
-		// 2. Write the string + null terminator into the buffer
-		for (var j = 0; j < arg.length; j++) {
-			HEAP8[currentBufPtr + j] = arg.charCodeAt(j);
-		}
-		HEAP8[currentBufPtr + arg.length] = 0; // Null terminator
+    args.forEach((arg, i) => {
+        // 1. Write the pointer
+        view.setUint32(argvPtr + (i * 4), currentBufPtr, true);
 
-		// 3. Advance the buffer pointer for the next string
-		currentBufPtr += arg.length + 1;
-	});
+        // 2. Encode and set
+        const bytes = encoder.encode(arg);
+        
+        // This is where the crash was happening; 
+        // using 'heap' (the fresh view) prevents the detached error.
+        heap.set(bytes, currentBufPtr);
+        
+        // 3. Null terminator
+        heap[currentBufPtr + bytes.length] = 0;
 
-	return 0; // WASI_ESUCCESS
+        currentBufPtr += bytes.length + 1;
+    });
+
+    return 0;
 }
 
-
 function fd_fdstat_get(fd, bufPtr) {
-	var view = getModuleMemoryDataView();
+    var view = new DataView(Module.memory.buffer);
 
-	view.setUint8(bufPtr, fd);
-	view.setUint16(bufPtr + 2, 0, !0);
-	view.setUint16(bufPtr + 4, 0, !0);
+    // 1. Determine type: 3 is root (DIR=4), others are usually FILE=8
+    const type = (fd === 3) ? 4 : 8; 
+    view.setUint8(bufPtr, type);
+    view.setUint16(bufPtr + 2, 0, true); // flags
 
-	function setBigUint64(byteOffset, value, littleEndian) {
+    // 2. Grant ALL rights (0xffffffffffffffffn)
+    // You need to write two 64-bit integers (Base and Inheriting)
+    // If you don't have BigInt support in this specific view, 
+    // write 0xFFFFFFFF to both low and high words.
+    view.setUint32(bufPtr + 8, 0xFFFFFFFF, true);  // Base Low
+    view.setUint32(bufPtr + 12, 0xFFFFFFFF, true); // Base High
+    view.setUint32(bufPtr + 16, 0xFFFFFFFF, true); // Inheriting Low
+    view.setUint32(bufPtr + 20, 0xFFFFFFFF, true); // Inheriting High
 
-		var lowWord = value;
-		var highWord = 0;
-
-		view.setUint32(littleEndian ? 0 : 4, lowWord, littleEndian);
-		view.setUint32(littleEndian ? 4 : 0, highWord, littleEndian);
-	}
-
-	setBigUint64(bufPtr + 8, 0, !0);
-	setBigUint64(bufPtr + 8 + 8, 0, !0);
-
-	return WASI_ESUCCESS;
+    return 0; // WASI_ESUCCESS
 }
 
 
@@ -618,7 +696,7 @@ function fd_fdstat_get(fd, bufPtr) {
 // TODO: THIS MIGHT BE A MORE COMPREHENSIVE WRITE FUNCTION
 //   AND THE FS.VIRTUAL CODE COULD BE INSERTED AT THE BOTTOM
 function fd_write(fd, iovs, iovsLen, nwritten) {
-	var view = getModuleMemoryDataView();
+	var view = new DataView(Module.memory.buffer);
 	var written = 0;
 	var bufferBytes = [];
 
@@ -650,13 +728,14 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 
 	buffers.forEach(writev);
 	let newMessage = stringToAddress(String.fromCharCode.apply(null, bufferBytes))
-	debugger
-	if (fd === WASI_STDOUT_FILENO)
+
+	if (typeof stdout !== 'undefined' && fd === WASI_STDOUT_FILENO)
 		Sys_FWrite(newMessage, 1, bufferBytes.length, HEAPU32[stdout >> 2])
-	else if (fd === WASI_STDERR_FILENO)
+	else if (typeof stderr !== 'undefined' && fd === WASI_STDERR_FILENO)
 		Sys_FWrite(newMessage, 1, bufferBytes.length, HEAPU32[stderr >> 2])
-	else {
-		debugger
+	else if (typeof Module.hostWrite !== 'undefined') {
+		Module.hostWrite(String.fromCharCode.apply(null, bufferBytes))
+	} else {
 		throw new Error('wtf')
 	}
 	view.setUint32(nwritten, written, !0);
@@ -670,16 +749,128 @@ function poll_oneoff(sin, sout, nsubscriptions, nevents) {
 }
 
 function proc_exit(rval) {
-	debugger
 	return WASI_ENOSYS;
 }
 
-function fd_seek(fd, offset, whence, newOffsetPtr) {
-	debugger
+function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, rights_inheriting, fdflags, openedFdPtr) {
+    const path = new TextDecoder().decode(new Uint8Array(Module.memory.buffer, pathPtr, pathLen));
+    
+    // Use your existing POSIX-style opener
+    // Sys_FOpen expects a pointer, so we'll mock that or change it to take a string
+    // Here I'll assume you want to hit your internal Sys_FOpen logic:
+    const fd = Sys_FOpen(pathPtr, 0); // Warning: check if Sys_FOpen expects string address or string
+
+    if (fd === 0) return 44; // WASI_ENOENT
+
+    const view = new DataView(Module.memory.buffer);
+    view.setUint32(openedFdPtr, fd, true);
+    return 0;
 }
 
-function fd_close(fd) {
-	return WASI_ENOSYS;
+
+function _fd_close(fd) {
+	try {
+
+		var stream = SYSCALLS.getStreamFromFD(fd);
+		FS.close(stream);
+		return 0;
+	} catch (e) {
+		if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;
+		return e.errno;
+	}
+}
+
+function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
+    const path = new TextDecoder().decode(new Uint8Array(Module.memory.buffer, pathPtr, pathLen));
+    
+    // Resolve path to your FS.virtual
+    let localName = path;
+    if (!localName.startsWith('/')) localName = '/' + localName;
+    if (!localName.startsWith('/base')) localName = '/base' + localName;
+
+    const file = FS.virtual[localName];
+    if (!file) return 44; // ENOENT
+
+    const view = new DataView(Module.memory.buffer);
+    // wasi_unstable stat struct offsets:
+    // dev (8b), ino (8b), type (1b), nlink (4b), size (8b), atime (8b), mtime (8b), ctime (8b)
+    
+    const isDir = (file.mode >> 12) === ST_DIR;
+    view.setUint8(bufPtr + 16, isDir ? 4 : 8); // filetype
+    
+    const size = BigInt(file.contents ? file.contents.length : 0);
+    view.setBigUint64(bufPtr + 24, size, true); // size
+    
+    const time = BigInt(file.timestamp.getTime()) * 1000000n; // Convert ms to ns
+    view.setBigUint64(bufPtr + 32, time, true); // atime
+    view.setBigUint64(bufPtr + 40, time, true); // mtime
+    view.setBigUint64(bufPtr + 48, time, true); // ctime
+
+    return 0;
+}
+
+
+function fd_pread(fd, iovs, iovsLen, offset, nreadPtr) {
+    const stream = FS.pointers[fd];
+    if (!stream) return 8;
+
+    const view = new DataView(Module.memory.buffer);
+    const contents = stream[2].contents;
+    // offset is a BigInt in many WASI implementations, cast to Number
+    let readOffset = Number(offset); 
+    let totalRead = 0;
+
+    for (let i = 0; i < iovsLen; i++) {
+        const iovPtr = iovs + (i * 8);
+        const bufOffset = view.getUint32(iovPtr, true);
+        const bufLen = view.getUint32(iovPtr + 4, true);
+
+        const available = contents.length - readOffset;
+        const toRead = Math.min(bufLen, available);
+
+        if (toRead > 0) {
+            const heap = new Uint8Array(Module.memory.buffer);
+            heap.set(contents.subarray(readOffset, readOffset + toRead), bufOffset);
+            readOffset += toRead;
+            totalRead += toRead;
+        }
+    }
+
+    view.setUint32(nreadPtr, totalRead, true);
+    return 0;
+}
+
+
+function fd_read(fd, iovs, iovsLen, nreadPtr) {
+    const stream = FS.pointers[fd];
+    if (!stream) return 8; // WASI_EBADF
+
+    const view = new DataView(Module.memory.buffer);
+    const contents = stream[2].contents; // Uint8Array of file data
+    let offset = stream[0]; // Current seek position
+    let totalRead = 0;
+
+    for (let i = 0; i < iovsLen; i++) {
+        const iovPtr = iovs + (i * 8);
+        const bufOffset = view.getUint32(iovPtr, true);
+        const bufLen = view.getUint32(iovPtr + 4, true);
+
+        const available = contents.length - offset;
+        const toRead = Math.min(bufLen, available);
+
+        if (toRead > 0) {
+            const heap = new Uint8Array(Module.memory.buffer);
+            heap.set(contents.subarray(offset, offset + toRead), bufOffset);
+            offset += toRead;
+            totalRead += toRead;
+        }
+        
+        if (toRead < bufLen) break;
+    }
+
+    stream[0] = offset; // Update seek position
+    view.setUint32(nreadPtr, totalRead, true);
+    return 0; // WASI_ESUCCESS
 }
 
 
@@ -698,25 +889,25 @@ const FILED = {
 	args_get: args_get,
 	poll_oneoff: poll_oneoff,
 	proc_exit: proc_exit,
-	fd_close: fd_close,
-	fd_seek: fd_seek,
 	fd_advise: function () { debugger },
 	fd_allocate: function () { debugger },
 	fd_datasync: function () { debugger },
-	fd_read: function () { debugger },
-	path_open: function () { debugger },
+	path_open: path_open,
 	fd_fdstat_set_rights: function () { debugger },
 	fd_filestat_get: function () { debugger },
 	fd_filestat_set_size: function () { debugger },
 	fd_filestat_set_times: function () { debugger },
-	fd_pread: function () { debugger },
+	fd_pread: fd_pread,
+	fd_seek: Sys_FSeek,
+	fd_read: fd_read,
+	fd_close: _fd_close,
 	fd_pwrite: function () { debugger },
 	fd_readdir: function () { debugger },
 	fd_renumber: function () { debugger },
 	fd_sync: function () { debugger },
 	fd_tell: function () { debugger },
 	path_create_directory: function () { debugger },
-	path_filestat_get: function () { debugger },
+	path_filestat_get: path_filestat_get,
 	path_filestat_set_times: function () { debugger },
 	path_link: function () { debugger },
 	path_readlink: function () { debugger },
