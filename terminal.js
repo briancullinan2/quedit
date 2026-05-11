@@ -25,11 +25,12 @@ term.onData(async data => {
             }
             term.write('\r\n');
             try {
-                await handleCommand(currentLine);
+                let thisLine = currentLine
+                currentLine = ''
+                await handleCommand(thisLine);
             } catch (e) {
                 term.write(e.toString())
             }
-            currentLine = ''; // Reset the buffer
             term.write('\r\n> '); // New prompt
             break;
 
@@ -190,6 +191,43 @@ async function handleCommand(input) {
                 input: file,
                 database,
                 obj: file ? CONFIGURATION + '/' + file.replace('.c', '.o') : ''
+            })
+        },
+        run: async (argv) => {
+
+            let thisDatabase = database
+            if (argv[0].includes('lburg'))
+                thisDatabase = toolsRepo
+
+            return await api.run({
+                tool: argv[0],
+                args: argv,
+                thisDatabase,
+            })
+        },
+        'lburg': async (argv) => {
+
+
+            let CONFIGURATION = configuration.value == 'release'
+                ? dirs.ENGINE_RELEASE
+                : dirs.ENGINE_DEBUG
+
+            let paths = [
+                argv[0] || 'src/dagcheck.md',
+                argv[1] || path.join(CONFIGURATION, argv[0] ? argv[0].replace('.md', '.c') : 'src/dagcheck.c'),
+            ]
+
+            let args = [
+                'lburg.js.wasm',
+                ...paths,
+                ...argv.slice(2)
+            ]
+
+            return await api.run({
+                tool: 'lburg.js.wasm',
+                args: args,
+                database: toolsRepo,
+                paths: paths
             })
         },
         'lcc': (argv) => commands['clang'](argv),
@@ -406,4 +444,17 @@ function updateLineFromHistory(specificValue = null) {
     // 3. Write the new line
     term.write(currentLine);
 }
+
+term.attachCustomKeyEventHandler((arg) => {
+    // Check if Ctrl+C (or Cmd+C on Mac) is pressed
+    if (arg.ctrlKey && arg.code === "KeyC" && arg.type === "keydown") {
+        const selection = term.getSelection();
+        if (selection) {
+            navigator.clipboard.writeText(selection);
+            // Return false to prevent xterm from sending the signal to the process
+            return false; 
+        }
+    }
+    return true;
+});
 

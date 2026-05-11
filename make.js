@@ -39,7 +39,8 @@ const config = {
     DNAME: "quake3e.ded",
     MOUNT_DIR: "code",
     BUILD_DIR: "build",
-    BINEXT: `.${COMPILE_ARCH}.${COMPILE_PLATFORM}`
+    BINEXT: `.${COMPILE_ARCH}.${COMPILE_PLATFORM}`,
+    TEMPDIR: '/tmp'
 };
 
 const dirs = {

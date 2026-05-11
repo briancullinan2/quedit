@@ -56,6 +56,10 @@ class WorkerAPI {
         return this.runAsync('compile', options);
     }
 
+    async run(options) {
+        return this.runAsync('run', options);
+    }
+
     async link(options) {
         return this.runAsync('link', options);
     }
@@ -72,6 +76,9 @@ class WorkerAPI {
     onmessage(event) {
         switch (event.data.id) {
             case 'write':
+                if (event.data.data.includes('memory access out of bounds')) {
+                    needsHeaders = true
+                }
                 term.write(event.data.data);
                 status.children[0].innerText = 'Status: ' + event.data.data
                 break;

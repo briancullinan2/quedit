@@ -52,6 +52,9 @@ function debounceLazy(f, ms) {
   return wrapped;
 }
 
+if (!self.needsHeaders)
+  self.needsHeaders = true
+
 const API = (function () {
 
   class ProcExit extends Error {
@@ -469,7 +472,9 @@ const API = (function () {
   const RAF_PROC_EXIT_CODE = 0xC0C0A;
 
   class App {
-    constructor(module, memfs, name, ...args) {
+    constructor(api, module, memfs, sysrootFilename, name, ...args) {
+      this.api = api;
+      this.sysrootFilename = sysrootFilename;
       this.argv = [name, ...args];
       this.environ = { USER: 'alice' };
       this.memfs = memfs;
@@ -540,6 +545,7 @@ const API = (function () {
         this.instance = instance;
         this.exports = this.instance.exports;
         this.mem = new Memory(this.exports.memory);
+        //if(!this.memfs.hostMem_)
         this.memfs.hostMem = this.mem;
       });
     }
@@ -550,6 +556,10 @@ const API = (function () {
         this.exports._start();
       } catch (exn) {
         let writeStack = true;
+        if (exn.message.includes('memory access out of bounds')) {
+          this.api.initMemFS()
+        }
+
         if (exn instanceof ProcExit) {
           if (exn.code === RAF_PROC_EXIT_CODE) {
             console.log('Allowing rAF after exit.');
@@ -905,6 +915,7 @@ const API = (function () {
 
   class API {
     constructor(options) {
+      this.options = options;
       this.moduleCache = {};
       this.readBuffer = options.readBuffer;
       this.compileStreaming = options.compileStreaming;
@@ -914,14 +925,20 @@ const API = (function () {
       this.sysrootFilename = options.sysroot || 'sysroot.tar';
       this.showTiming = options.showTiming || false;
 
+      this.initMemFS()
+    }
+
+
+    initMemFS() {
 
       this.memfs = new MemFS({
         compileStreaming: this.compileStreaming,
         hostWrite: this.hostWrite,
-        memfsFilename: options.memfs || 'memfs.wasm',
+        memfsFilename: this.options.memfs || 'memfs.wasm',
       });
       this.ready = this.memfs.ready.then(
         () => { return this.untar(this.memfs, this.sysrootFilename); });
+
     }
 
     hostLog(message) {
@@ -944,10 +961,48 @@ const API = (function () {
       return result;
     }
 
-    async getModule(name) {
+
+    commonPaths(name) {
+      return [
+        name,
+        'build/release-wasm-js/' + name,
+        'build/debug-wasm-js/' + name
+      ]
+    }
+
+    async getModule(name, database = null) {
+
       if (this.moduleCache[name]) return this.moduleCache[name];
+
+      for (let look of this.commonPaths(name)) {
+        let filePath = look
+        let contents
+        if (database || this.database) {
+          let record = await getRecord(DB_STORE_NAME, filePath, database || this.database)
+          if (record) {
+            contents = record.contents
+          }
+        }
+
+        if (this.memfs && this.memfs.exists(filePath)) {
+          contents = this.memfs.getFileContents(filePath)
+        }
+
+        if (contents) {
+          const module = await this.hostLogAsync(`Fetching and compiling from local ${name}`,
+            this.compileStreaming(contents));
+          module.name = name
+          this.moduleCache[name] = this.moduleCache[filePath] = module;
+          return module;
+        }
+
+      }
+
+      this.memfs.hostWrite('\n\r' + name + ' not found at: ' + this.commonPaths(name).join('\n\r') + '\n\r')
+
       const module = await this.hostLogAsync(`Fetching and compiling ${name}`,
         this.compileStreaming(name));
+      if(!module) throw new Error('No module! ' + name)
       this.moduleCache[name] = module;
       return module;
     }
@@ -973,11 +1028,17 @@ const API = (function () {
     async header(options) {
       await this.ready;
       let filePath = options.header
+      if(options.database)
+        this.database = options.database
+      else
+        return
+
       let record = await getRecord(DB_STORE_NAME, filePath, options.database)
       if (!record) return
 
       const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
-      this.memfs.mkdirp(fileDir)
+      if (fileDir.trim().length > 0)
+        this.memfs.mkdirp(fileDir)
 
       this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
       this.memfs.addFile(record.path, record.contents);
@@ -985,6 +1046,8 @@ const API = (function () {
 
     async upload(database) {
       await this.ready;
+      if(!database) return
+      this.database = database
       await readAll(database, this.loadEntry.bind(this))
     }
 
@@ -1003,6 +1066,8 @@ const API = (function () {
 
     async download(database) {
       await this.ready;
+      if(!database) return
+      this.database = database
       var fd = this.memfs.openPath('/')
       var directories = await this.memfs.recursiveDir(fd)
       debugger
@@ -1025,17 +1090,17 @@ const API = (function () {
       const contents = options.contents;
       const obj = options.obj;
       const opt = options.opt || '2';
-      if(input)
-      {
+      if (input) {
         const inDir = input.substring(0, input.lastIndexOf('/'));
-        this.memfs.mkdirp(inDir)
+        if (inDir.trim().length > 0)
+          this.memfs.mkdirp(inDir)
         if (input && contents)
-          this.memfs.addFile(input, contents);
+          this.memfs.addFile(input, Uint8Array.from(contents, c => c.charCodeAt(0)));
       }
-      if(obj)
-      {
+      if (obj) {
         const dirPath = obj.substring(0, obj.lastIndexOf('/'));
-        this.memfs.mkdirp(dirPath)
+        if (dirPath.trim().length > 0)
+          this.memfs.mkdirp(dirPath)
       }
 
       await this.ready;
@@ -1044,7 +1109,8 @@ const API = (function () {
         this.memfs.mkdirp('tmp')
 
 
-      if (options.CFLAGS) {
+      if (options.CFLAGS && options.database) {
+        this.database = options.database
         for (var filePath of options.CFLAGS) {
           if (!filePath) continue
           if (this.memfs.exists(filePath)) continue
@@ -1056,7 +1122,8 @@ const API = (function () {
             if (!record) continue
 
             const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
-            this.memfs.mkdirp(fileDir)
+            if (fileDir.trim().length > 0)
+              this.memfs.mkdirp(fileDir)
 
             this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
             this.memfs.addFile(record.path, record.contents);
@@ -1065,7 +1132,6 @@ const API = (function () {
           }
         }
       }
-
 
       const clang = await this.getModule(this.clangFilename);
       var result = await this.run(clang, 'clang', ...options.CFLAGS || []);
@@ -1076,7 +1142,8 @@ const API = (function () {
         contents: bytes,
         path: obj,
       }
-      await putRecord(DB_STORE_NAME, newFile, options.database)
+      if (options.database)
+        await putRecord(DB_STORE_NAME, newFile, options.database)
       return result
     }
 
@@ -1121,28 +1188,34 @@ const API = (function () {
 
       await this.ready;
 
-      this.memfs.mkdirp(dirPath)
+      if (dirPath.trim().length > 0)
+        this.memfs.mkdirp(dirPath)
 
       const lld = await this.getModule(this.lldFilename);
 
-      for (var filePath of obj instanceof Array ? obj : [obj]) {
-        if (!filePath) continue
-        try {
-          var record = await getRecord(DB_STORE_NAME, filePath, options.database)
-          if (!record) continue
+      if (options.database) {
+        this.database = options.database
 
-          const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
-          this.memfs.mkdirp(fileDir)
+        for (var filePath of obj instanceof Array ? obj : [obj]) {
+          if (!filePath) continue
+          try {
+            var record = await getRecord(DB_STORE_NAME, filePath, options.database)
+            if (!record) continue
+
+            const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
+            if (fileDir.trim().length > 0)
+              this.memfs.mkdirp(fileDir)
 
 
-          this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
-          this.memfs.addFile(record.path, record.contents);
-        } catch (e) {
-          console.log(e)
+            this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+            this.memfs.addFile(record.path, record.contents);
+          } catch (e) {
+            console.log(e)
+          }
         }
       }
 
-      if (options.LDFLAGS) {
+      if (options.LDFLAGS && options.database) {
         for (var filePath of options.LDFLAGS) {
           if (!filePath) continue
           if (this.memfs.exists(filePath)) continue
@@ -1154,7 +1227,8 @@ const API = (function () {
             if (!record) continue
 
             const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
-            this.memfs.mkdirp(fileDir)
+            if (fileDir.trim().length > 0)
+              this.memfs.mkdirp(fileDir)
 
             this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
             this.memfs.addFile(record.path, record.contents);
@@ -1179,14 +1253,54 @@ const API = (function () {
         contents: bytes,
         path: wasm,
       }
-      await putRecord(DB_STORE_NAME, newFile, options.database)
+      if(options.database)
+        await putRecord(DB_STORE_NAME, newFile, options.database)
       return result;
     }
 
     async run(module, ...args) {
       this.hostLog(`${args.join(' ')}\n`);
+      await this.ready
+
+      if (typeof module === 'string') {
+
+        module = await this.getModule(module);
+
+      }
+
+      if (args) {
+        for (var filePath of args) {
+          if (!filePath) continue
+          if (this.memfs.exists(filePath)) continue
+          try {
+            if (filePath.startsWith('--allow-undefined-file=')) {
+              filePath = filePath.substring('--allow-undefined-file='.length)
+            }
+            var record = await getRecord(DB_STORE_NAME, filePath, this.database)
+            if (!record) continue
+
+            const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
+            if (fileDir.trim().length > 0)
+              this.memfs.mkdirp(fileDir)
+
+            this.memfs.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+            this.memfs.addFile(record.path, record.contents);
+          } catch (e) {
+            console.log(e)
+          }
+        }
+      }
+
+
+      if(!args)
+        args = []
+
+      if(args.length == 0)
+        args[0] = module.name
+
+
       const start = +new Date();
-      const app = new App(module, this.memfs, ...args);
+      const app = new App(this, module, this.memfs, this.sysrootFilename, ...args || []);
       const instantiate = +new Date();
       const stillRunning = await app.run();
       const end = +new Date();

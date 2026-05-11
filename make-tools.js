@@ -62,13 +62,26 @@ const LCC_CFLAGS = [
     "-D__errno_location=void",
     "-DSIG_IGN=(void (*)(int))1",
     "-Dsignal(s,h)=SIG_IGN",
+    "-D_WASI_EMULATED_MMAN=1",
     "-D_WASI_EMULATED_SIGNAL=1",
     "-D_XOPEN_SOURCE=700",
     "-D__wasi__=1",
-    "-std=gnu11",
 
     '-disable-free',
     '-fno-common',
+    "-fno-rtti",
+    "-fno-use-init-array",
+    "-fno-threadsafe-statics",
+    //"-fno-inline",
+    "-mrelocation-model",
+    "static",
+    //"-target-feature",
+    //"+bulk-memory",
+    //"-target-feature",
+    //"+atomics",
+    "-pthread",
+    "-std=gnu11",
+
     "-Isrc",
     ...(COMPILE_PLATFORM === 'darwin' ? ["-DMACOS_X"] : [])
 ];
@@ -91,6 +104,27 @@ const lccToolHeaders = [
     //"etc/lcc.h"
 ];
 
+
+const toolLdFlags = [
+    //"-D__WASM__=1",
+    //"--no-standard-libraries",
+    '--no-threads',
+    "--export-dynamic",
+    "--export-table",
+    "--error-limit=200",
+    '-z', `stack-size=${1024*1024}`, 
+    '-Llib/wasm32-wasi', 
+    'lib/wasm32-wasi/crt1.o',
+    //"--growable-table",
+    // Link against the builtins and libc.a
+    //path.join(vars.WASI_BUILTINS, "lib/wasi/libclang_rt.builtins-wasm32.a"),
+    //path.join(vars.WASISDK, "share/wasi-sysroot/lib/wasm32-wasi/libc.a")
+];
+
+
+
+
+let needsHeaders = true
 
 
 // --- Build Logic ---
@@ -121,6 +155,15 @@ async function buildTools(database = null) {
             const sha = FILELIST[src].sha;
             const content = await cacheFile(ownerName, repoName, src, sha);
 
+
+            if(needsHeaders)
+            {
+                needsHeaders = false;
+                
+                await downloadHeaders(lccToolHeaders, 10, database)
+
+            }
+            
             await api.compile({
                 CFLAGS: [
                     ...LCC_CFLAGS, `-I${includeDir}`, 
@@ -142,8 +185,6 @@ async function buildTools(database = null) {
 
     log("Starting Toolchain Build...");
 
-    await downloadHeaders(lccToolHeaders, 10, database)
-
 
     // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
     log("Building LBURG...");
@@ -161,12 +202,14 @@ async function buildTools(database = null) {
     const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
     await api.link({
         LDFLAGS: [
-            ...baseLdFlags,
+            ...toolLdFlags,
             "-o", lburgExe,
             ...lburgObjs,
             ...includeFlags
         ], obj: lburgObjs, database, wasm: lburgExe
     });
+
+    return;
 
     // 2. Build RCC (The Compiler Core)
     log("Building RCC...");
@@ -178,7 +221,7 @@ async function buildTools(database = null) {
                 // Special case: Generate dagcheck.c using lburg
                 log("Generating dagcheck.c via lburg...");
                 const dagMd = "src/dagcheck.md";
-                const dagC = path.join(CONFIGURATION + '/' + toolDirs.RCC, "dagcheck.c");
+                const dagC = path.join(CONFIGURATION, "src/dagcheck.c");
 
                 // Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
                 await api.run({
@@ -199,7 +242,7 @@ async function buildTools(database = null) {
     const rccExe = path.join(CONFIGURATION, "q3rcc" + config.BINEXT);
     await api.link({
         LDFLAGS: [
-            ...baseLdFlags,
+            ...toolLdFlags,
             "-o", rccExe,
             ...rccObjs,
             ...includeFlags
@@ -221,7 +264,7 @@ async function buildTools(database = null) {
     const cppExe = path.join(CONFIGURATION, "q3cpp" + config.BINEXT);
     await api.link({
         LDFLAGS: [
-            ...baseLdFlags,
+            ...toolLdFlags,
             "-o", cppExe,
             ...cppObjs,
             ...includeFlags
@@ -245,7 +288,7 @@ async function buildTools(database = null) {
     const lccExe = path.join(CONFIGURATION, "q3lcc" + config.BINEXT);
     await api.link({
         LDFLAGS: [
-            ...baseLdFlags,
+            ...toolLdFlags,
             "-o", lccExe,
             ...lccObjs,
             ...includeFlags

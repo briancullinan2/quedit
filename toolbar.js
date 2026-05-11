@@ -73,7 +73,6 @@ function saveToken() {
     if (savedToken) {
         localStorage.setItem('github_token', savedToken);
         tokenInput.value = ''; // Clear input for security
-        updatePlaceholder();
         alert('Token saved to local storage.');
     }
     modal.classList.add('hidden');
@@ -152,10 +151,10 @@ window.addEventListener('beforeunload', event => {
 });
 
 
-let owners = localStorage.getItem('owners')?.split(';')
+let owners = localStorage.getItem('owners')?.split(';') || []
 updateSelectOptions(owner, owners)
 owner.value = localStorage.getItem('default_owner') || owners[0]
-let repos = localStorage.getItem('repositories')?.split(';')
+let repos = localStorage.getItem('repositories')?.split(';') || []
 updateSelectOptions(repo, repos)
 repo.value = localStorage.getItem('default_repository') || repos[0]
 
