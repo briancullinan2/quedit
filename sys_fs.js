@@ -196,40 +196,40 @@ function Sys_llseek(pointer, position, mode) {
 function fd_seek(fd, offset, whence, newOffsetPtr) {
 
 	const stream = FS.pointers[fd];
-    if (!stream) return 8; // WASI_EBADF
+	if (!stream) return 8; // WASI_EBADF
 
-    // 1. Force everything to BigInt for consistent 64-bit math
-    let bigOffset = BigInt(offset);
-    let currentPos = BigInt(stream[0]);
-    let fileSize = BigInt(stream[2].contents.length);
+	// 1. Force everything to BigInt for consistent 64-bit math
+	let bigOffset = BigInt(offset);
+	let currentPos = BigInt(stream[0]);
+	let fileSize = BigInt(stream[2].contents.length);
 
-    let newPos;
+	let newPos;
 
-    switch (whence) {
-        case 0: // SET
-            newPos = bigOffset;
-            break;
-        case 1: // CUR
-            newPos = currentPos + bigOffset;
-            break;
-        case 2: // END
-            newPos = fileSize + bigOffset;
-            break;
-        default:
-            return 28; // WASI_EINVAL
-    }
+	switch (whence) {
+		case 0: // SET
+			newPos = bigOffset;
+			break;
+		case 1: // CUR
+			newPos = currentPos + bigOffset;
+			break;
+		case 2: // END
+			newPos = fileSize + bigOffset;
+			break;
+		default:
+			return 28; // WASI_EINVAL
+	}
 
-    if (newPos < 0n) return 28; // WASI_EINVAL (can't seek before start)
+	if (newPos < 0n) return 28; // WASI_EINVAL (can't seek before start)
 
-    // 2. Update the internal pointer (back to Number if your FS expects it)
-    stream[0] = Number(newPos);
+	// 2. Update the internal pointer (back to Number if your FS expects it)
+	stream[0] = Number(newPos);
 
-    // 3. Write the result back to memory (64-bit)
-    const view = new DataView(Module.memory.buffer);
-    view.setUint32(newOffsetPtr, Number(newPos & 0xFFFFFFFFn), true);
-    view.setUint32(newOffsetPtr + 4, Number(newPos >> 32n), true);
+	// 3. Write the result back to memory (64-bit)
+	const view = new DataView(Module.memory.buffer);
+	view.setUint32(newOffsetPtr, Number(newPos & 0xFFFFFFFFn), true);
+	view.setUint32(newOffsetPtr + 4, Number(newPos >> 32n), true);
 
-    return 0; // WASI_ESUCCESS
+	return 0; // WASI_ESUCCESS
 }
 
 function Sys_FClose(pointer) {
@@ -639,110 +639,91 @@ var WASI_ENOSYS = 52;
 var WASI_STDOUT_FILENO = 1;
 var WASI_STDERR_FILENO = 2;
 
-
 function fd_prestat_get(fd, bufPtr) {
-
-	if (Module.memfs) {
-		let result = Module.memfs.fd_prestat_get(fd, bufPtr) 
-		return result
-	}
-
-	// We only provide the root directory at FD 3
-	if (fd === VFS_NOW) {
-		const view = new DataView(Module.memory.buffer);
-		// byte 0: pr_type (0 is prestat_dir)
-		view.setUint8(bufPtr, 0);
-		// byte 4: pr_name_len (the length of the string "/", which is 1)
-		view.setUint32(bufPtr + 4, 1, true);
-		return 0; // WASI_ESUCCESS
-	}
-	return 8; // WASI_EBADF (stop looking after FD 3)
-}
-
-function fd_prestat_dir_name(fd, pathPtr, pathLen) {
-
-	if (Module.memfs) {
-		let result = Module.memfs.fd_prestat_dir_name(fd, pathPtr, pathLen)
-		return result
-	}
-    
-    // Usually, WASI guests expect fd 3 to be the pre-opened root directory
-    if (fd === VFS_NOW) {
-        const heap = new Uint8Array(Module.memory.buffer);
-        
-        // The pathLen provided here should match what was returned 
-        // in the preceding fd_prestat_get call.
-        
-        // For a root mapping, we provide "/"
-        if (pathLen >= 1) {
-            heap[pathPtr] = 47; // ASCII for '/'
-            
-            // If your guest specifically expects a null-terminated string 
-            // (not standard WASI but common in some custom libc shims):
-            // if (pathLen > 1) heap[pathPtr + 1] = 0;
-            
-            return 0; // WASI_ESUCCESS
-        }
-        
-        return 68; // WASI_ENAMETOOLONG
+    // 1. Scoped result and early exit for invalid FDs
+    if (fd !== VFS_NOW) {
+        return 8; // WASI_EBADF (tells the guest to stop looking for drives)
     }
-
-    // If the guest asks for any other pre-opened FD we haven't defined
-    return 8; // WASI_EBADF
-}
-
-
-function fd_filestat_get(fd, bufPtr) {
-
-	
-    const stream = FS.pointers[fd];
-    if (!stream) return 8; // WASI_EBADF
 
     const view = new DataView(Module.memory.buffer);
     
-    // Clear 64 bytes
-    for (let i = 0; i < 64; i++) view.setUint8(bufPtr + i, 0);
-
-    // 1. Resolve Metadata from your FS.virtual layout
-    // stream[2] appears to be your 'node' containing the mode/size
-    const node = stream[2] || { mode: FS_FILE, size: 0 };
-    const modeType = node.mode >> 12;
-
-    // Map your ST_DIR/ST_FILE to WASI types
-    let type = 8; // regular_file
-    if (fd <= 3) {
-        type = (fd === 3) ? 4 : 3; // 4=dir, 3=char_device
-    } else if (modeType === ST_DIR) {
-        type = 4;
-    }
-
-    // 2. Populate the Buffer
-    // Device and Inode (using 1 as placeholders)
-    view.setUint32(bufPtr + 0, 1, true); 
-    view.setUint32(bufPtr + 8, fd, true); // Using FD as inode for simplicity
-
-    // Filetype (Offset 16)
-    view.setUint8(bufPtr + 16, type);
-
-    // nlink (Offset 24)
-    view.setUint32(bufPtr + 24, 1, true);
-
-    // Size (Offset 32) - 64-bit
-    const size = node.size || 0;
-    view.setUint32(bufPtr + 32, size, true);
-    view.setUint32(bufPtr + 36, 0, true);
-
-    // Timestamps (Offset 40, 48, 56)
-    // WASI expects nanoseconds. Convert JS ms to ns.
-    const nowNsLow = (Date.now() * 1000000) >>> 0;
-    const nowNsHigh = Math.floor((Date.now() * 1000000) / 0x100000000);
-
-    for (let offset of [40, 48, 56]) {
-        view.setUint32(bufPtr + offset, nowNsLow, true);
-        view.setUint32(bufPtr + offset + 4, nowNsHigh, true);
-    }
+    // Offset 0: pr_type (0 = prestat_dir)
+    view.setUint8(bufPtr, 0);
+    
+    // Offset 4: pr_name_len
+    // We use 0 for the root mapping to match MemFs behavior
+    view.setUint32(bufPtr + 4, 0, true);
 
     return 0; // WASI_ESUCCESS
+}
+
+function fd_prestat_dir_name(fd, pathPtr, pathLen) {
+    if (fd !== VFS_NOW) {
+        return 8; // WASI_EBADF
+    }
+
+    // 2. Compatible Root Logic
+    // If pathLen is 0, we don't write anything, but we MUST return success (0)
+    // if the guest provided a buffer (pathLen >= 1), we write the root '/'
+    if (pathLen > 0) {
+        const heap = new Uint8Array(Module.memory.buffer);
+        heap[pathPtr] = 47; // ASCII for '/'
+    }
+
+    return 0; // WASI_ESUCCESS (Matches MemFs even for 0-length calls)
+}
+
+function fd_filestat_get(fd, bufPtr) {
+
+
+	const stream = FS.pointers[fd];
+	if (!stream) return 8; // WASI_EBADF
+
+	const view = new DataView(Module.memory.buffer);
+
+	// Clear 64 bytes
+	for (let i = 0; i < 64; i++) view.setUint8(bufPtr + i, 0);
+
+	// 1. Resolve Metadata from your FS.virtual layout
+	// stream[2] appears to be your 'node' containing the mode/size
+	const node = stream[2] || { mode: FS_FILE, size: 0 };
+	const modeType = node.mode >> 12;
+
+	// Map your ST_DIR/ST_FILE to WASI types
+	let type = 8; // regular_file
+	if (fd <= 3) {
+		type = (fd === 3) ? 4 : 3; // 4=dir, 3=char_device
+	} else if (modeType === ST_DIR) {
+		type = 4;
+	}
+
+	// 2. Populate the Buffer
+	// Device and Inode (using 1 as placeholders)
+	view.setUint32(bufPtr + 0, 1, true);
+	view.setUint32(bufPtr + 8, fd, true); // Using FD as inode for simplicity
+
+	// Filetype (Offset 16)
+	view.setUint8(bufPtr + 16, type);
+
+	// nlink (Offset 24)
+	view.setUint32(bufPtr + 24, 1, true);
+
+	// Size (Offset 32) - 64-bit
+	const size = node.size || 0;
+	view.setUint32(bufPtr + 32, size, true);
+	view.setUint32(bufPtr + 36, 0, true);
+
+	// Timestamps (Offset 40, 48, 56)
+	// WASI expects nanoseconds. Convert JS ms to ns.
+	const nowNsLow = (Date.now() * 1000000) >>> 0;
+	const nowNsHigh = Math.floor((Date.now() * 1000000) / 0x100000000);
+
+	for (let offset of [40, 48, 56]) {
+		view.setUint32(bufPtr + offset, nowNsLow, true);
+		view.setUint32(bufPtr + offset + 4, nowNsHigh, true);
+	}
+
+	return 0; // WASI_ESUCCESS
 }
 
 function environ_sizes_get(environ_count_out, environ_buf_size_out) {
@@ -837,58 +818,59 @@ function args_get(argvPtr, argvBufPtr) {
 }
 
 function debug_print_mem(ptr, length) {
-    const view = new Uint8Array(Module.memory.buffer, ptr, length);
-    let hex = "";
-    for (let i = 0; i < length; i++) {
-        hex += view[i].toString(16).padStart(2, '0') + " ";
-        if ((i + 1) % 8 === 0) hex += " | ";
-    }
-    console.log(`Memory at 0x${ptr.toString(16)} (${length} bytes):`);
-    console.log(hex);
+	const view = new Uint8Array(Module.memory.buffer, ptr, length);
+	let hex = "";
+	for (let i = 0; i < length; i++) {
+		hex += view[i].toString(16).padStart(2, '0') + " ";
+		if ((i + 1) % 8 === 0) hex += " | ";
+	}
+	console.log(`Memory at 0x${ptr.toString(16)} (${length} bytes):`);
+	console.log(hex);
 }
 
 
 
 function fd_fdstat_get(fd, bufPtr) {
 
-    const stream = FS.pointers[fd];
-    const view = new DataView(Module.memory.buffer);
 
-    // 1. Determine WASI Type
-    let type = 8; // Default to ST_FILE (WASI Regular File)
-    
-    if (fd <= 3) {
-        // Your log showed '3' for both fd 3 and lower streams
-        type = VFS_NOW; 
-    } else if (stream && stream[2]) {
-        // Extract the type from your FS.virtual mode (high 4 bits)
-        const modeType = stream[2].mode >> 12;
-        if (modeType === ST_DIR) {
-            type = 4; // Directory
-        } else if (modeType === ST_FILE) {
-            type = 8; // Regular File
-        }
-    }
+	const stream = FS.pointers[fd];
+	const view = new DataView(Module.memory.buffer);
 
-    // 2. Clear buffer and set values
-    // Using the exact mask from your 'Success' log: 0x1FFFFFFF
-    const SUCCESS_MASK = 0x1FFFFFFF;
+	// 1. Determine WASI Type
+	let type = 8; // Default to ST_FILE (WASI Regular File)
 
-    for (let i = 0; i < 24; i++) view.setUint8(bufPtr + i, 0);
+	if (fd <= 3) {
+		// Your log showed '3' for both fd 3 and lower streams
+		type = VFS_NOW;
+	} else if (stream && stream[2]) {
+		// Extract the type from your FS.virtual mode (high 4 bits)
+		const modeType = stream[2].mode >> 12;
+		if (modeType === ST_DIR) {
+			type = 4; // Directory
+		} else if (modeType === ST_FILE) {
+			type = 8; // Regular File
+		}
+	}
 
-    // Offset 0: Type
-    view.setUint8(bufPtr, type);
+	// 2. Clear buffer and set values
+	// Using the exact mask from your 'Success' log: 0x1FFFFFFF
+	const SUCCESS_MASK = 0x1FFFFFFF;
 
-    // Offset 2: Flags (keeping at 0 per your log)
-    view.setUint16(bufPtr + 2, 0, true);
+	for (let i = 0; i < 24; i++) view.setUint8(bufPtr + i, 0);
 
-    // Offset 8: Base Rights (Lower 32 bits)
-    view.setUint32(bufPtr + 8, SUCCESS_MASK, true);
-    
-    // Offset 16: Inheriting Rights (Lower 32 bits)
-    view.setUint32(bufPtr + 16, SUCCESS_MASK, true);
+	// Offset 0: Type
+	view.setUint8(bufPtr, type);
 
-    return 0; // WASI_ESUCCESS
+	// Offset 2: Flags (keeping at 0 per your log)
+	view.setUint16(bufPtr + 2, 0, true);
+
+	// Offset 8: Base Rights (Lower 32 bits)
+	view.setUint32(bufPtr + 8, SUCCESS_MASK, true);
+
+	// Offset 16: Inheriting Rights (Lower 32 bits)
+	view.setUint32(bufPtr + 16, SUCCESS_MASK, true);
+
+	return 0; // WASI_ESUCCESS
 }
 
 
@@ -928,7 +910,7 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 	buffers.forEach(writev);
 	view.setUint32(nwritten, written, !0);
 
-	if(fd > 2) return WASI_ESUCCESS
+	if (fd > 2) return WASI_ESUCCESS
 
 	let newMessage = stringToAddress(String.fromCharCode.apply(null, bufferBytes))
 
@@ -1005,51 +987,52 @@ function proc_exit(rval) {
 function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, rights_inheriting, fdflags, openedFdPtr) {
 
 	// 1. Resolve Memory Buffer (Host vs Inner Module)
-    const buffer = Module.memory.buffer;
+	const buffer = Module.memory.buffer;
 
-    const path = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
-    
-    // 2. Resolve Full Path relative to dirfd
-    let localName = path.trim();
+	const path = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
+
+	// 2. Resolve Full Path relative to dirfd
+	let localName = path.trim();
 	if (localName.startsWith('/')) localName = localName;
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
 
-    // 3. Handle oflags (WASI specific)
-    const O_CREAT = 1;
-    const O_DIRECTORY = 2;
-    const O_EXCL = 4;
-    const O_TRUNC = 8;
+	// 3. Handle oflags (WASI specific)
+	const O_CREAT = 1;
+	const O_DIRECTORY = 2;
+	const O_EXCL = 4;
+	const O_TRUNC = 8;
 
-    const exists = typeof FS.virtual[localName] !== 'undefined';
+	const exists = typeof FS.virtual[localName] !== 'undefined';
 
-    if (!exists) {
-        if (oflags & O_CREAT) {
-            // Create a new virtual node
-            FS.virtual[localName] = {
-                contents: new Uint8Array(0),
-                timestamp: new Date(),
-                mode: (oflags & O_DIRECTORY) ? FS_DIR : FS_FILE,
-                size: 0,
+	if (!exists) {
+		if (oflags & O_CREAT) {
+			// Create a new virtual node
+			FS.virtual[localName] = {
+				contents: new Uint8Array(0),
+				timestamp: new Date(),
+				mode: (oflags & O_DIRECTORY) ? FS_DIR : FS_FILE,
+				size: 0,
 				path: localName
-            };
-        } else {
-            return 44; // WASI_ENOENT
-        }
-    } else {
-        if ((oflags & O_CREAT) && (oflags & O_EXCL)) return 20; // WASI_EEXIST
-        if (oflags & O_TRUNC) {
-            FS.virtual[localName].contents = new Uint8Array(0);
-            FS.virtual[localName].size = 0;
-        }
-    }
+			};
+		} else {
+			return 44; // WASI_ENOENT
+		}
+	} else {
+		if ((oflags & O_CREAT) && (oflags & O_EXCL)) return 20; // WASI_EEXIST
+		if (oflags & O_TRUNC) {
+			FS.virtual[localName].contents = new Uint8Array(0);
+			FS.virtual[localName].size = 0;
+		}
+	}
 
-	const canRead = (rights_base & 2n) !== 0n;
-    const canWrite = (rights_base & 64n) !== 0n;
-	const modeStr = (canRead ? 'r' : '') + (canWrite? 'w' : '')
-    // 4. Create File Descriptor (Stream)
-    // Layout: [position, path, node]
+	const rb = BigInt(rights_base);
+	const canRead = (rb & 2n) !== 0n;
+	const canWrite = (rb & 64n) !== 0n;
+	const modeStr = (canRead ? 'r' : '') + (canWrite ? 'w' : '')
+	// 4. Create File Descriptor (Stream)
+	// Layout: [position, path, node]
 	let createFP = function () {
 		FS.filePointer++
 		FS.pointers[FS.filePointer] = [
@@ -1064,11 +1047,11 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 		return FS.filePointer // not zero
 	}
 
-    // 5. Write result to guest memory
-    const view = new DataView(Module.memory.buffer); // Result ALWAYS goes to host memory
-    view.setUint32(openedFdPtr, createFP(), true);
+	// 5. Write result to guest memory
+	const view = new DataView(Module.memory.buffer); // Result ALWAYS goes to host memory
+	view.setUint32(openedFdPtr, createFP(), true);
 
-    return 0; // WASI_ESUCCESS
+	return 0; // WASI_ESUCCESS
 }
 
 
@@ -1076,7 +1059,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 function _fd_close(fd) {
 	try {
 		//var stream = SYSCALLS.getStreamFromFD(fd);
-		if(fd <= VFS_NOW) return 
+		if (fd <= VFS_NOW) return
 		FS.pointers[fd] = null
 		return 0;
 	} catch (e) {
@@ -1085,51 +1068,67 @@ function _fd_close(fd) {
 	}
 }
 
+const ST_INSTABLE_DIR = 3
+const ST_INSTABLE_FILE = 4
+const ST_INSTABLE_LINK = 7
+
 function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 
-	const path = new TextDecoder().decode(new Uint8Array(Module.memory.buffer, pathPtr, pathLen));
+    const buffer = Module.memory.buffer;
+    const path = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
 
-	if (Module.memfs
-	//		&& path.startsWith('../')
-	) {
-		let result = Module.memfs.path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr)
-		return result
-	}
-
-
-	// Resolve path to your FS.virtual
-	let localName = path;
-	if (localName.startsWith('/')) localName = localName;
-	if (localName.startsWith('base/')) localName = localName.substring(5);
-	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
-	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
-	//if (localName.startsWith('/base/usr/local')) localName = '/base' + localName.substring('/base/usr/local'.length)
-	//if (localName.startsWith('/usr/local')) localName = '/base' + localName.substring('/usr/local'.length)
+    // 1. Normalize Path - MUST MATCH YOUR path_open LOGIC EXACTLY
+    let localName = path;
+    if (localName.startsWith('base/')) localName = localName.substring(5);
+    if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
+    if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
+    if (localName.startsWith('/')) localName = localName.substring(1);
 
 	const file = FS.virtual[localName];
-	if (!file) {
-		return 44; // ENOENT
-	}
+    if (!file) return 44; // ENOENT
 
-	const view = new DataView(Module.memory.buffer);
-	// wasi_unstable stat struct offsets:
-	// dev (8b), ino (8b), type (1b), nlink (4b), size (8b), atime (8b), mtime (8b), ctime (8b)
+    const view = new DataView(buffer);
+    new Uint8Array(buffer, bufPtr, 64).fill(0);
 
-	const isDir = (file.mode >> 12) === ST_DIR;
-	view.setUint8(bufPtr + 16, isDir ? 4 : 8); // filetype
+    // dev (0)
+    view.setBigUint64(bufPtr + 0, BigInt(dirfd), true);
 
-	let size = 0n;
-	if (!isDir && file.contents) {
-		size = BigInt(file.contents.length);
-		view.setBigUint64(bufPtr + 24, size, true);
-	}
+    // ino (8) - Use small stable IDs to avoid 32-bit guest overflows
+	let myNode = Object.values(FS.pointers).find(p => p[3] == localName)
+    if (!myNode) {
+		FS.filePointer++
+		FS.pointers[FS.filePointer] = [
+			0, // seek/tell
+			'rw',
+			FS.virtual[localName],
+			localName,
+			FS.filePointer
+		]
+		myNode = FS.filePointer
+    }
+	else
+		myNode = myNode[4]
+    view.setBigUint64(bufPtr + 8, BigInt(myNode), true);
 
-	const time = BigInt(file.timestamp.getTime()) * 1000000n; // Convert ms to ns
-	view.setBigUint64(bufPtr + 32, time, true); // atime
-	view.setBigUint64(bufPtr + 40, time, true); // mtime
-	view.setBigUint64(bufPtr + 48, time, true); // ctime
+    // type (16)
+    const isDir = (file.mode >> 12) === 4;
+    view.setUint8(bufPtr + 16, isDir ? ST_INSTABLE_DIR : ST_INSTABLE_FILE);
 
-	return 0;
+    // nlink (20) - 32-bit!
+    view.setUint32(bufPtr + 20, 1, true);
+
+    // size (24) - Starts at 24 in unstable
+    const size = isDir ? 0n : BigInt(file.contents?.length || 0);
+    view.setBigUint64(bufPtr + 24, size, true);
+
+    // timestamps (32, 40, 48)
+    const timeNs = BigInt(file.timestamp.getTime()) * 1000000n;
+    view.setBigUint64(bufPtr + 32, timeNs, true); // atime
+    view.setBigUint64(bufPtr + 40, timeNs, true); // mtime
+    view.setBigUint64(bufPtr + 48, timeNs, true); // ctime
+
+    return 0;
+
 }
 
 
@@ -1227,7 +1226,45 @@ function random_get(buf, buf_len) {
 	}
 }
 
+function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
+    const buffer = Module.memory.buffer;
+    const path = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
+    
+    // 1. Normalize path
+    let localName = path;
+    if (localName.startsWith('/')) localName = localName.substring;
+    if (localName.startsWith('base/')) localName = localName.substring(5);
+    if (localName.startsWith('/')) localName = localName.substring;
 
+    const file = FS.virtual[localName];
+
+    // 2. Check if file exists and is a symlink
+    // WASI filetype for symbolic_link is 7
+    // If you don't support symlinks, return EINVAL (28)
+    if (!file) {
+		debugger
+		return 44; // ENOENT
+	}
+
+    // If your FS doesn't store a 'target' property, it's not a link
+    if (!file.target) {
+        return 28; // EINVAL (Not a symbolic link)
+    }
+
+    // 3. Handle the buffer copy
+    const encoder = new TextEncoder();
+    const targetBytes = encoder.encode(file.target);
+    const len = Math.min(targetBytes.length, bufLen);
+    
+    const heap = new Uint8Array(buffer);
+    heap.set(targetBytes.subarray(0, len), bufPtr);
+
+    // 4. Write the number of bytes read back to guest memory
+    const view = new DataView(buffer);
+    view.setUint32(nreadPtr, len, true);
+
+    return 0; // WASI_ESUCCESS
+}
 
 const FILED = {
 
@@ -1262,7 +1299,7 @@ const FILED = {
 	path_filestat_get: path_filestat_get,
 	path_filestat_set_times: function () { debugger },
 	path_link: function () { debugger },
-	path_readlink: function () { debugger },
+	path_readlink: path_readlink,
 	path_remove_directory: function () { debugger },
 	path_symlink: function () { debugger },
 	path_unlink_file: function () { debugger },
@@ -1285,7 +1322,6 @@ const FILED = {
 	fd_filestat_set_size: function fd_filestat_set_size() { debugger },
 	init: function init() { debugger },
 	path_create_directory: function path_create_directory() { debugger },
-	path_readlink: function path_readlink() { debugger },
 	path_remove_directory: function path_remove_directory() { debugger },
 	path_rename: path_rename,
 	path_symlink: function path_symlink() { debugger },
@@ -1300,57 +1336,57 @@ const FILED = {
 
 
 function path_rename(oldFd, oldPathPtr, oldPathLen, newFd, newPathPtr, newPathLen) {
-    
-    const heap = new Uint8Array(Module.memory.buffer);
-    
-    // Helper to decode strings from WASM memory
-    const readStr = (ptr, len) => {
-        const bytes = heap.subarray(ptr, ptr + len);
-        return new TextDecoder().decode(bytes);
-    };
 
-    // 1. Read the paths
-    // In your log, oldPathPtr was actually 6635560 (the 2nd argument)
-    let oldPath = readStr(oldPathPtr, oldPathLen);
-    let newPath = readStr(newPathPtr, newPathLen);
+	const heap = new Uint8Array(Module.memory.buffer);
+
+	// Helper to decode strings from WASM memory
+	const readStr = (ptr, len) => {
+		const bytes = heap.subarray(ptr, ptr + len);
+		return new TextDecoder().decode(bytes);
+	};
+
+	// 1. Read the paths
+	// In your log, oldPathPtr was actually 6635560 (the 2nd argument)
+	let oldPath = readStr(oldPathPtr, oldPathLen);
+	let newPath = readStr(newPathPtr, newPathLen);
 
 	/*
-    // 2. Resolve them against their respective FDs
-    // Since fd 3 is your root "/", we just join them.
-    const resolve = (fd, path) => {
-        let base = (fd === 3) ? "/" : (FS.pointers[fd] ? FS.pointers[fd][1] : "/");
-        let full = base + (base.endsWith('/') ? '' : '/') + path;
-        // Clean up double slashes and relative dots if necessary
-        return full.replace(/\/+/g, '/'); 
-    };
+	// 2. Resolve them against their respective FDs
+	// Since fd 3 is your root "/", we just join them.
+	const resolve = (fd, path) => {
+		let base = (fd === 3) ? "/" : (FS.pointers[fd] ? FS.pointers[fd][1] : "/");
+		let full = base + (base.endsWith('/') ? '' : '/') + path;
+		// Clean up double slashes and relative dots if necessary
+		return full.replace(/\/+/g, '/'); 
+	};
 
-    const oldPath = resolve(oldFd, oldPathRelative);
-    const newPath = resolve(newFd, newPathRelative);
+	const oldPath = resolve(oldFd, oldPathRelative);
+	const newPath = resolve(newFd, newPathRelative);
 	*/
 
-    // 3. The Actual Rename Logic (Flat Key Swap)
-    if (typeof FS.virtual[oldPath] === 'undefined') return 44; // ENOENT
+	// 3. The Actual Rename Logic (Flat Key Swap)
+	if (typeof FS.virtual[oldPath] === 'undefined') return 44; // ENOENT
 
-    const node = FS.virtual[oldPath];
-    const isDir = (node.mode >> 12) === 4;
+	const node = FS.virtual[oldPath];
+	const isDir = (node.mode >> 12) === 4;
 
-    if (isDir) {
-        const oldPrefix = oldPath.endsWith('/') ? oldPath : oldPath + '/';
-        const newPrefix = newPath.endsWith('/') ? newPath : newPath + '/';
+	if (isDir) {
+		const oldPrefix = oldPath.endsWith('/') ? oldPath : oldPath + '/';
+		const newPrefix = newPath.endsWith('/') ? newPath : newPath + '/';
 
-        Object.keys(FS.virtual).forEach(p => {
-            if (p.startsWith(oldPrefix)) {
-                const updated = newPrefix + p.substring(oldPrefix.length);
-                FS.virtual[updated] = FS.virtual[p];
-                delete FS.virtual[p];
-            }
-        });
-    }
+		Object.keys(FS.virtual).forEach(p => {
+			if (p.startsWith(oldPrefix)) {
+				const updated = newPrefix + p.substring(oldPrefix.length);
+				FS.virtual[updated] = FS.virtual[p];
+				delete FS.virtual[p];
+			}
+		});
+	}
 
-    FS.virtual[newPath] = node;
-    delete FS.virtual[oldPath];
+	FS.virtual[newPath] = node;
+	delete FS.virtual[oldPath];
 
-    return 0; // SUCCESS
+	return 0; // SUCCESS
 }
 
 

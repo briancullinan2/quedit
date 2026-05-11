@@ -200,6 +200,8 @@ async function buildTools(database = null) {
         } catch (e) {
             console.log(e)
         }
+
+        return
     }
     const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
     await api.link({
