@@ -1,20 +1,17 @@
 
 
-let savedToken
-if (typeof localStorage != 'undefined')
-    savedToken = localStorage.getItem('github_token');
-
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false) {
-    if (!savedToken)
-        savedToken = localStorage.getItem('github_token');
+    if(typeof localStorage != 'undefined')
+        api.github_token = localStorage.getItem('github_token');
+
 
     const fullUrl = `https://api.github.com/repos/${ownerName}/${repoName}`
         + (url.startsWith('/') || url.trim().length == 0 ? '' : '/') + url
     try {
         const response = await fetch(fullUrl, {
             method: 'GET',
-            headers: authorize && savedToken ? {
-                'Authorization': `Bearer ${savedToken}`,
+            headers: authorize && api.github_token ? {
+                'Authorization': `Bearer ${api.github_token}`,
                 'Accept': 'application/vnd.github+json',
                 'X-GitHub-Api-Version': '2022-11-28'
             } : {}

@@ -1,6 +1,7 @@
 const owner = document.getElementById('owner');
 const repo = document.getElementById('repository');
 const branch = document.getElementById('branch');
+const configuration = document.getElementById('configuration')
 
 
 branch.addEventListener('change', (e) => {
@@ -52,11 +53,11 @@ const tokenInput = document.getElementById('gh-token-input');
 const modal = document.getElementById('token-modal');
 
 function updatePlaceholder() {
-    savedToken = localStorage.getItem('github_token');
+    api.github_token = localStorage.getItem('github_token');
 
-    if (savedToken && savedToken.length > 0) {
+    if (api.github_token && api.github_token.length > 0) {
         // Show a masked version so the user knows it's set
-        const masked = savedToken.substring(0, 4) + "•".repeat(12);
+        const masked = api.github_token.substring(0, 4) + "•".repeat(12);
         tokenInput.placeholder = `Currently set: ${masked}`;
         tokenInput.classList.add('has-token');
     } else {
@@ -69,9 +70,9 @@ function updatePlaceholder() {
 }
 
 function saveToken() {
-    savedToken = tokenInput.value.trim();
-    if (savedToken) {
-        localStorage.setItem('github_token', savedToken);
+    api.github_token = tokenInput.value.trim();
+    if (api.github_token) {
+        localStorage.setItem('github_token', api.github_token);
         tokenInput.value = ''; // Clear input for security
         alert('Token saved to local storage.');
     }
@@ -248,7 +249,7 @@ function settings() {
         game_repository: gameRepo,
         asset_repository: assetRepo,
         theme: savedTheme,
-        github_token: savedToken,
+        github_token: api.github_token,
         hot_reload: !!document.getElementById('reload').checked,
         repositories: Array.from(repo.children).map(c => c.value),
         owners: Array.from(owner.children).map(c => c.value),
@@ -313,8 +314,8 @@ function saveSettings(content) {
         savedTheme = settings.theme
         setTheme(settings.theme)
 
-        savedToken = settings.github_token
-        localStorage.setItem('github_token', savedToken)
+        api.github_token = settings.github_token
+        localStorage.setItem('github_token', api.github_token)
 
         configuration.value = currentConfig = settings.configuration
         localStorage.setItem('configuration', currentConfig)

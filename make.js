@@ -2,8 +2,6 @@
  * Quake3e Build Configuration Script - Browser Version
  */
 
-const configuration = document.getElementById('configuration')
-
 // 1. Implementation of path.join for the browser
 const path = {
     join: (...parts) => {
@@ -528,24 +526,24 @@ function generateFallbackC(fileName, content) {
 
 function BUILDCFLAGS(CONFIGURATION) {
     if (!CONFIGURATION)
-        CONFIGURATION = configuration.value == 'release'
+        CONFIGURATION = api.configuration == 'release'
             ? dirs.ENGINE_RELEASE
             : dirs.ENGINE_DEBUG
 
-    let DEBUG_CFLAGS = configuration.value != 'debug'
+    let DEBUG_CFLAGS = api.configuration != 'debug'
         ? ['-DNDEBUG', '-O3', '-ffast-math']
         : ['-DDEBUG', '-D_DEBUG', /* '-g',*/ '-O0']
 
-    let PRE = configuration.value == 'pre'
+    let PRE = api.configuration == 'pre'
         ? ['-E', '-P']
-        : configuration.value == 'analyze'
+        : api.configuration == 'analyze'
             ? ['--analyze']
-            : configuration.value == 'sanitize'
+            : api.configuration == 'sanitize'
                 ? ['-fsanitize=address']
                 : []
 
     PRE = PRE.concat([
-        '-fmessage-length', '' + (term.cols || '80')
+        '-fmessage-length', '' + (api.width || '80')
     ])
 
     return [...DEBUG_CFLAGS, ...PRE]
@@ -558,7 +556,7 @@ async function buildStringify(database = null) {
 
     let DEBUG_CFLAGS = BUILDCFLAGS()
 
-    if (!database) database = owner.value + '/' + repo.value
+    if (!database) database = api.database
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
@@ -568,10 +566,13 @@ async function buildStringify(database = null) {
         await downloadHeaders(q3eCommonHeaders, 10, database)
     }
 
+    let CONFIGURATION = api.configuration == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
     //await api.upload(database)
 
     let stringify = 'code/renderer2/stringify.c'
-    let sha = files['#filelist'][stringify].sha
+    let sha = files[database][stringify].sha
     let content = await cacheFile(ownerName, repoName, stringify, sha)
 
     try {
@@ -585,24 +586,20 @@ async function buildStringify(database = null) {
                 '-internal-isystem', '/lib/clang/8.0.1/include',
                 "-std=gnu11",
                 ...DEBUG_CFLAGS,
-                ...(configuration.value == 'pre' ? [
+                ...(api.configuration == 'pre' ? [
                     '-o', CONFIGURATION + '/stringify.a',
                 ] : ['-o', CONFIGURATION + '/stringify.o']),
                 stringify
             ],
             contents: content,
-            width: term.cols,
             input: stringify,
             database,
             obj: CONFIGURATION + '/stringify.o'
         })
     } catch (e) {
-        console.error(e)
+        log(e)
     }
 
-    let CONFIGURATION = configuration.value == 'release'
-        ? dirs.ENGINE_RELEASE
-        : dirs.ENGINE_DEBUG
 
 
     try {
@@ -618,7 +615,7 @@ async function buildStringify(database = null) {
             wasm: CONFIGURATION + '/stringify' + config.BINEXT
         })
     } catch (e) {
-        console.error(e)
+        log(e)
     }
 
 
@@ -632,12 +629,12 @@ async function buildClient(database = null) {
 
     let DEBUG_CFLAGS = BUILDCFLAGS()
 
-    if (!database) database = owner.value + '/' + repo.value
+    if (!database) database = api.database
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
-    let CONFIGURATION = configuration.value == 'release'
+    let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
@@ -651,15 +648,15 @@ async function buildClient(database = null) {
     for (let file of [...allCompileObjects]) {
 
         try {
-            let sha = files['#filelist'][file].sha
+            let sha = files[database][file].sha
             let content = await cacheFile(ownerName, repoName, file, sha)
             let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
 
-            term.write('\n\r')
+            log('\n\r')
             let CCFLAGS = [
                 ...CFLAGS,
                 ...DEBUG_CFLAGS,
-                ...(configuration.value == 'pre' ? [
+                ...(api.configuration == 'pre' ? [
                     '-o', obj.replace('.o', '.a')
                 ] : ['-o', obj]),
                 file
@@ -667,7 +664,7 @@ async function buildClient(database = null) {
             if (file.includes('botlib'))
                 CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
 
-            term.write('\n\rCC: ' + obj + '\n\r')
+            log('\n\rCC: ' + obj + '\n\r')
 
             let objRecord = await getRecord(DB_STORE_NAME, obj, database)
             FS.virtual[obj] = objRecord
@@ -682,14 +679,13 @@ async function buildClient(database = null) {
             await api.compile({
                 CFLAGS: CCFLAGS,
                 contents: content,
-                width: term.cols,
                 input: file,
                 database,
                 obj
             })
 
         } catch (e) {
-            console.error(e)
+            log(e)
         }
 
     }
@@ -715,104 +711,103 @@ async function build(database = null, noBounce = false) {
     if (building) return
     building = true
 
-
-    // TODO: publish binaryen zero-filled, zip, download uri
-
-    if (!database) database = owner.value + '/' + repo.value
-    let parts = database.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
-
-    savedToken = localStorage.getItem('github_token');
-
-    if (!savedToken)
-        return alert("Must enter Github token first by clicking the doorway on the left.")
-
-
-    // Log directly to your xterm.js instance if available
-    const output = [
-        `Building ${config.CNAME} for ${COMPILE_PLATFORM} (${COMPILE_ARCH})`,
-        `Flags: ${getBaseFlags().join(' ')}`,
-        `Total source files mapped: ${[...allCompileObjects].length}`
-    ];
-
-    output.forEach(line => {
-        if (typeof term !== 'undefined') {
-            term.write(`\x1b[32m[BUILD]\x1b[0m ${line}\r\n`);
-        } else {
-            console.log(line);
-        }
-    });
-
-    term.write('\n\r')
-
-
-
-    FS.virtual['/home'] = {
-        timestamp: new Date(),
-        mode: FS_DIR,
-        path: '/home'
-    }
-    await putRecord(DB_STORE_NAME, FS.virtual['/home'], database)
-    FS.virtual['/tmp'] = {
-        timestamp: new Date(),
-        mode: 16877, // ST_DIR + standard permissions
-        path: '/tmp'
-    };
-    await putRecord(DB_STORE_NAME, FS.virtual['/tmp'], database)
-
-
-
-    let CONFIGURATION = configuration.value == 'release'
-        ? dirs.ENGINE_RELEASE
-        : dirs.ENGINE_DEBUG
-
-
-
-    await buildStringify(database)
-
-
-    await buildClient(database)
-
-
-    await buildShaders(database)
-
-
-    let clientObjs = allCompileObjects.map(s => CONFIGURATION + '/' + s.replace('.c', '.o'))
-    let renderObjs = allRend2ShaderObjects.map(s => CONFIGURATION + '/' + s.replace('.glsl', '.o'))
-
-
     try {
-        await api.link({
-            LDFLAGS: [
-                ...LDFLAGS,
-                ...clientObjs,
-                ...renderObjs,
-                '-o', CONFIGURATION + '/' + config.CNAME + config.BINEXT,
-                ...includeFlags
-            ],
-            width: term.cols,
-            obj: [
-                ...clientObjs,
-                ...renderObjs
-            ],
-            database,
-            wasm: CONFIGURATION + '/' + config.CNAME + config.BINEXT
-        })
-    } catch (e) {
-        console.error(e)
+
+        // TODO: publish binaryen zero-filled, zip, download uri
+
+        if (!database) database = api.database
+        let parts = database.split('/')
+        let ownerName = parts.length == 2 ? parts[0] : owner.value
+        let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+
+        if (!api.github_token)
+            return alert("Must enter Github token first by clicking the doorway on the left.")
+
+
+        // Log directly to your xterm.js instance if available
+        const output = [
+            `Building ${config.CNAME} for ${COMPILE_PLATFORM} (${COMPILE_ARCH})`,
+            `Flags: ${getBaseFlags().join(' ')}`,
+            `Total source files mapped: ${[...allCompileObjects].length}`
+        ];
+
+        output.forEach(line => {
+            log(`\x1b[32m[BUILD]\x1b[0m ${line}\r\n`)
+        });
+
+        log('\n\r')
+
+
+
+        FS.virtual['/home'] = {
+            timestamp: new Date(),
+            mode: FS_DIR,
+            path: '/home'
+        }
+        await putRecord(DB_STORE_NAME, FS.virtual['/home'], database)
+        FS.virtual['/tmp'] = {
+            timestamp: new Date(),
+            mode: 16877, // ST_DIR + standard permissions
+            path: '/tmp'
+        };
+        await putRecord(DB_STORE_NAME, FS.virtual['/tmp'], database)
+
+
+
+        let CONFIGURATION = api.configuration == 'release'
+            ? dirs.ENGINE_RELEASE
+            : dirs.ENGINE_DEBUG
+
+
+
+        await buildStringify(database)
+
+
+        await buildClient(database)
+
+
+        await buildShaders(database)
+
+
+        let clientObjs = allCompileObjects.map(s => CONFIGURATION + '/' + s.replace('.c', '.o'))
+        let renderObjs = allRend2ShaderObjects.map(s => CONFIGURATION + '/' + s.replace('.glsl', '.o'))
+
+
+        try {
+            await api.link({
+                LDFLAGS: [
+                    ...LDFLAGS,
+                    ...clientObjs,
+                    ...renderObjs,
+                    '-o', CONFIGURATION + '/' + config.CNAME + config.BINEXT,
+                    ...includeFlags
+                ],
+                obj: [
+                    ...clientObjs,
+                    ...renderObjs
+                ],
+                database,
+                wasm: CONFIGURATION + '/' + config.CNAME + config.BINEXT
+            })
+        } catch (e) {
+            log(e)
+        }
+
+    } finally {
+        building = false
+
+        //await api.download(database)
+
     }
 
-    building = false
-
-    //await api.download(database)
 }
 
 
 
 async function buildShaders(database = null) {
 
-    if (!database) database = owner.value + '/' + repo.value
+    if (!database) database = api.database
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
@@ -822,7 +817,7 @@ async function buildShaders(database = null) {
         await downloadHeaders(q3eCommonHeaders, 10, database)
     }
 
-    let CONFIGURATION = configuration.value == 'release'
+    let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
@@ -831,17 +826,17 @@ async function buildShaders(database = null) {
 
     for (let shader of allRend2ShaderObjects) {
         try {
-            let sha = files['#filelist'][shader].sha
+            let sha = files[database][shader].sha
             let content = await cacheFile(ownerName, repoName, shader, sha)
             const cCode = generateFallbackC(shader, content);
             let obj = CONFIGURATION + '/' + shader.replace('.glsl', '.o')
-            term.write(`\n\rGLSL: ${obj}\n\r`)
+            log(`\n\rGLSL: ${obj}\n\r`)
 
             let objRecord = await getRecord(DB_STORE_NAME, obj, database)
             FS.virtual[obj] = objRecord
 
 
-            term.write(`\n\rCC: ${shader}\n\r`);
+            log(`\n\rCC: ${shader}\n\r`);
 
             if (FS.virtual[obj]
                 && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
@@ -856,14 +851,13 @@ async function buildShaders(database = null) {
                     shader.replace('.glsl', '.c')
                 ],
                 contents: cCode,
-                width: term.cols,
                 input: shader.replace('.glsl', '.c'),
                 database,
                 obj
             })
 
         } catch (e) {
-            console.error(e)
+            log(e)
         }
     }
 
@@ -874,7 +868,7 @@ async function buildShaders(database = null) {
 
 async function downloadHeaders(headers, batchSize = 10, database = null) {
     if (!database)
-        database = owner.value + '/' + repo.value
+        database = api.database
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
@@ -888,11 +882,14 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                 let thisDatabase = database
                 let thisOwner = ownerName
                 let thisRepo = repoName
+
                 if (header.includes('wasm.syms')) {
                     //let response = await fetch('wasm.syms');
                     //let contents = await response.arrayBuffer()
                     if (!files['briancullinan2/quedit'])
+                    {
                         await loadGitHubTree('briancullinan2', 'quedit', 'main')
+                    }
                     await cacheFile('briancullinan2', 'quedit', 'wasm.syms');
                     FS.virtual[header] =
                     {
@@ -906,6 +903,12 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                     await putRecord(DB_STORE_NAME, FS.virtual[header], thisDatabase)
                 }
                 else {
+                    if (!files[thisDatabase])
+                    {
+                        let branch = await getDefaultBranch(thisOwner, thisRepo)
+                        await loadGitHubTree(thisOwner, thisRepo, branch)
+                    }
+
                     if (!files[thisDatabase][header]) return
                     // cacheFile handles the storage logic
                     let sha = files[thisDatabase][header].sha
@@ -915,11 +918,11 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
 
                 await api.header(thisOwner, thisRepo, header, thisDatabase)
             } catch (e) {
-                console.warn(`Failed to cache ${header}:`, e);
+                log(`Failed to cache ${header}: ` + e + '\n\r' + (e.stack || e.stacktrace));
             }
         }));
 
-        console.log(`Finished batch ${Math.ceil((i + batchSize) / batchSize)}`);
+        log(`Finished batch ${Math.ceil((i + batchSize) / batchSize)}`);
     }
 }
 
@@ -951,7 +954,7 @@ function loadEntry(cursor) {
         // embedded file is newer, start with that
         return
     }
-    //term.write('\n\rLoading: ' + cursor.path + '\n\r');
+    log('\n\rLoading: ' + cursor.path + '\n\r');
 
     FS.virtual[cursor.path] = {
         timestamp: cursor.timestamp,

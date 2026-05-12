@@ -245,7 +245,7 @@ function loadTree(database, cursor) {
 
 
 async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true) {
-    savedToken = localStorage.getItem('github_token');
+    api.github_token = localStorage.getItem('github_token');
 
     var content = await cacheFile(repoOwner, repoName, filePath, sha)
 

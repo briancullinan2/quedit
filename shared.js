@@ -1156,15 +1156,24 @@ const API = (function () {
     }
 
 
-    async header(options) {
-      await this.ready;
-      let filePath = options.header
+    extract(options, database)
+    {
+      if(options.configuration)
+        this.configuration = options.configuration
+      if(options.github_token)
+        this.github_token = options.github_token
       if (options.database)
-        this.database = options.database
-      else
+        this.database = options.database || database
+    }
+
+
+    async header(filePath) {
+      await this.ready;
+
+      if(!this.database)
         return
 
-      let record = await getRecord(DB_STORE_NAME, filePath, options.database)
+      let record = await getRecord(DB_STORE_NAME, filePath, this.database)
       if (!record) return
       FS.virtual[record.path] = record
 
@@ -1180,15 +1189,17 @@ const API = (function () {
 
     async upload(database = null) {
       await this.ready;
-      if (!database) return
-      this.database = database
-      await readAll(database, this.loadEntry.bind(this))
+      this.database = database || this.database
+      if (!this.database) return
+
+      await readAll(this.database, this.loadEntry.bind(this))
     }
 
 
 
     async compile(options) {
       await this.ready
+      this.extract(options)
       const input = options.input;
       const contents = options.contents;
       const obj = options.obj;
@@ -1220,8 +1231,8 @@ const API = (function () {
         this.mkdirp('tmp')
 
 
-      if (options.CFLAGS && options.database) {
-        this.database = options.database
+      if (options.CFLAGS && this.database) {
+
         for (var filePath of options.CFLAGS) {
           if (!filePath) continue
           if (FS.virtual[filePath]) continue
@@ -1229,7 +1240,7 @@ const API = (function () {
             if (filePath.startsWith('--allow-undefined-file=')) {
               filePath = syms[0].substring('--allow-undefined-file='.length)
             }
-            var record = await getRecord(DB_STORE_NAME, filePath, options.database)
+            var record = await getRecord(DB_STORE_NAME, filePath, this.database)
             if (!record) continue
             FS.virtual[record.path] = record
 
@@ -1255,14 +1266,14 @@ const API = (function () {
           path: obj,
         }
 
-        if (options.database)
-          await putRecord(DB_STORE_NAME, FS.virtual[obj], options.database)
+        if (this.database)
+          await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
 
         this.hostWrite('\n\rSucceeded: ' + obj + '\n\r')
       }
 
-      if (options.database && FS.virtual[obj])
-        await putRecord(DB_STORE_NAME, FS.virtual[obj], options.database)
+      if (this.database && FS.virtual[obj])
+        await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
       return result
     }
 
@@ -1319,10 +1330,13 @@ const API = (function () {
     }
 
     async link(options) {
+
+      await this.ready;
+      this.extract(options)
+
       const stackSize = 1024 * 1024;
       const obj = options.obj;
       const wasm = options.wasm;
-      await this.ready;
 
 
       if (wasm) {
@@ -1335,13 +1349,12 @@ const API = (function () {
 
       const lld = await this.getModule(this.lldFilename);
 
-      if (options.database) {
-        this.database = options.database
+      if (this.database) {
 
         for (var filePath of obj instanceof Array ? obj : [obj]) {
           if (!filePath) continue
           try {
-            var record = await getRecord(DB_STORE_NAME, filePath, options.database)
+            var record = await getRecord(DB_STORE_NAME, filePath, this.database)
             if (!record) continue
             FS.virtual[record.path] = record
 
@@ -1359,7 +1372,7 @@ const API = (function () {
         }
       }
 
-      if (options.LDFLAGS && options.database) {
+      if (options.LDFLAGS && this.database) {
         for (var filePath of options.LDFLAGS) {
           if (!filePath) continue
           if (FS.virtual[filePath]) continue
@@ -1367,7 +1380,7 @@ const API = (function () {
             if (filePath.startsWith('--allow-undefined-file=')) {
               filePath = filePath.substring('--allow-undefined-file='.length)
             }
-            var record = await getRecord(DB_STORE_NAME, filePath, options.database)
+            var record = await getRecord(DB_STORE_NAME, filePath, this.database)
             if (!record) continue
             FS.virtual[record.path] = record
 
@@ -1404,16 +1417,55 @@ const API = (function () {
           path: wasm,
         }
 
-        if (options.database)
-          await putRecord(DB_STORE_NAME, FS.virtual[wasm], options.database)
+        if (this.database)
+          await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database)
 
         this.hostWrite('\n\rSucceeded: ' + wasm + '\n\r')
       }
 
-      if (options.database && FS.virtual[wasm])
-        await putRecord(DB_STORE_NAME, FS.virtual[wasm], options.database)
+      if (this.database && FS.virtual[wasm])
+        await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database)
 
       return FS.virtual[wasm];
+    }
+
+
+    async build(selected, mode = 'all')
+    {
+      if(!selected)
+        selected = this.database;
+      if (mode === 'q3lcc')
+          return await buildLCC(selected)
+        if (mode === 'q3rcc')
+          return await buildRCC(selected)
+        if (mode === 'q3cpp')
+          return await buildCPP(selected)
+        if (mode === 'lburg')
+          return await buildLBurg(selected)
+        if (mode == 'asm')
+          return await buildAsmTool(selected)
+
+        if (mode == 'game')
+          return await buildGame(selected)
+        if (mode == 'cgame')
+          return await buildCGame(selected)
+        if (mode == 'ui')
+          return await buildUI(selected)
+
+        if (mode === 'stringify')
+          return await buildStringify(selected)
+        if (mode === 'shaders')
+          return await buildShaders(selected)
+        if (mode === 'client')
+          return await buildClient(selected)
+
+
+        if (mode === 'qvms')
+          return await buildQVM(selected)
+        if (mode === 'tools')
+          return await buildTools(selected)
+
+        build(selected);
     }
 
     async run(module, ...args) {

@@ -118,7 +118,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
     log(`Compiling ${name} module...`);
 
 
-    if (!database) database = gameRepo || owner.value + '/' + repo.value;
+    if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
@@ -129,7 +129,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
         await downloadHeaders(qvmHeaders, 10, database);
     }
 
-    let CONFIGURATION = configuration.value == 'release'
+    let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
@@ -171,7 +171,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                 ...QVM_CFLAGS,
                 ...(QVM_MODE ? [] : DEBUG_CFLAGS),
                 ...extraDefines.map(d => `-D${d}`),
-                ...(configuration.value == 'pre' ? [
+                ...(api.configuration == 'pre' ? [
                     '-o', outPath.replace('.o', '.a')
                 ] : ['-o', outPath]),
                 srcPath
@@ -194,7 +194,6 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                 await api.compile({
                     CFLAGS: CCFLAGS,
                     contents: content,
-                    width: term.cols,
                     input: srcPath,
                     database,
                     obj: outPath // For QVM, we output .asm first
@@ -246,7 +245,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
 async function buildGame(database = null) {
-    if (!database) database = gameRepo || owner.value + '/' + repo.value;
+    if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
@@ -260,7 +259,7 @@ async function buildGame(database = null) {
 
 
 async function buildCGame(database = null) {
-    if (!database) database = gameRepo || owner.value + '/' + repo.value;
+    if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
@@ -276,7 +275,7 @@ async function buildCGame(database = null) {
 
 
 async function buildUI(database = null) {
-    if (!database) database = gameRepo || owner.value + '/' + repo.value;
+    if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
@@ -295,7 +294,7 @@ async function buildUI(database = null) {
 
 
 async function buildQVM(database = null) {
-    if (!database) database = gameRepo || owner.value + '/' + repo.value;
+    if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value

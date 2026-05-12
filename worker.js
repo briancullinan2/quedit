@@ -20,6 +20,10 @@ self.importScripts('sys_fs.js');
 self.importScripts('sys_std.js');
 self.importScripts('sys_web.js');
 self.importScripts('github.js');
+self.importScripts('make.js');
+self.importScripts('make-tools.js');
+self.importScripts('make-qvm.js');
+
 
 const Module = {
 
@@ -66,6 +70,18 @@ const apiOptions = {
 let currentApp = null;
 
 const onAnyMessage = async event => {
+  if(event.data.data && event.data.data.github_token)
+  {
+    api.github_token = event.data.data.github_token
+  }
+  if(event.data.data && event.data.data.width)
+  {
+    api.width = event.data.data.width
+  }
+  if(event.data.data && event.data.data.database)
+  {
+    api.database = event.data.data.database
+  }
   switch (event.data.id) {
     case 'constructor':
       port = event.data.data;
@@ -80,7 +96,7 @@ const onAnyMessage = async event => {
     case 'compileToAssembly': {
       const responseId = event.data.responseId;
       let output = null;
-      let transferList;
+
       try {
         output = await api.compileToAssembly(event.data.data);
       }
@@ -90,8 +106,7 @@ const onAnyMessage = async event => {
         throw e;
       }
       finally {
-        port.postMessage({ id: 'runAsync', responseId, data: output },
-          transferList);
+        port.postMessage({ id: 'runAsync', responseId, data: output });
       }
       break;
     }
@@ -99,7 +114,7 @@ const onAnyMessage = async event => {
     case 'compileTo6502': {
       const responseId = event.data.responseId;
       let output = null;
-      let transferList;
+
       try {
         output = await api.compileTo6502(event.data.data);
       }
@@ -109,8 +124,7 @@ const onAnyMessage = async event => {
         throw e
       }
       finally {
-        port.postMessage({ id: 'runAsync', responseId, data: output },
-          transferList);
+        port.postMessage({ id: 'runAsync', responseId, data: output });
       }
       break;
     }
@@ -118,9 +132,10 @@ const onAnyMessage = async event => {
     case 'header': {
       const responseId = event.data.responseId;
       let output = null;
-      let transferList;
+      this.extract(event.data.data)
+
       try {
-        output = await api.header(event.data.data);
+        output = await api.header(event.data.data.header);
       }
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
@@ -128,8 +143,7 @@ const onAnyMessage = async event => {
         throw e
       }
       finally {
-        port.postMessage({ id: 'runAsync', responseId, data: output },
-          transferList);
+        port.postMessage({ id: 'runAsync', responseId, data: output });
       }
       break;
     }
@@ -137,7 +151,7 @@ const onAnyMessage = async event => {
     case 'upload': {
       const responseId = event.data.responseId;
       let output = null;
-      let transferList;
+
       try {
         output = await api.upload(event.data.data);
       }
@@ -147,16 +161,41 @@ const onAnyMessage = async event => {
         throw e
       }
       finally {
-        port.postMessage({ id: 'runAsync', responseId, data: output },
-          transferList);
+        port.postMessage({ id: 'runAsync', responseId, data: output });
       }
       break;
     }
 
+
+    case 'build': {
+      const responseId = event.data.responseId;
+      let output = null;
+      let selected = api.database = event.data.data.database || api.database;
+      let mode = event.data.data.action;
+      if (event.data.data.configuration)
+        api.configuration = event.data.data.configuration
+
+      try {
+        api.build(selected, mode)
+      }
+      catch (e) {
+        const redArrow = '\x1b[1;33m>\x1b[0m ';
+        api.hostWrite(`${redArrow}${e.toString()}`)
+        throw e
+      }
+      finally {
+        port.postMessage({ id: 'runAsync', responseId, data: output });
+      }
+      break;
+    }
+
+
+
+
     case 'download': {
       const responseId = event.data.responseId;
       let output = null;
-      let transferList;
+
       try {
         output = await api.download(event.data.data);
       }
@@ -166,8 +205,7 @@ const onAnyMessage = async event => {
         throw e
       }
       finally {
-        port.postMessage({ id: 'runAsync', responseId, data: output },
-          transferList);
+        port.postMessage({ id: 'runAsync', responseId, data: output });
       }
       break;
     }
@@ -175,7 +213,7 @@ const onAnyMessage = async event => {
     case 'link': {
       const responseId = event.data.responseId;
       let output = null;
-      let transferList;
+
       try {
         output = await api.link(event.data.data);
       }
@@ -185,8 +223,7 @@ const onAnyMessage = async event => {
         throw e
       }
       finally {
-        port.postMessage({ id: 'runAsync', responseId, data: output },
-          transferList);
+        port.postMessage({ id: 'runAsync', responseId, data: output });
       }
       break;
     }
@@ -194,7 +231,7 @@ const onAnyMessage = async event => {
     case 'compile': {
       const responseId = event.data.responseId;
       let output = null;
-      let transferList;
+
       try {
         output = await api.compile(event.data.data);
       }
@@ -204,8 +241,7 @@ const onAnyMessage = async event => {
         throw e
       }
       finally {
-        port.postMessage({ id: 'runAsync', responseId, data: output },
-          transferList);
+        port.postMessage({ id: 'runAsync', responseId, data: output });
       }
       break;
     }
@@ -213,13 +249,14 @@ const onAnyMessage = async event => {
     case 'run': {
       const responseId = event.data.responseId;
       let output = null;
-      let transferList;
       let filePath
       try {
         if (event.data.data.database)
           api.database = event.data.data.database
         if (event.data.data.toolsRepo)
           api.toolsRepo = event.data.data.toolsRepo
+        if (event.data.data.configuration)
+          api.configuration = event.data.data.configuration
 
         await api.ready
 
@@ -293,8 +330,7 @@ const onAnyMessage = async event => {
         throw e
       }
       finally {
-        port.postMessage({ id: 'runAsync', responseId, data: FS.virtual[filePath] },
-          transferList);
+        port.postMessage({ id: 'runAsync', responseId, data: FS.virtual[filePath] });
       }
       break;
     }

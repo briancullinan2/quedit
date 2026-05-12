@@ -192,6 +192,8 @@ async function run(database = null, noBounce = false) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
+    api.configuration = configuration.value
+
     try {
         let enginePath = CONFIGURATION + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
         let record = await getRecord(DB_STORE_NAME, enginePath, database)

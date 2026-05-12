@@ -134,13 +134,13 @@ const toolLdFlags = [
 
 
 async function buildLBurg(database = null) {
-    if (!database) database = toolsRepo || owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
 
 
-    let CONFIGURATION = configuration.value == 'release'
+    let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
@@ -156,7 +156,7 @@ async function buildLBurg(database = null) {
             log(`\n\rCC: ${src}\n\r`);
             lburgObjs.push(await compileToolFile(src, obj, "lburg", database));
         } catch (e) {
-            console.log(e)
+            log(e)
         }
 
     }
@@ -179,7 +179,7 @@ let FILELIST
 
 async function compileToolFile(src, obj, includeDir, database, extraFlags = []) {
     try {
-        if (!database) database = toolsRepo || owner.value + '/' + repo.value;
+        if (!database) database = toolsRepo || api.database;
         let parts = database.split('/');
         let ownerName = parts.length == 2 ? parts[0] : owner.value;
         let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
@@ -209,7 +209,6 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
                 '-o', obj, src
             ],
             contents: content,
-            width: term.cols,
             input: src,
             database,
             obj: obj
@@ -221,8 +220,10 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
     }
 }
 
-function log(msg) {
+function log(msg, ...args) {
+    
     if (typeof term !== 'undefined') term.write(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
+    if(typeof api.hostWrite) api.hostWrite(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
     else console.log(msg);
 }
 
@@ -231,14 +232,14 @@ let needsHeaders = true
 
 
 async function buildRCC(database = null) {
-    if (!database) database = toolsRepo || owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
 
     needsHeaders = true
 
-    let CONFIGURATION = configuration.value == 'release'
+    let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
@@ -273,7 +274,7 @@ async function buildRCC(database = null) {
                 rccObjs.push(await compileToolFile(src, obj, "src", database));
             }
         } catch (e) {
-            console.log(e)
+            log(e)
         }
     }
     const rccExe = path.join(CONFIGURATION, "q3rcc" + config.BINEXT);
@@ -290,7 +291,7 @@ async function buildRCC(database = null) {
 
 
 async function buildCPP(database = null) {
-    if (!database) database = toolsRepo || owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
@@ -298,7 +299,7 @@ async function buildCPP(database = null) {
     needsHeaders = true
 
 
-    let CONFIGURATION = configuration.value == 'release'
+    let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
@@ -312,7 +313,7 @@ async function buildCPP(database = null) {
             log(`\n\rCC: ${src}\n\r`);
             cppObjs.push(await compileToolFile(src, obj, "cpp", database));
         } catch (e) {
-            console.log(e)
+            log(e)
         }
     }
     const cppExe = path.join(CONFIGURATION, "q3cpp" + config.BINEXT);
@@ -329,7 +330,7 @@ async function buildCPP(database = null) {
 
 
 async function buildLCC(database = null) {
-    if (!database) database = toolsRepo || owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
@@ -337,7 +338,7 @@ async function buildLCC(database = null) {
     needsHeaders = true
 
 
-    let CONFIGURATION = configuration.value == 'release'
+    let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
@@ -352,7 +353,7 @@ async function buildLCC(database = null) {
             log(`\n\rCC: ${src}\n\r`);
             lccObjs.push(await compileToolFile(src, obj, "src", database, lccFlags));
         } catch (e) {
-            console.log(e)
+            log(e)
         }
     }
     const lccExe = path.join(CONFIGURATION, "q3lcc" + config.BINEXT);
@@ -371,7 +372,7 @@ async function buildLCC(database = null) {
 // --- Build Logic ---
 
 async function buildTools(database = null) {
-    if (!database) database = toolsRepo || owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
@@ -426,14 +427,14 @@ const Q3ASM_CFLAGS = [
  * Appends the q3asm build to your existing buildTools function
  */
 async function buildAsmTool(database = null) {
-    if (!database) database = toolsRepo2 || owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo2 || api.database;
 
     const log = (msg) => {
-        if (typeof term !== 'undefined') term.write(`\x1b[35m[Q3ASM-BUILD]\x1b[0m ${msg}\r\n`);
-        else console.log(msg);
+        if (typeof term !== 'undefined') log(`\x1b[35m[Q3ASM-BUILD]\x1b[0m ${msg}\r\n`);
+        else log(msg);
     };
 
-    let CONFIGURATION = configuration.value == 'release'
+    let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
@@ -470,7 +471,6 @@ async function buildAsmTool(database = null) {
                     '-o', obj, src
                 ],
                 contents: content,
-                width: term.cols,
                 input: src,
                 database,
                 obj: obj

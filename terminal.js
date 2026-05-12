@@ -239,7 +239,7 @@ async function handleCommand(input) {
         build: async (argv) => {
             const mode = argv[0] || 'release';
 
-            let selected = argv[1] || engineRepo || database
+            let selected = api.database = argv[1] || engineRepo || database
             if (mode === 'q3lcc'
                 || mode === 'q3rcc'
                 || mode === 'q3cpp'
@@ -274,7 +274,7 @@ async function handleCommand(input) {
             }
 
 
-
+            let validMode = api.configuration = configuration.value
 
             if (mode === 'q3lcc'
                 || mode === 'q3rcc'
@@ -282,16 +282,15 @@ async function handleCommand(input) {
                 || mode === 'lburg'
                 || mode === 'asm'
             )
-                configuration.value = 'tools'
-            else if (configuration.querySelector(`[value="${mode}"]`))
-                configuration.value = mode
+                validMode = 'tools'
 
             else if (mode === 'cgame'
                 || mode === 'game'
                 || mode === 'uid'
             )
-                configuration.value = 'qvms'
-            else if (mode === 'release'
+                validMode = 'qvms'
+            else if (mode == 'all'
+                || mode === 'release'
                 || mode === 'debug'
                 || mode === 'stringify'
                 || mode === 'shaders'
@@ -299,7 +298,11 @@ async function handleCommand(input) {
                 || mode === 'engine'
                 || mode === 'server'
             )
-                configuration.value = 'release'
+                validMode = 'release'
+
+
+            if (configuration.querySelector(`[value="${validMode}"]`))
+                configuration.value = validMode
             else if (mode) {
                 let modes = Array.from(configuration.children).map(m => m.value)
                 term.write(`Valid modes ${modes.join('|')}: ${mode} given.`);
@@ -336,9 +339,9 @@ async function handleCommand(input) {
                 return await buildClient(selected)
 
 
-            if (configuration.value === 'qvms')
+            if (validMode === 'qvms')
                 return await buildQVM(selected)
-            if (configuration.value === 'tools')
+            if (validMode === 'tools')
                 return await buildTools(selected)
 
             build(selected);
@@ -383,6 +386,8 @@ async function handleCommand(input) {
 
             let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
 
+            api.configuration = configuration.value
+
             return await api.compile({
                 CFLAGS: [
                     ...LCC_CFLAGS, `-Icode`, `-Isrc`,
@@ -391,17 +396,20 @@ async function handleCommand(input) {
                     ] : ['-o', obj]),
                     file
                 ],
+                configuration: configuration.value,
                 contents: contents,
                 width: term.cols,
                 input: file,
                 database,
-                obj
+                obj,
+                github_token: api.github_token
             })
         },
         clang: async (argv) => {
             let file = argv[0] || currentSession()
             return await api.compile({
                 CFLAGS: argv,
+                configuration: configuration.value,
                 contents: editor.getValue(),
                 width: term.cols,
                 input: file,
@@ -418,6 +426,7 @@ async function handleCommand(input) {
                 thisDatabase = toolsRepo
 
             return await api.run({
+                configuration: configuration.value,
                 tool: argv[0],
                 args: argv,
                 thisDatabase,
@@ -440,6 +449,8 @@ async function handleCommand(input) {
                 : dirs.ENGINE_DEBUG
 
 
+            api.configuration = configuration.value
+
             let paths = [
                 argv[0] || 'src/dagcheck.md',
                 argv[1] || path.join(CONFIGURATION, argv[0] ? argv[0].replace('.md', '.c') : 'src/dagcheck.c'),
@@ -455,11 +466,13 @@ async function handleCommand(input) {
             ]
 
             return await api.run({
+                configuration: configuration.value,
                 tool: 'lburg.js.wasm',
                 args: args,
                 database: selected,
                 toolsRepo,
-                paths: paths
+                paths: paths,
+                github_token: api.github_token
             })
         },
         clone: async (argv) => {
@@ -488,7 +501,9 @@ async function handleCommand(input) {
         'wasm-ld': async (argv) => {
             return await api.link({
                 LDFLAGS: argv,
+                configuration: configuration.value,
                 database,
+                github_token: api.github_token
             })
         },
         reser: () => term.reset(),
@@ -573,26 +588,32 @@ const formatMessage = (level, args) => {
     const processed = args.map(arg => {
         // 1. Handle Errors (JSON.stringify ignores message/stack by default)
         if (arg instanceof Error) {
-            return {
+            return JSON.stringify({
                 name: arg.name,
                 message: arg.message,
                 stack: arg.stack,
                 ...arg // Get any custom properties you added
-            };
+            }, (key, value) => {
+                // 2. Prevent "Circular reference" crashes
+                if (typeof value === 'object' && value !== null) {
+                    if (cache.has(value)) return '[Circular]';
+                    cache.add(value);
+                }
+                return value;
+            }, 4);
         }
-        return arg;
+        return JSON.stringify(arg, (key, value) => {
+            // 2. Prevent "Circular reference" crashes
+            if (typeof value === 'object' && value !== null) {
+                if (cache.has(value)) return '[Circular]';
+                cache.add(value);
+            }
+            return value;
+        }, 4);
     });
 
-    const output = JSON.stringify(processed, (key, value) => {
-        // 2. Prevent "Circular reference" crashes
-        if (typeof value === 'object' && value !== null) {
-            if (cache.has(value)) return '[Circular]';
-            cache.add(value);
-        }
-        return value;
-    }, 2);
 
-    return `${prefix}${output}\r\n`;
+    return `${prefix}${processed.join('\n\r')}\r\n`;
 };
 
 window.console.log = (...args) => {
