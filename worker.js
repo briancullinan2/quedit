@@ -214,14 +214,18 @@ const onAnyMessage = async event => {
       const responseId = event.data.responseId;
       let output = null;
       let transferList;
+      let filePath
       try {
         if (event.data.data.database)
           api.database = event.data.data.database
+        if (event.data.data.toolsRepo)
+          api.toolsRepo = event.data.data.toolsRepo
 
+        await api.ready
 
         let paths = event.data.data.paths
         if (paths && api.database) {
-          for (var filePath of paths) {
+          for (filePath of paths) {
             if (!filePath) continue
             if (FS.virtual[filePath]) continue
             try {
@@ -250,19 +254,19 @@ const onAnyMessage = async event => {
 
 
 
-        output = await api.run(
+        await api.run(
           event.data.data.tool,
           ...event.data.data.args || []
         );
 
         if (paths && api.database && api.memfs) {
-          for (var filePath of paths) {
+          for (filePath of paths) {
             if (!filePath) continue
             try {
 
 
-              if (this.memfs.exists(filePath)) {
-                var bytes = this.memfs.getFileContents(filePath)
+              if (api.memfs.exists(filePath)) {
+                var bytes = api.memfs.getFileContents(filePath)
                 FS.virtual[filePath] = {
                   timestamp: new Date(),
                   mode: FS_FILE,
@@ -270,8 +274,8 @@ const onAnyMessage = async event => {
                   path: filePath,
                 }
 
-                if (options.database)
-                  await putRecord(DB_STORE_NAME, FS.virtual[filePath], options.database)
+                if (api.database)
+                  await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
 
                 api.hostWrite('\n\rSucceeded: ' + filePath + '\n\r')
               }
@@ -289,7 +293,7 @@ const onAnyMessage = async event => {
         throw e
       }
       finally {
-        port.postMessage({ id: 'runAsync', responseId, data: output },
+        port.postMessage({ id: 'runAsync', responseId, data: FS.virtual[filePath] },
           transferList);
       }
       break;

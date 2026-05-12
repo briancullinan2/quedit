@@ -421,6 +421,7 @@ async function handleCommand(input) {
                 tool: argv[0],
                 args: argv,
                 thisDatabase,
+                toolsRepo
             })
         },
         'lburg': async (argv) => {
@@ -457,6 +458,7 @@ async function handleCommand(input) {
                 tool: 'lburg.js.wasm',
                 args: args,
                 database: selected,
+                toolsRepo,
                 paths: paths
             })
         },

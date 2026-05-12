@@ -546,9 +546,40 @@ const API = (function () {
       let needMemfs = module.name.includes('wasm-ld')
         || module.name.includes('clang')
 
+      if (!wasi_unstable.table) {
+        const importTable = new WebAssembly.Table({
+          initial: 2000,
+          element: 'anyfunc',
+          maximum: 10000
+        })
+        wasi_unstable.table = ENV.__indirect_function_table = importTable
+      }
+      if (!wasi_unstable.memory) {
+        ENV.memory = Module.memory = wasi_unstable.memory = new WebAssembly.Memory({
+          initial: 4096,
+          maximum: 32000,
+          /* 'shared': true */
+        })
+      }
+
+      // weird stuff WebAssembly requires
+      wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
+      wasi_unstable.imports = wasi_unstable
+
       //if (!module.name.includes('wasm-ld')
       //  && !module.name.includes('clang'))
       Object.assign(wasi_unstable, FS);
+
+      Object.assign(wasi_unstable, {
+        fork: () => 0,
+        execv: function (path, ...argv) {
+          debugger
+          var cmdArgs = FS.getStringsFromArgv(argv)
+          this.api.run(cmdArgs)
+          return 0
+        }
+      });
+
       //else
       //  Object.assign(wasi_unstable, this.api.memfs.exports);
       if (needMemfs) {
@@ -586,7 +617,8 @@ const API = (function () {
         this.mem = new Memory(this.exports.memory);
         if (this.api.memfs)
           this.api.memfs.hostMem = this.mem;
-        ENV.memory = Module.memory = this.exports.memory
+        if (!Module.memory || needMemfs)
+          ENV.memory = Module.memory = this.exports.memory
         window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
         Module.errno.value = (this.exports['___errno_location'])
           ? this.exports['___errno_location']()
@@ -1054,49 +1086,25 @@ const API = (function () {
 
     async getModule(name, database = null) {
 
+      if (typeof name !== 'string') throw new Error('Module name must be a string: ' + typeof (name) + ' given. ' + new String(name))
       if (this.moduleCache[name]) return this.moduleCache[name];
 
-      for (let look of this.commonPaths(name)) {
-        if (!look) continue
-        let filePath = look
-        let contents
-        if (database || this.database) {
-          let record = await getRecord(DB_STORE_NAME, filePath, database || this.database)
-          if (record) {
-            contents = record.contents
-          }
-        }
-
-        if (this.memfs && this.memfs.exists(filePath)) {
-          contents = this.memfs.getFileContents(filePath)
-          if (!FS.virtual[filePath] || !FS.virtual[filePath].contents || FS.virtual[filePath].contents.length == 0) {
-            console.error('Assetion virtual fs not empty for wasm:' + name)
-            debugger
-          }
-        }
-        else if (FS.virtual[filePath]) {
-          contents = FS.virtual[filePath].contents
-        }
-
-        if (contents) {
-          const module = await this.hostLogAsync(`Fetching and compiling from local ${name}`,
-            this.compileStreaming(contents));
-          module.name = name
-          this.moduleCache[name] = this.moduleCache[filePath] = module;
-          return module;
-        }
-
+      try {
+        const module = await this.hostLogAsync(`Fetching and compiling ${name}`,
+          this.compileStreaming(name));
+        if (!module) throw new Error('No module! ' + name)
+        module.name = name
+        this.moduleCache[name] = module;
+        return module;
       }
-
-      this.hostWrite('\n\r' + name + ' not found at: ' + this.commonPaths(name).join('\n\r') + '\n\r')
-
-      const module = await this.hostLogAsync(`Fetching and compiling ${name}`,
-        this.compileStreaming(name));
-      if (!module) throw new Error('No module! ' + name)
-      module.name = name
-      this.moduleCache[name] = module;
-      return module;
+      catch (up) {
+        this.hostWrite('\n\r' + name + ' not found at: ' + this.commonPaths(name).join('\n\r')
+          + '\n\r' + window.location + '/' + name + '\n\r')
+        console.error(up)
+        throw up
+      }
     }
+
 
     async untar(memfs, filename) {
       if (this.memfs)
@@ -1412,10 +1420,63 @@ const API = (function () {
       await this.ready
 
       if (typeof module === 'string') {
+        let name = module
 
-        module = await this.getModule(module);
+        for (let filePath of this.commonPaths(module)) {
+          if (!filePath) continue
+          let contents
+          try {
+            if (this.database) {
+              let record = await getRecord(DB_STORE_NAME, filePath, this.database)
+              if (record) {
+                contents = record.contents
+              }
+            }
+          } catch (e) {
+            console.log(e)
+          }
+
+          try {
+            if (!contents && this.toolsRepo) {
+              let record = await getRecord(DB_STORE_NAME, filePath, this.toolsRepo)
+              if (record) {
+                contents = record.contents
+              }
+            }
+          } catch (e) {
+            console.log(e)
+          }
+
+          if (this.memfs && this.memfs.exists(filePath)) {
+            contents = this.memfs.getFileContents(filePath)
+            if (!FS.virtual[filePath] || !FS.virtual[filePath].contents || FS.virtual[filePath].contents.length == 0) {
+              console.error('Assetion virtual fs not empty for wasm: ' + name)
+              debugger
+            }
+          }
+          else if (FS.virtual[filePath]) {
+            contents = FS.virtual[filePath].contents
+          }
+
+          if (contents) {
+            module = await this.hostLogAsync(`Fetching and compiling from local: ${name}`,
+              this.compileStreaming(contents));
+            module.name = name
+            this.moduleCache[name] = this.moduleCache[filePath] = module;
+            break
+          }
+
+        }
+
+        if (typeof module == 'string' || !module)
+          module = await this.getModule(module);
 
       }
+
+
+      if(typeof module == 'string' || !module)
+        throw new Error('Cannot load module: ' + name)
+
 
       if (args) {
         for (var filePath of args) {

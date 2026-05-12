@@ -167,21 +167,26 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
             log(`QVMCC: ${srcPath}`);
 
             let CCFLAGS = [
-                ...(QVM_MODE ? QVMLIB_CFLAGS : []),
+                ...(QVM_MODE ? [] : QVMLIB_CFLAGS),
                 ...QVM_CFLAGS,
-                ...DEBUG_CFLAGS,
+                ...(QVM_MODE ? [] : DEBUG_CFLAGS),
                 ...extraDefines.map(d => `-D${d}`),
                 ...(configuration.value == 'pre' ? [
                     '-o', outPath.replace('.o', '.a')
-                ] : ['-o', outPath])
+                ] : ['-o', outPath]),
+                srcPath
             ]
 
             if (QVM_MODE) {
-
+                // TODO: look for program in multiple databases
                 await api.run({
                     tool: 'q3lcc.js.wasm',
-                    args: CCFLAGS,
+                    args: [
+                        'q3lcc.js.wasm',
+                        ...CCFLAGS
+                    ],
                     database: database,
+                    toolsRepo: toolsRepo,
                     paths: [srcPath, outPath]
                 })
             }
@@ -205,22 +210,35 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
     let qvmObjs = filesList.map(file => path.join(CONFIGURATION, name, file))
 
+
+    let LDFLAGS = [
+        ...(QVM_MODE ? [] : ["--no-entry"]),
+        "-o", qvmOutput,
+        ...qvmObjs
+    ]
     try {
         if (QVM_MODE) {
 
+            await api.run({
+                tool: 'q3asm.js.wasm',
+                args: [
+                    'q3asm.js.wasm',
+                    ...LDFLAGS
+                ],
+                database: database,
+                toolsRepo: toolsRepo2,
+                paths: [...qvmObjs, qvmOutput]
+            })
         }
         else {
             await api.link({
-                LDFLAGS: [
-                    ...(QVM_MODE ? [] : ["--no-entry"]),
-                    "-o", qvmOutput,
-                    ...qvmObjs
-                ],
+                LDFLAGS: LDFLAGS,
                 obj: qvmObjs,
                 database,
                 wasm: qvmOutput // Overloading 'wasm' key for the binary output
             });
         }
+        
         log(`Success: ${qvmOutput}`);
     } catch (e) { log(`Linker Error in ${name}`); }
 }
