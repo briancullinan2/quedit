@@ -134,7 +134,7 @@ const toolLdFlags = [
 
 
 async function buildLBurg(database = null) {
-    if (!database) database = owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo || owner.value + '/' + repo.value;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
@@ -179,8 +179,13 @@ let FILELIST
 
 async function compileToolFile(src, obj, includeDir, database, extraFlags = []) {
     try {
+        if (!database) database = toolsRepo || owner.value + '/' + repo.value;
+        let parts = database.split('/');
+        let ownerName = parts.length == 2 ? parts[0] : owner.value;
+        let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
 
-        if (!BRANCH || !FILELLIST) {
+
+        if (!BRANCH || !FILELIST) {
             BRANCH = await getDefaultBranch(ownerName, repoName)
             FILELIST = await loadGitHubTree(ownerName, repoName, BRANCH)
         }
@@ -226,7 +231,7 @@ let needsHeaders = true
 
 
 async function buildRCC(database = null) {
-    if (!database) database = owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo || owner.value + '/' + repo.value;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
@@ -285,7 +290,7 @@ async function buildRCC(database = null) {
 
 
 async function buildCPP(database = null) {
-    if (!database) database = owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo || owner.value + '/' + repo.value;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
@@ -324,7 +329,7 @@ async function buildCPP(database = null) {
 
 
 async function buildLCC(database = null) {
-    if (!database) database = owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo || owner.value + '/' + repo.value;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
@@ -345,7 +350,7 @@ async function buildLCC(database = null) {
             const lccFlags = [`-DTEMPDIR=\"${config.TEMPDIR}\"`, `-DSYSTEM=\"\"`];
 
             log(`\n\rCC: ${src}\n\r`);
-            lccObjs.push(await compileToolFile(src, obj, "src", lccFlags, database));
+            lccObjs.push(await compileToolFile(src, obj, "src", database, lccFlags));
         } catch (e) {
             console.log(e)
         }
@@ -366,7 +371,7 @@ async function buildLCC(database = null) {
 // --- Build Logic ---
 
 async function buildTools(database = null) {
-    if (!database) database = owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo || owner.value + '/' + repo.value;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
@@ -421,7 +426,7 @@ const Q3ASM_CFLAGS = [
  * Appends the q3asm build to your existing buildTools function
  */
 async function buildAsmTool(database = null) {
-    if (!database) database = owner.value + '/' + repo.value;
+    if (!database) database = toolsRepo2 || owner.value + '/' + repo.value;
 
     const log = (msg) => {
         if (typeof term !== 'undefined') term.write(`\x1b[35m[Q3ASM-BUILD]\x1b[0m ${msg}\r\n`);

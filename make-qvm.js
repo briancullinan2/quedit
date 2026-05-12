@@ -143,6 +143,10 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
         const asmPath = path.join(CONFIGURATION, name, file.replace('.o', '.asm'));
 
         try {
+            if(!files[database[srcPath]])
+            {
+                debugger
+            }
             const sha = files[database][srcPath].sha;
             const content = await cacheFile(ownerName, repoName, srcPath, sha);
 

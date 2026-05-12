@@ -1058,7 +1058,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	} else {
 		if ((oflags & O_CREAT) && (oflags & O_EXCL)) return 20; // WASI_EEXIST
 		if (oflags & O_TRUNC) {
-			debugger
+			//debugger
 			FS.virtual[localName].contents = new Uint8Array(0);
 			FS.virtual[localName].size = 0;
 		}

@@ -557,6 +557,11 @@ async function buildStringify(database = null) {
 
     let DEBUG_CFLAGS = BUILD_CLFAGS()
 
+    if (!database) database = owner.value + '/' + repo.value
+    let parts = database.split('/')
+    let ownerName = parts.length == 2 ? parts[0] : owner.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
     if (needsHeaders) {
         needsHeaders = false
         await downloadHeaders(q3eCommonHeaders, 10, database)
@@ -651,7 +656,7 @@ async function buildClient(database = null) {
 
             term.write('\n\r')
             let CCFLAGS = [
-                ...CFLAGS, 
+                ...CFLAGS,
                 ...DEBUG_CFLAGS,
                 ...(configuration.value == 'pre' ? [
                     '-o', CONFIGURATION + '/' + file.replace('.c', '.a')
@@ -900,7 +905,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                     await putRecord(DB_STORE_NAME, FS.virtual[header], thisDatabase)
                 }
                 else {
-                    if(!files[thisDatabase][header]) return
+                    if (!files[thisDatabase][header]) return
                     // cacheFile handles the storage logic
                     let sha = files[thisDatabase][header].sha
                     await cacheFile(thisOwner, thisRepo, header, sha);
