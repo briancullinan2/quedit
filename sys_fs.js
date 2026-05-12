@@ -517,8 +517,8 @@ function Sys_access(filename, i) {
 	if (FS.virtual[localName]) {
 		return 0
 	} else {
-		if (errno) {
-			HEAPU32[errno >> 2] = ENOENT
+		if (Module.errno.value) {
+			HEAPU32[Module.errno.value >> 2] = ENOENT
 		}
 		return 1
 	}
@@ -873,58 +873,81 @@ function fd_fdstat_get(fd, bufPtr) {
 	return 0; // WASI_ESUCCESS
 }
 
-
-// TODO: THIS MIGHT BE A MORE COMPREHENSIVE WRITE FUNCTION
-//   AND THE FS.VIRTUAL CODE COULD BE INSERTED AT THE BOTTOM
 function fd_write(fd, iovs, iovsLen, nwritten) {
-	var view = new DataView(Module.memory.buffer);
-	var written = 0;
-	var bufferBytes = [];
+    const view = new DataView(Module.memory.buffer);
+    let written = 0;
 
-	function getiovs(iovs, iovsLen) {
-		// iovs* -> [iov, iov, ...]
-		// __wasi_ciovec_t {
-		//   void* buf,
-		//   size_t buf_len,
-		// }
-		var buffers = Array.from({ length: iovsLen }, function (_, i) {
-			var ptr = iovs + i * 8;
-			var buf = view.getUint32(ptr, !0);
-			var bufLen = view.getUint32(ptr + 4, !0);
+    // 1. Get the stream/pointer object for this FD
+    const stream = FS.pointers[fd];
+    if (!stream) return 8; // WASI_EBADF
 
-			return new Uint8Array(Module.memory.buffer, buf, bufLen);
-		});
+    // 2. Collect all bytes from iovs into one Uint8Array
+    // We do this first to calculate total 'written' size
+    const iovsList = [];
+    for (let i = 0; i < iovsLen; i++) {
+        let ptr = iovs + i * 8;
+        let buf = view.getUint32(ptr, true);
+        let bufLen = view.getUint32(ptr + 4, true);
+        iovsList.push(new Uint8Array(Module.memory.buffer, buf, bufLen));
+        written += bufLen;
+    }
 
-		return buffers;
-	}
+    // 3. Handle Standard I/O (fd 1 and 2)
+    if (fd <= 2) {
+        // Concatenate for the host console/logs
+        let totalBuf = new Uint8Array(written);
+        let offset = 0;
+        for (let b of iovsList) {
+            totalBuf.set(b, offset);
+            offset += b.byteLength;
+        }
+        
+        if (typeof Module.hostWrite !== 'undefined') {
+            Module.hostWrite(String.fromCharCode.apply(null, totalBuf));
+        }
+        view.setUint32(nwritten, written, true);
+        return 0;
+    }
 
-	var buffers = getiovs(iovs, iovsLen);
-	function writev(iov) {
-		for (var b = 0; b < iov.byteLength; b++) {
-			bufferBytes.push(iov[b]);
-		}
+    // 4. Handle Actual File Write (fd > 2)
+    // stream layout: [position, mode, node, path, fd]
+    let pos = stream[0];
+    const node = stream[2]; // This is the object in FS.virtual[path]
 
-		written += b;
-	}
+    if (!node) return 28; // WASI_EINVAL
 
-	buffers.forEach(writev);
-	view.setUint32(nwritten, written, !0);
+    // Ensure node.contents is a Uint8Array
+    if (!(node.contents instanceof Uint8Array)) {
+        node.contents = new Uint8Array(0);
+    }
 
-	if (fd > 2) return WASI_ESUCCESS
+    // Expand buffer if writing beyond current capacity
+    if (pos + written > node.contents.byteLength) {
+        let newSize = pos + written;
+        let newBuf = new Uint8Array(newSize);
+        newBuf.set(node.contents);
+        node.contents = newBuf;
+    }
 
-	let newMessage = stringToAddress(String.fromCharCode.apply(null, bufferBytes))
+    // Copy each iov buffer into the node's contents at the current position
+    let currentOffset = pos;
+    for (let b of iovsList) {
+        node.contents.set(b, currentOffset);
+        currentOffset += b.byteLength;
+    }
 
-	if (typeof stdout !== 'undefined' && fd === WASI_STDOUT_FILENO)
-		Sys_FWrite(newMessage, 1, bufferBytes.length, HEAPU32[stdout >> 2])
-	else if (typeof stderr !== 'undefined' && fd === WASI_STDERR_FILENO)
-		Sys_FWrite(newMessage, 1, bufferBytes.length, HEAPU32[stderr >> 2])
-	else if (typeof Module.hostWrite !== 'undefined') {
-		Module.hostWrite(String.fromCharCode.apply(null, bufferBytes))
-	} else {
-		throw new Error('wtf')
-	}
+    // 5. Update the seek position for the next write
+    stream[0] = currentOffset;
 
-	return WASI_ESUCCESS;
+    // Write the number of bytes successfully written to nwritten pointer
+    view.setUint32(nwritten, written, true);
+
+    // Notify UI/Storage that the file has changed
+    if (typeof Sys_notify !== 'undefined') {
+        Sys_notify(node, stream[3], fd);
+    }
+
+    return 0; // WASI_ESUCCESS
 }
 
 function poll_oneoff(in_ptr, out_ptr, nsubscriptions, nevents_out) {
@@ -1094,7 +1117,7 @@ function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
     view.setBigUint64(bufPtr + 0, BigInt(dirfd), true);
 
     // ino (8) - Use small stable IDs to avoid 32-bit guest overflows
-	let myNode = Object.values(FS.pointers).find(p => p[3] == localName)
+	let myNode = Object.values(FS.pointers).find(p => p && p[3] == localName)
     if (!myNode) {
 		FS.filePointer++
 		FS.pointers[FS.filePointer] = [
@@ -1302,7 +1325,7 @@ const FILED = {
 	path_readlink: path_readlink,
 	path_remove_directory: function () { debugger },
 	path_symlink: function () { debugger },
-	path_unlink_file: function () { debugger },
+	path_unlink_file: path_unlink_file,
 	proc_raise: function () { debugger },
 	sched_yield: function () { debugger },
 	random_get: random_get,
@@ -1325,13 +1348,54 @@ const FILED = {
 	path_remove_directory: function path_remove_directory() { debugger },
 	path_rename: path_rename,
 	path_symlink: function path_symlink() { debugger },
-	path_unlink_file: function path_unlink_file() { debugger },
+	Sys_gettime: clock_gettime,
 	clock_time_get: clock_gettime,
 	poll_oneoff: poll_oneoff,
 	proc_exit: proc_exit,
 
 }
 
+
+function path_unlink_file(dirfd, pathPtr, pathLen) {
+    const buffer = Module.memory.buffer;
+    const path = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
+    
+    // 1. Normalize Path - Use the EXACT logic from filestat
+    let localName = path;
+    if (localName.startsWith('base/')) localName = localName.substring(5);
+    if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
+    if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
+    if (localName.startsWith('/')) localName = localName.substring(1);
+
+    const file = FS.virtual[localName];
+
+    // 2. Check existence
+    if (!file) {
+        return 44; // WASI_ENOENT
+    }
+
+    // 3. Check type
+    // In WASI, path_unlink_file is strictly for files.
+    // If it's a directory, return EPERM (1) or EISDIR (31)
+    const isDir = (file.mode >> 12) === 4; // Your ST_DIR check
+    if (isDir) {
+        return 31; // WASI_EISDIR
+    }
+
+    // 4. Perform Deletion
+    delete FS.virtual[localName];
+
+    // 5. Cleanup active pointers (Optional but recommended)
+    // If a file is open and unlinked, POSIX says it stays until closed,
+    // but for your bare-bones VFS, just making it unreachable is usually fine.
+    
+    // 6. Notify Sync/UI
+    if (typeof Sys_notify !== 'undefined') {
+        Sys_notify(false, localName);
+    }
+
+    return 0; // WASI_ESUCCESS
+}
 
 
 
@@ -1391,21 +1455,49 @@ function path_rename(oldFd, oldPathPtr, oldPathLen, newFd, newPathPtr, newPathLe
 
 
 
+
 function clock_gettime(clk_id, tp) {
-	let now;
-	clk_id = HEAPU32[clk_id >> 2]
-	if (clk_id === 0) {
-		now = Date.now()
-	} else if ((clk_id === 1 || clk_id === 4) && _emscripten_get_now_is_monotonic) {
-		now = _emscripten_get_now()
-	} else {
-		HEAPU32[errno >> 2] = 28
-		return -1
-	}
-	HEAP32[tp >> 2] = now / 1e3 | 0;
-	HEAP32[tp + 4 >> 2] = now % 1e3 * 1e3 * 1e3 | 0;
-	return 0
+    // 1. Force pointers to Numbers immediately to allow bitwise math
+    const tpAddr = Number(tp);
+    const clkAddr = Number(clk_id);
+
+    // Depending on your WASM build, clk_id might be the ID itself 
+    // OR a pointer to it. Your code suggests it's a pointer:
+    let id = HEAPU32[clkAddr >> 2];
+
+    let now;
+    if (id === 0) { // CLOCK_REALTIME
+        now = Date.now(); // Milliseconds since epoch
+    } else if (id === 1 || id === 4) { // CLOCK_MONOTONIC / CLOCK_THREAD_CPUTIME_ID
+        now = performance.now(); // High-res relative time
+    } else if (Module.errno) {
+        const errnoPtr = Number(Module.errno);
+        HEAP32[errnoPtr >> 2] = 28; // EINVAL
+        return -1;
+    }
+
+    // 2. Convert to Seconds and Nanoseconds
+    // WASI 'timespec' struct:
+    // [0] tv_sec  (8 bytes in WASI, 4 bytes in some unstable versions)
+    // [8] tv_nsec (8 bytes in WASI, 4 bytes in some unstable versions)
+
+    const sec = Math.floor(now / 1000);
+    const nsec = Math.floor((now % 1000) * 1e6); // ms to ns
+
+    // 3. Write to memory using standard Number-based indexing
+    // If your Binji build uses 4-byte fields for timespec:
+    HEAP32[tpAddr >> 2] = sec;
+    HEAP32[(tpAddr + 4) >> 2] = nsec;
+
+    // If your build uses 8-byte fields (Standard WASI):
+    // const view = new DataView(Module.memory.buffer);
+    // view.setBigUint64(tpAddr, BigInt(sec), true);
+    // view.setBigUint64(tpAddr + 8, BigInt(nsec), true);
+
+    return 0;
 }
+
+
 
 Object.assign(FS, FILED)
 

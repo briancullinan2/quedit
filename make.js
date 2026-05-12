@@ -46,7 +46,7 @@ const config = {
 const dirs = {
     ENGINE_DEBUG: path.join(config.BUILD_DIR, `debug-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
     ENGINE_RELEASE: path.join(config.BUILD_DIR, `release-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
-    
+
     GAME_DEBUG: path.join(config.BUILD_DIR, `debug-${GAME_PLATFORM}-${GAME_ARCH}`),
     GAME_RELEASE: path.join(config.BUILD_DIR, `release-${GAME_PLATFORM}-${GAME_ARCH}`),
 
@@ -424,8 +424,8 @@ const baseLdFlags = [
     "--error-limit=200",
     "--import-memory",
     "--import-table",
-    '-z', `stack-size=${1024*1024}`, 
-    '-Llib/wasm32-wasi', 
+    '-z', `stack-size=${1024 * 1024}`,
+    '-Llib/wasm32-wasi',
     'lib/wasm32-wasi/crt1.o',
     //"--growable-table",
     // Link against the builtins and libc.a
@@ -528,35 +528,33 @@ let building = false
 let buildDebounce = null
 async function build(database = null, noBounce = false) {
 
-    if(buildDebounce)
-    {
+    if (buildDebounce) {
         clearTimeout(buildDebounce)
     }
 
-    if(!noBounce)
-    {
+    if (!noBounce) {
         buildDebounce = setTimeout(() => build(database, true), 500)
         return
     }
 
-    if(building) return
+    if (building) return
     building = true
 
     let CONFIGURATION = configuration.value == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-    let DEBUG_CFLAGS =  configuration.value != 'debug'
+    let DEBUG_CFLAGS = configuration.value != 'debug'
         ? ['-DNDEBUG', '-O3', '-ffast-math']
         : ['-DDEBUG', '-D_DEBUG', /* '-g',*/ '-O0']
 
     let PRE = configuration.value == 'pre'
         ? ['-E', '-P']
         : configuration.value == 'analyze'
-        ? ['--analyze']
-        : configuration.value == 'sanitize'
-        ? ['-fsanitize=address']
-        : []
+            ? ['--analyze']
+            : configuration.value == 'sanitize'
+                ? ['-fsanitize=address']
+                : []
 
     PRE = PRE.concat([
         '-fmessage-length', '' + (term.cols || '80')
@@ -565,9 +563,9 @@ async function build(database = null, noBounce = false) {
 
     // TODO: publish binaryen zero-filled, zip, download uri
 
-    if(!database)
+    if (!database)
         database = owner.value + '/' + repo.value
-    let parts =  database.split('/')
+    let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
@@ -691,7 +689,7 @@ async function build(database = null, noBounce = false) {
 
             term.write('\n\r')
             let CCFLAGS = [
-                ...CFLAGS, ...DEBUG_CFLAGS, 
+                ...CFLAGS, ...DEBUG_CFLAGS,
                 ...PRE,
                 ...(configuration.value == 'pre' ? [
                     '-o', CONFIGURATION + '/' + file.replace('.c', '.a')
@@ -724,7 +722,7 @@ async function build(database = null, noBounce = false) {
             })
 
             objs[objs.length] = obj
-        } catch (e) { 
+        } catch (e) {
             console.error(e)
         }
 
@@ -741,6 +739,8 @@ async function build(database = null, noBounce = false) {
             let objRecord = await getRecord(DB_STORE_NAME, obj, database)
             FS.virtual[obj] = objRecord
 
+            
+            log(`CC: ${shader}`);
 
             if (FS.virtual[obj]
                 && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
@@ -762,7 +762,7 @@ async function build(database = null, noBounce = false) {
             })
 
             objs[objs.length] = obj
-        } catch (e) { 
+        } catch (e) {
             console.error(e)
         }
     }
@@ -793,9 +793,9 @@ async function build(database = null, noBounce = false) {
 
 
 async function downloadHeaders(headers, batchSize = 10, database = null) {
-    if(!database)
+    if (!database)
         database = owner.value + '/' + repo.value
-    let parts =  database.split('/')
+    let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
@@ -808,17 +808,29 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                 let thisDatabase = database
                 let thisOwner = ownerName
                 let thisRepo = repoName
-                if(header.includes('wasm.syms'))
-                {
+                if (header.includes('wasm.syms')) {
                     thisDatabase = engineRepo
-                    let parts =  thisDatabase.split('/')
+                    let parts = thisDatabase.split('/')
                     thisOwner = parts.length == 2 ? parts[0] : owner.value
                     thisRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
+                    let response = await fetch(filename);
+                    let contents = await response.arrayBuffer()
+                    FS.virtual[filename] = {
+                        timestamp: new Date(),
+                        mode: FS_FILE,
+                        contents: contents,
+                        path: filename,
+                        sha: await getGitShaBrowser()
+                    }
+                    
+                }
+                else {
+                    // cacheFile handles the storage logic
+                    let sha = files[thisDatabase][header].sha
+                    await cacheFile(thisOwner, thisRepo, header, sha);
+
                 }
 
-                // cacheFile handles the storage logic
-                let sha = files[thisDatabase][header].sha
-                await cacheFile(thisOwner, thisRepo, header, sha);
                 await api.header(thisOwner, thisRepo, header, thisDatabase)
             } catch (e) {
                 console.warn(`Failed to cache ${header}:`, e);

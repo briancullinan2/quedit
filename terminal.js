@@ -123,7 +123,7 @@ async function handleCommand(input) {
                 return;
             }
 
-            term.write(`Starting ${mode} build...`);
+            term.write(`Starting ${mode} build...\n\r`);
             if (configuration.value === 'qvms')
                 return buildQVM(argv[1] || gameRepo || database)
             if (configuration.value === 'tools')

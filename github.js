@@ -68,13 +68,13 @@ async function getBranches(repoOwner, repoName) {
 
 
 async function loadGitHubTree(repoOwner, repoName, branch) {
-    
+
     try {
         let database = repoOwner + '/' + repoName
         const data = await githubRequest(repoOwner, repoName, `git/trees/${branch}?recursive=1`);
 
         // Transform the flat GitHub 'tree' array into nested children
-       files[database] = data.tree.reduce((obj, a, i, arr) => {
+        files[database] = data.tree.reduce((obj, a, i, arr) => {
             obj[a.path] = a
             return obj
         }, {})
@@ -123,7 +123,13 @@ async function loadFileTree(repoOwner, repoName, branch, selector) {
 
 async function getGitShaBrowser(content) {
     const encoder = new TextEncoder();
-    const contentBytes = encoder.encode(content);
+    let contentBytes
+    if (filename instanceof Uint8Array || filename instanceof ArrayBuffer) {
+        contentBytes = content
+    }
+    else {
+        contentBytes = encoder.encode(content);
+    }
 
     // Create header and convert to bytes
     const header = `blob ${contentBytes.byteLength}\0`;
@@ -249,16 +255,16 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
 async function listReleases(owner, repo) {
     try {
         const releases = await githubRequest(owner, repo, 'releases');
-        
+
         releases.forEach(release => {
             console.log(`Release: ${release.name} (${release.tag_name})`);
-            
+
             // If you want the assets (like your compiled zip)
             release.assets.forEach(asset => {
                 console.log(` - Asset: ${asset.name} | URL: ${asset.browser_download_url}`);
             });
         });
-        
+
         return releases;
     } catch (err) {
         console.error("Failed to list releases:", err);
@@ -284,7 +290,7 @@ async function getAuthenticatedUser() {
 
         const userData = await response.json();
         console.log(`Authenticated as: ${userData.login}`);
-        
+
         // You can now use userData.avatar_url, userData.name, etc.
         return userData;
     } catch (err) {

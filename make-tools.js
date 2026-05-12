@@ -59,7 +59,7 @@ const LCC_CFLAGS = [
     "-DSIGINT=2",
     '-D_Thread_local=',
     //"-Derrno=(*__errno_location())",
-    "-D__errno_location=void",
+    //"-D__errno_location=void",
     "-DSIG_IGN=(void (*)(int))1",
     "-Dsignal(s,h)=SIG_IGN",
     "-D_WASI_EMULATED_MMAN=1",
@@ -166,6 +166,7 @@ async function buildTools(database = null) {
 
             }
             
+
             await api.compile({
                 CFLAGS: [
                     ...LCC_CFLAGS, `-I${includeDir}`, 
@@ -196,12 +197,13 @@ async function buildTools(database = null) {
 
             const src = path.join("lburg", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.LBURG, file);
+            
+            log(`CC: ${src}`);
             lburgObjs.push(await compileToolFile(src, obj, "lburg"));
         } catch (e) {
             console.log(e)
         }
 
-        return
     }
     const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
     await api.link({
@@ -212,8 +214,6 @@ async function buildTools(database = null) {
             ...includeFlags
         ], obj: lburgObjs, database, wasm: lburgExe
     });
-
-    return;
 
     // 2. Build RCC (The Compiler Core)
     log("Building RCC...");
@@ -228,15 +228,20 @@ async function buildTools(database = null) {
                 const dagC = path.join(CONFIGURATION, "src/dagcheck.c");
 
                 // Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
+                
+                log(`BURG: ${dagMd}`);
                 await api.run({
                     tool: lburgExe,
-                    args: [dagMd, dagC],
+                    args: [lburgExe, dagMd, dagC],
                     database
                 });
 
+                log(`CC: ${dagC}`);
                 rccObjs.push(await compileToolFile(dagC, obj, "src", ["-Wno-unused"]));
             } else {
                 const src = path.join("src", file.replace('.o', '.c'));
+                
+                log(`CC: ${src}`);
                 rccObjs.push(await compileToolFile(src, obj, "src"));
             }
         } catch (e) {
@@ -253,6 +258,9 @@ async function buildTools(database = null) {
         ], obj: rccObjs, database, wasm: rccExe
     });
 
+
+return
+
     // 3. Build CPP (Preprocessor)
     log("Building CPP...");
     const cppObjs = [];
@@ -260,6 +268,8 @@ async function buildTools(database = null) {
         try {
             const src = path.join("cpp", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.CPP, file);
+            
+            log(`CC: ${src}`);
             cppObjs.push(await compileToolFile(src, obj, "cpp"));
         } catch (e) {
             console.log(e)
@@ -284,6 +294,8 @@ async function buildTools(database = null) {
             const src = path.join("etc", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.ETC, file);
             const lccFlags = [`-DTEMPDIR=\"${config.TEMPDIR}\"`, `-DSYSTEM=\"\"`];
+            
+            log(`CC: ${src}`);
             lccObjs.push(await compileToolFile(src, obj, "src", lccFlags));
         } catch (e) {
             console.log(e)
