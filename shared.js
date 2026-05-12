@@ -565,12 +565,15 @@ const API = (function () {
         wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
         wasi_unstable.imports = wasi_unstable
         Object.assign(wasi_unstable, FS);
-        debugger
       }
       else {
         Object.assign(wasi_unstable, this.api.memfs.exports);
-
+        // TODO: make optional until i know its working?
+        Object.assign(wasi_unstable, FS);
       }
+
+      
+      
 
 
 
@@ -636,6 +639,10 @@ const API = (function () {
         this.exports._start();
       } catch (exn) {
         let writeStack = true;
+
+        if (exn.message.includes('memory access out of bounds')) {
+          this.api.initMemFS()
+        }
 
         if (exn instanceof ProcExit
           || exn.message === 'WASI_ENOSYS'
@@ -1237,7 +1244,7 @@ const API = (function () {
 
         for (var filePath of options.CFLAGS) {
           if (!filePath) continue
-          if (FS.virtual[filePath]) continue
+          //if (FS.virtual[filePath]) continue
           try {
             if (filePath.startsWith('--allow-undefined-file=')) {
               filePath = syms[0].substring('--allow-undefined-file='.length)
@@ -1377,7 +1384,7 @@ const API = (function () {
       if (options.LDFLAGS && this.database) {
         for (var filePath of options.LDFLAGS) {
           if (!filePath) continue
-          if (FS.virtual[filePath]) continue
+          //if (FS.virtual[filePath]) continue
           try {
             if (filePath.startsWith('--allow-undefined-file=')) {
               filePath = filePath.substring('--allow-undefined-file='.length)
@@ -1534,7 +1541,7 @@ const API = (function () {
       if (args) {
         for (var filePath of args) {
           if (!filePath) continue
-          if (FS.virtual[filePath]) continue
+          //if (FS.virtual[filePath]) continue
           try {
 
             var record = await getRecord(DB_STORE_NAME, filePath, this.database)

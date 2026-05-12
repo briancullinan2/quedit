@@ -652,7 +652,6 @@ async function buildClient(database = null) {
             let content = await cacheFile(ownerName, repoName, file, sha)
             let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
 
-            log('\n\r')
             let CCFLAGS = [
                 ...CFLAGS,
                 ...DEBUG_CFLAGS,
@@ -664,7 +663,7 @@ async function buildClient(database = null) {
             if (file.includes('botlib'))
                 CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
 
-            log('\n\rCC: ' + obj + '\n\r')
+            log(`CC: ${obj}\n\r`)
 
             let objRecord = await getRecord(DB_STORE_NAME, obj, database)
             FS.virtual[obj] = objRecord
@@ -830,13 +829,13 @@ async function buildShaders(database = null) {
             let content = await cacheFile(ownerName, repoName, shader, sha)
             const cCode = generateFallbackC(shader, content);
             let obj = CONFIGURATION + '/' + shader.replace('.glsl', '.o')
-            log(`\n\rGLSL: ${obj}\n\r`)
+            log(`GLSL: ${obj}\n\r`)
 
             let objRecord = await getRecord(DB_STORE_NAME, obj, database)
             FS.virtual[obj] = objRecord
 
 
-            log(`\n\rCC: ${shader}\n\r`);
+            log(`CC: ${shader}\n\r`);
 
             if (FS.virtual[obj]
                 && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp

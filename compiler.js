@@ -10,7 +10,7 @@ class WorkerAPI {
         this.port = channel.port1;
         this.port.onmessage = this.onmessage.bind(this);
         this.configuration = configuration.value
-        this.hostWrite = options.hostWrite 
+        this.hostWrite = options.hostWrite
 
         const remotePort = channel.port2;
         this.worker.postMessage({ id: 'constructor', data: remotePort },
@@ -23,6 +23,16 @@ class WorkerAPI {
 
     terminate() {
         this.worker.terminate();
+    }
+
+
+    inject(options) {
+
+        this.configuration = options.configuration = options.configuration || configuration.value || this.configuration
+        this.database = options.database || engineRepo || this.database
+        this.width = options.width = term.cols
+        this.github_token = options.github_token = this.github_token
+
     }
 
 
@@ -59,57 +69,42 @@ class WorkerAPI {
     }
 
     async upload(options) {
-        options.configuration = this.configuration = configuration.value
-        options.github_token = this.github_token
-        options.width = term.cols
+        this.inject(options)
         return this.runAsync('upload', options);
     }
 
     async download(options) {
-        options.configuration = this.configuration = configuration.value
-        options.github_token = this.github_token
-        options.width = term.cols
+
         return this.runAsync('download', options);
     }
 
     async header(owner, repo, header, database) {
-        let options = { owner, repo, header }
-        this.configuration = options.configuration = options.configuration || configuration.value || this.configuration
-        this.database = options.database = database
-        this.width = options.width = term.cols
-        options.github_token = this.github_token
+        let options = { owner, repo, header, database }
+        this.inject(options)
         return this.runAsync('header', options);
     }
 
     async compile(options) {
-        options.github_token = this.github_token
-        this.configuration = options.configuration = options.configuration || configuration.value || this.configuration
-        options.width = term.cols
+        this.inject(options)
         return this.runAsync('compile', options);
     }
 
     async build(database, action = 'all') {
-        this.database = database || owner.value + '/' + repo.value || this.database
-        return this.runAsync('build', {
-            database: this.database,
-            configuration: this.configuration,
+        let options = {
+            database: database || owner.value + '/' + repo.value || this.database,
             action,
-            github_token: this.github_token,
-            width: term.cols
-        });
+        }
+        this.inject(options)
+        return this.runAsync('build', options);
     }
 
     async run(options) {
-        options.width = term.cols
-        options.github_token = this.github_token
-        this.configuration = options.configuration = options.configuration || configuration.value || this.configuration
+        this.inject(options)
         return this.runAsync('run', options);
     }
 
     async link(options) {
-        options.width = term.cols
-        options.github_token = this.github_token
-        this.configuration = options.configuration = options.configuration || configuration.value || this.configuration
+        this.inject(options)
         return this.runAsync('link', options);
     }
 

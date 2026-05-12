@@ -103,6 +103,7 @@ const onAnyMessage = async event => {
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
         api.hostWrite(`${redArrow}${e.toString()}`);
+        output = e
         throw e;
       }
       finally {
@@ -121,6 +122,7 @@ const onAnyMessage = async event => {
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
         api.hostWrite(`${redArrow}${e.toString()}`)
+        output = e
         throw e
       }
       finally {
@@ -140,6 +142,7 @@ const onAnyMessage = async event => {
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
         api.hostWrite(`${redArrow}${e.toString()}`)
+        output = e
         throw e
       }
       finally {
@@ -158,6 +161,7 @@ const onAnyMessage = async event => {
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
         api.hostWrite(`${redArrow}${e.toString()}`)
+        output = e
         throw e
       }
       finally {
@@ -181,6 +185,7 @@ const onAnyMessage = async event => {
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
         api.hostWrite(`${redArrow}${e.toString()}`)
+        output = e
         throw e
       }
       finally {
@@ -202,6 +207,7 @@ const onAnyMessage = async event => {
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
         api.hostWrite(`${redArrow}${e.toString()}`)
+        output = e
         throw e
       }
       finally {
@@ -220,6 +226,7 @@ const onAnyMessage = async event => {
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
         api.hostWrite(`${redArrow}${e.toString()}`)
+        output = e
         throw e
       }
       finally {
@@ -238,6 +245,7 @@ const onAnyMessage = async event => {
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
         api.hostWrite(`${redArrow}${e.toString()}`)
+        output = e
         throw e
       }
       finally {
@@ -327,6 +335,7 @@ const onAnyMessage = async event => {
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
         api.hostWrite(`${redArrow}${e.toString()}`)
+        output = e
         throw e
       }
       finally {

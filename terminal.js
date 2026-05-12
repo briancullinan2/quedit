@@ -248,7 +248,8 @@ async function handleCommand(input) {
                 || mode === 'tools'
             )
                 selected = argv[1] || toolsRepo
-            if (mode === 'release'
+            if (mode === 'all'
+                || mode === 'release'
                 || mode === 'debug'
                 || mode === 'stringify'
                 || mode === 'shaders'
@@ -281,12 +282,14 @@ async function handleCommand(input) {
                 || mode === 'q3cpp'
                 || mode === 'lburg'
                 || mode === 'asm'
+                || mode === 'tools'
             )
                 validMode = 'tools'
 
             else if (mode === 'cgame'
                 || mode === 'game'
                 || mode === 'uid'
+                || mode === 'qvms'
             )
                 validMode = 'qvms'
             else if (mode == 'all'

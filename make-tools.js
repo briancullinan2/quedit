@@ -153,7 +153,7 @@ async function buildLBurg(database = null) {
             const src = path.join("lburg", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.LBURG, file);
 
-            log(`\n\rCC: ${src}\n\r`);
+            log(`CC: ${src}\n\r`);
             lburgObjs.push(await compileToolFile(src, obj, "lburg", database));
         } catch (e) {
             log(e)
@@ -223,7 +223,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
 function log(msg, ...args) {
 
     if (typeof term !== 'undefined') term.write(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
-    if(typeof api.hostWrite != 'undefined') api.hostWrite(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
+    else if(typeof api.hostWrite != 'undefined') api.hostWrite(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
     else console.log(msg);
 }
 
@@ -265,12 +265,12 @@ async function buildRCC(database = null) {
                     database
                 });
 
-                log(`\n\rCC: ${dagC}\n\r`);
+                log(`CC: ${dagC}\n\r`);
                 rccObjs.push(await compileToolFile(dagC, obj, "src", database, ["-Wno-unused"]));
             } else {
                 const src = path.join("src", file.replace('.o', '.c'));
 
-                log(`\n\rCC: ${src}\n\r`);
+                log(`CC: ${src}\n\r`);
                 rccObjs.push(await compileToolFile(src, obj, "src", database));
             }
         } catch (e) {
@@ -310,7 +310,7 @@ async function buildCPP(database = null) {
             const src = path.join("cpp", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.CPP, file);
 
-            log(`\n\rCC: ${src}\n\r`);
+            log(`CC: ${src}\n\r`);
             cppObjs.push(await compileToolFile(src, obj, "cpp", database));
         } catch (e) {
             log(e)
@@ -350,7 +350,7 @@ async function buildLCC(database = null) {
             const obj = path.join(CONFIGURATION + '/' + toolDirs.ETC, file);
             const lccFlags = [`-DTEMPDIR=\"${config.TEMPDIR}\"`, `-DSYSTEM=\"\"`];
 
-            log(`\n\rCC: ${src}\n\r`);
+            log(`CC: ${src}\n\r`);
             lccObjs.push(await compileToolFile(src, obj, "src", database, lccFlags));
         } catch (e) {
             log(e)
@@ -464,7 +464,7 @@ async function buildAsmTool(database = null) {
             const sha = files[database][src].sha;
             const content = await cacheFile(ownerName, repoName, src, sha);
 
-            log(`\n\rCC: ${file}\n\r`);
+            log(`CC: ${file}\n\r`);
             await api.compile({
                 CFLAGS: [
                     ...QVM_CFLAGS,
