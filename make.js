@@ -524,25 +524,12 @@ function generateFallbackC(fileName, content) {
 }
 
 
-let building = false
-let buildDebounce = null
-async function build(database = null, noBounce = false) {
 
-    if (buildDebounce) {
-        clearTimeout(buildDebounce)
-    }
-
-    if (!noBounce) {
-        buildDebounce = setTimeout(() => build(database, true), 500)
-        return
-    }
-
-    if (building) return
-    building = true
-
-    let CONFIGURATION = configuration.value == 'release'
-        ? dirs.ENGINE_RELEASE
-        : dirs.ENGINE_DEBUG
+function BUILD_CLFAGS(CONFIGURATION) {
+    if (!CONFIGURATION)
+        CONFIGURATION = configuration.value == 'release'
+            ? dirs.ENGINE_RELEASE
+            : dirs.ENGINE_DEBUG
 
     let DEBUG_CFLAGS = configuration.value != 'debug'
         ? ['-DNDEBUG', '-O3', '-ffast-math']
@@ -560,11 +547,172 @@ async function build(database = null, noBounce = false) {
         '-fmessage-length', '' + (term.cols || '80')
     ])
 
+    return [...DEBUG_CFLAGS, ...PRE]
+}
+
+
+
+async function buildStringify(database = null) {
+
+
+    let DEBUG_CFLAGS = BUILD_CLFAGS()
+
+    if (needsHeaders) {
+        needsHeaders = false
+        await downloadHeaders(q3eCommonHeaders, 10, database)
+    }
+
+    //await api.upload(database)
+
+    let stringify = 'code/renderer2/stringify.c'
+    let sha = files['#filelist'][stringify].sha
+    let content = await cacheFile(ownerName, repoName, stringify, sha)
+
+    try {
+        await api.compile({
+            CFLAGS: [
+                '-cc1', '-triple', 'wasm32-wasi',
+                '-emit-obj',
+                '-isysroot', '/',
+                '-internal-isystem', '/include/c++/v1',
+                '-internal-isystem', '/include',
+                '-internal-isystem', '/lib/clang/8.0.1/include',
+                "-std=gnu11",
+                ...DEBUG_CFLAGS,
+                ...(configuration.value == 'pre' ? [
+                    '-o', CONFIGURATION + '/stringify.a',
+                ] : ['-o', CONFIGURATION + '/stringify.o']),
+                stringify
+            ],
+            contents: content,
+            width: term.cols,
+            input: stringify,
+            database,
+            obj: CONFIGURATION + '/stringify.o'
+        })
+    } catch (e) {
+        console.error(e)
+    }
+
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
+
+    try {
+        await api.link({
+            LDFLAGS: [
+                ...baseLdFlags,
+                CONFIGURATION + '/stringify.o',
+                '-o', CONFIGURATION + '/stringify' + config.BINEXT,
+                ...includeFlags
+            ],
+            obj: [CONFIGURATION + '/stringify.o'],
+            database,
+            wasm: CONFIGURATION + '/stringify' + config.BINEXT
+        })
+    } catch (e) {
+        console.error(e)
+    }
+
+
+
+}
+
+
+
+async function buildClient(database = null) {
+
+
+    let DEBUG_CFLAGS = BUILD_CLFAGS()
+
+    if (!database) database = owner.value + '/' + repo.value
+    let parts = database.split('/')
+    let ownerName = parts.length == 2 ? parts[0] : owner.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
+
+    if (needsHeaders) {
+        needsHeaders = false
+        await downloadHeaders(q3eCommonHeaders, 10, database)
+    }
+
+
+    for (let file of [...allCompileObjects]) {
+
+        try {
+            let sha = files['#filelist'][file].sha
+            let content = await cacheFile(ownerName, repoName, file, sha)
+            let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
+
+            term.write('\n\r')
+            let CCFLAGS = [
+                ...CFLAGS, 
+                ...DEBUG_CFLAGS,
+                ...(configuration.value == 'pre' ? [
+                    '-o', CONFIGURATION + '/' + file.replace('.c', '.a')
+                ] : ['-o', obj]),
+                file
+            ]
+            if (file.includes('botlib'))
+                CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
+
+            term.write('\n\rCC: ' + obj + '\n\r')
+
+            let objRecord = await getRecord(DB_STORE_NAME, obj, database)
+            FS.virtual[obj] = objRecord
+
+            if (FS.virtual[obj]
+                // compare input and output mtime
+                && FS.virtual[file]?.timestamp < FS.virtual[obj]?.timestamp
+            ) {
+                continue
+            }
+
+            await api.compile({
+                CFLAGS: CCFLAGS,
+                contents: content,
+                width: term.cols,
+                input: file,
+                database,
+                obj
+            })
+
+        } catch (e) {
+            console.error(e)
+        }
+
+    }
+
+}
+
+
+
+
+let building = false
+let buildDebounce = null
+async function build(database = null, noBounce = false) {
+
+    if (buildDebounce) {
+        clearTimeout(buildDebounce)
+    }
+
+    if (!noBounce) {
+        buildDebounce = setTimeout(() => build(database, true), 500)
+        return
+    }
+
+    if (building) return
+    building = true
+
 
     // TODO: publish binaryen zero-filled, zip, download uri
 
-    if (!database)
-        database = owner.value + '/' + repo.value
+    if (!database) database = owner.value + '/' + repo.value
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
@@ -590,10 +738,10 @@ async function build(database = null, noBounce = false) {
         }
     });
 
-    // init database
-    //let startTime = Date.now()
-    //FS.isSyncing = 1
-    // FIX FOR "QKEY could not open" ERROR
+    term.write('\n\r')
+
+
+
     FS.virtual['/home'] = {
         timestamp: new Date(),
         mode: FS_DIR,
@@ -607,177 +755,41 @@ async function build(database = null, noBounce = false) {
     };
     await putRecord(DB_STORE_NAME, FS.virtual['/tmp'], database)
 
-    /*
-    console.log('sync started at ', new Date())
-
-    await readAll(database, loadEntry)
-    let tookTime = Date.now() - startTime
-
-    console.log('sync completed', new Date())
-    console.log('sync took',
-        (tookTime > 60 * 1000 ? (Math.floor(tookTime / 1000 / 60) + ' minutes, ') : '')
-        + Math.floor(tookTime / 1000) % 60 + ' seconds, '
-        + (tookTime % 1000) + ' milliseconds')
-
-    FS.isSyncing = 0
-    */
-
-    term.write('\n\r')
-
-    await downloadHeaders(q3eCommonHeaders, 10, database)
-
-    //await api.upload(database)
-
-    let stringify = 'code/renderer2/stringify.c'
-    let sha = files['#filelist'][stringify].sha
-    let content = await cacheFile(ownerName, repoName, stringify, sha)
-
-    try {
-        await api.compile({
-            CFLAGS: [
-                '-cc1', '-triple', 'wasm32-wasi',
-                '-emit-obj',
-                '-isysroot', '/',
-                '-internal-isystem', '/include/c++/v1',
-                '-internal-isystem', '/include',
-                '-internal-isystem', '/lib/clang/8.0.1/include',
-                "-std=gnu11",
-                ...DEBUG_CFLAGS,
-                ...PRE,
-                ...(configuration.value == 'pre' ? [
-                    '-o', CONFIGURATION + '/stringify.a',
-                ] : ['-o', CONFIGURATION + '/stringify.o']),
-                stringify
-            ],
-            contents: content,
-            width: term.cols,
-            input: stringify,
-            database,
-            obj: CONFIGURATION + '/stringify.o'
-        })
-    } catch (e) {
-        console.error(e)
-    }
 
 
-    try {
-        await api.link({
-            LDFLAGS: [
-                ...baseLdFlags,
-                CONFIGURATION + '/stringify.o',
-                '-o', CONFIGURATION + '/stringify' + config.BINEXT,
-                ...includeFlags
-            ],
-            obj: [CONFIGURATION + '/stringify.o'],
-            database,
-            wasm: CONFIGURATION + '/stringify' + config.BINEXT
-        })
-    } catch (e) {
-        console.error(e)
-    }
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
 
 
 
-    var objs = []
-
-    for (let file of [...allCompileObjects]) {
-
-        try {
-            let sha = files['#filelist'][file].sha
-            let content = await cacheFile(ownerName, repoName, file, sha)
-            let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
-
-            term.write('\n\r')
-            let CCFLAGS = [
-                ...CFLAGS, ...DEBUG_CFLAGS,
-                ...PRE,
-                ...(configuration.value == 'pre' ? [
-                    '-o', CONFIGURATION + '/' + file.replace('.c', '.a')
-                ] : ['-o', obj]),
-                file
-            ]
-            if (file.includes('botlib'))
-                CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
-
-            term.write('CC: ' + obj + '\n\r')
-
-            let objRecord = await getRecord(DB_STORE_NAME, obj, database)
-            FS.virtual[obj] = objRecord
-
-            if (FS.virtual[obj]
-                // compare input and output mtime
-                && FS.virtual[file]?.timestamp < FS.virtual[obj]?.timestamp
-            ) {
-                objs[objs.length] = obj
-                continue
-            }
-
-            await api.compile({
-                CFLAGS: CCFLAGS,
-                contents: content,
-                width: term.cols,
-                input: file,
-                database,
-                obj
-            })
-
-            objs[objs.length] = obj
-        } catch (e) {
-            console.error(e)
-        }
-
-    }
-
-    for (let shader of allRend2ShaderObjects) {
-        try {
-            let sha = files['#filelist'][shader].sha
-            let content = await cacheFile(ownerName, repoName, shader, sha)
-            const cCode = generateFallbackC(shader, content);
-            let obj = CONFIGURATION + '/' + shader.replace('.glsl', '.o')
-            term.write('GLSL: ' + obj + '\n\r')
-
-            let objRecord = await getRecord(DB_STORE_NAME, obj, database)
-            FS.virtual[obj] = objRecord
+    await buildStringify(database)
 
 
-            term.write(`CC: ${shader}`);
+    await buildClient(database)
 
-            if (FS.virtual[obj]
-                && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
-            ) {
-                objs[objs.length] = obj
-                continue
-            }
-            await api.compile({
-                CFLAGS: [
-                    ...CFLAGS,
-                    '-o', obj,
-                    shader.replace('.glsl', '.c')
-                ],
-                contents: cCode,
-                width: term.cols,
-                input: shader.replace('.glsl', '.c'),
-                database,
-                obj
-            })
 
-            objs[objs.length] = obj
-        } catch (e) {
-            console.error(e)
-        }
-    }
+    await buildShaders(database)
+
+
+    let clientObjs = allCompileObjects.map(s => CONFIGURATION + '/' + s.replace('.c', '.o'))
+    let renderObjs = allRend2ShaderObjects.map(s => CONFIGURATION + '/' + s.replace('.glsl', '.o'))
 
 
     try {
         await api.link({
             LDFLAGS: [
                 ...LDFLAGS,
-                ...(objs instanceof Array ? objs : [objs]),
+                ...clientObjs,
+                ...renderObjs,
                 '-o', CONFIGURATION + '/' + config.CNAME + config.BINEXT,
                 ...includeFlags
             ],
             width: term.cols,
-            obj: objs,
+            obj: [
+                ...clientObjs,
+                ...renderObjs
+            ],
             database,
             wasm: CONFIGURATION + '/' + config.CNAME + config.BINEXT
         })
@@ -788,6 +800,68 @@ async function build(database = null, noBounce = false) {
     building = false
 
     //await api.download(database)
+}
+
+
+
+async function buildShaders(database = null) {
+
+    if (!database) database = owner.value + '/' + repo.value
+    let parts = database.split('/')
+    let ownerName = parts.length == 2 ? parts[0] : owner.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+    if (needsHeaders) {
+        needsHeaders = false
+        await downloadHeaders(q3eCommonHeaders, 10, database)
+    }
+
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
+    let DEBUG_CFLAGS = BUILD_CLFAGS()
+
+
+    for (let shader of allRend2ShaderObjects) {
+        try {
+            let sha = files['#filelist'][shader].sha
+            let content = await cacheFile(ownerName, repoName, shader, sha)
+            const cCode = generateFallbackC(shader, content);
+            let obj = CONFIGURATION + '/' + shader.replace('.glsl', '.o')
+            term.write(`\n\rGLSL: ${obj}\n\r`)
+
+            let objRecord = await getRecord(DB_STORE_NAME, obj, database)
+            FS.virtual[obj] = objRecord
+
+
+            term.write(`\n\rCC: ${shader}\n\r`);
+
+            if (FS.virtual[obj]
+                && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
+            ) {
+                continue
+            }
+            await api.compile({
+                CFLAGS: [
+                    ...CFLAGS,
+                    ...DEBUG_CFLAGS,
+                    '-o', obj,
+                    shader.replace('.glsl', '.c')
+                ],
+                contents: cCode,
+                width: term.cols,
+                input: shader.replace('.glsl', '.c'),
+                database,
+                obj
+            })
+
+        } catch (e) {
+            console.error(e)
+        }
+    }
+
+
 }
 
 
@@ -811,7 +885,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                 if (header.includes('wasm.syms')) {
                     //let response = await fetch('wasm.syms');
                     //let contents = await response.arrayBuffer()
-                    if(!files['briancullinan2/quedit'])
+                    if (!files['briancullinan2/quedit'])
                         await loadGitHubTree('briancullinan2', 'quedit', 'main')
                     await cacheFile('briancullinan2', 'quedit', 'wasm.syms');
                     FS.virtual[header] =
@@ -826,6 +900,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                     await putRecord(DB_STORE_NAME, FS.virtual[header], thisDatabase)
                 }
                 else {
+                    if(!files[thisDatabase][header]) return
                     // cacheFile handles the storage logic
                     let sha = files[thisDatabase][header].sha
                     await cacheFile(thisOwner, thisRepo, header, sha);

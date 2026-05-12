@@ -119,8 +119,8 @@ const toolLdFlags = [
     "--export-dynamic",
     "--export-table",
     "--error-limit=200",
-    '-z', `stack-size=${1024*1024}`, 
-    '-Llib/wasm32-wasi', 
+    '-z', `stack-size=${1024 * 1024}`,
+    '-Llib/wasm32-wasi',
     'lib/wasm32-wasi/crt1.o',
     '-Llib/clang/8.0.1/lib/wasi',
     '-lclang_rt.builtins-wasm32',
@@ -133,20 +133,11 @@ const toolLdFlags = [
 
 
 
-
-let needsHeaders = true
-
-
-// --- Build Logic ---
-
-async function buildTools(database = null) {
+async function buildLBurg(database = null) {
     if (!database) database = owner.value + '/' + repo.value;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
-
-    let BRANCH = await getDefaultBranch(ownerName, repoName)
-    let FILELIST = await loadGitHubTree(ownerName, repoName, BRANCH)
 
 
     let CONFIGURATION = configuration.value == 'release'
@@ -154,50 +145,6 @@ async function buildTools(database = null) {
         : dirs.ENGINE_DEBUG
 
 
-    const log = (msg) => {
-        if (typeof term !== 'undefined') term.write(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
-        else console.log(msg);
-    };
-
-    // Helper to compile a single tool component
-    const compileToolFile = async (src, obj, includeDir, extraFlags = []) => {
-        try {
-            const sha = (FILELIST[src] || {}).sha;
-            const content = await cacheFile(ownerName, repoName, src, sha);
-
-
-            if(needsHeaders)
-            {
-                needsHeaders = false;
-                
-                await downloadHeaders(lccToolHeaders, 10, database)
-
-            }
-            
-
-            await api.compile({
-                CFLAGS: [
-                    ...LCC_CFLAGS, `-I${includeDir}`, 
-                    ...extraFlags,
-                    '-o', obj, src
-                ],
-                contents: content,
-                width: term.cols,
-                input: src,
-                database,
-                obj: obj
-            });
-            return obj;
-        } catch (e) {
-            log(`Error compiling: ${src}`);
-            throw e;
-        }
-    };
-
-    log("Starting Toolchain Build...");
-
-
-    // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
     log("Building LBURG...");
     const lburgObjs = [];
     for (const file of lburgFiles) {
@@ -205,9 +152,9 @@ async function buildTools(database = null) {
 
             const src = path.join("lburg", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.LBURG, file);
-            
-            log(`CC: ${src}`);
-            lburgObjs.push(await compileToolFile(src, obj, "lburg"));
+
+            log(`\n\rCC: ${src}\n\r`);
+            lburgObjs.push(await compileToolFile(src, obj, "lburg", database));
         } catch (e) {
             console.log(e)
         }
@@ -224,9 +171,72 @@ async function buildTools(database = null) {
     });
 
 
+}
 
 
-    // 2. Build RCC (The Compiler Core)
+let BRANCH
+let FILELIST
+
+async function compileToolFile(src, obj, includeDir, database, extraFlags = []) {
+    try {
+
+        if (!BRANCH || !FILELLIST) {
+            BRANCH = await getDefaultBranch(ownerName, repoName)
+            FILELIST = await loadGitHubTree(ownerName, repoName, BRANCH)
+        }
+
+        const sha = (FILELIST[src] || {}).sha;
+        const content = await cacheFile(ownerName, repoName, src, sha);
+
+
+        if (needsHeaders) {
+            needsHeaders = false;
+
+            await downloadHeaders(lccToolHeaders, 10, database)
+
+        }
+
+
+        await api.compile({
+            CFLAGS: [
+                ...LCC_CFLAGS, `-I${includeDir}`,
+                ...extraFlags,
+                '-o', obj, src
+            ],
+            contents: content,
+            width: term.cols,
+            input: src,
+            database,
+            obj: obj
+        });
+        return obj;
+    } catch (e) {
+        log(`Error compiling: ${src}`);
+        throw e;
+    }
+}
+
+function log(msg) {
+    if (typeof term !== 'undefined') term.write(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
+    else console.log(msg);
+}
+
+
+let needsHeaders = true
+
+
+async function buildRCC(database = null) {
+    if (!database) database = owner.value + '/' + repo.value;
+    let parts = database.split('/');
+    let ownerName = parts.length == 2 ? parts[0] : owner.value;
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
+
+    needsHeaders = true
+
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
     log("Building RCC...");
     const rccObjs = [];
     for (const file of rccFiles) {
@@ -241,7 +251,7 @@ async function buildTools(database = null) {
 
                 await cacheFile(ownerName, repoName, dagMd, (FILELIST[dagMd] || {}).sha);
                 // Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
-                
+
                 log(`BURG: ${dagMd}`);
                 await api.run({
                     tool: lburgExe,
@@ -249,13 +259,13 @@ async function buildTools(database = null) {
                     database
                 });
 
-                log(`CC: ${dagC}`);
-                rccObjs.push(await compileToolFile(dagC, obj, "src", ["-Wno-unused"]));
+                log(`\n\rCC: ${dagC}\n\r`);
+                rccObjs.push(await compileToolFile(dagC, obj, "src", database, ["-Wno-unused"]));
             } else {
                 const src = path.join("src", file.replace('.o', '.c'));
-                
-                log(`CC: ${src}`);
-                rccObjs.push(await compileToolFile(src, obj, "src"));
+
+                log(`\n\rCC: ${src}\n\r`);
+                rccObjs.push(await compileToolFile(src, obj, "src", database));
             }
         } catch (e) {
             console.log(e)
@@ -271,17 +281,31 @@ async function buildTools(database = null) {
         ], obj: rccObjs, database, wasm: rccExe
     });
 
+}
 
-    // 3. Build CPP (Preprocessor)
+
+async function buildCPP(database = null) {
+    if (!database) database = owner.value + '/' + repo.value;
+    let parts = database.split('/');
+    let ownerName = parts.length == 2 ? parts[0] : owner.value;
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
+
+    needsHeaders = true
+
+
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
     log("Building CPP...");
     const cppObjs = [];
     for (const file of cppFiles) {
         try {
             const src = path.join("cpp", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.CPP, file);
-            
-            log(`CC: ${src}`);
-            cppObjs.push(await compileToolFile(src, obj, "cpp"));
+
+            log(`\n\rCC: ${src}\n\r`);
+            cppObjs.push(await compileToolFile(src, obj, "cpp", database));
         } catch (e) {
             console.log(e)
         }
@@ -296,8 +320,22 @@ async function buildTools(database = null) {
 
         ], obj: cppObjs, database, wasm: cppExe
     });
+}
 
-    // 4. Build LCC (Frontend)
+
+async function buildLCC(database = null) {
+    if (!database) database = owner.value + '/' + repo.value;
+    let parts = database.split('/');
+    let ownerName = parts.length == 2 ? parts[0] : owner.value;
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
+
+    needsHeaders = true
+
+
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
     log("Building LCC...");
     const lccObjs = [];
     for (const file of lccFiles) {
@@ -305,9 +343,9 @@ async function buildTools(database = null) {
             const src = path.join("etc", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.ETC, file);
             const lccFlags = [`-DTEMPDIR=\"${config.TEMPDIR}\"`, `-DSYSTEM=\"\"`];
-            
-            log(`CC: ${src}`);
-            lccObjs.push(await compileToolFile(src, obj, "src", lccFlags));
+
+            log(`\n\rCC: ${src}\n\r`);
+            lccObjs.push(await compileToolFile(src, obj, "src", lccFlags, database));
         } catch (e) {
             console.log(e)
         }
@@ -321,6 +359,41 @@ async function buildTools(database = null) {
             ...includeFlags
         ], obj: lccObjs, database, wasm: lccExe
     });
+
+}
+
+
+// --- Build Logic ---
+
+async function buildTools(database = null) {
+    if (!database) database = owner.value + '/' + repo.value;
+    let parts = database.split('/');
+    let ownerName = parts.length == 2 ? parts[0] : owner.value;
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
+
+
+    needsHeaders = true
+
+    // Helper to compile a single tool component
+
+
+    log("Starting Toolchain Build...");
+
+
+    // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
+    await buildLBurg(database)
+
+
+    // 2. Build RCC (The Compiler Core)
+    await buildRCC(database)
+
+
+    // 3. Build CPP (Preprocessor)
+    await buildCPP(database)
+
+
+    // 4. Build LCC (Frontend)
+    await buildLCC(database)
 
     log("Toolchain build complete.");
 }
@@ -360,6 +433,18 @@ async function buildAsmTool(database = null) {
         : dirs.ENGINE_DEBUG
 
 
+    needsHeaders = true
+
+
+    if (needsHeaders) {
+        needsHeaders = false;
+
+        await downloadHeaders(lccToolHeaders, 10, database)
+
+    }
+
+
+
     log("Building q3asm...");
 
     const objs = [];
@@ -373,7 +458,7 @@ async function buildAsmTool(database = null) {
             const sha = files[database][src].sha;
             const content = await cacheFile(ownerName, repoName, src, sha);
 
-            log(`CC: ${file}`);
+            log(`\n\rCC: ${file}\n\r`);
             await api.compile({
                 CFLAGS: [
                     ...QVM_CFLAGS,

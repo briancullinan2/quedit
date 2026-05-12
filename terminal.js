@@ -171,8 +171,7 @@ async function handleCommand(input) {
             let ownerName = parts.length == 2 ? parts[0] : owner.value
             let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
-            if(!files[selected])
-            {
+            if (!files[selected]) {
                 let branch = await getDefaultBranch(ownerName, repoName)
                 await loadGitHubTree(ownerName, repoName, branch)
             }
@@ -185,29 +184,28 @@ async function handleCommand(input) {
 
             // Assuming FS.virtual.readdir returns objects with {name, size, type}
             const entries = Object.values(FS.virtual)
-            .concat(Object.values(files[selected] || {}) || [])
-            .filter(p => {
-                if(!p.path)
-                {
-                    debugger
-                }
-                let compare = CWD
-                let startMatch = false
-                let subMatch = false
-                if(compare.trim().length == 0)
-                    compare = '/'
-                if(!compare.endsWith('/'))
-                    compare += '/'
+                .concat(Object.values(files[selected] || {}) || [])
+                .filter(p => {
+                    if (!p.path) {
+                        debugger
+                    }
+                    let compare = CWD
+                    let startMatch = false
+                    let subMatch = false
+                    if (compare.trim().length == 0)
+                        compare = '/'
+                    if (!compare.endsWith('/'))
+                        compare += '/'
 
-                let path = p.path
-                if(!path.startsWith('/'))
-                    path = '/' + path
-                if(path.startsWith(compare))
-                    startMatch = true
-                if(flags.recursive || path.substring(compare.length).indexOf('/') === -1)
-                    subMatch = true
-                return startMatch && (flags.recursive || subMatch)
-            });
+                    let path = p.path
+                    if (!path.startsWith('/'))
+                        path = '/' + path
+                    if (path.startsWith(compare))
+                        startMatch = true
+                    if (flags.recursive || path.substring(compare.length).indexOf('/') === -1)
+                        subMatch = true
+                    return startMatch && (flags.recursive || subMatch)
+                });
 
 
             if (flags.flat) {
@@ -238,24 +236,112 @@ async function handleCommand(input) {
             term.write(`Hello, ${user || name}!`);
         },
 
-        build: (argv) => {
+        build: async (argv) => {
             const mode = argv[0] || 'release';
 
-            if (configuration.querySelector(`[value="${mode}"]`))
+            let selected = argv[1] || engineRepo || database
+            if (mode === 'q3lcc'
+                || mode === 'q3rcc'
+                || mode === 'q3cpp'
+                || mode === 'lburg'
+                || mode === 'asm'
+                || mode === 'tools'
+            )
+                selected = argv[1] || toolsRepo
+            if (mode === 'release'
+                || mode === 'debug'
+                || mode === 'stringify'
+                || mode === 'shaders'
+                || mode === 'client'
+                || mode === 'engine'
+                || mode === 'server'
+            )
+                selected = argv[1] || engineRepo
+
+            if (mode === 'cgame'
+                || mode === 'game'
+                || mode === 'uid'
+                || mode === 'qvms'
+            )
+                selected = argv[1] || gameRepo
+
+            let parts = selected.split('/')
+            let ownerName = parts.length == 2 ? parts[0] : owner.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+            if (selected && !files[selected]) {
+                let branch = await getDefaultBranch(ownerName, repoName)
+                await loadGitHubTree(ownerName, repoName, branch)
+            }
+
+
+
+
+            if (mode === 'q3lcc'
+                || mode === 'q3rcc'
+                || mode === 'q3cpp'
+                || mode === 'lburg'
+                || mode === 'asm'
+            )
+                configuration.value = 'tools'
+            else if (configuration.querySelector(`[value="${mode}"]`))
                 configuration.value = mode
+
+            else if (mode === 'cgame'
+                || mode === 'game'
+                || mode === 'uid'
+            )
+                configuration.value = 'qvms'
+            else if (mode === 'release'
+                || mode === 'debug'
+                || mode === 'stringify'
+                || mode === 'shaders'
+                || mode === 'client'
+                || mode === 'engine'
+                || mode === 'server'
+            )
+                configuration.value = 'release'
             else if (mode) {
                 let modes = Array.from(configuration.children).map(m => m.value)
                 term.write(`Valid modes ${modes.join('|')}: ${mode} given.`);
                 return;
             }
 
-            term.write(`Starting ${mode} build...\n\r`);
-            if (configuration.value === 'qvms')
-                return buildQVM(argv[1] || gameRepo || database)
-            if (configuration.value === 'tools')
-                return buildTools(argv[1] || toolsRepo || database)
 
-            build(argv[1] || engineRepo || database);
+
+            term.write(`Starting ${mode} build...\n\r`);
+
+            if (mode === 'q3lcc')
+                return await buildLCC(selected)
+            if (mode === 'q3rcc')
+                return await buildRCC(selected)
+            if (mode === 'q3cpp')
+                return await buildCPP(selected)
+            if (mode === 'lburg')
+                return await buildLBurg(selected)
+            if (mode == 'asm')
+                return await buildAsmTool(selected)
+
+            if (mode == 'game')
+                return await buildGame(selected)
+            if (mode == 'cgame')
+                return await buildCGame(selected)
+            if (mode == 'ui')
+                return await buildUI(selected)
+
+            if (mode === 'stringify')
+                return await buildStringify(selected)
+            if (mode === 'shaders')
+                return await buildShaders(selected)
+            if (mode === 'client')
+                return await buildClient(selected)
+
+
+            if (configuration.value === 'qvms')
+                return await buildQVM(selected)
+            if (configuration.value === 'tools')
+                return await buildTools(selected)
+
+            build(selected);
         },
         header: async (argv) => {
             let selected = toolsRepo || argv[1] || database

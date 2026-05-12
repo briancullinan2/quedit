@@ -1170,7 +1170,7 @@ const API = (function () {
       return true
     }
 
-    async upload(database) {
+    async upload(database = null) {
       await this.ready;
       if (!database) return
       this.database = database
