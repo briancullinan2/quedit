@@ -740,7 +740,7 @@ async function build(database = null, noBounce = false) {
             FS.virtual[obj] = objRecord
 
 
-            log(`CC: ${shader}`);
+            term.write(`CC: ${shader}`);
 
             if (FS.virtual[obj]
                 && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp

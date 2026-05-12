@@ -1205,7 +1205,7 @@ const API = (function () {
 
       const clang = await this.getModule(this.clangFilename);
       var result = await this.run(clang, 'clang', ...options.CFLAGS || []);
-      if (this.memfs) {
+      if (this.memfs && this.memfs.exists(obj)) {
         var bytes = this.memfs.getFileContents(obj)
         FS.virtual[obj] = {
           timestamp: new Date(),
@@ -1352,7 +1352,7 @@ const API = (function () {
       await this.run(
         lld, 'wasm-ld', ...options.LDFLAGS || [])
 
-      if (wasm && this.memfs) {
+      if (wasm && this.memfs && this.memfs.exists(wasm)) {
         var bytes = this.memfs.getFileContents(wasm)
         FS.virtual[wasm] = {
           timestamp: new Date(),

@@ -135,7 +135,10 @@ function updateEnvironment(program, ENV) {
 
 async function initEngine(program) {
     // ALL THE VARIABLES WE NEED SHOULD BE ASSIGNED TO GLOBAL BY NOW
-    SYS.startArgs = getQueryCommands()
+    Module.startArgs = SYS.startArgs = getQueryCommands()
+    Module.environment = {
+        USER: 'brian'
+    }
     
     await readPreFS()
     if (!program) {

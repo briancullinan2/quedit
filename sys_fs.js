@@ -48,7 +48,7 @@ function Sys_Mkdir(filename) {
 }
 
 function Sys_GetFileStats(filename, size, mtime, ctime) {
-	debugger
+
 	let fileStr = addressToString(filename)
 	let localName = fileStr
 	if (localName.startsWith('//'))
@@ -86,7 +86,7 @@ function Sys_FOpen(filename, mode) {
 	let modeStr = addressToString(mode)
 	let localName = fileStr.trim()
 
-	console.log(localName)
+	//console.log(localName)
 	if (localName.startsWith('/')) localName = localName;
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
@@ -199,7 +199,7 @@ function fd_seek(fd, offset, whence, newOffsetPtr) {
 
 	const stream = FS.pointers[fd];
 	if (!stream) return 8; // WASI_EBADF
-	console.log(stream[3])
+	//console.log(stream[3])
 
 	// 1. Force everything to BigInt for consistent 64-bit math
 	let bigOffset = BigInt(offset);
@@ -682,7 +682,7 @@ function fd_filestat_get(fd, bufPtr) {
 	const stream = FS.pointers[fd];
 
 	if (!stream) return 8; // WASI_EBADF
-	console.log(stream[3])
+	//console.log(stream[3])
 
 	const view = new DataView(Module.memory.buffer);
 
@@ -841,7 +841,7 @@ function fd_fdstat_get(fd, bufPtr) {
 	const stream = FS.pointers[fd];
 	
 	if (!stream) return 8; // WASI_EBADF
-	console.log(stream[3])
+	//console.log(stream[3])
 
 	const view = new DataView(Module.memory.buffer);
 
@@ -1025,7 +1025,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 
 	// 2. Resolve Full Path relative to dirfd
 	let localName = path.trim();
-	console.log(localName)
+	//console.log(localName)
 	if (localName.startsWith('/')) localName = localName;
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
@@ -1112,7 +1112,7 @@ function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 
     // 1. Normalize Path - MUST MATCH YOUR path_open LOGIC EXACTLY
     let localName = path;
-	console.log(localName)
+	//console.log(localName)
     if (localName.startsWith('base/')) localName = localName.substring(5);
     if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
     if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
@@ -1182,7 +1182,7 @@ function fd_read(fd, iovs, iovsLen, nreadPtr) {
 	const stream = FS.pointers[fd];
 	if (!stream) return 8; // WASI_EBADF
 
-	console.log(stream[3])
+	//console.log(stream[3])
 
 	const view = new DataView(Module.memory.buffer);
 	const contents = stream[2].contents; // Uint8Array of file data
@@ -1217,7 +1217,7 @@ function fd_read(fd, iovs, iovsLen, nreadPtr) {
 function fd_pread(fd, iovs, iovsLen, offset, nreadPtr) {
     const stream = FS.pointers[Number(fd)];
     if (!stream) return 8;
-	console.log(stream[3])
+	//console.log(stream[3])
 
     const node = stream[2];
     const contents = node.contents;
