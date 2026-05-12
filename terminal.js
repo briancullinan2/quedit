@@ -16,6 +16,50 @@ let history = [];
 let historyIndex = -1;
 let currentLine = '';
 
+
+term.attachCustomKeyEventHandler((arg) => {
+    if (arg.type === "keydown") {
+        // Check for Ctrl (Windows/Linux) or Cmd (Mac)
+        const isModifierPressed = arg.ctrlKey || arg.metaKey;
+
+        // --- Ctrl+C: Copy ---
+        if (isModifierPressed && arg.code === "KeyC") {
+            const selection = term.getSelection();
+            if (selection) {
+                navigator.clipboard.writeText(selection);
+                return false;
+            }
+            term.write('CTRL+C\n\r> ')
+            currentLine = ''
+
+        }
+
+
+
+        // --- Ctrl+V: Paste ---
+        if (isModifierPressed && arg.code === "KeyV") {
+            navigator.clipboard.readText().then(text => {
+                if (text) {
+                    // Filter the text to match your existing "Standard typing" 
+                    // range (0x20 to 0x7e) to prevent control characters from
+                    // corrupting your currentLine buffer.
+                    const filtered = text.split('').filter(c =>
+                        c >= String.fromCharCode(0x20) && c <= String.fromCharCode(0x7e)
+                    ).join('');
+
+                    //currentLine += filtered;
+                    //term.write(filtered);
+                }
+            }).catch(err => {
+                // Clipboard access might be denied by the browser
+                console.error('Paste failed: ', err);
+            });
+            return false; // Prevent xterm from seeing the keypress
+        }
+    }
+    return true;
+});
+
 term.onData(async data => {
     switch (data) {
         case '\r': // Enter
@@ -444,17 +488,3 @@ function updateLineFromHistory(specificValue = null) {
     // 3. Write the new line
     term.write(currentLine);
 }
-
-term.attachCustomKeyEventHandler((arg) => {
-    // Check if Ctrl+C (or Cmd+C on Mac) is pressed
-    if (arg.ctrlKey && arg.code === "KeyC" && arg.type === "keydown") {
-        const selection = term.getSelection();
-        if (selection) {
-            navigator.clipboard.writeText(selection);
-            // Return false to prevent xterm from sending the signal to the process
-            return false; 
-        }
-    }
-    return true;
-});
-

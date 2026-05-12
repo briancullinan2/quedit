@@ -148,6 +148,326 @@ const API = (function () {
     }
   };
 
+  class MemFS {
+    constructor(options) {
+      const compileStreaming = options.compileStreaming;
+      this.hostWrite = options.hostWrite;
+      this.stdinStr = options.stdinStr || "";
+      this.stdinStrPos = 0;
+      this.memfsFilename = options.memfsFilename;
+
+      this.hostMem_ = null;  // Set later when wired up to application.
+
+      // Imports for memfs this.exports.
+      const env = getImportObject(
+        this, ['abort', 'host_write', 'host_read', 'memfs_log', 'copy_in', 'copy_out']);
+
+      this.ready = compileStreaming(this.memfsFilename)
+        .then(module => WebAssembly.instantiate(module, { env }))
+        .then(instance => {
+          this.instance = instance;
+          this.exports = instance.exports;
+          this.mem = new Memory(this.exports.memory);
+          this.exports.init();
+        })
+    }
+
+    set hostMem(mem) {
+      this.hostMem_ = mem;
+    }
+
+    setStdinStr(str) {
+      this.stdinStr = str;
+      this.stdinStrPos = 0;
+    }
+
+    addDirectory(path) {
+      this.mem.check();
+      this.mem.write(this.exports.GetPathBuf(), path);
+      this.exports.AddDirectoryNode(path.length);
+    }
+
+    exists(path) {
+      try {
+        this.mem.check();
+        this.mem.write(this.exports.GetPathBuf(), path);
+        const inode = this.exports.FindNode(path.length);
+
+        // 0 or a specific constant usually represents INVALID_INODE
+        return inode !== 0;
+      }
+      catch (e) {
+        return false
+      }
+    }
+
+    mkdirp(path) {
+      // Ensure we have a clean array of directory segments
+      // Filter(Boolean) removes empty strings from leading/double slashes
+      const parts = path.split('/').filter(Boolean);
+      let currentPath = path.startsWith('/') ? '/' : '';
+
+      for (const part of parts) {
+        // If we're at the root, don't double up the slash
+        currentPath = currentPath === '' ? `${part}` : `${currentPath}/${part}`;
+
+        try {
+          this.mem.check();
+          this.mem.write(this.exports.GetPathBuf(), currentPath);
+
+          // We call the Wasm export to create the directory node
+          // Note: If your Wasm AddDirectoryNode asserts on existing dirs, 
+          // you'll need to check existence first or wrap this in a try/catch.
+          if (!this.exists(currentPath))
+            this.exports.AddDirectoryNode(currentPath.length);
+        } catch (e) {
+          // Log only if it's a real crash, not just an "already exists" error
+          if (!e.message.includes("exists")) {
+            console.warn(`mkdirp segment failed: ${currentPath}`, e);
+          }
+        }
+      }
+    }
+
+    addFile(path, contents) {
+      try {
+        const dirPath = path.substring(0, path.lastIndexOf('/'));
+        if (dirPath) {
+          this.mkdirp(dirPath);
+        }
+
+        const length =
+          contents instanceof ArrayBuffer ? contents.byteLength : contents.length;
+        this.mem.check();
+        this.mem.write(this.exports.GetPathBuf(), path);
+        const inode = this.exports.AddFileNode(path.length, length);
+        const addr = this.exports.GetFileNodeAddress(inode);
+        this.mem.check();
+        this.mem.write(addr, contents);
+      }
+      catch (e) {
+        console.error(path + ' - ' + e)
+      }
+    }
+
+    directoryList(fd) {
+      // 1. Use your established scratch space
+      const bufPtr = this.exports.GetPathBuf();
+      const bufLen = this.exports.GetPathBufLen();
+
+      // 2. We'll use the last 4 bytes of the scratch buffer for nreadPtr
+      // to avoid a separate allocation or hardcoded address.
+      const nreadPtr = bufPtr + bufLen - 4;
+      const PAGE_SIZE = bufLen - 4;
+
+      const results = [];
+      let cookie = 0n;
+
+      while (true) {
+        // Call WASI export using the scratch buffer
+        const errno = this.exports.fd_readdir(fd, bufPtr, PAGE_SIZE, cookie, nreadPtr);
+
+        if (errno !== 0) {
+          console.error(`readdir failed with errno: ${errno}`);
+          break;
+        }
+
+        const view = new DataView(this.exports.memory.buffer);
+        const nread = view.getUint32(nreadPtr, true);
+        if (nread === 0) break;
+
+        let offset = 0;
+        while (offset < nread) {
+          // WASI Dirent Header (24 bytes):
+          // 0-7: d_next (8) | 8-15: d_ino (8) | 16-19: d_namlen (4) | 20: d_type (1)
+          const d_next = view.getBigUint64(offset, true);
+          const d_namlen = view.getUint32(offset + 16, true);
+          const d_type = view.getUint8(offset + 20);
+
+          // Name immediately follows the 24-byte header
+          const namePtr = bufPtr + offset + 24;
+          const nameBuffer = new Uint8Array(this.exports.memory.buffer, namePtr, d_namlen);
+          const name = new TextDecoder().decode(nameBuffer);
+
+          results.push({
+            name: name,
+            type: d_type, // 4 = Dir, 8 = File
+            inode: view.getBigUint64(offset + 8, true)
+          });
+
+          cookie = d_next;
+          offset += 24 + d_namlen;
+        }
+
+        if (nread < PAGE_SIZE) break;
+      }
+
+      return results;
+    }
+
+
+    async recursiveDir(dirFd, pathStr = "") {
+      // 1. Get the scratch space provided by your Wasm module
+      const scratchPtr = this.exports.GetPathBuf();
+      const scratchLen = this.exports.GetPathBufLen();
+
+      if (scratchLen < 4096) {
+        throw new Error("Scratch buffer too small for readdir");
+      }
+
+      const entries = this.directoryList(dirFd, scratchPtr, scratchLen);
+
+      for (const entry of entries) {
+        const fullPath = pathStr ? `${pathStr}/${entry.name}` : entry.name;
+
+        if (entry.type === 4) { // Directory
+          // Use the scratch space to encode the directory name for path_open
+          const encoder = new TextEncoder();
+          const encoded = encoder.encode(entry.name);
+
+          // Write name to scratch space (reusing GetPathBuf)
+          new Uint8Array(this.exports.memory.buffer).set(encoded, scratchPtr);
+
+          // We need 4 bytes for the result FD. 
+          // We can put this at the very end of our scratch buffer to avoid overlap.
+          const resultFdPtr = scratchPtr + scratchLen - 4;
+
+          const errno = this.exports.path_open(
+            dirFd,
+            0,
+            scratchPtr, encoded.length,
+            0,
+            0x2000000n, 0x2000000n,
+            0,
+            resultFdPtr
+          );
+
+          if (errno === 0) {
+            const subDirFd = new DataView(this.exports.memory.buffer).getUint32(resultFdPtr, true);
+
+            await recursiveDir(subDirFd, fullPath);
+            this.exports.fd_close(subDirFd);
+          }
+        } else {
+          console.log(`File: ${fullPath}`);
+        }
+      }
+    }
+
+    openPath(pathString) {
+      const scratchPtr = this.exports.GetPathBuf();
+      const scratchLen = this.exports.GetPathBufLen();
+
+      // 1. Write the path string into the Wasm memory
+      const encoder = new TextEncoder();
+      const encodedPath = encoder.encode(pathString);
+      new Uint8Array(this.exports.memory.buffer).set(encodedPath, scratchPtr);
+
+      // 2. Prepare space for the returned FD (4 bytes)
+      // We'll put it at the end of the scratch buffer
+      const resultFdPtr = scratchPtr + scratchLen - 4;
+
+      // 3. Call path_open
+      // We use FD 3 as the base (the first pre-opened directory)
+      const errno = this.exports.path_open(
+        3,                    // dirfd (The first pre-open)
+        1,                    // lookupflags (1 = symlink follow)
+        scratchPtr,           // path_ptr
+        encodedPath.length,   // path_len
+        0,                    // oflags
+        0x2000000n,           // rights (DIRECTORY_LIST / OPEN)
+        0x2000000n,           // inheriting rights
+        0,                    // fdflags
+        resultFdPtr           // output pointer
+      );
+
+      if (errno !== 0) {
+        console.error(`Failed to open path "${pathString}": Errno ${errno}`);
+        return -1;
+      }
+
+      // 4. Read the new FD from memory
+      return new DataView(this.exports.memory.buffer).getUint32(resultFdPtr, true);
+    }
+
+    getFileContents(path) {
+      this.mem.check();
+      this.mem.write(this.exports.GetPathBuf(), path);
+      const inode = this.exports.FindNode(path.length);
+      const addr = this.exports.GetFileNodeAddress(inode);
+      const size = this.exports.GetFileNodeSize(inode);
+      return new Uint8Array(this.mem.buffer, addr, size);
+    }
+
+    abort() { throw new AbortError(); }
+
+    host_write(fd, iovs, iovs_len, nwritten_out) {
+      this.hostMem_.check();
+      assert(fd <= 2);
+      let size = 0;
+      let str = '';
+      for (let i = 0; i < iovs_len; ++i) {
+        const buf = this.hostMem_.read32(iovs);
+        iovs += 4;
+        const len = this.hostMem_.read32(iovs);
+        iovs += 4;
+        str += this.hostMem_.readStr(buf, len);
+        size += len;
+      }
+      this.hostMem_.write32(nwritten_out, size);
+      this.hostWrite(str);
+      return ESUCCESS;
+    }
+
+    host_read(fd, iovs, iovs_len, nread) {
+      this.hostMem_.check();
+      assert(fd === 0);
+      let size = 0;
+      for (let i = 0; i < iovs_len; ++i) {
+        const buf = this.hostMem_.read32(iovs);
+        iovs += 4;
+        const len = this.hostMem_.read32(iovs);
+        iovs += 4;
+        const lenToWrite = Math.min(len, (this.stdinStr.length - this.stdinStrPos));
+        if (lenToWrite === 0) {
+          break;
+        }
+        this.hostMem_.write(buf, this.stdinStr.substr(this.stdinStrPos, lenToWrite));
+        size += lenToWrite;
+        this.stdinStrPos += lenToWrite;
+        if (lenToWrite !== len) {
+          break;
+        }
+      }
+      // For logging
+      // this.hostWrite("Read "+ size + "bytes, pos: "+ this.stdinStrPos + "\n");
+      this.hostMem_.write32(nread, size);
+      return ESUCCESS;
+    }
+
+    memfs_log(buf, len) {
+      this.mem.check();
+      console.log(this.mem.readStr(buf, len));
+    }
+
+    copy_out(clang_dst, memfs_src, size) {
+      this.hostMem_.check();
+      const dst = new Uint8Array(this.hostMem_.buffer, clang_dst, size);
+      this.mem.check();
+      const src = new Uint8Array(this.mem.buffer, memfs_src, size);
+      // console.log(`copy_out(${clang_dst.toString(16)}, ${memfs_src.toString(16)}, ${size})`);
+      dst.set(src);
+    }
+
+    copy_in(memfs_dst, clang_src, size) {
+      this.mem.check();
+      const dst = new Uint8Array(this.mem.buffer, memfs_dst, size);
+      this.hostMem_.check();
+      const src = new Uint8Array(this.hostMem_.buffer, clang_src, size);
+      // console.log(`copy_in(${memfs_dst.toString(16)}, ${clang_src.toString(16)}, ${size})`);
+      dst.set(src);
+    }
+  }
 
   const RAF_PROC_EXIT_CODE = 0xC0C0A;
 
@@ -214,23 +534,32 @@ const API = (function () {
         'canvas_translate',
       ]);
 
+      const wasi_unstable = getImportObject(this, [
+        'proc_exit', 'environ_sizes_get', 'environ_get', 'args_sizes_get',
+        'args_get', 'random_get', 'clock_time_get', 'poll_oneoff'
+      ]);
       Module.errno = new WebAssembly.Global({ value: 'i32', mutable: true }, 0);
-      const wasi_unstable = {
-        'errno': Module.errno
-      }
-      
-      Object.assign(wasi_unstable, FS);
+      //const wasi_unstable = {
+      //  'errno': Module.errno
+      //}
+
+      if (module.name.includes('lburg'))
+        Object.assign(wasi_unstable, FS);
+      else
+        Object.assign(wasi_unstable, this.api.memfs.exports);
       const imports = WebAssembly.Module.imports(module);
 
       this.ready = getInstance(module, { wasi_unstable, env }).then(instance => {
         this.instance = instance;
         Module.exports = this.exports = this.instance.exports;
         this.mem = new Memory(this.exports.memory);
+        if (this.api.memfs)
+          this.api.memfs.hostMem = this.mem;
         ENV.memory = Module.memory = this.exports.memory
         window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
-        Module.errno.value = (this.exports['___errno_location']) 
-            ? this.exports['___errno_location']() 
-            : 0 || this.exports['errno'];
+        Module.errno.value = (this.exports['___errno_location'])
+          ? this.exports['___errno_location']()
+          : 0 || this.exports['errno'];
         updateGlobalBufferAndViews()
       });
     }
@@ -595,11 +924,13 @@ const API = (function () {
       return entry;
     }
 
-    untar() {
+    untar(memfs) {
       let entry;
       while (entry = this.readEntry()) {
         switch (entry.type) {
           case '0': // Regular file.
+            if (memfs)
+              memfs.addFile(entry.filename, entry.contents);
             FS.virtual[entry.filename] = {
               timestamp: new Date(),
               mode: FS_FILE,
@@ -608,6 +939,8 @@ const API = (function () {
             }
             break;
           case '5':
+            if (memfs)
+              memfs.addDirectory(entry.filename);
             if (entry.filename.endsWith('/'))
               entry.filename = entry.filename.substring(0, entry.filename.length - 1)
             FS.virtual[entry.filename] = {
@@ -632,10 +965,27 @@ const API = (function () {
       this.lldFilename = options.lld || 'lld.wasm';
       this.sysrootFilename = options.sysroot || 'sysroot.tar';
       this.showTiming = options.showTiming || false;
+
+      this.initMemFS()
+      /*
       this.ready = new Promise((resolve) => {
-        this.untar(this.sysrootFilename);
+        this.untar(null, this.sysrootFilename);
         resolve();
       });
+      */
+    }
+
+
+    initMemFS() {
+
+      this.memfs = new MemFS({
+        compileStreaming: this.compileStreaming,
+        hostWrite: this.hostWrite,
+        memfsFilename: this.options.memfs || 'memfs.wasm',
+      });
+      this.ready = this.memfs.ready.then(
+        () => { return this.untar(this.memfs, this.sysrootFilename); });
+
     }
 
 
@@ -682,6 +1032,9 @@ const API = (function () {
           }
         }
 
+        if (this.memfs && this.memfs.exists(filePath)) {
+          contents = this.memfs.getFileContents(filePath)
+        }
         if (FS.virtual[filePath]) {
           contents = FS.virtual[filePath].contents
         }
@@ -701,14 +1054,17 @@ const API = (function () {
       const module = await this.hostLogAsync(`Fetching and compiling ${name}`,
         this.compileStreaming(name));
       if (!module) throw new Error('No module! ' + name)
+      module.name = name
       this.moduleCache[name] = module;
       return module;
     }
 
-    async untar(filename) {
+    async untar(memfs, filename) {
+      if (this.memfs)
+        await this.memfs.ready;
       const promise = (async () => {
         const tar = new Tar(await this.readBuffer(filename));
-        tar.untar();
+        tar.untar(this.memfs);
       })();
       await this.hostLogAsync(`Untarring ${filename}`, promise);
     }
@@ -722,6 +1078,8 @@ const API = (function () {
 
 
     mkdirp(path) {
+      if (this.memfs)
+        this.memfs.mkdirp(path)
       // Ensure we have a clean array of directory segments
       // Filter(Boolean) removes empty strings from leading/double slashes
       const parts = path.split('/').filter(Boolean);
@@ -767,6 +1125,9 @@ const API = (function () {
       if (fileDir.trim().length > 0)
         this.mkdirp(fileDir)
 
+      if (this.memfs)
+        this.memfs.addFile(record.path, record.contents);
+
       return true
     }
 
@@ -789,6 +1150,9 @@ const API = (function () {
         const inDir = input.substring(0, input.lastIndexOf('/'));
         if (inDir.trim().length > 0)
           this.mkdirp(inDir)
+
+        if (this.memfs && input && contents)
+          this.memfs.addFile(input, Uint8Array.from(contents, c => c.charCodeAt(0)));
 
         FS.virtual[input] = {
           timestamp: new Date(),
@@ -835,6 +1199,19 @@ const API = (function () {
 
       const clang = await this.getModule(this.clangFilename);
       var result = await this.run(clang, 'clang', ...options.CFLAGS || []);
+      if (this.memfs) {
+        var bytes = this.memfs.getFileContents(obj)
+        var newFile = {
+          timestamp: new Date(),
+          mode: FS_FILE,
+          contents: bytes,
+          path: obj,
+        }
+
+        if (options.database)
+          await putRecord(DB_STORE_NAME, newFile, options.database)
+
+      }
 
       if (options.database && FS.virtual[obj])
         await putRecord(DB_STORE_NAME, FS.virtual[obj], options.database)
@@ -850,13 +1227,19 @@ const API = (function () {
       const opt = options.opt || '2';
 
       await this.ready;
-      if (input && contents)
+      if (input && contents) {
+
+        if (this.memfs)
+          this.memfs.addFile(input, contents);
+
         FS.virtual[input] = {
           timestamp: new Date(),
           mode: FS_FILE,
           contents: Uint8Array.from(contents, c => c.charCodeAt(0)),
           path: input
         }
+
+      }
 
       const clang = await this.getModule(this.clangFilename);
       await this.run(clang, 'clang', '-cc1', '-S',
@@ -891,12 +1274,16 @@ const API = (function () {
       const stackSize = 1024 * 1024;
       const obj = options.obj;
       const wasm = options.wasm;
-      const dirPath = wasm.substring(0, wasm.lastIndexOf('/'));
-
       await this.ready;
 
-      if (dirPath.trim().length > 0)
-        this.mkdirp(dirPath)
+
+      if (wasm) {
+        const dirPath = wasm.substring(0, wasm.lastIndexOf('/'));
+        if (dirPath.trim().length > 0)
+          this.mkdirp(dirPath)
+      }
+
+
 
       const lld = await this.getModule(this.lldFilename);
 
@@ -913,6 +1300,9 @@ const API = (function () {
             const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
             if (fileDir.trim().length > 0)
               this.mkdirp(fileDir)
+
+            if (this.memfs)
+              this.memfs.addFile(record.path, record.contents);
 
             this.hostWrite('\n\rLoading: ' + record.path + '\n\r')
           } catch (e) {
@@ -936,6 +1326,9 @@ const API = (function () {
             const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
             if (fileDir.trim().length > 0)
               this.mkdirp(fileDir)
+
+            if (this.memfs)
+              this.memfs.addFile(record.path, record.contents);
 
             this.hostWrite('\n\rLoading: ' + record.path + '\n\r')
           } catch (e) {
@@ -981,6 +1374,9 @@ const API = (function () {
             const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
             if (fileDir.trim().length > 0)
               this.mkdirp(fileDir)
+
+            if (this.memfs)
+              this.memfs.addFile(record.path, record.contents);
 
             this.hostWrite('\n\rLoading: ' + record.path + '\n\r')
           } catch (e) {

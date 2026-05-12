@@ -85,6 +85,8 @@ function Sys_FOpen(filename, mode) {
 	}
 	let modeStr = addressToString(mode)
 	let localName = fileStr.trim()
+
+	console.log(localName)
 	if (localName.startsWith('/')) localName = localName;
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
@@ -197,6 +199,7 @@ function fd_seek(fd, offset, whence, newOffsetPtr) {
 
 	const stream = FS.pointers[fd];
 	if (!stream) return 8; // WASI_EBADF
+	console.log(stream[3])
 
 	// 1. Force everything to BigInt for consistent 64-bit math
 	let bigOffset = BigInt(offset);
@@ -677,7 +680,9 @@ function fd_filestat_get(fd, bufPtr) {
 
 
 	const stream = FS.pointers[fd];
+
 	if (!stream) return 8; // WASI_EBADF
+	console.log(stream[3])
 
 	const view = new DataView(Module.memory.buffer);
 
@@ -834,6 +839,10 @@ function fd_fdstat_get(fd, bufPtr) {
 
 
 	const stream = FS.pointers[fd];
+	
+	if (!stream) return 8; // WASI_EBADF
+	console.log(stream[3])
+
 	const view = new DataView(Module.memory.buffer);
 
 	// 1. Determine WASI Type
@@ -878,7 +887,7 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
     let written = 0;
 
     // 1. Get the stream/pointer object for this FD
-    const stream = FS.pointers[fd];
+	const stream = FS.pointers[fd];
     if (!stream) return 8; // WASI_EBADF
 
     // 2. Collect all bytes from iovs into one Uint8Array
@@ -901,14 +910,14 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
             totalBuf.set(b, offset);
             offset += b.byteLength;
         }
-        
+
         if (typeof Module.hostWrite !== 'undefined') {
             Module.hostWrite(String.fromCharCode.apply(null, totalBuf));
         }
         view.setUint32(nwritten, written, true);
         return 0;
-    }
-
+        }
+        
     // 4. Handle Actual File Write (fd > 2)
     // stream layout: [position, mode, node, path, fd]
     let pos = stream[0];
@@ -935,7 +944,7 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
         node.contents.set(b, currentOffset);
         currentOffset += b.byteLength;
     }
-
+	
     // 5. Update the seek position for the next write
     stream[0] = currentOffset;
 
@@ -1016,6 +1025,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 
 	// 2. Resolve Full Path relative to dirfd
 	let localName = path.trim();
+	console.log(localName)
 	if (localName.startsWith('/')) localName = localName;
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
@@ -1102,6 +1112,7 @@ function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 
     // 1. Normalize Path - MUST MATCH YOUR path_open LOGIC EXACTLY
     let localName = path;
+	console.log(localName)
     if (localName.startsWith('base/')) localName = localName.substring(5);
     if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
     if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
@@ -1118,7 +1129,8 @@ function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 
     // ino (8) - Use small stable IDs to avoid 32-bit guest overflows
 	let myNode = Object.values(FS.pointers).find(p => p && p[3] == localName)
-    if (!myNode) {
+	if (!myNode) {
+		/*
 		FS.filePointer++
 		FS.pointers[FS.filePointer] = [
 			0, // seek/tell
@@ -1128,10 +1140,13 @@ function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 			FS.filePointer
 		]
 		myNode = FS.filePointer
+		*/
     }
 	else
+	{
 		myNode = myNode[4]
-    view.setBigUint64(bufPtr + 8, BigInt(myNode), true);
+    	view.setBigUint64(bufPtr + 8, BigInt(myNode), true);
+	}
 
     // type (16)
     const isDir = (file.mode >> 12) === 4;
@@ -1161,43 +1176,48 @@ function writeU32(ptr, value) {
     view.setUint32(addr, value, true);
 }
 
+
 function fd_read(fd, iovs, iovsLen, nreadPtr) {
-    const stream = FS.pointers[Number(fd)];
-    if (!stream) return 8; // EBADF
 
-    const node = stream[2];
-    const contents = node.contents; // The Uint8Array
-    let pos = Number(stream[0]); // Current seek position
-    let totalRead = 0;
+	const stream = FS.pointers[fd];
+	if (!stream) return 8; // WASI_EBADF
 
-    const view = new DataView(Module.memory.buffer);
-    const iovs_ptr = Number(iovs);
+	console.log(stream[3])
 
-    for (let i = 0; i < Number(iovsLen); i++) {
-        const iovAddr = iovs_ptr + (i * 8);
-        const bufAddr = view.getUint32(iovAddr, true);
-        const bufLen = view.getUint32(iovAddr + 4, true);
+	const view = new DataView(Module.memory.buffer);
+	const contents = stream[2].contents; // Uint8Array of file data
+	let offset = stream[0]; // Current seek position
+	let totalRead = 0;
 
-        const available = contents.byteLength - pos;
-        const toRead = Math.min(bufLen, available);
+	for (let i = 0; i < iovsLen; i++) {
+		const iovPtr = iovs + (i * 8);
+		const bufOffset = view.getUint32(iovPtr, true);
+		const bufLen = view.getUint32(iovPtr + 4, true);
 
-        if (toRead > 0) {
-            const dest = new Uint8Array(Module.memory.buffer, bufAddr, toRead);
-            dest.set(contents.subarray(pos, pos + toRead));
-            pos += toRead;
-            totalRead += toRead;
-        }
-        if (toRead < bufLen) break;
-    }
+		const available = contents.length - offset;
+		const toRead = Math.min(bufLen, available);
 
-    stream[0] = pos; // Update global seek position
-    writeU32(nreadPtr, totalRead);
-    return 0;
+		if (toRead > 0) {
+			const heap = new Uint8Array(Module.memory.buffer);
+			heap.set(contents.subarray(offset, offset + toRead), bufOffset);
+			offset += toRead;
+			totalRead += toRead;
+		}
+
+		if (toRead < bufLen) break;
+	}
+
+	stream[0] = offset; // Update seek position
+	view.setUint32(nreadPtr, totalRead, true);
+	return 0; // WASI_ESUCCESS
 }
+
+
 
 function fd_pread(fd, iovs, iovsLen, offset, nreadPtr) {
     const stream = FS.pointers[Number(fd)];
     if (!stream) return 8;
+	console.log(stream[3])
 
     const node = stream[2];
     const contents = node.contents;
@@ -1246,6 +1266,8 @@ function fd_readdir(fd, buf, buf_len, cookie, nread_ptr) {
 	heap.set(name_bytes, offset + 24);
 
 	offset += 24 + name_bytes.length;
+	view.setUint32(nread_ptr, offset, true);
+	return 0;
 }
 
 
@@ -1263,9 +1285,9 @@ function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
     
     // 1. Normalize path
     let localName = path;
-    if (localName.startsWith('/')) localName = localName.substring;
+    if (localName.startsWith('/')) localName = localName.substring(1);
     if (localName.startsWith('base/')) localName = localName.substring(5);
-    if (localName.startsWith('/')) localName = localName.substring;
+    if (localName.startsWith('/')) localName = localName.substring(1);
 
     const file = FS.virtual[localName];
 
@@ -1360,9 +1382,16 @@ const FILED = {
 	clock_time_get: clock_gettime,
 	poll_oneoff: poll_oneoff,
 	proc_exit: proc_exit,
-
+	getpid: getpid,
+	fork: fork,
+	wait: wait,
+	execv: execv
 }
 
+function getpid() { return 42; }
+function fork() { Module.errno = ENOSYS; return -1; }
+function wait(status) { Module.errno = ENOSYS; return -1; }
+function execv(path, ...argv) { Module.errno = ENOSYS; return -1; }
 
 function path_unlink_file(dirfd, pathPtr, pathLen) {
     const buffer = Module.memory.buffer;

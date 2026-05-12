@@ -59,7 +59,7 @@ const loadedDatabases = {}
 let engineRepo = 'briancullinan2/Quake3e'
 let gameRepo = 'ec-/baseq3a'
 let assetRepo = null
-let toolsRepo = 'ec-/q3lcc'
+let toolsRepo = 'briancullinan2/q3lcc'
 let toolsRepo2 = 'ec-/q3asm'
 
 async function initializeFiletrees() {

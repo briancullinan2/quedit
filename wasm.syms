@@ -21,6 +21,10 @@ Sys_ListFiles
 Sys_umask
 CL_Try_Fail_LoadJPG
 
+getpid
+fork
+wait
+execv
 Sys_exec
 Sys_execv
 Sys_Exit

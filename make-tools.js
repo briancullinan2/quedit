@@ -51,6 +51,11 @@ const LCC_CFLAGS = [
     "-O2",
     "-Wall",
     "-Wno-dangling-else",
+    "-Wno-logical-not-parentheses",
+    "-Wno-missing-braces",
+    "-Wno-parentheses",
+    "-Wno-logical-op-parentheses",
+    "-Wno-unused",
     '-ferror-limit', '100',
     //'-c',
     //"-fno-strict-aliasing",
@@ -73,6 +78,7 @@ const LCC_CFLAGS = [
     "-fno-use-init-array",
     "-fno-threadsafe-statics",
     //"-fno-inline",
+    //'-mlong-double-64',
     "-mrelocation-model",
     "static",
     //"-target-feature",
@@ -116,6 +122,8 @@ const toolLdFlags = [
     '-z', `stack-size=${1024*1024}`, 
     '-Llib/wasm32-wasi', 
     'lib/wasm32-wasi/crt1.o',
+    '-Llib/clang/8.0.1/lib/wasi',
+    '-lclang_rt.builtins-wasm32',
     ...undefinedFlags,
     //"--growable-table",
     // Link against the builtins and libc.a
@@ -227,6 +235,8 @@ async function buildTools(database = null) {
                 const dagMd = "src/dagcheck.md";
                 const dagC = path.join(CONFIGURATION, "src/dagcheck.c");
 
+
+                await cacheFile(ownerName, repoName, dagMd, (FILELIST[dagMd] || {}).sha);
                 // Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
                 
                 log(`BURG: ${dagMd}`);
@@ -258,9 +268,7 @@ async function buildTools(database = null) {
         ], obj: rccObjs, database, wasm: rccExe
     });
 
-
-return
-
+    
     // 3. Build CPP (Preprocessor)
     log("Building CPP...");
     const cppObjs = [];

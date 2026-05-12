@@ -482,7 +482,7 @@ const undefinedFlags = [
 ];
 
 const includeFlags = [
-    '-lc', '-lc++', '-lc++abi', '-lcanvas'
+    '-lc', '-lc++', '-lc++abi'
 ]
 
 // Final Assembly based on platform
@@ -822,7 +822,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                         path: header,
                         sha: await getGitShaBrowser()
                     }
-                    
+                    await putRecord(DB_STORE_NAME, FS.virtual[header], thisDatabase)
                 }
                 else {
                     // cacheFile handles the storage logic
