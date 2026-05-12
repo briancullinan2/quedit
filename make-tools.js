@@ -223,6 +223,9 @@ async function buildTools(database = null) {
         ], obj: lburgObjs, database, wasm: lburgExe
     });
 
+
+
+
     // 2. Build RCC (The Compiler Core)
     log("Building RCC...");
     const rccObjs = [];
@@ -268,7 +271,7 @@ async function buildTools(database = null) {
         ], obj: rccObjs, database, wasm: rccExe
     });
 
-    
+
     // 3. Build CPP (Preprocessor)
     log("Building CPP...");
     const cppObjs = [];

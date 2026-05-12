@@ -252,16 +252,29 @@ async function handleCommand(input) {
             })
         },
         'lburg': async (argv) => {
+            let selected = toolsRepo || argv[1] || database
+            let parts = selected.split('/')
+            let ownerName = parts.length == 2 ? parts[0] : owner.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
+            if(!files.selected)
+            {
+                let branch = await getDefaultBranch(ownerName, repoName)
+                await loadGitHubTree(ownerName, repoName, branch)
+            }
 
             let CONFIGURATION = configuration.value == 'release'
                 ? dirs.ENGINE_RELEASE
                 : dirs.ENGINE_DEBUG
 
+
             let paths = [
                 argv[0] || 'src/dagcheck.md',
                 argv[1] || path.join(CONFIGURATION, argv[0] ? argv[0].replace('.md', '.c') : 'src/dagcheck.c'),
             ]
+            
+            await cacheFile(ownerName, repoName, paths[0], (files[selected][paths[0]] || {}).sha);
+
 
             let args = [
                 'lburg.js.wasm',
@@ -272,7 +285,7 @@ async function handleCommand(input) {
             return await api.run({
                 tool: 'lburg.js.wasm',
                 args: args,
-                database: toolsRepo,
+                database: selected,
                 paths: paths
             })
         },

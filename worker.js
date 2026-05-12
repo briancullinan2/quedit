@@ -25,7 +25,7 @@ const Module = {
 
 }
 const ENV = {
-    wasi_unstable: {}
+  wasi_unstable: {}
 }
 ENV.ENV = ENV
 const window = self
@@ -238,6 +238,9 @@ const onAnyMessage = async event => {
               if (!record) continue
               FS.virtual[record.path] = record
 
+              if (api.memfs)
+                api.memfs.addFile(record.path, record.contents);
+
               api.hostWrite('\n\rLoading: ' + record.path + '\n\r')
             } catch (e) {
               console.log(e)
@@ -251,6 +254,33 @@ const onAnyMessage = async event => {
           event.data.data.tool,
           ...event.data.data.args || []
         );
+
+        if (paths && api.database && api.memfs) {
+          for (var filePath of paths) {
+            if (!filePath) continue
+            try {
+
+
+              if (this.memfs.exists(filePath)) {
+                var bytes = this.memfs.getFileContents(filePath)
+                FS.virtual[filePath] = {
+                  timestamp: new Date(),
+                  mode: FS_FILE,
+                  contents: bytes,
+                  path: filePath,
+                }
+
+                if (options.database)
+                  await putRecord(DB_STORE_NAME, FS.virtual[filePath], options.database)
+
+                api.hostWrite('\n\rSucceeded: ' + filePath + '\n\r')
+              }
+
+            } catch (e) {
+              console.log(e)
+            }
+          }
+        }
 
       }
       catch (e) {

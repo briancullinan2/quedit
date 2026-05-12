@@ -121,6 +121,7 @@ function Sys_FOpen(filename, mode) {
 				|| parentDirectory.length == 0)
 		) {
 			// create the file for write because the parent directory exists
+			debugger
 			FS.virtual[localName] = {
 				timestamp: new Date(),
 				mode: FS_FILE,
@@ -927,6 +928,7 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 
     // Ensure node.contents is a Uint8Array
     if (!(node.contents instanceof Uint8Array)) {
+		debugger
         node.contents = new Uint8Array(0);
     }
 
@@ -1042,6 +1044,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	if (!exists) {
 		if (oflags & O_CREAT) {
 			// Create a new virtual node
+			debugger
 			FS.virtual[localName] = {
 				contents: new Uint8Array(0),
 				timestamp: new Date(),
@@ -1055,8 +1058,9 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	} else {
 		if ((oflags & O_CREAT) && (oflags & O_EXCL)) return 20; // WASI_EEXIST
 		if (oflags & O_TRUNC) {
-			FS.virtual[localName].contents = new Uint8Array(0);
-			FS.virtual[localName].size = 0;
+			debugger
+			//FS.virtual[localName].contents = new Uint8Array(0);
+			//FS.virtual[localName].size = 0;
 		}
 	}
 

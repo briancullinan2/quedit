@@ -543,11 +543,40 @@ const API = (function () {
       //  'errno': Module.errno
       //}
 
-      if (!module.name.includes('wasm-ld')
-        && !module.name.includes('clang'))
-        Object.assign(wasi_unstable, FS);
-      else
-        Object.assign(wasi_unstable, this.api.memfs.exports);
+      let needMemfs = module.name.includes('wasm-ld')
+        || module.name.includes('clang')
+
+      //if (!module.name.includes('wasm-ld')
+      //  && !module.name.includes('clang'))
+      Object.assign(wasi_unstable, FS);
+      //else
+      //  Object.assign(wasi_unstable, this.api.memfs.exports);
+      if (needMemfs) {
+        //wasi_unstable.fd_prestat_dir_name = this.api.memfs.exports.fd_prestat_dir_name
+        //wasi_unstable.fd_prestat_get = this.api.memfs.exports.fd_prestat_get
+        wasi_unstable.path_open = this.api.memfs.exports.path_open
+        wasi_unstable.fd_read = this.api.memfs.exports.fd_read
+        wasi_unstable.fd_pread = this.api.memfs.exports.fd_pread
+        wasi_unstable.fd_seek = this.api.memfs.exports.fd_seek
+        wasi_unstable.fd_filestat_get = this.api.memfs.exports.fd_filestat_get
+        wasi_unstable.fd_fdstat_get = this.api.memfs.exports.fd_fdstat_get
+        wasi_unstable.path_filestat_get = this.api.memfs.exports.path_filestat_get
+        wasi_unstable.path_rename = this.api.memfs.exports.path_rename
+        //wasi_unstable.fd_readdir = this.api.memfs.exports.fd_readdir
+        //wasi_unstable.fd_close = this.api.memfs.exports.fd_close
+        //wasi_unstable.path_unlink_file = this.api.memfs.exports.path_unlink_file
+        //wasi_unstable.path_readlink = this.api.memfs.exports.path_readlink
+
+        //wasi_unstable.fd_allocate = this.api.memfs.exports.fd_allocate
+        //wasi_unstable.fd_fdstat_set_flags = this.api.memfs.exports.fd_fdstat_set_flags
+        //wasi_unstable.fd_filestat_set_size = this.api.memfs.exports.fd_filestat_set_size
+        wasi_unstable.fd_write = this.api.memfs.exports.fd_write
+        //wasi_unstable.path_create_directory = this.api.memfs.exports.path_create_directory
+        //wasi_unstable.path_remove_directory = this.api.memfs.exports.path_remove_directory
+        //wasi_unstable.path_symlink = this.api.memfs.exports.path_symlink
+      }
+
+
       Object.assign(env, wasi_unstable)
       const imports = WebAssembly.Module.imports(module);
 
@@ -1040,8 +1069,12 @@ const API = (function () {
 
         if (this.memfs && this.memfs.exists(filePath)) {
           contents = this.memfs.getFileContents(filePath)
+          if (!FS.virtual[filePath] || !FS.virtual[filePath].contents || FS.virtual[filePath].contents.length == 0) {
+            console.error('Assetion virtual fs not empty for wasm:' + name)
+            debugger
+          }
         }
-        if (FS.virtual[filePath]) {
+        else if (FS.virtual[filePath]) {
           contents = FS.virtual[filePath].contents
         }
 
@@ -1217,6 +1250,7 @@ const API = (function () {
         if (options.database)
           await putRecord(DB_STORE_NAME, FS.virtual[obj], options.database)
 
+        this.hostWrite('\n\rSucceeded: ' + obj + '\n\r')
       }
 
       if (options.database && FS.virtual[obj])
@@ -1333,8 +1367,9 @@ const API = (function () {
             if (fileDir.trim().length > 0)
               this.mkdirp(fileDir)
 
-            if (this.memfs)
+            if (this.memfs) {
               this.memfs.addFile(record.path, record.contents);
+            }
 
             this.hostWrite('\n\rLoading: ' + record.path + '\n\r')
           } catch (e) {
@@ -1364,6 +1399,7 @@ const API = (function () {
         if (options.database)
           await putRecord(DB_STORE_NAME, FS.virtual[wasm], options.database)
 
+        this.hostWrite('\n\rSucceeded: ' + wasm + '\n\r')
       }
 
       if (options.database && FS.virtual[wasm])
@@ -1427,6 +1463,7 @@ const API = (function () {
         msg += `/${msToSec(instantiate, end)}s)${normal}\n`;
         this.hostWrite(msg);
       }
+
       return stillRunning ? app : null;
     }
 
