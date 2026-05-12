@@ -132,6 +132,16 @@ function tokenize(input) {
 }
 
 
+const formatBytes = (bytes) => {
+    if (bytes === 0) return '0B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + sizes[i];
+};
+
+const CWD = ''
+
 async function handleCommand(input) {
     const database = owner.value + '/' + repo.value
     const tokens = tokenize(input.trim());
@@ -147,6 +157,78 @@ async function handleCommand(input) {
     const [command, ...args] = tokens;
 
     const commands = {
+        mount: async (argv) => {
+            let selected = argv[0] || database
+            let parts = selected.split('/')
+            let ownerName = parts.length == 2 ? parts[0] : owner.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+            await readAll(selected)
+        },
+        ls: async (argv) => {
+            let selected = toolsRepo || database
+            let parts = selected.split('/')
+            let ownerName = parts.length == 2 ? parts[0] : owner.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+            if(!files[selected])
+            {
+                let branch = await getDefaultBranch(ownerName, repoName)
+                await loadGitHubTree(ownerName, repoName, branch)
+            }
+
+            const flags = {
+                recursive: argv.includes('-R'),
+                human: argv.includes('-h'),
+                flat: argv.includes('-1')
+            };
+
+            // Assuming FS.virtual.readdir returns objects with {name, size, type}
+            const entries = Object.values(FS.virtual)
+            .concat(Object.values(files[selected] || {}) || [])
+            .filter(p => {
+                if(!p.path)
+                {
+                    debugger
+                }
+                let compare = CWD
+                let startMatch = false
+                let subMatch = false
+                if(compare.trim().length == 0)
+                    compare = '/'
+                if(!compare.endsWith('/'))
+                    compare += '/'
+
+                let path = p.path
+                if(!path.startsWith('/'))
+                    path = '/' + path
+                if(path.startsWith(compare))
+                    startMatch = true
+                if(flags.recursive || path.substring(compare.length).indexOf('/') === -1)
+                    subMatch = true
+                return startMatch && (flags.recursive || subMatch)
+            });
+
+
+            if (flags.flat) {
+                entries.forEach(e => term.writeln(e.path));
+            } else {
+                // Calculate column width for alignment
+                const maxName = Math.max(...entries.map(e => e.path.length), 10);
+
+                term.writeln(`${'NAME'.padEnd(maxName + 2)}${'SIZE'.padEnd(10)}TYPE`);
+                term.writeln('-'.repeat(maxName + 20));
+
+                entries.forEach(e => {
+                    const size = e.contents ? flags.human ? formatBytes(e.contents.length) : e.contents.length.toString() : '0B';
+                    const nameStr = e.path.padEnd(maxName + 2);
+                    const sizeStr = size.padEnd(10);
+                    const color = e.mode === FS_DIR ? '\x1b[1;34m' : '\x1b[0m'; // Blue for dirs
+
+                    term.writeln(`${color}${nameStr}\x1b[0m${sizeStr}${e.mode}`);
+                });
+            }
+        },
         help: () => {
             term.write('Available commands: help, clear, build, set');
         },
@@ -257,8 +339,7 @@ async function handleCommand(input) {
             let ownerName = parts.length == 2 ? parts[0] : owner.value
             let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
-            if(!files.selected)
-            {
+            if (!files.selected) {
                 let branch = await getDefaultBranch(ownerName, repoName)
                 await loadGitHubTree(ownerName, repoName, branch)
             }
@@ -272,7 +353,7 @@ async function handleCommand(input) {
                 argv[0] || 'src/dagcheck.md',
                 argv[1] || path.join(CONFIGURATION, argv[0] ? argv[0].replace('.md', '.c') : 'src/dagcheck.c'),
             ]
-            
+
             await cacheFile(ownerName, repoName, paths[0], (files[selected][paths[0]] || {}).sha);
 
 
@@ -290,12 +371,13 @@ async function handleCommand(input) {
             })
         },
         clone: async (argv) => {
-            let parts = (argv[0] || toolsRepo || 'briancullinan2/quedit').split('/')
+            let selected = argv[0] || toolsRepo || 'briancullinan2/quedit'
+            let parts = selected.split('/')
             let ownerName = parts.length == 2 ? parts[0] : owner.value
             let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
             var branch = argv[1]
-            if(!branch) {
+            if (!branch) {
                 branch = await getDefaultBranch(ownerName, repoName)
             }
             await loadGitHubTree(ownerName, repoName, branch)
