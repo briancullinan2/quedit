@@ -739,7 +739,7 @@ async function build(database = null, noBounce = false) {
             let objRecord = await getRecord(DB_STORE_NAME, obj, database)
             FS.virtual[obj] = objRecord
 
-            
+
             log(`CC: ${shader}`);
 
             if (FS.virtual[obj]
@@ -809,18 +809,17 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                 let thisOwner = ownerName
                 let thisRepo = repoName
                 if (header.includes('wasm.syms')) {
-                    thisDatabase = engineRepo
-                    let parts = thisDatabase.split('/')
-                    thisOwner = parts.length == 2 ? parts[0] : owner.value
-                    thisRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
-                    let response = await fetch('wasm.syms');
-                    let contents = await response.arrayBuffer()
-                    FS.virtual[header] = {
+                    //let response = await fetch('wasm.syms');
+                    //let contents = await response.arrayBuffer()
+                    await cacheFile('briancullinan2', 'quedit', 'wasm.syms');
+                    FS.virtual[header] =
+                    {
                         timestamp: new Date(),
                         mode: FS_FILE,
-                        contents: contents,
+                        contents: FS.virtual['wasm.syms'].contents,
                         path: header,
-                        sha: await getGitShaBrowser()
+                        sha: FS.virtual['wasm.syms'].sha
+
                     }
                     await putRecord(DB_STORE_NAME, FS.virtual[header], thisDatabase)
                 }

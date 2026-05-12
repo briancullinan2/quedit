@@ -1,8 +1,8 @@
 
 
 let savedToken
-if(typeof localStorage != 'undefined')
- savedToken = localStorage.getItem('github_token');
+if (typeof localStorage != 'undefined')
+    savedToken = localStorage.getItem('github_token');
 
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false) {
     if (!savedToken)
@@ -189,9 +189,13 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
         path: filePath,
         sha: jsonResponse.sha
     }
-    // async to filesystem
-    // does it REALLY matter if it makes it? wont it just redownload?
-    await putRecord(DB_STORE_NAME, FS.virtual[filePath], repoOwner + '/' + repoName)
+    try {
+        // async to filesystem
+        // does it REALLY matter if it makes it? wont it just redownload?
+        await putRecord(DB_STORE_NAME, FS.virtual[filePath], repoOwner + '/' + repoName)
+    } catch (e) {
+
+    }
 
     const decoder = new TextDecoder();
     const str = decoder.decode(bytes);

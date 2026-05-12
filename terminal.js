@@ -240,7 +240,9 @@ async function handleCommand(input) {
         run: async (argv) => {
 
             let thisDatabase = database
-            if (argv[0].includes('lburg'))
+            if (argv[0].includes('lburg')
+                || argv[0].includes('q3lcc')
+            )
                 thisDatabase = toolsRepo
 
             return await api.run({

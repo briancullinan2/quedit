@@ -543,10 +543,12 @@ const API = (function () {
       //  'errno': Module.errno
       //}
 
-      if (module.name.includes('lburg'))
+      if (!module.name.includes('wasm-ld')
+        && !module.name.includes('clang'))
         Object.assign(wasi_unstable, FS);
       else
         Object.assign(wasi_unstable, this.api.memfs.exports);
+      Object.assign(env, wasi_unstable)
       const imports = WebAssembly.Module.imports(module);
 
       this.ready = getInstance(module, { wasi_unstable, env }).then(instance => {
@@ -1014,7 +1016,10 @@ const API = (function () {
       return [
         name,
         'build/release-wasm-js/' + name,
-        'build/debug-wasm-js/' + name
+        'build/debug-wasm-js/' + name,
+        name + '.js.wasm',
+        'build/release-wasm-js/' + name + '.js.wasm',
+        'build/debug-wasm-js/' + name + '.js.wasm',
       ]
     }
 
@@ -1023,6 +1028,7 @@ const API = (function () {
       if (this.moduleCache[name]) return this.moduleCache[name];
 
       for (let look of this.commonPaths(name)) {
+        if (!look) continue
         let filePath = look
         let contents
         if (database || this.database) {
@@ -1201,7 +1207,7 @@ const API = (function () {
       var result = await this.run(clang, 'clang', ...options.CFLAGS || []);
       if (this.memfs) {
         var bytes = this.memfs.getFileContents(obj)
-        var newFile = {
+        FS.virtual[obj] = {
           timestamp: new Date(),
           mode: FS_FILE,
           contents: bytes,
@@ -1209,7 +1215,7 @@ const API = (function () {
         }
 
         if (options.database)
-          await putRecord(DB_STORE_NAME, newFile, options.database)
+          await putRecord(DB_STORE_NAME, FS.virtual[obj], options.database)
 
       }
 
@@ -1345,6 +1351,20 @@ const API = (function () {
 
       await this.run(
         lld, 'wasm-ld', ...options.LDFLAGS || [])
+
+      if (wasm && this.memfs) {
+        var bytes = this.memfs.getFileContents(wasm)
+        FS.virtual[wasm] = {
+          timestamp: new Date(),
+          mode: FS_FILE,
+          contents: bytes,
+          path: wasm,
+        }
+
+        if (options.database)
+          await putRecord(DB_STORE_NAME, FS.virtual[wasm], options.database)
+
+      }
 
       if (options.database && FS.virtual[wasm])
         await putRecord(DB_STORE_NAME, FS.virtual[wasm], options.database)
