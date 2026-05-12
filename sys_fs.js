@@ -1059,8 +1059,8 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 		if ((oflags & O_CREAT) && (oflags & O_EXCL)) return 20; // WASI_EEXIST
 		if (oflags & O_TRUNC) {
 			debugger
-			//FS.virtual[localName].contents = new Uint8Array(0);
-			//FS.virtual[localName].size = 0;
+			FS.virtual[localName].contents = new Uint8Array(0);
+			FS.virtual[localName].size = 0;
 		}
 	}
 
@@ -1080,7 +1080,8 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 			FS.filePointer
 		]
 		// DO THIS ON OPEN SO WE CAN CHANGE ICONS
-		Sys_notify(FS.virtual[localName], localName)
+		if(!(oflags & O_TRUNC))
+			Sys_notify(FS.virtual[localName], localName)
 		return FS.filePointer // not zero
 	}
 

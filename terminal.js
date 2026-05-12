@@ -289,6 +289,21 @@ async function handleCommand(input) {
                 paths: paths
             })
         },
+        clone: async (argv) => {
+            let parts = (argv[0] || toolsRepo || 'briancullinan2/quedit').split('/')
+            let ownerName = parts.length == 2 ? parts[0] : owner.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+            var branch = argv[1]
+            if(!branch) {
+                branch = await getDefaultBranch(ownerName, repoName)
+            }
+            await loadGitHubTree(ownerName, repoName, branch)
+
+            term.write('Checked out: ' + branch + ' from ' + ownerName + '/' + repoName);
+
+            // TODO: switch to aux filelist and display
+        },
         'lcc': (argv) => commands['clang'](argv),
         'rcc': (argv) => commands['clang'](argv),
         'ld': (argv) => commands['clang'](argv),

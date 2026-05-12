@@ -811,6 +811,8 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                 if (header.includes('wasm.syms')) {
                     //let response = await fetch('wasm.syms');
                     //let contents = await response.arrayBuffer()
+                    if(!files['briancullinan2/quedit'])
+                        await loadGitHubTree('briancullinan2', 'quedit', 'main')
                     await cacheFile('briancullinan2', 'quedit', 'wasm.syms');
                     FS.virtual[header] =
                     {
