@@ -960,7 +960,6 @@ const API = (function () {
     }
 
     async run(module, ...args) {
-      this.hostLog(`${args.join(' ')}\n`);
       await this.ready
 
       if (typeof module === 'string') {
@@ -997,6 +996,7 @@ const API = (function () {
       if (args.length == 0)
         args[0] = module.name
 
+      this.hostLog(`${args.join(' ')}\n`);
 
       const start = +new Date();
       const app = new App(this, this.hostWrite, module, this.sysrootFilename, ...args || []);

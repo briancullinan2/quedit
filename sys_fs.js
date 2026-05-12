@@ -1091,9 +1091,9 @@ function _fd_close(fd) {
 	}
 }
 
-const ST_INSTABLE_DIR = 3
-const ST_INSTABLE_FILE = 4
-const ST_INSTABLE_LINK = 7
+const ST_UNSTABLE_DIR = 3
+const ST_UNSTABLE_FILE = 4
+const ST_UNSTABLE_LINK = 7
 
 function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 
@@ -1135,7 +1135,7 @@ function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 
     // type (16)
     const isDir = (file.mode >> 12) === 4;
-    view.setUint8(bufPtr + 16, isDir ? ST_INSTABLE_DIR : ST_INSTABLE_FILE);
+    view.setUint8(bufPtr + 16, isDir ? ST_UNSTABLE_DIR : ST_UNSTABLE_FILE);
 
     // nlink (20) - 32-bit!
     view.setUint32(bufPtr + 20, 1, true);
@@ -1154,71 +1154,79 @@ function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 
 }
 
-
-function fd_pread(fd, iovs, iovsLen, offset, nreadPtr) {
-
-	const stream = FS.pointers[fd];
-	if (!stream) return 8;
-
-	const view = new DataView(Module.memory.buffer);
-	const contents = stream[2].contents;
-	// offset is a BigInt in many WASI implementations, cast to Number
-	let readOffset = Number(offset);
-	let totalRead = 0;
-
-	for (let i = 0; i < iovsLen; i++) {
-		const iovPtr = iovs + (i * 8);
-		const bufOffset = view.getUint32(iovPtr, true);
-		const bufLen = view.getUint32(iovPtr + 4, true);
-
-		const available = contents.length - readOffset;
-		const toRead = Math.min(bufLen, available);
-
-		if (toRead > 0) {
-			const heap = new Uint8Array(Module.memory.buffer);
-			heap.set(contents.subarray(readOffset, readOffset + toRead), bufOffset);
-			readOffset += toRead;
-			totalRead += toRead;
-		}
-	}
-
-	view.setUint32(nreadPtr, totalRead, true);
-	return 0;
+// Helper to safely write a 32-bit value to a potentially BigInt pointer
+function writeU32(ptr, value) {
+    const addr = Number(ptr); // Force BigInt pointer to Number
+    const view = new DataView(Module.memory.buffer);
+    view.setUint32(addr, value, true);
 }
-
 
 function fd_read(fd, iovs, iovsLen, nreadPtr) {
+    const stream = FS.pointers[Number(fd)];
+    if (!stream) return 8; // EBADF
 
-	const stream = FS.pointers[fd];
-	if (!stream) return 8; // WASI_EBADF
+    const node = stream[2];
+    const contents = node.contents; // The Uint8Array
+    let pos = Number(stream[0]); // Current seek position
+    let totalRead = 0;
 
-	const view = new DataView(Module.memory.buffer);
-	const contents = stream[2].contents; // Uint8Array of file data
-	let offset = stream[0]; // Current seek position
-	let totalRead = 0;
+    const view = new DataView(Module.memory.buffer);
+    const iovs_ptr = Number(iovs);
 
-	for (let i = 0; i < iovsLen; i++) {
-		const iovPtr = iovs + (i * 8);
-		const bufOffset = view.getUint32(iovPtr, true);
-		const bufLen = view.getUint32(iovPtr + 4, true);
+    for (let i = 0; i < Number(iovsLen); i++) {
+        const iovAddr = iovs_ptr + (i * 8);
+        const bufAddr = view.getUint32(iovAddr, true);
+        const bufLen = view.getUint32(iovAddr + 4, true);
 
-		const available = contents.length - offset;
-		const toRead = Math.min(bufLen, available);
+        const available = contents.byteLength - pos;
+        const toRead = Math.min(bufLen, available);
 
-		if (toRead > 0) {
-			const heap = new Uint8Array(Module.memory.buffer);
-			heap.set(contents.subarray(offset, offset + toRead), bufOffset);
-			offset += toRead;
-			totalRead += toRead;
-		}
+        if (toRead > 0) {
+            const dest = new Uint8Array(Module.memory.buffer, bufAddr, toRead);
+            dest.set(contents.subarray(pos, pos + toRead));
+            pos += toRead;
+            totalRead += toRead;
+        }
+        if (toRead < bufLen) break;
+    }
 
-		if (toRead < bufLen) break;
-	}
-
-	stream[0] = offset; // Update seek position
-	view.setUint32(nreadPtr, totalRead, true);
-	return 0; // WASI_ESUCCESS
+    stream[0] = pos; // Update global seek position
+    writeU32(nreadPtr, totalRead);
+    return 0;
 }
+
+function fd_pread(fd, iovs, iovsLen, offset, nreadPtr) {
+    const stream = FS.pointers[Number(fd)];
+    if (!stream) return 8;
+
+    const node = stream[2];
+    const contents = node.contents;
+    const baseOffset = Number(offset); // Handle BigInt offset
+    let totalRead = 0;
+
+    const view = new DataView(Module.memory.buffer);
+    const iovs_ptr = Number(iovs);
+
+    for (let i = 0; i < Number(iovsLen); i++) {
+        const iovAddr = iovs_ptr + (i * 8);
+        const bufAddr = view.getUint32(iovAddr, true);
+        const bufLen = view.getUint32(iovAddr + 4, true);
+
+        const available = contents.byteLength - (baseOffset + totalRead);
+        const toRead = Math.min(bufLen, available);
+
+        if (toRead > 0) {
+            const dest = new Uint8Array(Module.memory.buffer, bufAddr, toRead);
+            dest.set(contents.subarray(baseOffset + totalRead, baseOffset + totalRead + toRead));
+            totalRead += toRead;
+        }
+        if (toRead < bufLen) break;
+    }
+
+    writeU32(nreadPtr, totalRead);
+    return 0;
+}
+
 
 function fd_readdir(fd, buf, buf_len, cookie, nread_ptr) {
 	debugger

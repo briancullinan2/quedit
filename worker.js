@@ -19,6 +19,7 @@ self.importScripts('local.js');
 self.importScripts('sys_fs.js');
 self.importScripts('sys_std.js');
 self.importScripts('sys_web.js');
+self.importScripts('github.js');
 
 const Module = {
 

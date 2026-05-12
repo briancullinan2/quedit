@@ -813,13 +813,13 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                     let parts = thisDatabase.split('/')
                     thisOwner = parts.length == 2 ? parts[0] : owner.value
                     thisRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
-                    let response = await fetch(filename);
+                    let response = await fetch('wasm.syms');
                     let contents = await response.arrayBuffer()
-                    FS.virtual[filename] = {
+                    FS.virtual[header] = {
                         timestamp: new Date(),
                         mode: FS_FILE,
                         contents: contents,
-                        path: filename,
+                        path: header,
                         sha: await getGitShaBrowser()
                     }
                     

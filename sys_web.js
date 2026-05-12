@@ -336,8 +336,9 @@ function Sys_Frame() {
 	}
 }
 
-function Sys_notify(ifile, path, fp) {
+async function Sys_notify(ifile, path, fp) {
 	var database = Module.database || owner.value + '/' + repo.value
+	ifile.sha = await getGitShaBrowser(ifile.contents)
 	getDB(database).then(function (db) {
 		putRecord(DB_STORE_NAME, ifile, database)
 	})

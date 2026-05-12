@@ -1,6 +1,8 @@
 
 
-let savedToken = localStorage.getItem('github_token');
+let savedToken
+if(typeof localStorage != 'undefined')
+ savedToken = localStorage.getItem('github_token');
 
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false) {
     if (!savedToken)
@@ -124,7 +126,7 @@ async function loadFileTree(repoOwner, repoName, branch, selector) {
 async function getGitShaBrowser(content) {
     const encoder = new TextEncoder();
     let contentBytes
-    if (filename instanceof Uint8Array || filename instanceof ArrayBuffer) {
+    if (content instanceof Uint8Array || content instanceof ArrayBuffer) {
         contentBytes = content
     }
     else {

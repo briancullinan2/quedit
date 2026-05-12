@@ -154,7 +154,7 @@ async function buildTools(database = null) {
     // Helper to compile a single tool component
     const compileToolFile = async (src, obj, includeDir, extraFlags = []) => {
         try {
-            const sha = FILELIST[src].sha;
+            const sha = (FILELIST[src] || {}).sha;
             const content = await cacheFile(ownerName, repoName, src, sha);
 
 
