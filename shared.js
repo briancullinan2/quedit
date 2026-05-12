@@ -543,32 +543,36 @@ const API = (function () {
       //  'errno': Module.errno
       //}
 
-      let needMemfs = module.name.includes('wasm-ld')
+      let needMemfs = module.name.includes('lld')
         || module.name.includes('clang')
 
-      if (!wasi_unstable.table) {
-        const importTable = new WebAssembly.Table({
-          initial: 2000,
-          element: 'anyfunc',
-          maximum: 10000
-        })
-        wasi_unstable.table = ENV.__indirect_function_table = importTable
+      if (!needMemfs) {
+        if (!wasi_unstable.table) {
+          const importTable = new WebAssembly.Table({
+            initial: 2000,
+            element: 'anyfunc',
+            maximum: 10000
+          })
+          wasi_unstable.table = ENV.__indirect_function_table = importTable
+        }
+        if (!wasi_unstable.memory) {
+          ENV.memory = Module.memory = wasi_unstable.memory = new WebAssembly.Memory({
+            initial: 4096,
+            maximum: 32000,
+            //'shared': true
+          })
+        }
+        wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
+        wasi_unstable.imports = wasi_unstable
+        Object.assign(wasi_unstable, FS);
+        debugger
       }
-      if (!wasi_unstable.memory) {
-        ENV.memory = Module.memory = wasi_unstable.memory = new WebAssembly.Memory({
-          initial: 4096,
-          maximum: 32000,
-          /* 'shared': true */
-        })
+      else {
+        Object.assign(wasi_unstable, this.api.memfs.exports);
+
       }
 
-      // weird stuff WebAssembly requires
-      wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
-      wasi_unstable.imports = wasi_unstable
 
-      //if (!module.name.includes('wasm-ld')
-      //  && !module.name.includes('clang'))
-      Object.assign(wasi_unstable, FS);
 
       Object.assign(wasi_unstable, {
         fork: () => 0,
@@ -581,7 +585,6 @@ const API = (function () {
       });
 
       //else
-      //  Object.assign(wasi_unstable, this.api.memfs.exports);
       if (needMemfs) {
         //wasi_unstable.fd_prestat_dir_name = this.api.memfs.exports.fd_prestat_dir_name
         //wasi_unstable.fd_prestat_get = this.api.memfs.exports.fd_prestat_get
@@ -593,7 +596,7 @@ const API = (function () {
         wasi_unstable.fd_fdstat_get = this.api.memfs.exports.fd_fdstat_get
         wasi_unstable.path_filestat_get = this.api.memfs.exports.path_filestat_get
         wasi_unstable.path_rename = this.api.memfs.exports.path_rename
-        //wasi_unstable.fd_readdir = this.api.memfs.exports.fd_readdir
+        wasi_unstable.fd_readdir = this.api.memfs.exports.fd_readdir
         //wasi_unstable.fd_close = this.api.memfs.exports.fd_close
         //wasi_unstable.path_unlink_file = this.api.memfs.exports.path_unlink_file
         //wasi_unstable.path_readlink = this.api.memfs.exports.path_readlink
@@ -1156,11 +1159,10 @@ const API = (function () {
     }
 
 
-    extract(options, database)
-    {
-      if(options.configuration)
+    extract(options, database) {
+      if (options.configuration)
         this.configuration = options.configuration
-      if(options.github_token)
+      if (options.github_token)
         this.github_token = options.github_token
       if (options.database)
         this.database = options.database || database
@@ -1170,7 +1172,7 @@ const API = (function () {
     async header(filePath) {
       await this.ready;
 
-      if(!this.database)
+      if (!this.database)
         return
 
       let record = await getRecord(DB_STORE_NAME, filePath, this.database)
@@ -1430,42 +1432,41 @@ const API = (function () {
     }
 
 
-    async build(selected, mode = 'all')
-    {
-      if(!selected)
+    async build(selected, mode = 'all') {
+      if (!selected)
         selected = this.database;
       if (mode === 'q3lcc')
-          return await buildLCC(selected)
-        if (mode === 'q3rcc')
-          return await buildRCC(selected)
-        if (mode === 'q3cpp')
-          return await buildCPP(selected)
-        if (mode === 'lburg')
-          return await buildLBurg(selected)
-        if (mode == 'asm')
-          return await buildAsmTool(selected)
+        return await buildLCC(selected)
+      if (mode === 'q3rcc')
+        return await buildRCC(selected)
+      if (mode === 'q3cpp')
+        return await buildCPP(selected)
+      if (mode === 'lburg')
+        return await buildLBurg(selected)
+      if (mode == 'asm')
+        return await buildAsmTool(selected)
 
-        if (mode == 'game')
-          return await buildGame(selected)
-        if (mode == 'cgame')
-          return await buildCGame(selected)
-        if (mode == 'ui')
-          return await buildUI(selected)
+      if (mode == 'game')
+        return await buildGame(selected)
+      if (mode == 'cgame')
+        return await buildCGame(selected)
+      if (mode == 'ui')
+        return await buildUI(selected)
 
-        if (mode === 'stringify')
-          return await buildStringify(selected)
-        if (mode === 'shaders')
-          return await buildShaders(selected)
-        if (mode === 'client')
-          return await buildClient(selected)
+      if (mode === 'stringify')
+        return await buildStringify(selected)
+      if (mode === 'shaders')
+        return await buildShaders(selected)
+      if (mode === 'client')
+        return await buildClient(selected)
 
 
-        if (mode === 'qvms')
-          return await buildQVM(selected)
-        if (mode === 'tools')
-          return await buildTools(selected)
+      if (mode === 'qvms')
+        return await buildQVM(selected)
+      if (mode === 'tools')
+        return await buildTools(selected)
 
-        build(selected);
+      build(selected);
     }
 
     async run(module, ...args) {
@@ -1526,7 +1527,7 @@ const API = (function () {
       }
 
 
-      if(typeof module == 'string' || !module)
+      if (typeof module == 'string' || !module)
         throw new Error('Cannot load module: ' + name)
 
 

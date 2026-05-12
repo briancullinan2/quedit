@@ -2,7 +2,7 @@
 const status = document.getElementById('statusbar')
 
 class WorkerAPI {
-    constructor() {
+    constructor(options) {
         this.nextResponseId = 0;
         this.responseCBs = new Map();
         this.worker = new Worker('worker.js');
@@ -10,6 +10,7 @@ class WorkerAPI {
         this.port = channel.port1;
         this.port.onmessage = this.onmessage.bind(this);
         this.configuration = configuration.value
+        this.hostWrite = options.hostWrite 
 
         const remotePort = channel.port2;
         this.worker.postMessage({ id: 'constructor', data: remotePort },
@@ -145,7 +146,9 @@ class WorkerAPI {
     }
 }
 
-const api = new WorkerAPI();
+const api = new WorkerAPI({
+    hostWrite: (msg) => term.write(msg)
+});
 if (typeof localStorage !== 'undefined')
     api.github_token = localStorage.getItem('github_token')
 window.api = api;

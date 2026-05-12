@@ -221,9 +221,9 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
 }
 
 function log(msg, ...args) {
-    
+
     if (typeof term !== 'undefined') term.write(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
-    if(typeof api.hostWrite) api.hostWrite(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
+    if(typeof api.hostWrite != 'undefined') api.hostWrite(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
     else console.log(msg);
 }
 

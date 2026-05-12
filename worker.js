@@ -132,7 +132,7 @@ const onAnyMessage = async event => {
     case 'header': {
       const responseId = event.data.responseId;
       let output = null;
-      this.extract(event.data.data)
+      api.extract(event.data.data)
 
       try {
         output = await api.header(event.data.data.header);

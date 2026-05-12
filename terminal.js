@@ -73,7 +73,7 @@ term.onData(async data => {
                 currentLine = ''
                 await handleCommand(thisLine);
             } catch (e) {
-                term.write(e.toString())
+                term.write(e.toString() + (e.stack || e.stacktrace))
             }
             term.write('\r\n> '); // New prompt
             break;
@@ -368,6 +368,19 @@ async function handleCommand(input) {
                 await api.header(ownerName, repoName, header, selected)
             }
         },
+        open: (argv) => {
+            let selected = toolsRepo || argv[1] || database
+            let parts = selected.split('/')
+            let ownerName = parts.length == 2 ? parts[0] : owner.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+            let fileName = argv[0]
+            const fileId = files[selected][fileName].sha
+            currentOpenFileId = fileId;
+            trees[selected].values = [fileId];
+            openFile(ownerName, repoName, filePath, fileId, true);
+
+        },
+        edit: (argv) => open(argv),
         compile: async (argv) => {
             let file = argv[0] || currentSession()
             let selected = toolsRepo || argv[1] || database
