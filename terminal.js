@@ -366,6 +366,7 @@ async function handleCommand(input) {
             }
         },
         compile: async (argv) => {
+            let file = argv[0] || currentSession()
             let selected = toolsRepo || argv[1] || database
             let parts = selected.split('/')
             let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -376,33 +377,36 @@ async function handleCommand(input) {
                 await loadGitHubTree(ownerName, repoName, branch)
             }
 
-            let sha = files[selected][argv[0]].sha
+            let sha = files[selected][file].sha
 
-            let contents = await cacheFile(ownerName, repoName, argv[0], sha);
+            let contents = await cacheFile(ownerName, repoName, file, sha);
 
-            let obj = CONFIGURATION + '/' + argv[0].replace('.c', '.o')
+            let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
 
             return await api.compile({
                 CFLAGS: [
                     ...LCC_CFLAGS, `-Icode`, `-Isrc`,
-                    '-o', obj, argv[0]
+                    ...(configuration.value == 'pre' ? [
+                        '-o', obj.replace('.o', '.a')
+                    ] : ['-o', obj]),
+                    file
                 ],
                 contents: contents,
                 width: term.cols,
-                input: argv[0],
+                input: file,
                 database,
                 obj
             })
         },
         clang: async (argv) => {
-            let file = currentSession()
+            let file = argv[0] || currentSession()
             return await api.compile({
                 CFLAGS: argv,
                 contents: editor.getValue(),
                 width: term.cols,
                 input: file,
                 database,
-                obj: file ? CONFIGURATION + '/' + file.replace('.c', '.o') : ''
+                obj: file ? CONFIGURATION + '/' + file.replace('.c', '.o') : null
             })
         },
         run: async (argv) => {

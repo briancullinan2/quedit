@@ -1044,7 +1044,6 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	if (!exists) {
 		if (oflags & O_CREAT) {
 			// Create a new virtual node
-			debugger
 			FS.virtual[localName] = {
 				contents: new Uint8Array(0),
 				timestamp: new Date(),

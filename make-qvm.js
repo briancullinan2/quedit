@@ -90,10 +90,16 @@ const qvmHeaders = [
  * QVMs typically use -DQ3_VM and -S (to generate assembly files 
  * before being passed to q3asm)
  */
-const QVM_CFLAGS = [
-    "-S",
+const QVMLIB_CFLAGS = [
+    "-cc1",
+    "-emit-obj",
     "-Wimplicit",
     "-Wstrict-prototypes",
+    "-Werror-implicit-function-declaration",
+];
+
+
+const QVM_CFLAGS = [
     "-DQ3_VM",
     "-D_Q3_VM",
     "-I/code/game",
@@ -101,12 +107,16 @@ const QVM_CFLAGS = [
     "-I/code/q3_ui"
 ];
 
+
+let QVM_MODE = true;
+
+
 // --- Build Logic ---
 
 
 async function buildModule(name, sourceDir, filesList, database, extraDefines = []) {
     log(`Compiling ${name} module...`);
-    const asmFiles = [];
+
 
     if (!database) database = gameRepo || owner.value + '/' + repo.value;
     let parts = database.split('/')
@@ -131,6 +141,9 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
     }
 
 
+    let DEBUG_CFLAGS = BUILDCFLAGS(CONFIGURATION)
+
+
     for (const file of filesList) {
         let srcPath;
         // Q3 Makefile logic: shared files are in the game/ directory
@@ -140,40 +153,74 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
             srcPath = path.join(sourceDir, file.replace('.o', '.c'));
         }
 
-        const asmPath = path.join(CONFIGURATION, name, file.replace('.o', '.asm'));
+        // TODO: if using q3lcc
+        //const asmPath = path.join(CONFIGURATION, name, file.replace('.o', '.asm'));
+        const outPath = path.join(CONFIGURATION, name, file);
 
         try {
-            if(!files[database[srcPath]])
-            {
+            if (!files[database][srcPath]) {
                 debugger
             }
             const sha = files[database][srcPath].sha;
             const content = await cacheFile(ownerName, repoName, srcPath, sha);
 
             log(`QVMCC: ${srcPath}`);
-            await api.compile({
-                CFLAGS: [...QVM_CFLAGS, ...extraDefines.map(d => `-D${d}`)],
-                contents: content,
-                width: term.cols,
-                input: srcPath,
-                database,
-                obj: asmPath // For QVM, we output .asm first
-            });
-            asmFiles.push(asmPath);
+
+            let CCFLAGS = [
+                ...(QVM_MODE ? QVMLIB_CFLAGS : []),
+                ...QVM_CFLAGS,
+                ...DEBUG_CFLAGS,
+                ...extraDefines.map(d => `-D${d}`),
+                ...(configuration.value == 'pre' ? [
+                    '-o', outPath.replace('.o', '.a')
+                ] : ['-o', outPath])
+            ]
+
+            if (QVM_MODE) {
+
+                await api.run({
+                    tool: 'q3lcc.js.wasm',
+                    args: CCFLAGS,
+                    database: database,
+                    paths: [srcPath, outPath]
+                })
+            }
+            else {
+                await api.compile({
+                    CFLAGS: CCFLAGS,
+                    contents: content,
+                    width: term.cols,
+                    input: srcPath,
+                    database,
+                    obj: outPath // For QVM, we output .asm first
+                });
+            }
+
         } catch (e) { log(`Error CC: ${srcPath}: ${e.message}\n\r${e.stack || e.stacktrace}`); }
     }
 
     // Link phase (q3asm)
     log(`Assembling ${name}.qvm...`);
-    const qvmOutput = path.join(CONFIGURATION, config.MOD, `${name === 'game' ? 'qagame' : name}.qvm`);
+    const qvmOutput = path.join(CONFIGURATION, repoName || config.MOD, `${name === 'game' ? 'qagame' : name}.qvm`);
+
+    let qvmObjs = filesList.map(file => path.join(CONFIGURATION, name, file))
 
     try {
-        await api.link({
-            LDFLAGS: ["-o", qvmOutput],
-            obj: asmFiles,
-            database,
-            wasm: qvmOutput // Overloading 'wasm' key for the binary output
-        });
+        if (QVM_MODE) {
+
+        }
+        else {
+            await api.link({
+                LDFLAGS: [
+                    ...(QVM_MODE ? [] : ["--no-entry"]),
+                    "-o", qvmOutput,
+                    ...qvmObjs
+                ],
+                obj: qvmObjs,
+                database,
+                wasm: qvmOutput // Overloading 'wasm' key for the binary output
+            });
+        }
         log(`Success: ${qvmOutput}`);
     } catch (e) { log(`Linker Error in ${name}`); }
 }
@@ -188,7 +235,7 @@ async function buildGame(database = null) {
 
     needsHeaders = true
 
-    await buildModule('game', dirs.CDIR, cgameFiles, database, ['CGAME']);
+    await buildModule('game', dirs.QADIR, gameFiles, database, ['QAGAME']);
 
 
 }
@@ -203,7 +250,7 @@ async function buildCGame(database = null) {
     needsHeaders = true
 
 
-    await buildModule('cgame', dirs.CDIR, cgameFiles, database, ['CGAME']);
+    await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME']);
 
 
 }
@@ -218,7 +265,7 @@ async function buildUI(database = null) {
 
     needsHeaders = true
 
-    await buildModule('ui', dirs.CDIR, cgameFiles, database, ['CGAME']);
+    await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI']);
 
 
 }
@@ -243,7 +290,7 @@ async function buildQVM(database = null) {
 
 
     // CGAME
-    await buildModule('cgame', dirs.CDIR, cgameFiles, database, ['CGAME']);
+    await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME']);
 
     // 2. Build GAME (qagame)
     await buildModule('game', dirs.QADIR, gameFiles, database, ['QAGAME']);

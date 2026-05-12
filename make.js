@@ -40,7 +40,8 @@ const config = {
     MOUNT_DIR: "code",
     BUILD_DIR: "build",
     BINEXT: `.${COMPILE_ARCH}.${COMPILE_PLATFORM}`,
-    TEMPDIR: '/tmp'
+    TEMPDIR: '/tmp',
+    MOD: 'baseq3a'
 };
 
 const dirs = {
@@ -50,7 +51,7 @@ const dirs = {
     GAME_DEBUG: path.join(config.BUILD_DIR, `debug-${GAME_PLATFORM}-${GAME_ARCH}`),
     GAME_RELEASE: path.join(config.BUILD_DIR, `release-${GAME_PLATFORM}-${GAME_ARCH}`),
 
-    CDIR: path.join(config.MOUNT_DIR, "cgame"),
+    CGDIR: path.join(config.MOUNT_DIR, "cgame"),
     QADIR: path.join(config.MOUNT_DIR, "game"),
     UIDIR: path.join(config.MOUNT_DIR, "q3_ui"),
 
@@ -525,7 +526,7 @@ function generateFallbackC(fileName, content) {
 
 
 
-function BUILD_CLFAGS(CONFIGURATION) {
+function BUILDCFLAGS(CONFIGURATION) {
     if (!CONFIGURATION)
         CONFIGURATION = configuration.value == 'release'
             ? dirs.ENGINE_RELEASE
@@ -555,7 +556,7 @@ function BUILD_CLFAGS(CONFIGURATION) {
 async function buildStringify(database = null) {
 
 
-    let DEBUG_CFLAGS = BUILD_CLFAGS()
+    let DEBUG_CFLAGS = BUILDCFLAGS()
 
     if (!database) database = owner.value + '/' + repo.value
     let parts = database.split('/')
@@ -629,7 +630,7 @@ async function buildStringify(database = null) {
 async function buildClient(database = null) {
 
 
-    let DEBUG_CFLAGS = BUILD_CLFAGS()
+    let DEBUG_CFLAGS = BUILDCFLAGS()
 
     if (!database) database = owner.value + '/' + repo.value
     let parts = database.split('/')
@@ -659,7 +660,7 @@ async function buildClient(database = null) {
                 ...CFLAGS,
                 ...DEBUG_CFLAGS,
                 ...(configuration.value == 'pre' ? [
-                    '-o', CONFIGURATION + '/' + file.replace('.c', '.a')
+                    '-o', obj.replace('.o', '.a')
                 ] : ['-o', obj]),
                 file
             ]
@@ -825,7 +826,7 @@ async function buildShaders(database = null) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-    let DEBUG_CFLAGS = BUILD_CLFAGS()
+    let DEBUG_CFLAGS = BUILDCFLAGS()
 
 
     for (let shader of allRend2ShaderObjects) {
