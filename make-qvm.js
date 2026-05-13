@@ -111,10 +111,15 @@ const QVM_CFLAGS = [
 let QVM_MODE = true;
 
 
-// --- Build Logic ---
+const QVM_PREAMBLE    = '\x1b[38;5;135m[QVM]\x1b[0m '
+const QVMERR_PREAMBLE = '\x1b[38;5;161m[QVM ERROR]\x1b[0m '
+
 
 
 async function buildModule(name, sourceDir, filesList, database, extraDefines = []) {
+
+    PREAMBLE = QVM_PREAMBLE
+
     log(`Compiling ${name} module...`);
 
 
@@ -128,6 +133,8 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
         log("Syncing QVM Headers...");
         await downloadHeaders(qvmHeaders, 10, database);
     }
+
+    PREAMBLE = QVM_PREAMBLE
 
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
@@ -152,6 +159,8 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
         } else {
             srcPath = path.join(sourceDir, file.replace('.o', '.c'));
         }
+
+        PREAMBLE = QVM_PREAMBLE
 
         // TODO: if using q3lcc
         //const asmPath = path.join(CONFIGURATION, name, file.replace('.o', '.asm'));
@@ -212,7 +221,10 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                 });
             }
 
-        } catch (e) { log(`Error CC: ${srcPath}: ${e.message}\n\r${e.stack || e.stacktrace}`); }
+        } catch (e) {
+            PREAMBLE = QVMERR_PREAMBLE
+            log(`CC: ${srcPath}: ${e.message}\n\r${e.stack || e.stacktrace}`);
+        }
     }
 
 
@@ -222,13 +234,14 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
 
-async function linkModule(database, name, filesList)
-{
+async function linkModule(database, name, filesList) {
 
 
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
+
+    PREAMBLE = QVM_PREAMBLE
 
     // Link phase (q3asm)
     const qvmOutput = path.join(CONFIGURATION, repoName || config.MOD, `${name === 'game' ? 'qagame' : name}.qvm`);
@@ -283,7 +296,10 @@ async function linkModule(database, name, filesList)
         }
 
         log(`Success: ${qvmOutput}`);
-    } catch (e) { log(`Linker Error in ${name}`); }
+    } catch (e) {
+        PREAMBLE = QVMERR_PREAMBLE
+        log(`Linker Error in ${name}`);
+    }
 }
 
 
@@ -343,6 +359,8 @@ async function buildQVM(database = null) {
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
+
+    PREAMBLE = QVM_PREAMBLE
 
     // 3. Start building modules
     log("Starting QVM compilation...");

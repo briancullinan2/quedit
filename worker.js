@@ -295,7 +295,7 @@ const onAnyMessage = async event => {
               if (api.memfs)
                 api.memfs.addFile(record.path, record.contents);
 
-              api.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+              api.hostWrite('Loading: ' + record.path + '\n\r')
             } catch (e) {
               console.log(e)
             }
@@ -329,7 +329,7 @@ const onAnyMessage = async event => {
                 if (api.database)
                   await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
 
-                api.hostWrite('\n\rSucceeded: ' + filePath + '\n\r')
+                api.hostWrite('Succeeded: ' + filePath + '\n\r')
               }
 
             } catch (e) {

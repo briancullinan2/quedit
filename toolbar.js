@@ -280,6 +280,7 @@ async function settings() {
 
 }
 
+const EDITOR_PREAMBLE = '\x1b[38;5;198m[EDITOR]\x1b[0m '
 
 function saveSettings(content) {
     try {
@@ -351,6 +352,7 @@ function saveSettings(content) {
         localStorage.setItem('history', JSON.stringify(commandHistory instanceof Array ? commandHistory || [] : []))
     }
     catch (e) {
+        PREAMBLE = EDITOR_PREAMBLE
         console.log(e)
     }
 

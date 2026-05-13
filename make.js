@@ -603,6 +603,7 @@ async function buildStringify(database = null) {
     await linkStringify(database)
 }
 
+const BUILD_PREAMBLE = '\x1b[38;5;82m[BUILD]\x1b[0m '
 
 async function linkStringify(database = null) {
 
@@ -611,6 +612,9 @@ async function linkStringify(database = null) {
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
+
+
+    PREAMBLE = BUILD_PREAMBLE
 
 
     let stringifyExe = CONFIGURATION + '/stringify' + config.BINEXT
@@ -642,6 +646,7 @@ async function linkStringify(database = null) {
             wasm: stringifyExe
         })
     } catch (e) {
+        PREAMBLE = ERROR_PREAMBLE
         log(e)
     }
 
@@ -671,6 +676,7 @@ async function buildClient(database = null, noBounce = false) {
     try {
 
         // TODO: publish binaryen zero-filled, zip, download uri
+        PREAMBLE = BUILD_PREAMBLE
 
         if (!api.github_token)
             return alert("Must enter Github token first by clicking the doorway on the left.")
@@ -683,10 +689,9 @@ async function buildClient(database = null, noBounce = false) {
         ];
 
         output.forEach(line => {
-            log(`\x1b[32m[BUILD]\x1b[0m ${line}\r\n`)
+            log(line)
         });
 
-        log('\n\r')
 
 
         let DEBUG_CFLAGS = BUILDCFLAGS()
@@ -706,6 +711,7 @@ async function buildClient(database = null, noBounce = false) {
             await downloadHeaders(q3eCommonHeaders, 10, database)
         }
 
+        PREAMBLE = BUILD_PREAMBLE
 
         await buildStringify(database)
 
@@ -713,6 +719,8 @@ async function buildClient(database = null, noBounce = false) {
         for (let file of [...allCompileObjects]) {
 
             try {
+                PREAMBLE = BUILD_PREAMBLE
+
                 let sha = files[database][file].sha
                 let content = await cacheFile(ownerName, repoName, file, sha)
                 let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
@@ -753,6 +761,7 @@ async function buildClient(database = null, noBounce = false) {
                 })
 
             } catch (e) {
+                PREAMBLE = ERROR_PREAMBLE
                 log(e)
             }
 
@@ -784,6 +793,7 @@ async function linkEngine(database = null) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
+    PREAMBLE = BUILD_PREAMBLE
 
 
     let clientObjs = allCompileObjects.map(s => CONFIGURATION + '/' + s.replace('.c', '.o'))
@@ -847,10 +857,17 @@ async function buildShaders(database = null) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
+    PREAMBLE = BUILD_PREAMBLE
+
+
     let DEBUG_CFLAGS = BUILDCFLAGS()
 
 
     for (let shader of allRend2ShaderObjects) {
+
+        PREAMBLE = BUILD_PREAMBLE
+
+
         try {
             let sha = files[database][shader].sha
             let content = await cacheFile(ownerName, repoName, shader, sha)
@@ -946,11 +963,17 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
 
                 }
 
+                PREAMBLE = BUILD_PREAMBLE
+
                 await api.header(thisOwner, thisRepo, header, thisDatabase)
             } catch (e) {
+                PREAMBLE = ERROR_PREAMBLE
+
                 log(`Failed to cache ${header}: ` + e + '\n\r' + (e.stack || e.stacktrace));
             }
         }));
+
+        PREAMBLE = BUILD_PREAMBLE
 
         log(`Finished batch ${Math.ceil((i + batchSize) / batchSize)}`);
     }
@@ -984,7 +1007,9 @@ function loadEntry(cursor) {
         // embedded file is newer, start with that
         return
     }
-    log('\n\rLoading: ' + cursor.path + '\n\r');
+    PREAMBLE = BUILD_PREAMBLE
+
+    log('Loading: ' + cursor.path);
 
     FS.virtual[cursor.path] = {
         timestamp: cursor.timestamp,

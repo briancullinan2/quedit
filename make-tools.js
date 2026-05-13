@@ -145,6 +145,7 @@ async function buildLBurg(database = null) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
+    PREAMBLE = TOOLS_PREAMBLE
 
     log("Building LBURG...");
     const lburgObjs = [];
@@ -226,6 +227,8 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
 
         }
 
+        PREAMBLE = TOOLERR_PREAMBLE
+
         let objRecord = await getRecord(DB_STORE_NAME, obj, database)
         FS.virtual[obj] = objRecord
 
@@ -250,16 +253,24 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
         });
         return obj;
     } catch (e) {
-        log(`Error compiling: ${src}`);
+        PREAMBLE = TOOLERR_PREAMBLE
+        log(`Error compiling: ${src}: ${e}\n\r${e.stack || e.stacktrace}`);
         throw e;
     }
 }
 
+
+const TOOLS_PREAMBLE   = '\x1b[38;5;121m[TOOLS-BUILD]\x1b[0m '
+const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m '
+
+
+let PREAMBLE = TOOLS_PREAMBLE
 function log(msg, ...args) {
 
-    if (typeof term !== 'undefined') term.write(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
+    if (typeof term !== 'undefined') term.write(`${PREAMBLE}${msg}\r\n`);
+    else if (typeof api.hostWrite != 'undefined') api.hostWrite(`${PREAMBLE}${msg}\r\n`);
     else console.log(msg);
+    triggerIncrementalSave()
 }
 
 
@@ -278,6 +289,7 @@ async function buildRCC(database = null, skipTool = false) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
+    PREAMBLE = TOOLS_PREAMBLE
 
     if (!skipTool) {
 
@@ -323,6 +335,8 @@ async function buildRCC(database = null, skipTool = false) {
                 rccObjs.push(await compileToolFile(src, obj, "src", database));
             }
         } catch (e) {
+            PREAMBLE = TOOLERR_PREAMBLE
+
             log(e)
         }
     }
@@ -338,6 +352,7 @@ async function buildRCC(database = null, skipTool = false) {
 async function linkRCC(database = null) {
     if (!database) database = toolsRepo || api.database;
 
+    PREAMBLE = TOOLS_PREAMBLE
 
     let rccObjs = rccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.RCC, file))
     const rccExe = path.join(CONFIGURATION, "q3rcc" + config.BINEXT);
@@ -376,10 +391,11 @@ async function buildCPP(database = null) {
 
     needsHeaders = true
 
-
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
+
+    PREAMBLE = TOOLS_PREAMBLE
 
     log("Building CPP...");
     const cppObjs = [];
@@ -403,6 +419,7 @@ async function buildCPP(database = null) {
 async function linkCPP(database = null) {
     if (!database) database = toolsRepo || api.database;
 
+    PREAMBLE = TOOLS_PREAMBLE
 
     let cppObjs = cppFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.CPP, file))
     const cppExe = path.join(CONFIGURATION, "q3cpp" + config.BINEXT);
@@ -444,10 +461,11 @@ async function buildLCC(database = null) {
 
     needsHeaders = true
 
-
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
+
+    PREAMBLE = TOOLS_PREAMBLE
 
     log("Building LCC...");
     const lccObjs = [];
@@ -477,6 +495,7 @@ async function linkLCC(database = null) {
 
     if (!database) database = toolsRepo || api.database;
 
+    PREAMBLE = TOOLS_PREAMBLE
 
     let lccObjs = lccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.ETC, file))
     const lccExe = path.join(CONFIGURATION, "q3lcc" + config.BINEXT);
@@ -521,6 +540,8 @@ async function buildTools(database = null, noBounce = false) {
         buildDebounce = setTimeout(() => buildTools(database, true), 500)
         return
     }
+
+    PREAMBLE = TOOLS_PREAMBLE
 
     if (building) return
     building = true
@@ -587,7 +608,6 @@ async function buildAsmTool(database = null) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-
     needsHeaders = true
 
 
@@ -598,6 +618,8 @@ async function buildAsmTool(database = null) {
 
     }
 
+
+    PREAMBLE = TOOLS_PREAMBLE
 
 
     log("Building q3asm...");
@@ -641,6 +663,7 @@ async function linkAsm(database = null) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
+    PREAMBLE = TOOLS_PREAMBLE
 
     let asmObjs = q3asmFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.ETC, file))
 
@@ -676,7 +699,8 @@ async function linkAsm(database = null) {
         });
         log("q3asm build complete.");
     } catch (e) {
-        log("Linker Error for q3asm");
+        PREAMBLE = TOOLERR_PREAMBLE
+        log("Linker Error for q3asm: " + e);
     }
 }
 

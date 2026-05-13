@@ -222,7 +222,6 @@ function loadTree(database, cursor) {
         // embedded file is newer, start with that
         return
     }
-    //term.write('\n\rLoading: ' + cursor.path + '\n\r');
 
     files[database][cursor.path] = {
         timestamp: cursor.timestamp,

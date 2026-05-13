@@ -51,8 +51,10 @@ async function handleCommand(input) {
     if (commands[command]) {
         await commands[command](args, database);
     } else {
-        term.write(`Command not found: ${command}`);
+        term.write(`Command not found: ${command}\n\r`);
     }
+
+    triggerIncrementalSave()
 }
 
 
@@ -133,14 +135,14 @@ async function ls(argv, database) {
 }
 
 async function help() {
-    term.write('Available commands: help, clear, build, set');
+    term.write('Available commands: help, clear, build, set\n\r');
 }
 
 
 async function hello(argv) {
     const name = argv[0] || 'User';
     let user = (await getAuthenticatedUser()).login
-    term.write(`Hello, ${user || name}!`);
+    term.write(`Hello, ${user || name}!\n\r`);
 }
 
 
@@ -220,7 +222,7 @@ async function buildCommand(argv, database) {
         configuration.value = validMode
     else if (mode) {
         let modes = Array.from(configuration.children).map(m => m.value)
-        term.write(`Valid modes ${modes.join('|')}: ${mode} given.`);
+        term.write(`Valid modes ${modes.join('|')}: ${mode} given.\n\r`);
         return;
     }
 
@@ -476,7 +478,7 @@ async function clone(argv) {
     }
     await loadGitHubTree(ownerName, repoName, branch)
 
-    term.write('Checked out: ' + branch + ' from ' + ownerName + '/' + repoName);
+    term.write('Checked out: ' + branch + ' from ' + ownerName + '/' + repoName + '\n\r');
 
     // TODO: switch to aux filelist and display
 }

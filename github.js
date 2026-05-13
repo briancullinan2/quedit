@@ -1,9 +1,13 @@
+const GITHUB_PREAMBLE = '\x1b[38;5;33m[GITHUB]\x1b[0m '
+const FETCH_PREAMBLE  = '\x1b[38;5;81m[FETCH]\x1b[0m '
+const ERROR_PREAMBLE  = '\x1b[38;5;202m[ERROR]\x1b[0m '
 
 
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false) {
-    if(typeof localStorage != 'undefined')
+    if (typeof localStorage != 'undefined')
         api.github_token = localStorage.getItem('github_token');
 
+    PREAMBLE = GITHUB_PREAMBLE
 
     const fullUrl = `https://api.github.com/repos/${ownerName}/${repoName}`
         + (url.startsWith('/') || url.trim().length == 0 ? '' : '/') + url
@@ -31,7 +35,8 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
         if (authorize && up.message === 'UNAUTHORIZED_ACCESS') {
             return await githubRequest(ownerName, repoName, url, false, buffer)
         }
-        console.error("Failed to github: " + fullUrl, up);
+        PREAMBLE = ERROR_PREAMBLE
+        log("Failed to github: " + fullUrl, up);
         throw up
     }
 
@@ -200,15 +205,14 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
     return str
 }
 
+
+
 async function downloadRepoZip(owner, repo, branch = 'master', database = null) {
 
     if (!database)
         database = owner + '/' + repo
 
-    const log = (msg) => {
-        if (typeof term !== 'undefined') term.write(`\x1b[34m[FETCH]\x1b[0m ${msg}\r\n`);
-        else console.log(msg);
-    };
+    PREAMBLE = FETCH_PREAMBLE
 
     try {
         log(`Requesting archive from ${owner}/${repo}...`);
@@ -257,7 +261,8 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
         log("Repository successfully mounted to virtual FS.");
 
     } catch (err) {
-        log(`\x1b[31m[ERROR]\x1b[0m Failed to download repo: ${err.message}`);
+        PREAMBLE = ERROR_PREAMBLE
+        log(`Failed to download repo: ${err.message}`);
     }
 }
 
@@ -265,24 +270,31 @@ async function listReleases(owner, repo) {
     try {
         const releases = await githubRequest(owner, repo, 'releases');
 
+
+
         releases.forEach(release => {
-            console.log(`Release: ${release.name} (${release.tag_name})`);
+            log(`Release: ${release.name} (${release.tag_name})`);
 
             // If you want the assets (like your compiled zip)
             release.assets.forEach(asset => {
-                console.log(` - Asset: ${asset.name} | URL: ${asset.browser_download_url}`);
+                log(` - Asset: ${asset.name} | URL: ${asset.browser_download_url}`);
             });
         });
 
         return releases;
     } catch (err) {
-        console.error("Failed to list releases:", err);
+        PREAMBLE = ERROR_PREAMBLE
+        log("Failed to list releases: " + err);
     }
 }
 
 async function getAuthenticatedUser() {
     const token = localStorage.getItem('github_token');
     if (!token) return null;
+
+
+    PREAMBLE = GITHUB_PREAMBLE
+
 
     try {
         const response = await fetch('https://api.github.com/user', {
@@ -298,12 +310,13 @@ async function getAuthenticatedUser() {
         }
 
         const userData = await response.json();
-        console.log(`Authenticated as: ${userData.login}`);
+        log(`Authenticated as: ${userData.login}`);
 
         // You can now use userData.avatar_url, userData.name, etc.
         return userData;
     } catch (err) {
-        console.error("Failed to fetch user data:", err);
+        PREAMBLE = ERROR_PREAMBLE
+        log("Failed to fetch user data: " + err);
     }
 }
 

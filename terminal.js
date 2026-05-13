@@ -18,7 +18,24 @@ const loadedLog = JSON.parse(localStorage.getItem('terminal_log') || '[]');
 term.write(loadedLog.join('\n\r'))
 let historyIndex = -1;
 let currentLine = '';
+let cursorPosition = 0;
 let isModifierPressed
+
+
+function getLastLineIsInput() {
+    const buffer = term.buffer.active;
+    const endRow = buffer.baseY + buffer.cursorY;
+    const startRow = endRow - 3;
+    for (let i = startRow; i <= endRow; i++) {
+        const line = buffer.getLine(i);
+        if (line) {
+            let lineStr = line.translateToString(true)
+            if (lineStr === '> ' || lineStr === '>' || lineStr.trim() == '>')
+                return true
+        }
+    }
+    return false;
+}
 
 
 function getInternalTerminalLog() {
@@ -50,6 +67,7 @@ async function triggerIncrementalSave() {
 term.attachCustomKeyEventHandler((arg) => {
 
 
+
     if (arg.type === "keydown") {
         // Check for Ctrl (Windows/Linux) or Cmd (Mac)
         isModifierPressed = arg.ctrlKey || arg.metaKey;
@@ -68,6 +86,9 @@ term.attachCustomKeyEventHandler((arg) => {
         }
 
         if (arg.code === "Backspace") {
+            if (arg.preventDefault) arg.preventDefault();
+
+
             if (currentLine.length > 0) {
                 const cursorX = term.buffer.active.cursorX;
 
@@ -80,7 +101,10 @@ term.attachCustomKeyEventHandler((arg) => {
                     term.write('\b \b');
                 }
                 currentLine = currentLine.slice(0, -1);
+                cursorPosition--
             }
+
+            return false
         }
 
         // --- Ctrl+V: Paste ---

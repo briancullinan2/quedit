@@ -664,6 +664,7 @@ const API = (function () {
 
 
         if (exn.message === 'WASI_ENOSYS') {
+          this.api.PREAMBLE = ERROR_PREAMBLE
           let msg = `\x1b[91mError: Exit code ${exn.code}`;
           if (writeStack) {
             msg = msg + `\n${exn.stack}`;
@@ -1082,7 +1083,6 @@ const API = (function () {
         const normal = '\x1b[0m';
         this.hostWrite(` ${green}(${msToSec(start, end)}s)${normal}\n`);
       }
-      this.hostWrite('\n');
       return result;
     }
 
@@ -1112,7 +1112,7 @@ const API = (function () {
         return module;
       }
       catch (up) {
-        this.hostWrite('\n\r' + name + ' not found at: ' + this.commonPaths(name).join('\n\r')
+        this.hostWrite(name + ' not found at: ' + this.commonPaths(name).join('\n\r')
           + '\n\r' + window.location + '/' + name + '\n\r')
         console.error(up)
         if (up.message.includes('Response code: 404')
@@ -1313,7 +1313,7 @@ const API = (function () {
         if (this.database)
           await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
 
-        this.hostWrite('\n\rSucceeded: ' + obj + '\n\r')
+        this.hostWrite('Succeeded: ' + obj + '\n\r')
       }
 
       if (this.database && FS.virtual[obj])
@@ -1412,7 +1412,7 @@ const API = (function () {
             if (this.memfs)
               this.memfs.addFile(record.path, record.contents);
 
-            this.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+            this.hostWrite('Loading: ' + record.path + '\n\r')
           } catch (e) {
             console.log(e)
           }
@@ -1439,7 +1439,7 @@ const API = (function () {
               this.memfs.addFile(record.path, record.contents);
             }
 
-            this.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+            this.hostWrite('Loading: ' + record.path + '\n\r')
           } catch (e) {
             console.log(e)
           }
@@ -1468,7 +1468,7 @@ const API = (function () {
         if (this.database)
           await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database)
 
-        this.hostWrite('\n\rSucceeded: ' + wasm + '\n\r')
+        this.hostWrite('Succeeded: ' + wasm + '\n\r')
       }
 
       if (this.database && FS.virtual[wasm])
@@ -1594,7 +1594,7 @@ const API = (function () {
             if (this.memfs)
               this.memfs.addFile(record.path, record.contents);
 
-            this.hostWrite('\n\rLoading: ' + record.path + '\n\r')
+            this.hostWrite('Loading: ' + record.path + '\n\r')
           } catch (e) {
             console.log(e)
           }
@@ -1615,12 +1615,12 @@ const API = (function () {
       const instantiate = +new Date();
       const stillRunning = await app.run();
       const end = +new Date();
-      this.hostWrite('\n');
+
       if (this.showTiming) {
         const green = '\x1b[92m';
         const normal = '\x1b[0m';
         let msg = `${green}(${msToSec(start, instantiate)}s`;
-        msg += `/${msToSec(instantiate, end)}s)${normal}\n`;
+        msg += `/${msToSec(instantiate, end)}s)${normal}\n\r`;
         this.hostWrite(msg);
       }
 
