@@ -627,8 +627,8 @@ async function linkStringify(database = null) {
         // TODO: compare LATEST input and output mtime
         // && FS.virtual[file]?.timestamp < FS.virtual[stringifyExe]?.timestamp
     ) {
-        log(stringifyExe + " already up to date...");
-        return
+        //log(stringifyExe + " already up to date...");
+        //return
     }
 
     log(`LD: ${stringifyExe}\n\r`);
@@ -636,7 +636,7 @@ async function linkStringify(database = null) {
     try {
         await api.link({
             LDFLAGS: [
-                ...baseLdFlags,
+                ...toolLdFlags,
                 CONFIGURATION + '/stringify.o',
                 '-o', stringifyExe,
                 ...includeFlags

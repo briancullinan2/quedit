@@ -117,7 +117,7 @@ const toolLdFlags = [
     //"--no-standard-libraries",
     '--no-threads',
     "--export-dynamic",
-    "--export-memory",
+    //"--export-memory",
     "--export-table",
     "--error-limit=200",
     '-z', `stack-size=${1024 * 1024}`,

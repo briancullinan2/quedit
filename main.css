@@ -16,6 +16,11 @@ body {
     box-shadow: none;
     font-family: inherit;
 }
+*:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 
 #main-body {
     flex-basis: 100%;

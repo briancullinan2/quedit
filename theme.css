@@ -703,6 +703,28 @@ select:focus {
     /* Pop to the main editor bg when active */
 }
 
+input:placeholder-shown {
+    border-color: var(--ace-bg);
+    background-color: var(--ace-gutter-bg);
+    color: var(--ace-foreground);
+}
+
+input::placeholder {
+    color: var(--ace-foreground);
+    opacity: 0.75;    /* Firefox lowers opacity by default, so set to 1 */
+}
+
+/* For older versions of Internet Explorer/Edge */
+input::-ms-input-placeholder {
+    color: var(--ace-foreground);
+}
+
+/* For older versions of Firefox (18-) */
+input::-moz-placeholder {
+    color: var(--ace-foreground);
+    opacity: 0.75;
+}
+
 button:hover {
     background: var(--ace-selection-bg);
     border-color: var(--ace-green);
@@ -716,10 +738,10 @@ button:active {
 }
 
 /* Style for placeholders to match comments */
-input::placeholder {
+/*input::placeholder {
     color: var(--ace-comment);
     font-style: italic;
-}
+}*/
 
 select option {
     background: var(--ace-gutter-bg);
