@@ -604,8 +604,7 @@ async function buildStringify(database = null) {
 }
 
 
-async function linkStringify(database = null)
-{
+async function linkStringify(database = null) {
 
     if (!database) database = api.database
 
@@ -651,112 +650,32 @@ async function linkStringify(database = null)
 }
 
 
-
-async function buildClient(database = null) {
-
-
-    let DEBUG_CFLAGS = BUILDCFLAGS()
-
-    if (!database) database = api.database
-    let parts = database.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
-
-    let CONFIGURATION = api.configuration == 'release'
-        ? dirs.ENGINE_RELEASE
-        : dirs.ENGINE_DEBUG
-
-
-    if (needsHeaders) {
-        needsHeaders = false
-        await downloadHeaders(q3eCommonHeaders, 10, database)
-    }
-
-
-    for (let file of [...allCompileObjects]) {
-
-        try {
-            let sha = files[database][file].sha
-            let content = await cacheFile(ownerName, repoName, file, sha)
-            let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
-
-            let objRecord = await getRecord(DB_STORE_NAME, obj, database)
-            FS.virtual[obj] = objRecord
-
-            if (FS.virtual[obj]
-                // compare input and output mtime
-                && FS.virtual[file]?.timestamp < FS.virtual[obj]?.timestamp
-            ) {
-                log(`${obj} already up to date...\n\r`)
-
-                continue
-            }
-
-            log(`CC: ${obj}\n\r`)
-
-            let CCFLAGS = [
-                ...CFLAGS,
-                ...DEBUG_CFLAGS,
-                ...(api.configuration == 'pre' ? [
-                    '-o', obj.replace('.o', '.a')
-                ] : ['-o', obj]),
-                file
-            ]
-            if (file.includes('botlib'))
-                CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
-
-
-
-            await api.compile({
-                CFLAGS: CCFLAGS,
-                contents: content,
-                input: file,
-                database,
-                obj
-            })
-
-        } catch (e) {
-            log(e)
-        }
-
-    }
-
-}
-
-
-
-
 let building = false
 let buildDebounce = null
-async function build(database = null, noBounce = false) {
+
+async function buildClient(database = null, noBounce = false) {
 
     if (buildDebounce) {
         clearTimeout(buildDebounce)
     }
 
     if (!noBounce) {
-        buildDebounce = setTimeout(() => build(database, true), 500)
+        buildDebounce = setTimeout(() => buildClient(database, true), 500)
         return
     }
 
     if (building) return
     building = true
 
+
     try {
 
         // TODO: publish binaryen zero-filled, zip, download uri
-
-        if (!database) database = api.database
-        let parts = database.split('/')
-        let ownerName = parts.length == 2 ? parts[0] : owner.value
-        let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
-
 
         if (!api.github_token)
             return alert("Must enter Github token first by clicking the doorway on the left.")
 
 
-        // Log directly to your xterm.js instance if available
         const output = [
             `Building ${config.CNAME} for ${COMPILE_PLATFORM} (${COMPILE_ARCH})`,
             `Flags: ${getBaseFlags().join(' ')}`,
@@ -770,30 +689,80 @@ async function build(database = null, noBounce = false) {
         log('\n\r')
 
 
+        let DEBUG_CFLAGS = BUILDCFLAGS()
 
-        FS.virtual['/home'] = {
-            timestamp: new Date(),
-            mode: FS_DIR,
-            path: '/home',
-            parent: '/'
+        if (!database) database = api.database
+        let parts = database.split('/')
+        let ownerName = parts.length == 2 ? parts[0] : owner.value
+        let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+        let CONFIGURATION = api.configuration == 'release'
+            ? dirs.ENGINE_RELEASE
+            : dirs.ENGINE_DEBUG
+
+
+        if (needsHeaders) {
+            needsHeaders = false
+            await downloadHeaders(q3eCommonHeaders, 10, database)
         }
-        await putRecord(DB_STORE_NAME, FS.virtual['/home'], database)
-        FS.virtual['/tmp'] = {
-            timestamp: new Date(),
-            mode: FS_DIR, // ST_DIR + standard permissions
-            path: '/tmp',
-            parent: '/'
-        };
-        await putRecord(DB_STORE_NAME, FS.virtual['/tmp'], database)
-        //if(this.memfs && !this.memfs.exists())
+
 
         await buildStringify(database)
 
-        await buildClient(database)
+
+        for (let file of [...allCompileObjects]) {
+
+            try {
+                let sha = files[database][file].sha
+                let content = await cacheFile(ownerName, repoName, file, sha)
+                let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
+
+                let objRecord = await getRecord(DB_STORE_NAME, obj, database)
+                FS.virtual[obj] = objRecord
+
+                if (FS.virtual[obj]
+                    // compare input and output mtime
+                    && FS.virtual[file]?.timestamp < FS.virtual[obj]?.timestamp
+                ) {
+                    log(`${obj} already up to date...\n\r`)
+
+                    continue
+                }
+
+                log(`CC: ${obj}\n\r`)
+
+                let CCFLAGS = [
+                    ...CFLAGS,
+                    ...DEBUG_CFLAGS,
+                    ...(api.configuration == 'pre' ? [
+                        '-o', obj.replace('.o', '.a')
+                    ] : ['-o', obj]),
+                    file
+                ]
+                if (file.includes('botlib'))
+                    CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
+
+
+
+                await api.compile({
+                    CFLAGS: CCFLAGS,
+                    contents: content,
+                    input: file,
+                    database,
+                    obj
+                })
+
+            } catch (e) {
+                log(e)
+            }
+
+        }
 
         await buildShaders(database)
 
         await linkEngine(database)
+
+
 
     } finally {
         building = false
@@ -801,60 +770,61 @@ async function build(database = null, noBounce = false) {
         //await api.download(database)
 
     }
+}
 
+
+
+
+
+async function linkEngine(database = null) {
+    if (!database) database = api.database
+
+
+    let CONFIGURATION = api.configuration == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
+
+
+    let clientObjs = allCompileObjects.map(s => CONFIGURATION + '/' + s.replace('.c', '.o'))
+    let renderObjs = allRend2ShaderObjects.map(s => CONFIGURATION + '/' + s.replace('.glsl', '.o'))
+
+    let engineExe = CONFIGURATION + '/' + config.CNAME + config.BINEXT
+
+    let exeRecord = await getRecord(DB_STORE_NAME, engineExe, database)
+    FS.virtual[engineExe] = exeRecord
+
+
+    if (FS.virtual[engineExe]
+        // TODO: compare LATEST input and output mtime
+        // && FS.virtual[file]?.timestamp < FS.virtual[engineExe]?.timestamp
+    ) {
+        log(engineExe + " already up to date...");
+        return
     }
 
-
-    async function linkEngine(database = null)
-    {
-        if (!database) database = api.database
-
-        
-        let CONFIGURATION = api.configuration == 'release'
-            ? dirs.ENGINE_RELEASE
-            : dirs.ENGINE_DEBUG
+    log(`LD: ${engineExe}\n\r`);
 
 
-
-        let clientObjs = allCompileObjects.map(s => CONFIGURATION + '/' + s.replace('.c', '.o'))
-        let renderObjs = allRend2ShaderObjects.map(s => CONFIGURATION + '/' + s.replace('.glsl', '.o'))
-
-        let engineExe = CONFIGURATION + '/' + config.CNAME + config.BINEXT
-
-        let exeRecord = await getRecord(DB_STORE_NAME, engineExe, database)
-        FS.virtual[engineExe] = exeRecord
-
-
-        if (FS.virtual[engineExe]
-            // TODO: compare LATEST input and output mtime
-            // && FS.virtual[file]?.timestamp < FS.virtual[engineExe]?.timestamp
-        ) {
-            log(engineExe + " already up to date...");
-            return
-        }
-
-        log(`LD: ${engineExe}\n\r`);
-
-
-        try {
-            await api.link({
-                LDFLAGS: [
-                    ...LDFLAGS,
-                    ...clientObjs,
-                    ...renderObjs,
-                    '-o', engineExe,
-                    ...includeFlags
-                ],
-                obj: [
-                    ...clientObjs,
-                    ...renderObjs
-                ],
-                database,
-                wasm: engineExe
-            })
-        } catch (e) {
-            log(e)
-        }
+    try {
+        await api.link({
+            LDFLAGS: [
+                ...LDFLAGS,
+                ...clientObjs,
+                ...renderObjs,
+                '-o', engineExe,
+                ...includeFlags
+            ],
+            obj: [
+                ...clientObjs,
+                ...renderObjs
+            ],
+            database,
+            wasm: engineExe
+        })
+    } catch (e) {
+        log(e)
+    }
 
 
 }

@@ -117,6 +117,7 @@ const toolLdFlags = [
     //"--no-standard-libraries",
     '--no-threads',
     "--export-dynamic",
+    "--export-memory",
     "--export-table",
     "--error-limit=200",
     '-z', `stack-size=${1024 * 1024}`,
@@ -510,39 +511,50 @@ async function linkLCC(database = null) {
 
 // --- Build Logic ---
 
-async function buildTools(database = null) {
-    if (!database) database = toolsRepo || api.database;
-    let parts = database.split('/');
-    let ownerName = parts.length == 2 ? parts[0] : owner.value;
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
+async function buildTools(database = null, noBounce = false) {
 
+    if (buildDebounce) {
+        clearTimeout(buildDebounce)
+    }
 
-    needsHeaders = true
+    if (!noBounce) {
+        buildDebounce = setTimeout(() => buildTools(database, true), 500)
+        return
+    }
 
-    // Helper to compile a single tool component
+    if (building) return
+    building = true
 
+    try {
 
-    log("Starting Toolchain Build...");
+        if (!database) database = toolsRepo || api.database;
 
+        needsHeaders = true
 
-    // TODO: check if tool final output exists just like obj check
+        // Helper to compile a single tool component
 
-    // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
-    await buildLBurg(database)
+        log("Starting Toolchain Build...");
 
+        // TODO: check if tool final output exists just like obj check
 
-    // 2. Build RCC (The Compiler Core)
-    await buildRCC(database, true)
+        // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
+        await buildLBurg(database)
 
+        // 2. Build RCC (The Compiler Core)
+        await buildRCC(database, true)
 
-    // 3. Build CPP (Preprocessor)
-    await buildCPP(database)
+        // 3. Build CPP (Preprocessor)
+        await buildCPP(database)
 
+        // 4. Build LCC (Frontend)
+        await buildLCC(database)
 
-    // 4. Build LCC (Frontend)
-    await buildLCC(database)
+        log("Toolchain build complete.");
 
-    log("Toolchain build complete.");
+    }
+    finally {
+        building = false
+    }
 }
 
 

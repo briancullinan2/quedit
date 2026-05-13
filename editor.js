@@ -1,4 +1,5 @@
 
+let tempCount = 1;
 const sessionCache = {};
 
 function getOrCreateAceSession(fileId, content) {
@@ -36,14 +37,22 @@ let themeName = savedTheme.split('/').pop()
 document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
 var editor = ace.edit("editor");
 editor.setTheme(savedTheme);
+editor.renderer.setShowGutter(true);
+editor.renderer.$gutterLayer.setShowLineNumbers(true)
+editor.renderer.$loop.schedule(editor.renderer.CHANGE_GUTTER);
 const keybinding = document.getElementById('keybinding')
-let savedKeybinding = localStorage.getItem('keybinding') || keybinding.value || 'ace/keyboard/vim'
+let savedKeybinding = localStorage.getItem('keybinding') || keybinding.value || 'ace/keybinding/vim'
+if(!document.querySelector(`[value*="${savedKeybinding}"]`))
+    savedKeybinding = keybinding.value || 'ace/keybinding/vim'
 if(!savedKeybinding || savedKeybinding == 'null')
     editor.setKeyboardHandler(null);
 else
     editor.setKeyboardHandler(savedKeybinding);
 editor.session.setUseWorker(false);
 editor.session.setMode("ace/mode/c_cpp");
+;++tempCount;
+sessionCache['temp' + (tempCount)] = editor.session
+let currentOpenFileId = 'temp' + (tempCount)
 
 updateMaxLines()
 
@@ -72,7 +81,6 @@ theme.addEventListener('change', (e) => {
 });
 
 
-let currentOpenFileId;
 let navTimer;
 editor.on("changeSelection", function () {
     if (NavHistory.isNavigating) return;
@@ -89,6 +97,40 @@ editor.on("changeSelection", function () {
         }
     }, 500); // Wait 500ms of idle time
 });
+
+editor.commands.addCommand({
+    name: "save",
+    bindKey: { win: "Ctrl-S", mac: "Command-S" },
+    exec: function(editor) {
+        saveFile()
+    }
+});
+
+/*
+ace.config.loadModule("ace/keybinding/vim", function(m) {
+    var Vim = m.CodeMirror.Vim;
+    Vim.defineEx("quit", "q", function(cm) {
+        // Your logic to close the editor, tab, or window
+        console.log("User requested quit");
+    });
+});
+
+// Load the Vim module to access the Status Bar attachment
+ace.config.loadModule("ace/keyboard/vim", function(m) {
+    var VimApi = m.CodeMirror.Vim;
+    // Some versions of Ace require this manual attachment:
+    var statusBar = document.getElementById("status-bar");
+    
+    // This tells Ace to pipe ":commands" and "INSERT/NORMAL" modes to your div
+    editor.setOption("showPrintMargin", false); // Optional cleanup
+    
+    // If using the official status bar extension:
+    // var StatusBar = ace.require("ace/ext/statusbar").StatusBar;
+    // var aceStatusBar = new StatusBar(editor, statusBar);
+});
+
+*/
+
 
 const NavHistory = {
     stack: [],
@@ -152,11 +194,23 @@ window.addEventListener('keydown', (e) => {
 });
 
 
+
+async function newFile() {
+    const session = getOrCreateAceSession('temp' + (++tempCount), '');
+    editor.setSession(session);
+    editor.resize();
+    editor.renderer.updateFull();
+    hideOpenPanels()
+    document.getElementById('editor').classList.add('not-hidden')
+
+}
+
+
 async function saveFile() {
     var database = owner.value + '/' + repo.value
-    var filePath = 
-        currentSession()
-        || trees[database].nodesById[currentOpenFileId].path
+    var filePath = currentSession()
+    if(!currentSession())
+        filePath = trees[database].nodesById[currentOpenFileId].path
     var content = editor.getValue()
     var newSha = await getGitShaBrowser(content)
     FS.virtual[filePath] = {

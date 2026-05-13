@@ -553,7 +553,7 @@ const API = (function () {
             element: 'anyfunc',
             maximum: 10000
           })
-          wasi_unstable.table = ENV.__indirect_function_table = importTable
+          env.__indirect_function_table = wasi_unstable.table = ENV.__indirect_function_table = importTable
         }
         if (!wasi_unstable.memory) {
           ENV.memory = Module.memory = wasi_unstable.memory = new WebAssembly.Memory({
@@ -562,7 +562,7 @@ const API = (function () {
             //'shared': true
           })
         }
-        wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
+        //wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
         wasi_unstable.imports = wasi_unstable
         Object.assign(wasi_unstable, FS);
       }
@@ -572,8 +572,8 @@ const API = (function () {
         Object.assign(wasi_unstable, FS);
       }
 
-      
-      
+
+
 
 
 
@@ -1098,7 +1098,7 @@ const API = (function () {
       ]
     }
 
-    async getModule(name, database = null) {
+    async getModule(name, database = null, alreadyTried = false) {
 
       if (typeof name !== 'string') throw new Error('Module name must be a string: ' + typeof (name) + ' given. ' + new String(name))
       if (this.moduleCache[name]) return this.moduleCache[name];
@@ -1115,13 +1115,32 @@ const API = (function () {
         this.hostWrite('\n\r' + name + ' not found at: ' + this.commonPaths(name).join('\n\r')
           + '\n\r' + window.location + '/' + name + '\n\r')
         console.error(up)
-        if(up.message.includes('Response code: 404'))
-        {
+        if (up.message.includes('Response code: 404')
+          && (this.toolsRepo || this.database)
+          && !alreadyTried
+        ) {
+
+
           // TODO: try compiling ourselves if its a known module + result
-          if(name.includes('q3lcc.js.wasm'))
-            await buildTools(this.toolsRepo || this.database)
-          if(name.includes('q3rcc.js.wasm'))
+          if (name.includes('q3lcc.js.wasm'))
+            await buildLCC(this.toolsRepo || this.database)
+          if (name.includes('q3rcc.js.wasm'))
             await buildRCC(this.toolsRepo || this.database)
+          if (name.includes('lburg.js.wasm'))
+            await buildLBurg(this.toolsRepo || this.database)
+          if (name.includes('q3cpp.js.wasm'))
+            await buildCPP(this.toolsRepo || this.database)
+          if (name.includes('q3asm.js.wasm'))
+            await buildAsmTool(this.toolsRepo || this.database)
+          if (name.includes('quake3e.js.wasm'))
+            await buildClient(this.toolsRepo || this.database)
+          if (name.includes('quake3e.ded.js.wasm'))
+            await buildDedicated(this.toolsRepo || this.database)
+          if (name.includes('stringify.js.wasm'))
+            await buildStringify(this.toolsRepo || this.database)
+
+
+          return await this.getModule(name, database, true)
         }
         throw up
       }
@@ -1460,40 +1479,40 @@ const API = (function () {
 
 
     async build(selected, mode = 'all') {
+
+
+      if (mode === 'stringify' || mode === 'engine'
+        || mode === 'release' || mode === 'debug' || mode === 'all')
+        await buildStringify(selected)
+      if (mode === 'shaders' || mode === 'engine'
+        || mode === 'release' || mode === 'debug' || mode === 'all')
+        await buildShaders(selected)
+      if (mode === 'client' || mode === 'engine'
+        || mode === 'release' || mode === 'debug' || mode === 'all')
+        await buildClient(selected)
+
+
       if (!selected)
         selected = this.database;
-      if (mode === 'q3lcc')
-        return await buildLCC(selected)
-      if (mode === 'q3rcc')
-        return await buildRCC(selected)
-      if (mode === 'q3cpp')
-        return await buildCPP(selected)
-      if (mode === 'lburg')
-        return await buildLBurg(selected)
-      if (mode == 'asm')
-        return await buildAsmTool(selected)
+      if (mode === 'lburg' || mode === 'tools' || mode === 'all')
+        await buildLBurg(selected)
+      if (mode === 'q3rcc' || mode === 'tools' || mode === 'all')
+        await buildRCC(selected)
+      if (mode === 'q3cpp' || mode === 'tools' || mode === 'all')
+        await buildCPP(selected)
+      if (mode === 'q3lcc' || mode === 'tools' || mode === 'all')
+        await buildLCC(selected)
+      if (mode == 'asm' || mode === 'tools' || mode === 'all')
+        await buildAsmTool(selected)
 
-      if (mode == 'game')
-        return await buildGame(selected)
-      if (mode == 'cgame')
-        return await buildCGame(selected)
-      if (mode == 'ui')
-        return await buildUI(selected)
-
-      if (mode === 'stringify')
-        return await buildStringify(selected)
-      if (mode === 'shaders')
-        return await buildShaders(selected)
-      if (mode === 'client')
-        return await buildClient(selected)
+      if (mode == 'game' || mode === 'qvms' || mode === 'all')
+        await buildGame(selected)
+      if (mode == 'cgame' || mode === 'qvms' || mode === 'all')
+        await buildCGame(selected)
+      if (mode == 'ui' || mode === 'qvms' || mode === 'all')
+        await buildUI(selected)
 
 
-      if (mode === 'qvms')
-        return await buildQVM(selected)
-      if (mode === 'tools')
-        return await buildTools(selected)
-
-      build(selected);
     }
 
     async run(module, ...args) {

@@ -1,6 +1,6 @@
 
 const CWD = ''
-
+const HISTORY = []
 
 
 
@@ -15,6 +15,7 @@ async function handleCommand(input) {
 
 
     if (tokens.length === 0) return;
+
 
     const [command, ...args] = tokens;
 
@@ -48,7 +49,7 @@ async function handleCommand(input) {
     };
 
     if (commands[command]) {
-        await commands[command](args);
+        await commands[command](args, database);
     } else {
         term.write(`Command not found: ${command}`);
     }
@@ -56,7 +57,7 @@ async function handleCommand(input) {
 
 
 
-async function mount(argv) {
+async function mount(argv, database) {
     let selected = argv[0] || database
     let parts = selected.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -68,7 +69,7 @@ async function mount(argv) {
 }
 
 
-async function ls(argv) {
+async function ls(argv, database) {
     let selected = toolsRepo || database
     let parts = selected.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -147,7 +148,7 @@ async function hello(argv) {
 
 
 
-async function buildCommand(argv) {
+async function buildCommand(argv, database) {
     const mode = argv[0] || 'release';
 
     let selected = api.database = argv[1] || engineRepo || database
@@ -234,7 +235,7 @@ async function buildCommand(argv) {
     if (mode === 'client'
         || mode === 'release' || mode === 'debug'
         || mode === 'all'
-        || validMode === 'release' || validMode === 'debug')
+    )
         await buildClient(selected)
 
 
@@ -261,7 +262,7 @@ async function buildCommand(argv) {
 
 
 
-async function link(argv) {
+async function link(argv, database) {
     const mode = argv[0] || 'engine';
 
     let selected = api.database = argv[1] || engineRepo || database
@@ -308,7 +309,7 @@ async function link(argv) {
 }
 
 
-async function header(argv) {
+async function header(argv, database) {
     let selected = toolsRepo || argv[1] || database
     let parts = selected.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -331,7 +332,7 @@ async function header(argv) {
     }
 }
 
-function openCommand(argv) {
+function openCommand(argv, database) {
     let selected = toolsRepo || argv[1] || database
     let parts = selected.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -346,7 +347,7 @@ function openCommand(argv) {
 function edit(argv) {
     return open(argv)
 }
-async function compileWorker(argv) {
+async function compileWorker(argv, database) {
     let file = argv[0] || currentSession()
     let selected = toolsRepo || argv[1] || database
     let parts = selected.split('/')
@@ -361,6 +362,10 @@ async function compileWorker(argv) {
     let sha = files[selected][file].sha
 
     let contents = await cacheFile(ownerName, repoName, file, sha);
+
+    let CONFIGURATION = configuration.value == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
 
     let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
 
@@ -378,12 +383,12 @@ async function compileWorker(argv) {
         contents: contents,
         width: term.cols,
         input: file,
-        database,
+        database: database,
         obj,
         github_token: api.github_token
     })
 }
-async function clang(argv) {
+async function clang(argv, database) {
     let file = argv[0] || currentSession()
     return await api.compile({
         CFLAGS: argv,
@@ -391,27 +396,33 @@ async function clang(argv) {
         contents: editor.getValue(),
         width: term.cols,
         input: file,
-        database,
+        database: database,
         obj: file ? CONFIGURATION + '/' + file.replace('.c', '.o') : null
     })
 }
-async function runWorker(argv) {
+async function runWorker(argv, database) {
 
     let thisDatabase = database
     if (argv[0].includes('lburg')
         || argv[0].includes('q3lcc')
+        || argv[0].includes('q3rcc')
+        || argv[0].includes('q3cpp')
+        || argv[0].includes('q3asm')
     )
         thisDatabase = toolsRepo
+    if (argv[0].includes('stringify')
+        || argv[0].includes('quake3e'))
+        thisDatabase = engineRepo
 
     return await api.run({
         configuration: configuration.value,
         tool: argv[0],
         args: argv,
-        thisDatabase,
+        database: thisDatabase,
         toolsRepo
     })
 }
-async function lburg(argv) {
+async function lburg(argv, database) {
     let selected = toolsRepo || argv[1] || database
     let parts = selected.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -472,11 +483,11 @@ async function clone(argv) {
 async function lcc(argv) {
     return commands['clang'](argv)
 }
-async function wasm(argv) {
+async function wasm(argv, database = null) {
     return await api.link({
         LDFLAGS: argv,
         configuration: configuration.value,
-        database,
+        database: database,
         github_token: api.github_token
     })
 }

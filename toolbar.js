@@ -170,7 +170,7 @@ function renderToolbarCommand(buttonId) {
             return buildTools(toolsRepo)
         if (configuration.value == 'qvms')
             return buildQVM(gameRepo)
-        return build(engineRepo)
+        return buildClient(engineRepo)
     }
 
     if (buttonId == 'play')
@@ -256,7 +256,8 @@ async function settings() {
         owners: Array.from(owner.children).map(c => c.value),
         default_repository: repo.value,
         default_owner: owner.value,
-        keybinding: keybinding.value
+        keybinding: keybinding.value,
+        history: commandHistory
     }, null, 4)
     const newSha = await getGitShaBrowser(settings)
     if (files[database]) {
@@ -319,6 +320,7 @@ function saveSettings(content) {
 
         savedKeybinding = settings.keybinding
         keybinding.value = settings.keybinding
+        localStorage.setItem('keybinding', api.keybinding)
         if (!savedKeybinding || savedKeybinding == 'null')
             editor.setKeyboardHandler(null);
         else
@@ -342,6 +344,11 @@ function saveSettings(content) {
         owner.value = settings.default_owner
         localStorage.setItem('default_repository', settings.default_repository)
         repo.value = settings.default_repository
+
+        commandHistory.splice(0, history.length);
+        for(let cmd of settings.history)
+            commandHistory.push(cmd)
+        localStorage.setItem('history', JSON.stringify(commandHistory instanceof Array ? commandHistory || [] : []))
     }
     catch (e) {
         console.log(e)

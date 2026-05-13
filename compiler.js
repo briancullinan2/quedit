@@ -130,6 +130,7 @@ class WorkerAPI {
                 }
                 term.write(event.data.data);
                 status.children[0].innerText = 'Status: ' + event.data.data
+                triggerIncrementalSave()
                 break;
 
             case 'runAsync': {

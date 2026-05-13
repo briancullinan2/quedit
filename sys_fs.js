@@ -591,6 +591,18 @@ const FS = {
 			path: '.',
 			parent: ''
 		},
+		'/home': {
+            timestamp: new Date(),
+            mode: FS_DIR,
+            path: '/home',
+            parent: '/'
+        },
+        '/tmp': {
+            timestamp: new Date(),
+            mode: FS_DIR, // ST_DIR + standard permissions
+            path: '/tmp',
+            parent: '/'
+        }
 	}, // temporarily store items as they go in and out of memory
 	Sys_ListFiles: Sys_ListFiles,
 	Sys_FTell: Sys_FTell,

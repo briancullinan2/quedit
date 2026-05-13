@@ -166,18 +166,6 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
 
 
-let tempCount = 1;
-async function newFile() {
-    const session = getOrCreateAceSession('temp' + (++tempCount), '');
-    editor.setSession(session);
-    editor.resize();
-    editor.renderer.updateFull();
-    hideOpenPanels()
-    document.getElementById('editor').classList.add('not-hidden')
-
-}
-
-
 
 
 async function showDatabases() {

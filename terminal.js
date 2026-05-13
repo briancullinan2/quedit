@@ -12,15 +12,48 @@ window.addEventListener('resize', () => {
 
     updateMaxLines()
 });
-let history = [];
+const loadedHistory = JSON.parse(localStorage.getItem('history') || '[]')
+const commandHistory = loadedHistory instanceof Array ? loadedHistory : []
+const loadedLog = JSON.parse(localStorage.getItem('terminal_log') || '[]');
+term.write(loadedLog.join('\n\r'))
 let historyIndex = -1;
 let currentLine = '';
+let isModifierPressed
+
+
+function getInternalTerminalLog() {
+    const lines = [];
+    const buffer = term.buffer.active;
+
+    // Determine the range: last 100 lines relative to the viewport/insertion point
+    const endRow = buffer.baseY + buffer.cursorY;
+    const startRow = Math.max(0, endRow - 100);
+
+    for (let i = startRow; i <= endRow; i++) {
+        const line = buffer.getLine(i);
+        if (line) {
+            // translateToString(true) trims trailing whitespace
+            lines.push(line.translateToString(true));
+        }
+    }
+    return lines;
+}
+
+
+async function triggerIncrementalSave() {
+    const last100 = getInternalTerminalLog();
+    localStorage.setItem('terminal_log', JSON.stringify(last100));
+}
+
 
 
 term.attachCustomKeyEventHandler((arg) => {
+
+
     if (arg.type === "keydown") {
         // Check for Ctrl (Windows/Linux) or Cmd (Mac)
-        const isModifierPressed = arg.ctrlKey || arg.metaKey;
+        isModifierPressed = arg.ctrlKey || arg.metaKey;
+
 
         // --- Ctrl+C: Copy ---
         if (isModifierPressed && arg.code === "KeyC") {
@@ -29,12 +62,26 @@ term.attachCustomKeyEventHandler((arg) => {
                 navigator.clipboard.writeText(selection);
                 return false;
             }
+            triggerIncrementalSave()
             term.write('CTRL+C\n\r> ')
             currentLine = ''
-
         }
 
+        if (arg.code === "Backspace") {
+            if (currentLine.length > 0) {
+                const cursorX = term.buffer.active.cursorX;
 
+                if (cursorX === 0) {
+                    // Move cursor up 1 row, and to the end of the terminal width
+                    term.write('\b \b'); // Standard backspace doesn't always wrap up
+                    // Or use sequences: \x1b[A (Up) and \x1b[999C (Right to end)
+                    term.write('\x1b[A\x1b[' + term.cols + 'C');
+                } else {
+                    term.write('\b \b');
+                }
+                currentLine = currentLine.slice(0, -1);
+            }
+        }
 
         // --- Ctrl+V: Paste ---
         if (isModifierPressed && arg.code === "KeyV") {
@@ -62,20 +109,35 @@ term.attachCustomKeyEventHandler((arg) => {
 
 term.onData(async data => {
     switch (data) {
+
         case '\r': // Enter
             if (currentLine.trim().length > 0) {
-                history.push(currentLine); // Save to history
-                historyIndex = -1; // Reset index
+                commandHistory.push(currentLine);
+
+                // If we exceed 10, remove the difference from the beginning
+                if (commandHistory.length > 10) {
+                    // .splice(start, deleteCount) 
+                    commandHistory.splice(0, commandHistory.length - 10);
+                }
+
+                historyIndex = -1;
+                localStorage.setItem('history', JSON.stringify(commandHistory));
             }
+
             term.write('\r\n');
+            triggerIncrementalSave()
+
             try {
-                let thisLine = currentLine
-                currentLine = ''
+                let thisLine = currentLine;
+                currentLine = '';
+                cursorPosition = 0;
                 await handleCommand(thisLine);
             } catch (e) {
-                term.write(e.toString() + '\r\n' + (e.stack || e.stacktrace) + '\r\n')
+                term.write(e.toString() + '\r\n' + (e.stack || '') + '\r\n');
             }
-            term.write('\r\n> '); // New prompt
+
+            term.write('\r\n> ');
+
             break;
 
         case '\u007f': // Backspace (DEL)
@@ -87,8 +149,8 @@ term.onData(async data => {
             break;
 
         case '\u001b[A': // Up Arrow
-            if (history.length > 0) {
-                if (historyIndex === -1) historyIndex = history.length - 1;
+            if (commandHistory.length > 0) {
+                if (historyIndex === -1) historyIndex = commandHistory.length - 1;
                 else if (historyIndex > 0) historyIndex--;
 
                 updateLineFromHistory();
@@ -97,7 +159,7 @@ term.onData(async data => {
 
         case '\u001b[B': // Down Arrow
             if (historyIndex !== -1) {
-                if (historyIndex < history.length - 1) {
+                if (historyIndex < commandHistory.length - 1) {
                     historyIndex++;
                     updateLineFromHistory();
                 } else {
@@ -105,6 +167,48 @@ term.onData(async data => {
                     updateLineFromHistory(""); // Clear if we go past the end
                 }
             }
+            break;
+
+        case '\u001b[D': // Left Arrow
+            if (cursorPosition > 0) {
+                cursorPosition--;
+                term.write('\u001b[D'); // Move terminal cursor left
+            }
+            break;
+
+        case '\u001b[C': // Right Arrow
+            if (cursorPosition < currentLine.length) {
+                cursorPosition++;
+                term.write('\u001b[C'); // Move terminal cursor right
+            }
+            break;
+
+        case '\u001b[H': // Home (May also be \u001b[1~ depending on terminal mode)
+        case '\u001bOH':
+            if (cursorPosition > 0) {
+                // Move back by cursorPosition steps
+                term.write(`\u001b[${cursorPosition}D`);
+                cursorPosition = 0;
+            }
+            break;
+
+        case '\u001b[F': // End (May also be \u001b[4~)
+        case '\u001bOF':
+            if (cursorPosition < currentLine.length) {
+                // Move forward to the end of the line
+                term.write(`\u001b[${currentLine.length - cursorPosition}C`);
+                cursorPosition = currentLine.length;
+            }
+            break;
+
+        case '\u001b[5~': // Page Up
+            // Usually scrolls the terminal buffer
+            term.scrollLines(-Math.floor(term.rows / 2));
+            break;
+
+        case '\u001b[6~': // Page Down
+            // Usually scrolls the terminal buffer
+            term.scrollLines(Math.floor(term.rows / 2));
             break;
 
         default: // Standard typing
@@ -241,21 +345,25 @@ const formatMessage = (level, args) => {
 window.console.log = (...args) => {
     term.write(formatMessage('log', args));
     originalConsole.log.apply(console, args);
+    triggerIncrementalSave()
 };
 
 window.console.warn = (...args) => {
     term.write(formatMessage('warn', args));
     originalConsole.warn.apply(console, args);
+    triggerIncrementalSave()
 };
 
 window.console.error = (...args) => {
     term.write(formatMessage('error', args));
     originalConsole.error.apply(console, args);
+    triggerIncrementalSave()
 };
 
 window.console.info = (...args) => {
     term.write(formatMessage('info', args));
     originalConsole.info.apply(console, args);
+    triggerIncrementalSave()
 };
 
 
@@ -284,18 +392,32 @@ document.getElementById('terminals').addEventListener('click', async (e) => {
 const terminalContainer = document.getElementById('terminal');
 
 terminalContainer.addEventListener('mousedown', async (event) => {
-    // 1. Convert pixel click to row/column
-    const coords = term.selectionManager?._model.selectionStart || [0, 0];
-    // A cleaner way using xterm's internal mouse report:
+    if (!event.ctrlKey && !isModifierPressed) return;
+
     const rect = terminalContainer.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    // Calculate row and col based on character dimensions
     const col = Math.floor(x / term._core._renderService.dimensions.css.cell.width);
     const row = Math.floor(y / term._core._renderService.dimensions.css.cell.height) + term.buffer.active.viewportY;
 
-    // 2. Grab the text from the clicked line
+    // Only update cursor if the click is on the "active" input line
+    const activeRow = term.buffer.active.baseY + term.buffer.active.cursorY;
+    if (row === activeRow) {
+        const promptLength = 2; // Adjust based on your actual prompt (e.g., "> ")
+        let newPos = col - promptLength;
+
+        // Constrain the position within the bounds of the actual text
+        newPos = Math.max(0, Math.min(newPos, currentLine.length));
+
+        // Sync internal state
+        cursorPosition = newPos;
+
+        // Move terminal cursor physically
+        // \x1b[G moves to col 0, then we move right by the prompt + index
+        term.write(`\x1b[G\x1b[${promptLength + cursorPosition}C`);
+    }
+
     const lineText =
         term.buffer.active.getLine(row - 2)?.translateToString(true)
         + term.buffer.active.getLine(row - 1)?.translateToString(true)
@@ -330,7 +452,7 @@ function updateLineFromHistory(specificValue = null) {
     term.write('\r\x1b[K> ');
 
     // 2. Update the buffer
-    currentLine = specificValue !== null ? specificValue : history[historyIndex];
+    currentLine = specificValue !== null ? specificValue : commandHistory[historyIndex];
 
     // 3. Write the new line
     term.write(currentLine);
