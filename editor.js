@@ -30,20 +30,24 @@ function currentSession()
 }
 
 
-let savedTheme
-var theme = document.getElementById('theme')
+const theme = document.getElementById('theme')
+let savedTheme = localStorage.getItem('theme') || theme.value || 'ace/theme/monokai'
+let themeName = savedTheme.split('/').pop()
+document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
 var editor = ace.edit("editor");
+editor.setTheme(savedTheme);
+const keybinding = document.getElementById('keybinding')
+let savedKeybinding = localStorage.getItem('keybinding') || keybinding.value || 'ace/keyboard/vim'
+if(!savedKeybinding || savedKeybinding == 'null')
+    editor.setKeyboardHandler(null);
+else
+    editor.setKeyboardHandler(savedKeybinding);
 editor.session.setUseWorker(false);
 editor.session.setMode("ace/mode/c_cpp");
+
 updateMaxLines()
 
 setTimeout(() => {
-    savedTheme = localStorage.getItem('theme');
-    const newtheme = savedTheme || theme.value || 'ace/theme/monokai'
-    const themeName = newtheme.split('/').pop(); // Gets 'monokai' or 'dracula'
-    // Clean up old classes and add new one
-    document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
-    editor.setTheme(newtheme);
     updateMaxLines()
     editor.resize();
     editor.renderer.updateFull();

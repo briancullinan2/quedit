@@ -600,19 +600,47 @@ async function buildStringify(database = null) {
         log(e)
     }
 
+    await linkStringify(database)
+}
 
+
+async function linkStringify(database = null)
+{
+
+    if (!database) database = api.database
+
+    let CONFIGURATION = api.configuration == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
+
+    let stringifyExe = CONFIGURATION + '/stringify' + config.BINEXT
+
+    let exeRecord = await getRecord(DB_STORE_NAME, stringifyExe, database)
+    FS.virtual[stringifyExe] = exeRecord
+
+
+    if (FS.virtual[stringifyExe]
+        // TODO: compare LATEST input and output mtime
+        // && FS.virtual[file]?.timestamp < FS.virtual[stringifyExe]?.timestamp
+    ) {
+        log(stringifyExe + " already up to date...");
+        return
+    }
+
+    log(`LD: ${stringifyExe}\n\r`);
 
     try {
         await api.link({
             LDFLAGS: [
                 ...baseLdFlags,
                 CONFIGURATION + '/stringify.o',
-                '-o', CONFIGURATION + '/stringify' + config.BINEXT,
+                '-o', stringifyExe,
                 ...includeFlags
             ],
             obj: [CONFIGURATION + '/stringify.o'],
             database,
-            wasm: CONFIGURATION + '/stringify' + config.BINEXT
+            wasm: stringifyExe
         })
     } catch (e) {
         log(e)
@@ -652,6 +680,20 @@ async function buildClient(database = null) {
             let content = await cacheFile(ownerName, repoName, file, sha)
             let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
 
+            let objRecord = await getRecord(DB_STORE_NAME, obj, database)
+            FS.virtual[obj] = objRecord
+
+            if (FS.virtual[obj]
+                // compare input and output mtime
+                && FS.virtual[file]?.timestamp < FS.virtual[obj]?.timestamp
+            ) {
+                log(`${obj} already up to date...\n\r`)
+
+                continue
+            }
+
+            log(`CC: ${obj}\n\r`)
+
             let CCFLAGS = [
                 ...CFLAGS,
                 ...DEBUG_CFLAGS,
@@ -663,17 +705,7 @@ async function buildClient(database = null) {
             if (file.includes('botlib'))
                 CCFLAGS = CCFLAGS.concat('-DBOTLIB=1')
 
-            log(`CC: ${obj}\n\r`)
 
-            let objRecord = await getRecord(DB_STORE_NAME, obj, database)
-            FS.virtual[obj] = objRecord
-
-            if (FS.virtual[obj]
-                // compare input and output mtime
-                && FS.virtual[file]?.timestamp < FS.virtual[obj]?.timestamp
-            ) {
-                continue
-            }
 
             await api.compile({
                 CFLAGS: CCFLAGS,
@@ -753,24 +785,53 @@ async function build(database = null, noBounce = false) {
         await putRecord(DB_STORE_NAME, FS.virtual['/tmp'], database)
         //if(this.memfs && !this.memfs.exists())
 
+        await buildStringify(database)
 
+        await buildClient(database)
+
+        await buildShaders(database)
+
+        await linkEngine(database)
+
+    } finally {
+        building = false
+
+        //await api.download(database)
+
+    }
+
+    }
+
+
+    async function linkEngine(database = null)
+    {
+        if (!database) database = api.database
+
+        
         let CONFIGURATION = api.configuration == 'release'
             ? dirs.ENGINE_RELEASE
             : dirs.ENGINE_DEBUG
 
 
 
-        await buildStringify(database)
-
-
-        await buildClient(database)
-
-
-        await buildShaders(database)
-
-
         let clientObjs = allCompileObjects.map(s => CONFIGURATION + '/' + s.replace('.c', '.o'))
         let renderObjs = allRend2ShaderObjects.map(s => CONFIGURATION + '/' + s.replace('.glsl', '.o'))
+
+        let engineExe = CONFIGURATION + '/' + config.CNAME + config.BINEXT
+
+        let exeRecord = await getRecord(DB_STORE_NAME, engineExe, database)
+        FS.virtual[engineExe] = exeRecord
+
+
+        if (FS.virtual[engineExe]
+            // TODO: compare LATEST input and output mtime
+            // && FS.virtual[file]?.timestamp < FS.virtual[engineExe]?.timestamp
+        ) {
+            log(engineExe + " already up to date...");
+            return
+        }
+
+        log(`LD: ${engineExe}\n\r`);
 
 
         try {
@@ -779,7 +840,7 @@ async function build(database = null, noBounce = false) {
                     ...LDFLAGS,
                     ...clientObjs,
                     ...renderObjs,
-                    '-o', CONFIGURATION + '/' + config.CNAME + config.BINEXT,
+                    '-o', engineExe,
                     ...includeFlags
                 ],
                 obj: [
@@ -787,18 +848,12 @@ async function build(database = null, noBounce = false) {
                     ...renderObjs
                 ],
                 database,
-                wasm: CONFIGURATION + '/' + config.CNAME + config.BINEXT
+                wasm: engineExe
             })
         } catch (e) {
             log(e)
         }
 
-    } finally {
-        building = false
-
-        //await api.download(database)
-
-    }
 
 }
 
@@ -827,21 +882,26 @@ async function buildShaders(database = null) {
         try {
             let sha = files[database][shader].sha
             let content = await cacheFile(ownerName, repoName, shader, sha)
-            const cCode = generateFallbackC(shader, content);
+
+            // TODO: run stringify?
+
             let obj = CONFIGURATION + '/' + shader.replace('.glsl', '.o')
             log(`GLSL: ${obj}\n\r`)
+            const cCode = generateFallbackC(shader, content);
 
             let objRecord = await getRecord(DB_STORE_NAME, obj, database)
             FS.virtual[obj] = objRecord
 
-
-            log(`CC: ${shader}\n\r`);
-
             if (FS.virtual[obj]
                 && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
             ) {
+                log(`${obj} already up to date...\n\r`)
+
                 continue
             }
+
+            log(`CC: ${shader}\n\r`);
+
             await api.compile({
                 CFLAGS: [
                     ...CFLAGS,
@@ -885,8 +945,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                 if (header.includes('wasm.syms')) {
                     //let response = await fetch('wasm.syms');
                     //let contents = await response.arrayBuffer()
-                    if (!files['briancullinan2/quedit'])
-                    {
+                    if (!files['briancullinan2/quedit']) {
                         await loadGitHubTree('briancullinan2', 'quedit', 'main')
                     }
                     await cacheFile('briancullinan2', 'quedit', 'wasm.syms');
@@ -897,13 +956,12 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                         contents: FS.virtual['wasm.syms'].contents,
                         path: header,
                         sha: FS.virtual['wasm.syms'].sha
-                        
+
                     }
                     await putRecord(DB_STORE_NAME, FS.virtual[header], thisDatabase)
                 }
                 else {
-                    if (!files[thisDatabase])
-                    {
+                    if (!files[thisDatabase]) {
                         let branch = await getDefaultBranch(thisOwner, thisRepo)
                         await loadGitHubTree(thisOwner, thisRepo, branch)
                     }

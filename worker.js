@@ -72,17 +72,21 @@ let currentApp = null;
 
 const onAnyMessage = async event => {
   if(event.data.data && event.data.data.github_token)
-  {
     api.github_token = event.data.data.github_token
-  }
   if(event.data.data && event.data.data.width)
-  {
     api.width = event.data.data.width
-  }
   if(event.data.data && event.data.data.database)
-  {
     api.database = event.data.data.database
-  }
+  if(event.data.data && event.data.data.toolsRepo)
+    api.toolsRepo = event.data.data.toolsRepo
+  if(event.data.data && event.data.data.engineRepo)
+    api.engineRepo = event.data.data.engineRepo
+  if(event.data.data && event.data.data.gameRepo)
+    api.gameRepo = event.data.data.gameRepo
+  if(event.data.data && event.data.data.assetRepo)
+    api.assetRepo = event.data.data.assetRepo
+  if(event.data.data && event.data.data.toolsRepo2)
+    api.toolsRepo2 = event.data.data.toolsRepo2
   switch (event.data.id) {
     case 'constructor':
       port = event.data.data;

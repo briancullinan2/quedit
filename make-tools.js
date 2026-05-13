@@ -160,7 +160,31 @@ async function buildLBurg(database = null) {
         }
 
     }
+
+    await linkLburg(database)
+}
+
+
+async function linkLburg(database) {
+
     const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
+
+
+    let exeRecord = await getRecord(DB_STORE_NAME, lburgExe, database)
+    FS.virtual[lburgExe] = exeRecord
+
+
+    if (FS.virtual[lburgExe]
+        // TODO: compare LATEST input and output mtime
+        // && FS.virtual[file]?.timestamp < FS.virtual[lburgExe]?.timestamp
+    ) {
+        log(lburgExe + " already up to date...");
+        return
+    }
+
+    log(`LD: ${lburgExe}\n\r`);
+
+
     await api.link({
         LDFLAGS: [
             ...toolLdFlags,
@@ -201,6 +225,16 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
 
         }
 
+        let objRecord = await getRecord(DB_STORE_NAME, obj, database)
+        FS.virtual[obj] = objRecord
+
+        if (FS.virtual[obj]
+            && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+        ) {
+            log(`${obj} already up to date...\n\r`)
+
+            return obj
+        }
 
         await api.compile({
             CFLAGS: [
@@ -223,7 +257,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
 function log(msg, ...args) {
 
     if (typeof term !== 'undefined') term.write(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
-    else if(typeof api.hostWrite != 'undefined') api.hostWrite(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
+    else if (typeof api.hostWrite != 'undefined') api.hostWrite(`\x1b[33m[TOOLS-BUILD]\x1b[0m ${msg}\r\n`);
     else console.log(msg);
 }
 
@@ -231,7 +265,7 @@ function log(msg, ...args) {
 let needsHeaders = true
 
 
-async function buildRCC(database = null) {
+async function buildRCC(database = null, skipTool = false) {
     if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
@@ -242,6 +276,20 @@ async function buildRCC(database = null) {
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
+
+
+    if (!skipTool) {
+
+        const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
+
+        let exeRecord = await getRecord(DB_STORE_NAME, lburgExe, database)
+        if (!exeRecord) {
+            await buildLBurg(database)
+            exeRecord = await getRecord(DB_STORE_NAME, lburgExe, database)
+        }
+        FS.virtual[lburgExe] = exeRecord
+
+    }
 
     log("Building RCC...");
     const rccObjs = [];
@@ -277,7 +325,36 @@ async function buildRCC(database = null) {
             log(e)
         }
     }
+
+
+
+    await linkRCC(database)
+
+}
+
+
+
+async function linkRCC(database = null) {
+    if (!database) database = toolsRepo || api.database;
+
+
+    let rccObjs = rccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.RCC, file))
     const rccExe = path.join(CONFIGURATION, "q3rcc" + config.BINEXT);
+
+    let exeRecord = await getRecord(DB_STORE_NAME, rccExe, database)
+    FS.virtual[rccExe] = exeRecord
+
+
+    if (FS.virtual[rccExe]
+        // TODO: compare LATEST input and output mtime
+        // && FS.virtual[file]?.timestamp < FS.virtual[rccExe]?.timestamp
+    ) {
+        log(rccExe + " already up to date...");
+        return
+    }
+
+    log(`LD: ${rccExe}\n\r`);
+
     await api.link({
         LDFLAGS: [
             ...toolLdFlags,
@@ -316,7 +393,36 @@ async function buildCPP(database = null) {
             log(e)
         }
     }
+
+    await linkCPP(database)
+}
+
+
+
+async function linkCPP(database = null) {
+    if (!database) database = toolsRepo || api.database;
+
+
+    let cppObjs = cppFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.CPP, file))
     const cppExe = path.join(CONFIGURATION, "q3cpp" + config.BINEXT);
+
+
+    let exeRecord = await getRecord(DB_STORE_NAME, cppExe, database)
+    FS.virtual[cppExe] = exeRecord
+
+
+    if (FS.virtual[cppExe]
+        // TODO: compare LATEST input and output mtime
+        // && FS.virtual[file]?.timestamp < FS.virtual[lburgExe]?.timestamp
+    ) {
+        log(cppExe + " already up to date...");
+        return
+    }
+
+    log(`LD: ${cppExe}\n\r`);
+
+
+
     await api.link({
         LDFLAGS: [
             ...toolLdFlags,
@@ -356,7 +462,40 @@ async function buildLCC(database = null) {
             log(e)
         }
     }
+
+
+    await linkLCC(database)
+
+
+}
+
+
+
+
+async function linkLCC(database = null) {
+
+    if (!database) database = toolsRepo || api.database;
+
+
+    let lccObjs = lccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.ETC, file))
     const lccExe = path.join(CONFIGURATION, "q3lcc" + config.BINEXT);
+
+
+    let exeRecord = await getRecord(DB_STORE_NAME, lccExe, database)
+    FS.virtual[lccExe] = exeRecord
+
+
+    if (FS.virtual[lccExe]
+        // TODO: compare LATEST input and output mtime
+        // && FS.virtual[file]?.timestamp < FS.virtual[lburgExe]?.timestamp
+    ) {
+        log(lccExe + " already up to date...");
+        return
+    }
+
+    log(`LD: ${lccExe}\n\r`);
+
+
     await api.link({
         LDFLAGS: [
             ...toolLdFlags,
@@ -386,12 +525,14 @@ async function buildTools(database = null) {
     log("Starting Toolchain Build...");
 
 
+    // TODO: check if tool final output exists just like obj check
+
     // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
     await buildLBurg(database)
 
 
     // 2. Build RCC (The Compiler Core)
-    await buildRCC(database)
+    await buildRCC(database, true)
 
 
     // 3. Build CPP (Preprocessor)
@@ -429,10 +570,6 @@ const Q3ASM_CFLAGS = [
 async function buildAsmTool(database = null) {
     if (!database) database = toolsRepo2 || api.database;
 
-    const log = (msg) => {
-        if (typeof term !== 'undefined') log(`\x1b[35m[Q3ASM-BUILD]\x1b[0m ${msg}\r\n`);
-        else log(msg);
-    };
 
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
@@ -453,7 +590,6 @@ async function buildAsmTool(database = null) {
 
     log("Building q3asm...");
 
-    const objs = [];
     const toolSourceDir = "code/tools/asm"; // Adjust to your actual source path
 
     for (const file of q3asmFiles) {
@@ -475,13 +611,43 @@ async function buildAsmTool(database = null) {
                 database,
                 obj: obj
             });
-            objs.push(obj);
         } catch (e) {
             log(`Error compiling q3asm component: ${file}`);
         }
     }
 
+    await linkAsm(database)
+
+}
+
+
+async function linkAsm(database = null) {
+    if (!database) database = toolsRepo2 || api.database;
+
+
+    let CONFIGURATION = api.configuration == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
+
+    let asmObjs = q3asmFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.ETC, file))
+
     const q3asmExe = path.join(CONFIGURATION, "q3asm" + config.BINEXT);
+
+    let exeRecord = await getRecord(DB_STORE_NAME, q3asmExe, database)
+    FS.virtual[q3asmExe] = exeRecord
+
+
+    if (FS.virtual[q3asmExe]
+        // TODO: compare LATEST input and output mtime
+        // && FS.virtual[file]?.timestamp < FS.virtual[q3asmExe]?.timestamp
+    ) {
+        log(q3asmExe + " already up to date...");
+        return
+    }
+
+    log(`LD: ${q3asmExe}\n\r`);
+
 
     try {
         log("Linking q3asm...");
@@ -489,12 +655,12 @@ async function buildAsmTool(database = null) {
             LDFLAGS: [
                 ...baseLdFlags,
                 "-o", q3asmExe,
-                ...objs,
+                ...asmObjs,
                 ...includeFlags
             ],
-            obj: objs,
+            obj: asmObjs,
             database,
-            wasm: q3asmExe
+            wasm: q3asmExe,
         });
         log("q3asm build complete.");
     } catch (e) {

@@ -32,7 +32,11 @@ class WorkerAPI {
         this.database = options.database || engineRepo || this.database
         this.width = options.width = term.cols
         this.github_token = options.github_token = this.github_token
-
+        this.toolsRepo = options.toolsRepo || toolsRepo || this.toolsRepo
+        this.toolsRepo2 = options.toolsRepo2 || toolsRepo2 || this.toolsRepo2
+        this.engineRepo = options.engineRepo || engineRepo || this.engineRepo
+        this.gameRepo = options.gameRepo || gameRepo || this.gameRepo
+        this.assetRepo = options.assetRepo || assetRepo || this.assetRepo
     }
 
 

@@ -153,11 +153,11 @@ window.addEventListener('beforeunload', event => {
 
 
 let owners = localStorage.getItem('owners')?.split(';')
-if(!owners || owners.length == 0) owners = ['briancullinan2', 'ec-']
+if (!owners || owners.length == 0) owners = ['briancullinan2', 'ec-']
 updateSelectOptions(owner, owners)
 owner.value = localStorage.getItem('default_owner') || owners[0]
 let repos = localStorage.getItem('repositories')?.split(';')
-if(!repos || repos.length == 0) repos = ['Quake3e', 'baseq3a']
+if (!repos || repos.length == 0) repos = ['Quake3e', 'baseq3a']
 updateSelectOptions(repo, repos)
 repo.value = localStorage.getItem('default_repository') || repos[0]
 
@@ -202,8 +202,7 @@ function renderToolbarCommand(buttonId) {
 
 
     let filename = currentSession()
-    if(filename?.includes('settings.json'))
-    {
+    if (filename?.includes('settings.json')) {
         //saveFile()
         settings()
     }
@@ -257,6 +256,7 @@ async function settings() {
         owners: Array.from(owner.children).map(c => c.value),
         default_repository: repo.value,
         default_owner: owner.value,
+        keybinding: keybinding.value
     }, null, 4)
     const newSha = await getGitShaBrowser(settings)
     if (files[database]) {
@@ -316,6 +316,13 @@ function saveSettings(content) {
         savedTheme = settings.theme
         setTheme(settings.theme)
 
+        savedKeybinding = settings.keybinding
+        keybinding.value = settings.keybinding
+        if (!savedKeybinding || savedKeybinding == 'null')
+            editor.setKeyboardHandler(null);
+        else
+            editor.setKeyboardHandler(settings.keybinding);
+
         api.github_token = settings.github_token
         localStorage.setItem('github_token', api.github_token)
 
@@ -329,7 +336,7 @@ function saveSettings(content) {
         localStorage.setItem('owners', (settings.owners || []).join(';'))
         updateSelectOptions('repository', settings.repositories || [])
         localStorage.setItem('repositories', (settings.repositories || []).join(';'))
-        
+
         localStorage.setItem('default_owner', settings.default_owner)
         owner.value = settings.default_owner
         localStorage.setItem('default_repository', settings.default_repository)

@@ -62,6 +62,15 @@
                     </ul>
                 </li>
                 <li class="setting">
+                    <select placeholder="Key binding" name="keybinding" id="keybinding">
+                        <option value="null">Ace</option>
+                        <option value="ace/keyboard/vim">Vim</option>
+                        <option value="ace/keyboard/emacs">Emacs</option>
+                        <option value="ace/keyboard/sublime">Sublime</option>
+                        <option value="ace/keyboard/vscode">VS Code</option>
+                    </select>
+                </li>
+                <li class="setting">
                     <select placeholder="Build configuration" name="configuration" id="configuration">
                         <option value="debug">Debug</option>
                         <option value="release">Release</option>
@@ -286,6 +295,7 @@ int main() {
     <script src="/filelist.js" type="text/javascript" defer></script>
     <script src="/compiler.js" type="text/javascript" defer></script>
     <script src="/unzip.js" type="text/javascript" defer></script>
+    <script src="/commands.js" type="text/javascript" defer></script>
 
     <script defer type="text/javascript" src="nipplejs.js"></script>
     <script defer type="text/javascript" src="sys_emgl.js"></script>

@@ -164,6 +164,18 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
             const sha = files[database][srcPath].sha;
             const content = await cacheFile(ownerName, repoName, srcPath, sha);
 
+
+            let objRecord = await getRecord(DB_STORE_NAME, outPath, database)
+            FS.virtual[outPath] = objRecord
+
+            if (FS.virtual[outPath]
+                && FS.virtual[srcPath]?.timestamp < FS.virtual[outPath]?.timestamp
+            ) {
+                log(`${outPath} already up to date...\n\r`)
+
+                continue
+            }
+
             log(`QVMCC: ${srcPath}`);
 
             let CCFLAGS = [
@@ -203,11 +215,42 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
         } catch (e) { log(`Error CC: ${srcPath}: ${e.message}\n\r${e.stack || e.stacktrace}`); }
     }
 
+
+    await linkModule(database, name, filesList)
+}
+
+
+
+
+async function linkModule(database, name, filesList)
+{
+
+
+    let CONFIGURATION = api.configuration == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
     // Link phase (q3asm)
-    log(`Assembling ${name}.qvm...`);
     const qvmOutput = path.join(CONFIGURATION, repoName || config.MOD, `${name === 'game' ? 'qagame' : name}.qvm`);
+    log(`Assembling ${qvmOutput}...`);
 
     let qvmObjs = filesList.map(file => path.join(CONFIGURATION, name, file))
+
+
+
+    let exeRecord = await getRecord(DB_STORE_NAME, qvmOutput, database)
+    FS.virtual[qvmOutput] = exeRecord
+
+
+    if (FS.virtual[qvmOutput]
+        // TODO: compare LATEST input and output mtime
+        // && FS.virtual[file]?.timestamp < FS.virtual[qvmOutput]?.timestamp
+    ) {
+        log(qvmOutput + " already up to date...");
+        return
+    }
+
+    log(`LD: ${qvmOutput}\n\r`);
 
 
     let LDFLAGS = [
@@ -230,6 +273,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
             })
         }
         else {
+
             await api.link({
                 LDFLAGS: LDFLAGS,
                 obj: qvmObjs,
@@ -237,7 +281,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                 wasm: qvmOutput // Overloading 'wasm' key for the binary output
             });
         }
-        
+
         log(`Success: ${qvmOutput}`);
     } catch (e) { log(`Linker Error in ${name}`); }
 }

@@ -1113,6 +1113,14 @@ const API = (function () {
         this.hostWrite('\n\r' + name + ' not found at: ' + this.commonPaths(name).join('\n\r')
           + '\n\r' + window.location + '/' + name + '\n\r')
         console.error(up)
+        if(up.message.includes('Response code: 404'))
+        {
+          // TODO: try compiling ourselves if its a known module + result
+          if(name.includes('q3lcc.js.wasm'))
+            await buildTools(this.toolsRepo || this.database)
+          if(name.includes('q3rcc.js.wasm'))
+            await buildRCC(this.toolsRepo || this.database)
+        }
         throw up
       }
     }
