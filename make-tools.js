@@ -168,6 +168,14 @@ async function buildLBurg(database = null) {
 
 
 async function linkLburg(database) {
+    if (!database) database = toolsRepo || api.database;
+
+    let CONFIGURATION = api.configuration == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
+    PREAMBLE = TOOLS_PREAMBLE
+
 
     const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
 
@@ -227,17 +235,17 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
 
         }
 
-        PREAMBLE = TOOLERR_PREAMBLE
+        PREAMBLE = TOOLS_PREAMBLE
 
         let objRecord = await getRecord(DB_STORE_NAME, obj, database)
         FS.virtual[obj] = objRecord
 
         if (FS.virtual[obj]
-            && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+            //    && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
         ) {
-            log(`${obj} already up to date...\n\r`)
+            //    log(`${obj} already up to date...\n\r`)
 
-            return obj
+            //    return obj
         }
 
         await api.compile({
@@ -260,7 +268,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
 }
 
 
-const TOOLS_PREAMBLE   = '\x1b[38;5;121m[TOOLS-BUILD]\x1b[0m '
+const TOOLS_PREAMBLE = '\x1b[38;5;121m[TOOLS-BUILD]\x1b[0m '
 const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m '
 
 
@@ -270,7 +278,8 @@ function log(msg, ...args) {
     if (typeof term !== 'undefined') term.write(`${PREAMBLE}${msg}\r\n`);
     else if (typeof api.hostWrite != 'undefined') api.hostWrite(`${PREAMBLE}${msg}\r\n`);
     else console.log(msg);
-    triggerIncrementalSave()
+    if (typeof triggerIncrementalSave !== 'undefined')
+        triggerIncrementalSave()
 }
 
 
@@ -352,6 +361,10 @@ async function buildRCC(database = null, skipTool = false) {
 async function linkRCC(database = null) {
     if (!database) database = toolsRepo || api.database;
 
+    let CONFIGURATION = api.configuration == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
     PREAMBLE = TOOLS_PREAMBLE
 
     let rccObjs = rccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.RCC, file))
@@ -418,6 +431,10 @@ async function buildCPP(database = null) {
 
 async function linkCPP(database = null) {
     if (!database) database = toolsRepo || api.database;
+
+    let CONFIGURATION = api.configuration == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
 
     PREAMBLE = TOOLS_PREAMBLE
 
@@ -495,6 +512,10 @@ async function linkLCC(database = null) {
 
     if (!database) database = toolsRepo || api.database;
 
+    let CONFIGURATION = api.configuration == 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
     PREAMBLE = TOOLS_PREAMBLE
 
     let lccObjs = lccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.ETC, file))
@@ -509,8 +530,8 @@ async function linkLCC(database = null) {
         // TODO: compare LATEST input and output mtime
         // && FS.virtual[file]?.timestamp < FS.virtual[lburgExe]?.timestamp
     ) {
-        log(lccExe + " already up to date...");
-        return
+        //log(lccExe + " already up to date...");
+        //return
     }
 
     log(`LD: ${lccExe}\n\r`);

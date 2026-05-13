@@ -564,12 +564,15 @@ const API = (function () {
         }
         //wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
         wasi_unstable.imports = wasi_unstable
-        Object.assign(wasi_unstable, FS);
+        Object.assign(wasi_unstable, this.api.memfs.exports);
+        wasi_unstable.getpid = FS.getpid
+        wasi_unstable.wait = FS.wait
+        //Object.assign(wasi_unstable, FS);
       }
       else {
         Object.assign(wasi_unstable, this.api.memfs.exports);
         // TODO: make optional until i know its working?
-        Object.assign(wasi_unstable, FS);
+        //Object.assign(wasi_unstable, FS);
       }
 
 
@@ -1104,9 +1107,62 @@ const API = (function () {
       if (this.moduleCache[name]) return this.moduleCache[name];
 
       try {
-        const module = await this.hostLogAsync(`Fetching and compiling ${name}`,
-          this.compileStreaming(name));
-        if (!module) throw new Error('No module! ' + name)
+        let module
+
+        for (let filePath of this.commonPaths(name)) {
+          if (!filePath) continue
+          let contents
+          try {
+            if (this.database) {
+              let record = await getRecord(DB_STORE_NAME, filePath, this.database)
+              if (record) {
+                contents = record.contents
+              }
+            }
+          } catch (e) {
+            console.log(e)
+          }
+
+          try {
+            if (!contents && this.toolsRepo) {
+              let record = await getRecord(DB_STORE_NAME, filePath, this.toolsRepo)
+              if (record) {
+                contents = record.contents
+              }
+            }
+          } catch (e) {
+            console.log(e)
+          }
+
+          if (this.memfs && this.memfs.exists(filePath)) {
+            contents = this.memfs.getFileContents(filePath)
+            if (!FS.virtual[filePath] || !FS.virtual[filePath].contents || FS.virtual[filePath].contents.length == 0) {
+              console.error('Assetion virtual fs not empty for wasm: ' + name)
+              debugger
+            }
+          }
+          else if (FS.virtual[filePath]) {
+            contents = FS.virtual[filePath].contents
+          }
+
+          if (contents) {
+            module = await this.hostLogAsync(`Fetching and compiling from local: ${name}`,
+              this.compileStreaming(contents));
+            module.name = name
+            this.moduleCache[name] = this.moduleCache[filePath] = module;
+            break
+          }
+
+        }
+
+        if (!module || typeof module === 'string') {
+
+          module = await this.hostLogAsync(`Fetching and compiling ${name}`,
+            this.compileStreaming(name));
+          if (!module) throw new Error('No module! ' + name)
+        }
+
+
         module.name = name
         this.moduleCache[name] = module;
         return module;
@@ -1122,21 +1178,21 @@ const API = (function () {
 
 
           // TODO: try compiling ourselves if its a known module + result
-          if (name.includes('q3lcc.js.wasm'))
+          if (name.includes('q3lcc'))
             await buildLCC(this.toolsRepo || this.database)
-          if (name.includes('q3rcc.js.wasm'))
+          if (name.includes('q3rcc'))
             await buildRCC(this.toolsRepo || this.database)
-          if (name.includes('lburg.js.wasm'))
+          if (name.includes('lburg'))
             await buildLBurg(this.toolsRepo || this.database)
-          if (name.includes('q3cpp.js.wasm'))
+          if (name.includes('q3cpp'))
             await buildCPP(this.toolsRepo || this.database)
-          if (name.includes('q3asm.js.wasm'))
+          if (name.includes('q3asm'))
             await buildAsmTool(this.toolsRepo || this.database)
-          if (name.includes('quake3e.js.wasm'))
+          if (name.includes('quake3e'))
             await buildClient(this.toolsRepo || this.database)
-          if (name.includes('quake3e.ded.js.wasm'))
+          if (name.includes('quake3e.ded'))
             await buildDedicated(this.toolsRepo || this.database)
-          if (name.includes('stringify.js.wasm'))
+          if (name.includes('stringify'))
             await buildStringify(this.toolsRepo || this.database)
 
 
@@ -1518,59 +1574,9 @@ const API = (function () {
     async run(module, ...args) {
       await this.ready
 
-      if (typeof module === 'string') {
-        let name = module
 
-        for (let filePath of this.commonPaths(module)) {
-          if (!filePath) continue
-          let contents
-          try {
-            if (this.database) {
-              let record = await getRecord(DB_STORE_NAME, filePath, this.database)
-              if (record) {
-                contents = record.contents
-              }
-            }
-          } catch (e) {
-            console.log(e)
-          }
-
-          try {
-            if (!contents && this.toolsRepo) {
-              let record = await getRecord(DB_STORE_NAME, filePath, this.toolsRepo)
-              if (record) {
-                contents = record.contents
-              }
-            }
-          } catch (e) {
-            console.log(e)
-          }
-
-          if (this.memfs && this.memfs.exists(filePath)) {
-            contents = this.memfs.getFileContents(filePath)
-            if (!FS.virtual[filePath] || !FS.virtual[filePath].contents || FS.virtual[filePath].contents.length == 0) {
-              console.error('Assetion virtual fs not empty for wasm: ' + name)
-              debugger
-            }
-          }
-          else if (FS.virtual[filePath]) {
-            contents = FS.virtual[filePath].contents
-          }
-
-          if (contents) {
-            module = await this.hostLogAsync(`Fetching and compiling from local: ${name}`,
-              this.compileStreaming(contents));
-            module.name = name
-            this.moduleCache[name] = this.moduleCache[filePath] = module;
-            break
-          }
-
-        }
-
-        if (typeof module == 'string' || !module)
-          module = await this.getModule(module);
-
-      }
+      if (typeof module == 'string' || !module)
+        module = await this.getModule(module);
 
 
       if (typeof module == 'string' || !module)

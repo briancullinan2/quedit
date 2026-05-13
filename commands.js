@@ -241,22 +241,22 @@ async function buildCommand(argv, database) {
         await buildClient(selected)
 
 
-    if (mode === 'lburg' || mode === 'all' || validMode === 'tools' || mode === 'tools')
+    if (mode === 'lburg' || mode === 'all' || mode === 'tools')
         await buildLBurg(selected)
-    if (mode === 'q3rcc' || mode === 'all' || validMode === 'tools' || mode === 'tools')
+    if (mode === 'q3rcc' || mode === 'all'  || mode === 'tools')
         await buildRCC(selected)
-    if (mode === 'q3cpp' || mode === 'all' || validMode === 'tools' || mode === 'tools')
+    if (mode === 'q3cpp' || mode === 'all'  || mode === 'tools')
         await buildCPP(selected)
-    if (mode === 'q3lcc' || mode === 'all' || validMode === 'tools' || mode === 'tools')
+    if (mode === 'q3lcc' || mode === 'all'  || mode === 'tools')
         await buildLCC(selected)
-    if (mode === 'asm' || mode === 'all' || validMode === 'tools' || mode === 'tools')
+    if (mode === 'asm' || mode === 'all'  || mode === 'tools')
         await buildAsmTool(selected)
 
-    if (mode === 'game' || mode === 'all' || validMode === 'qvms' || mode === 'qvms')
+    if (mode === 'game' || mode === 'all'  || mode === 'qvms')
         await buildGame(selected)
-    if (mode === 'cgame' || mode === 'all' || validMode === 'qvms' || mode === 'qvms')
+    if (mode === 'cgame' || mode === 'all'  || mode === 'qvms')
         await buildCGame(selected)
-    if (mode === 'ui' || mode === 'all' || validMode === 'qvms' || mode === 'qvms')
+    if (mode === 'ui' || mode === 'all' || mode === 'qvms')
         await buildUI(selected)
 
 }

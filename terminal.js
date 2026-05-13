@@ -457,12 +457,14 @@ terminalContainer.addEventListener('mousedown', async (event) => {
 
     if (match) {
         const filePath = match[1];
+        if(!files[database][filePath]) return
         const lineNumber = parseInt(match[2], 10);
         // TODO: whatever project the console output is initiated on
         let database = owner.value + '/' + repo.value
         let parts = database.split('/')
         let ownerName = parts.length == 2 ? parts[0] : owner.value
         let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+        
         let sha = files[database][filePath].sha
         currentOpenFileId = sha
         await openFile(owner.value, repo.value, filePath, sha)

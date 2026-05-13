@@ -154,23 +154,23 @@ const api = new WorkerAPI({
         // 1. Move to the start of the line and clear it
         // \x1b[2K clears the entire line
         // \x1b[G (or \r) moves cursor to column 0
-        term.write(api.PREAMBLE || API_PREAMBLE);
+        //term.write(api.PREAMBLE || API_PREAMBLE);
 
         // 2. Write the log message
         // Ensure it ends with a newline so the prompt stays below it
-        term.write(msg + '\r\n');
+        //term.write(msg + '\r\n');
+        term.write(msg);
 
-        // 3. Redraw the user's current input line
-        // We use cursorPosition to put the blinking block back where it was
-        term.write('> ' + currentLine);
-        
         // 4. If the cursor wasn't at the end, move it back to the correct spot
         if (cursorPosition < currentLine.length) {
             const moveBack = currentLine.length - cursorPosition;
             term.write(`\x1b[${moveBack}D`);
         }
 
-        // Standard maintenance
+        // 3. Redraw the user's current input line
+        // We use cursorPosition to put the blinking block back where it was        
+        term.write('> ' + currentLine);
+
         status.children[0].innerText = 'Status: ' + msg;
         triggerIncrementalSave();
     }
