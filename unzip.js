@@ -27,10 +27,11 @@ async function unzipToVirtualFS(buffer, rootPath = 'baseq3', database = null) {
             // Mapping to your existing FS.virtual structure
             FS.virtual[fullPath] = {
                 timestamp: new Date(),
-                mode: 33188, // Standard file mode (ST_FILE)
+                mode: FS_FILE, // Standard file mode (ST_FILE)
                 contents: data,
                 path: fullPath
             };
+            getGitShaBrowser(data).then(sha => FS.virtual[fullPath].sha = sha)
             log(`Extracted: ${relativePath}`);
             putRecord(DB_STORE_NAME, FS.virtual[fullPath], database)
         });

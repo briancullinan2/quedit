@@ -10,6 +10,15 @@ Quake 3 browser game editor.
 4) search all map/local/shared content
 5) git repository management, updating, branching, publishing
 
+6) it might be interesting to implement a split mode where cgame, 
+renderer and networking run in a worker with a "background canvas"
+and the client with inputs sends directly to server, maintaining
+cgame state, with only the input branches computed on front end
+this could shave off another 10% in compute, leaving more room
+for S_Spatialize
+
+
+
 ## So far
 
 

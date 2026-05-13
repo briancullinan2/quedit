@@ -7,9 +7,11 @@ const DB_STORE_NAME = 'FILE_DATA';
 const DB_SCHEME = [
     {key: DB_STORE_NAME, value: {
         item1: 'path', item2: [{
-            key: 'timestamp', value: ['path', 'timestamp', 'mode']
+            key: 'timestamp', value: ['path', 'mode']
         }, {
-            key: 'path', value: ['path', 'timestamp', 'mode', 'contents']
+            key: 'path', value: ['path', 'mode']
+        }, {
+            key: 'parent', value: ['parent', 'path', 'mode']
         }]
     }}
 ]

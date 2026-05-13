@@ -58,6 +58,7 @@ const apiOptions = {
       return WebAssembly.compileStreaming(fetch(filename));
     } else {
       const response = await fetch(filename);
+      if(!response.ok) throw new Error('Response code: ' + response.status)
       return WebAssembly.compile(await response.arrayBuffer());
     }
   },
@@ -102,7 +103,7 @@ const onAnyMessage = async event => {
       }
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
-        api.hostWrite(`${redArrow}${e.toString()}`);
+        api.hostWrite(`${redArrow}${e.toString()}\n\r${e.stack || e.stacktrace}\n\r`);
         output = e
         throw e;
       }
@@ -121,7 +122,7 @@ const onAnyMessage = async event => {
       }
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
-        api.hostWrite(`${redArrow}${e.toString()}`)
+        api.hostWrite(`${redArrow}${e.toString()}\n\r${e.stack || e.stacktrace}\n\r`)
         output = e
         throw e
       }
@@ -141,7 +142,7 @@ const onAnyMessage = async event => {
       }
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
-        api.hostWrite(`${redArrow}${e.toString()}`)
+        api.hostWrite(`${redArrow}${e.toString()}\n\r${e.stack || e.stacktrace}\n\r`)
         output = e
         throw e
       }
@@ -160,7 +161,7 @@ const onAnyMessage = async event => {
       }
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
-        api.hostWrite(`${redArrow}${e.toString()}`)
+        api.hostWrite(`${redArrow}${e.toString()}\n\r${e.stack || e.stacktrace}\n\r`)
         output = e
         throw e
       }
@@ -184,7 +185,7 @@ const onAnyMessage = async event => {
       }
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
-        api.hostWrite(`${redArrow}${e.toString()}`)
+        api.hostWrite(`${redArrow}${e.toString()}\n\r${e.stack || e.stacktrace}\n\r`)
         output = e
         throw e
       }
@@ -206,7 +207,7 @@ const onAnyMessage = async event => {
       }
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
-        api.hostWrite(`${redArrow}${e.toString()}`)
+        api.hostWrite(`${redArrow}${e.toString()}\n\r${e.stack || e.stacktrace}\n\r`)
         output = e
         throw e
       }
@@ -225,7 +226,7 @@ const onAnyMessage = async event => {
       }
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
-        api.hostWrite(`${redArrow}${e.toString()}`)
+        api.hostWrite(`${redArrow}${e.toString()}\n\r${e.stack || e.stacktrace}\n\r`)
         output = e
         throw e
       }
@@ -244,7 +245,7 @@ const onAnyMessage = async event => {
       }
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
-        api.hostWrite(`${redArrow}${e.toString()}`)
+        api.hostWrite(`${redArrow}${e.toString()}\n\r${e.stack || e.stacktrace}\n\r`)
         output = e
         throw e
       }
@@ -317,6 +318,7 @@ const onAnyMessage = async event => {
                   mode: FS_FILE,
                   contents: bytes,
                   path: filePath,
+                  sha: await getGitShaBrowser(bytes)
                 }
 
                 if (api.database)
@@ -334,7 +336,7 @@ const onAnyMessage = async event => {
       }
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
-        api.hostWrite(`${redArrow}${e.toString()}`)
+        api.hostWrite(`${redArrow}${e.toString()}\n\r${e.stack || e.stacktrace}\n\r`)
         output = e
         throw e
       }

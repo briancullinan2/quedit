@@ -129,7 +129,9 @@ async function initializeFiletrees() {
                     try {
                         if (loadedDatabases[folderId]) return
 
-                        await readAll(folderId, loadTree.bind(null, folderId))
+                        debugger
+                        throw new Error("This needs to be optimized")
+                        //await readAll(folderId, loadTree.bind(null, folderId))
                         const newChildren = convertFlatToNested(Object.values(files[folderId]));
 
                         loadedDatabases[folderId] = newChildren;

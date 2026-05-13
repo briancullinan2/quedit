@@ -152,10 +152,12 @@ window.addEventListener('beforeunload', event => {
 });
 
 
-let owners = localStorage.getItem('owners')?.split(';') || []
+let owners = localStorage.getItem('owners')?.split(';')
+if(!owners || owners.length == 0) owners = ['briancullinan2', 'ec-']
 updateSelectOptions(owner, owners)
 owner.value = localStorage.getItem('default_owner') || owners[0]
-let repos = localStorage.getItem('repositories')?.split(';') || []
+let repos = localStorage.getItem('repositories')?.split(';')
+if(!repos || repos.length == 0) repos = ['Quake3e', 'baseq3a']
 updateSelectOptions(repo, repos)
 repo.value = localStorage.getItem('default_repository') || repos[0]
 
@@ -236,7 +238,7 @@ configuration.addEventListener('change', async (e) => {
 
 
 
-function settings() {
+async function settings() {
     const database = owner.value + '/' + repo.value
     const filePath = 'settings.json' + (++tempCount)
     if (engineRepo.startsWith('Quake3e')) {
@@ -256,7 +258,7 @@ function settings() {
         default_repository: repo.value,
         default_owner: owner.value,
     }, null, 4)
-    const newSha = getGitShaBrowser(settings)
+    const newSha = await getGitShaBrowser(settings)
     if (files[database]) {
         files[database][filePath] = {
             timestamp: new Date(),

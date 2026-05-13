@@ -668,7 +668,7 @@ const API = (function () {
           if (writeStack) {
             msg = msg + `\n${exn.stack}`;
           }
-          msg += '\x1b[0m\n';
+          msg += '\x1b[0m\n\r';
           this.hostWrite(msg);
         }
         else {
@@ -677,7 +677,7 @@ const API = (function () {
           if (writeStack) {
             msg = msg + `\n${exn.stack}`;
           }
-          msg += '\x1b[0m\n';
+          msg += '\x1b[0m\n\r';
           this.hostWrite(msg);
         }
 
@@ -997,7 +997,7 @@ const API = (function () {
       return entry;
     }
 
-    untar(memfs) {
+    async untar(memfs) {
       let entry;
       while (entry = this.readEntry()) {
         switch (entry.type) {
@@ -1008,8 +1008,10 @@ const API = (function () {
               timestamp: new Date(),
               mode: FS_FILE,
               contents: entry.contents,
-              path: entry.filename
+              path: entry.filename,
+              sha: await getGitShaBrowser(entry.contents)
             }
+            //putRecord(DB_STORE_NAME, FS.virtual[entry.filename], )
             break;
           case '5':
             if (memfs)
@@ -1121,9 +1123,9 @@ const API = (function () {
         await this.memfs.ready;
       const promise = (async () => {
         const tar = new Tar(await this.readBuffer(filename));
-        tar.untar(this.memfs);
+        await tar.untar(this.memfs);
       })();
-      await this.hostLogAsync(`Untarring ${filename}`, promise);
+      await this.hostLogAsync(`Untaring ${filename}`, promise);
     }
 
     async loadEntry(cursor) {
@@ -1201,7 +1203,8 @@ const API = (function () {
       this.database = database || this.database
       if (!this.database) return
 
-      await readAll(this.database, this.loadEntry.bind(this))
+      // TODO: this needs to be optimized
+      //await readAll(this.database, this.loadEntry.bind(this))
     }
 
 

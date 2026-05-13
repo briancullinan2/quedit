@@ -747,11 +747,11 @@ async function build(database = null, noBounce = false) {
         await putRecord(DB_STORE_NAME, FS.virtual['/home'], database)
         FS.virtual['/tmp'] = {
             timestamp: new Date(),
-            mode: 16877, // ST_DIR + standard permissions
+            mode: FS_DIR, // ST_DIR + standard permissions
             path: '/tmp'
         };
         await putRecord(DB_STORE_NAME, FS.virtual['/tmp'], database)
-
+        //if(this.memfs && !this.memfs.exists())
 
 
         let CONFIGURATION = api.configuration == 'release'
@@ -897,7 +897,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                         contents: FS.virtual['wasm.syms'].contents,
                         path: header,
                         sha: FS.virtual['wasm.syms'].sha
-
+                        
                     }
                     await putRecord(DB_STORE_NAME, FS.virtual[header], thisDatabase)
                 }

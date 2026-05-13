@@ -216,9 +216,10 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
         const zipPath = path.join(config.MOUNT_DIR, 'branch.zip');
         FS.virtual[zipPath] = {
             timestamp: new Date(),
-            mode: 33188,
+            mode: FS_FILE,
             contents: data,
-            path: zipPath
+            path: zipPath,
+            sha: await getGitShaBrowser(data)
         };
         putRecord(DB_STORE_NAME, FS.virtual[zipPath], database)
         log(`Downloaded ${buffer.byteLength} bytes. Processing...`);
@@ -232,17 +233,19 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
         contents.forEach((relativePath, file) => {
             if (file.dir) return;
 
-            unzipPromises.push(file.async('uint8array').then(data => {
+            unzipPromises.push(file.async('uint8array').then(async data => {
                 // Remove the top-level GitHub folder name (e.g., 'repo-master/')
                 const cleanedPath = relativePath.substring(relativePath.indexOf('/') + 1);
                 const fullPath = path.join(config.MOUNT_DIR, cleanedPath);
 
                 FS.virtual[fullPath] = {
                     timestamp: new Date(),
-                    mode: 33188,
+                    mode: FS_FILE,
                     contents: data,
-                    path: fullPath
+                    path: fullPath,
+                    sha: await getGitShaBrowser(data)
                 };
+
                 putRecord(DB_STORE_NAME, FS.virtual[fullPath], database)
             }));
         });

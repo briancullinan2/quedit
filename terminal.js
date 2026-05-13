@@ -73,7 +73,7 @@ term.onData(async data => {
                 currentLine = ''
                 await handleCommand(thisLine);
             } catch (e) {
-                term.write(e.toString() + (e.stack || e.stacktrace))
+                term.write(e.toString() + '\r\n' + (e.stack || e.stacktrace) + '\r\n')
             }
             term.write('\r\n> '); // New prompt
             break;
@@ -163,7 +163,9 @@ async function handleCommand(input) {
             let ownerName = parts.length == 2 ? parts[0] : owner.value
             let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
-            await readAll(selected)
+            let branch = await getDefaultBranch(ownerName, repoName)
+            await loadGitHubTree(ownerName, repoName, branch)
+            //await readAll(selected)
         },
         ls: async (argv) => {
             let selected = toolsRepo || database
