@@ -322,7 +322,8 @@ const onAnyMessage = async event => {
                   mode: FS_FILE,
                   contents: bytes,
                   path: filePath,
-                  sha: await getGitShaBrowser(bytes)
+                  sha: await getGitShaBrowser(bytes),
+                  parent: filePath.substring(0, filePath.lastIndexOf('/'))
                 }
 
                 if (api.database)

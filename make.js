@@ -774,13 +774,15 @@ async function build(database = null, noBounce = false) {
         FS.virtual['/home'] = {
             timestamp: new Date(),
             mode: FS_DIR,
-            path: '/home'
+            path: '/home',
+            parent: '/'
         }
         await putRecord(DB_STORE_NAME, FS.virtual['/home'], database)
         FS.virtual['/tmp'] = {
             timestamp: new Date(),
             mode: FS_DIR, // ST_DIR + standard permissions
-            path: '/tmp'
+            path: '/tmp',
+            parent: '/'
         };
         await putRecord(DB_STORE_NAME, FS.virtual['/tmp'], database)
         //if(this.memfs && !this.memfs.exists())
@@ -955,7 +957,8 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                         mode: FS_FILE,
                         contents: FS.virtual['wasm.syms'].contents,
                         path: header,
-                        sha: FS.virtual['wasm.syms'].sha
+                        sha: FS.virtual['wasm.syms'].sha,
+                        parent: header.substring(0, header.lastIndexOf('/'))
 
                     }
                     await putRecord(DB_STORE_NAME, FS.virtual[header], thisDatabase)
@@ -1018,7 +1021,8 @@ function loadEntry(cursor) {
         mode: cursor.mode,
         contents: cursor.contents,
         path: cursor.path,
-        sha: cursor.sha
+        sha: cursor.sha,
+        parent: cursor.parent,
     }
 }
 

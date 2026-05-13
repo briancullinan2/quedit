@@ -28,7 +28,7 @@ class WorkerAPI {
 
     inject(options) {
 
-        this.configuration = options.configuration = options.configuration || configuration.value || this.configuration
+        this.configuration = options.configuration = options.configuration || configuration.value || this.configuration || 'release'
         this.database = options.database || engineRepo || this.database
         this.width = options.width = term.cols
         this.github_token = options.github_token = this.github_token

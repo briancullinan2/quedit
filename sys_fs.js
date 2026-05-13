@@ -40,7 +40,8 @@ function Sys_Mkdir(filename) {
 	FS.virtual[localName] = {
 		timestamp: new Date(),
 		mode: FS_DIR,
-		path: localName
+		path: localName,
+		parent: localName.substring(0, localName.lastIndexOf('/'))
 	}
 	// async to filesystem
 	// does it REALLY matter if it makes it? wont it just redownload?
@@ -126,7 +127,8 @@ function Sys_FOpen(filename, mode) {
 				timestamp: new Date(),
 				mode: FS_FILE,
 				contents: new Uint8Array(0),
-				path: localName
+				path: localName,
+				parent: localName.substring(0, localName.lastIndexOf('/'))
 			}
 			return createFP()
 		} else if (typeof FS_GetCurrentGameDir != 'undefined') {
@@ -552,23 +554,27 @@ const FS = {
 			mode: FS_FILE,
 			contents: new Uint8Array(),
 			path: '/dev/stdin',
+			parent: '/dev'
 		}, '/dev/stdin', 0],
 		1: [0, 'w', {
 			timestamp: new Date(),
 			mode: FS_FILE,
 			contents: new Uint8Array(),
 			path: '/dev/stdout',
+			parent: '/dev'
 		}, '/dev/stdout', 1],
 		2: [0, 'w', {
 			timestamp: new Date(),
 			mode: FS_FILE,
 			contents: new Uint8Array(),
 			path: '/dev/stderr',
+			parent: '/dev'
 		}, '/dev/stderr', 2],
 		3: [0, 'rw', {
 			timestamp: new Date(),
 			mode: FS_DIR,
 			path: '/',
+			parent: ''
 		}, '/', 3],
 	},
 	filePointer: 3,
@@ -576,12 +582,14 @@ const FS = {
 		'/': {
 			timestamp: new Date(),
 			mode: FS_DIR,
-			path: '/'
+			path: '/',
+			parent: ''
 		},
 		'.': {
 			timestamp: new Date(),
 			mode: FS_DIR,
-			path: '.'
+			path: '.',
+			parent: ''
 		},
 	}, // temporarily store items as they go in and out of memory
 	Sys_ListFiles: Sys_ListFiles,

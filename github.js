@@ -184,7 +184,8 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
         mode: FS_FILE,
         contents: bytes,
         path: filePath,
-        sha: jsonResponse.sha
+        sha: jsonResponse.sha,
+        parent: filePath.substring(0, filePath.lastIndexOf('/'))
     }
     try {
         // async to filesystem
@@ -219,7 +220,8 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
             mode: FS_FILE,
             contents: data,
             path: zipPath,
-            sha: await getGitShaBrowser(data)
+            sha: await getGitShaBrowser(data),
+            parent: zipPath.substring(0, zipPath.lastIndexOf('/'))
         };
         putRecord(DB_STORE_NAME, FS.virtual[zipPath], database)
         log(`Downloaded ${buffer.byteLength} bytes. Processing...`);
@@ -243,7 +245,8 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
                     mode: FS_FILE,
                     contents: data,
                     path: fullPath,
-                    sha: await getGitShaBrowser(data)
+                    sha: await getGitShaBrowser(data),
+                    parent: fullPath.substring(0, fullPath.lastIndexOf('/'))
                 };
 
                 putRecord(DB_STORE_NAME, FS.virtual[fullPath], database)

@@ -89,7 +89,8 @@ function getQueryCommands() {
 			FS.virtual[gamename] = {
 				timestamp: new Date(),
 				mode: FS_DIR,
-				path: gamename
+				path: gamename,
+				parent: gamename.substring(0, gamename.lastIndexOf('/'))
 			}
 		}
 	}
@@ -115,7 +116,8 @@ function getQueryCommands() {
 			FS.virtual['/base/' + MODNAME] = {
 				timestamp: new Date(),
 				mode: FS_DIR,
-				path: '/base/' + MODNAME
+				path: '/base/' + MODNAME,
+				parent: '/base'
 			}
 		}
 	}

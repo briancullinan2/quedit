@@ -110,7 +110,9 @@ function updateEnvironment(program, ENV) {
             previousOut ? previousOut[2] : {
                 timestamp: new Date(),
                 mode: FS_FILE,
-                contents: new Uint8Array()
+                contents: new Uint8Array(),
+                path: '/dev/stdout',
+                parent: '/dev'
             },
             1,
             HEAPU32[stdout >> 2]
@@ -123,7 +125,9 @@ function updateEnvironment(program, ENV) {
             previousErr ? previousErr[2] : {
                 timestamp: new Date(),
                 mode: FS_FILE,
-                contents: new Uint8Array()
+                contents: new Uint8Array(),
+                path: '/dev/stderr',
+                parent: '/dev'
             },
             2,
             HEAPU32[stderr >> 2]
@@ -278,7 +282,8 @@ async function readPreFS() {
             timestamp: newFiletime,
             mode: FS_FILE,
             contents: _base64ToArrayBuffer(window.preFS[preloadedPaths[i]]),
-            path: preloadedPaths[i]
+            path: preloadedPaths[i],
+            parent: preloadedPaths[i].substring(0, preloadedPaths[i].lastIndexOf('/'))
         }
     }
 
@@ -309,7 +314,8 @@ async function readPreFS() {
     FS.virtual['/home'] = {
         timestamp: new Date(),
         mode: FS_DIR,
-        path: '/home'
+        path: '/home',
+        parent: ''
     }
     putRecord(DB_STORE_NAME, FS.virtual['/home'], owner.value + '/' + repo.value)
 
@@ -333,7 +339,8 @@ async function readPreFS() {
         timestamp: new Date(),
         mode: FS_FILE,
         contents: new Uint8Array('Multiworld\n'),
-        path: nameStr
+        path: nameStr,
+        parent: nameStr.substring(0, nameStr.lastIndexOf('/'))
     }
     putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repo.value)
 
@@ -344,7 +351,8 @@ async function readPreFS() {
         timestamp: new Date(),
         mode: FS_FILE,
         contents: new Uint8Array('Multiworld\n'),
-        path: nameStr
+        path: nameStr,
+        parent: nameStr.substring(0, nameStr.lastIndexOf('/'))
     }
     putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repo.value)
 

@@ -23,13 +23,15 @@ async function unzipToVirtualFS(buffer, rootPath = 'baseq3', database = null) {
 
         const fullPath = path.join(rootPath, relativePath);
         
-        const promise = file.async('uint8array').then(data => {
+        const promise = file.async('uint8array').then(async data => {
             // Mapping to your existing FS.virtual structure
             FS.virtual[fullPath] = {
                 timestamp: new Date(),
                 mode: FS_FILE, // Standard file mode (ST_FILE)
                 contents: data,
-                path: fullPath
+                path: fullPath,
+                sha: await getGitShaBrowser(data),
+                parent: fullPath.substring(0, fullPath.lastIndexOf('/'))
             };
             getGitShaBrowser(data).then(sha => FS.virtual[fullPath].sha = sha)
             log(`Extracted: ${relativePath}`);

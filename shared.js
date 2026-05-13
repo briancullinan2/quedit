@@ -1009,7 +1009,8 @@ const API = (function () {
               mode: FS_FILE,
               contents: entry.contents,
               path: entry.filename,
-              sha: await getGitShaBrowser(entry.contents)
+              sha: await getGitShaBrowser(entry.contents),
+              parent: entry.filename.substring(0, entry.filename.lastIndexOf('/'))
             }
             //putRecord(DB_STORE_NAME, FS.virtual[entry.filename], )
             break;
@@ -1021,7 +1022,8 @@ const API = (function () {
             FS.virtual[entry.filename] = {
               timestamp: new Date(),
               mode: FS_DIR,
-              path: entry.filename
+              path: entry.filename,
+              parent: entry.filename.substring(0, entry.filename.lastIndexOf('/'))
             }
             break;
         }
@@ -1161,7 +1163,8 @@ const API = (function () {
           FS.virtual[currentPath] = {
             timestamp: new Date(),
             mode: FS_DIR,
-            path: currentPath
+            path: currentPath,
+            parent: currentPath.substring(0, currentPath.lastIndexOf('/'))
           }
           FS.virtual[currentPath + '/.'] = FS.virtual[currentPath]
           if (previousPath)
@@ -1236,7 +1239,8 @@ const API = (function () {
           timestamp: new Date(),
           mode: FS_FILE,
           contents: Uint8Array.from(contents, c => c.charCodeAt(0)),
-          path: input
+          path: input,
+          parent: input.substring(0, input.lastIndexOf('/'))
         }
       }
       if (obj) {
@@ -1284,6 +1288,7 @@ const API = (function () {
           mode: FS_FILE,
           contents: bytes,
           path: obj,
+          parent: obj.substring(0, obj.lastIndexOf('/'))
         }
 
         if (this.database)
@@ -1315,7 +1320,9 @@ const API = (function () {
           timestamp: new Date(),
           mode: FS_FILE,
           contents: Uint8Array.from(contents, c => c.charCodeAt(0)),
-          path: input
+          path: input,
+          sha: await getGitShaBrowser(contents),
+          parent: input.substring(0, input.lastIndexOf('/'))
         }
 
       }
@@ -1340,7 +1347,8 @@ const API = (function () {
         timestamp: new Date(),
         mode: FS_FILE,
         contents: Uint8Array.from(contents, c => c.charCodeAt(0)),
-        path: input
+        path: input,
+        parent: input.substring(0, input.lastIndexOf('/'))
       }
 
 
@@ -1435,6 +1443,7 @@ const API = (function () {
           mode: FS_FILE,
           contents: bytes,
           path: wasm,
+          parent: wasm.substring(0, wasm.lastIndexOf('/'))
         }
 
         if (this.database)

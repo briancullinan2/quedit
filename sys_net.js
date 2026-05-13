@@ -594,7 +594,9 @@ function Com_DL_Perform(nameStr, localName, responseData) {
       timestamp: new Date(),
       mode: FS_FILE,
       contents: new Uint8Array(responseData),
-      path: tempName
+      path: tempName,
+      parent: tempName.substring(0, tempName.lastIndexOf('/'))
+      
     }
     //Sys_FileReady(stringToAddress(localName), stringToAddress(tempName));
   } else {
@@ -605,7 +607,8 @@ function Com_DL_Perform(nameStr, localName, responseData) {
       timestamp: new Date(),
       mode: FS_FILE,
       contents: new Uint8Array(responseData),
-      path: nameStr
+      path: nameStr,
+      parent: nameStr.substring(0, nameStr.lastIndexOf('/'))
     }
     // async to filesystem
     // does it REALLY matter if it makes it? wont it just redownload?

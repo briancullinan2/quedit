@@ -165,7 +165,7 @@ async function saveFile() {
         contents: new TextEncoder().encode(content),
         path: filePath,
         sha: newSha,
-        parent: filePath.substring(0, input.lastIndexOf('/'))
+        parent: filePath.substring(0, filePath.lastIndexOf('/'))
     }
     currentOpenFileId = newSha
     if(files[database])

@@ -265,7 +265,8 @@ async function settings() {
             mode: FS_FILE,
             contents: new TextEncoder().encode(settings),
             path: filePath,
-            sha: newSha
+            sha: newSha,
+            parent: filePath.substring(0, filePath.lastIndexOf('/'))
         }
     }
 
