@@ -40,6 +40,7 @@ function Sys_Mkdir(filename) {
 	FS.virtual[localName] = {
 		timestamp: new Date(),
 		mode: FS_DIR,
+		size: 4096,
 		path: localName,
 		parent: localName.substring(0, localName.lastIndexOf('/'))
 	}
@@ -552,6 +553,7 @@ const FS = {
 		0: [0, 'r', {
 			timestamp: new Date(),
 			mode: FS_FILE,
+			size: 0,
 			contents: new Uint8Array(),
 			path: '/dev/stdin',
 			parent: '/dev'
@@ -559,6 +561,7 @@ const FS = {
 		1: [0, 'w', {
 			timestamp: new Date(),
 			mode: FS_FILE,
+			size: 0,
 			contents: new Uint8Array(),
 			path: '/dev/stdout',
 			parent: '/dev'
@@ -566,6 +569,7 @@ const FS = {
 		2: [0, 'w', {
 			timestamp: new Date(),
 			mode: FS_FILE,
+			size: 0,
 			contents: new Uint8Array(),
 			path: '/dev/stderr',
 			parent: '/dev'
@@ -573,6 +577,7 @@ const FS = {
 		3: [0, 'rw', {
 			timestamp: new Date(),
 			mode: FS_DIR,
+			size: 4096,
 			path: '/',
 			parent: ''
 		}, '/', 3],
@@ -582,27 +587,31 @@ const FS = {
 		'/': {
 			timestamp: new Date(),
 			mode: FS_DIR,
+			size: 4096,
 			path: '/',
 			parent: ''
 		},
 		'.': {
 			timestamp: new Date(),
 			mode: FS_DIR,
+			size: 4096,
 			path: '.',
 			parent: ''
 		},
 		'/home': {
-            timestamp: new Date(),
-            mode: FS_DIR,
-            path: '/home',
-            parent: '/'
-        },
-        '/tmp': {
-            timestamp: new Date(),
-            mode: FS_DIR, // ST_DIR + standard permissions
-            path: '/tmp',
-            parent: '/'
-        }
+			timestamp: new Date(),
+			mode: FS_DIR,
+			size: 4096,
+			path: '/home',
+			parent: '/'
+		},
+		'/tmp': {
+			timestamp: new Date(),
+			mode: FS_DIR, // ST_DIR + standard permissions
+			size: 4096,
+			path: '/tmp',
+			parent: '/'
+		}
 	}, // temporarily store items as they go in and out of memory
 	Sys_ListFiles: Sys_ListFiles,
 	Sys_FTell: Sys_FTell,
@@ -634,6 +643,46 @@ const FS = {
 	Sys_access: Sys_access,
 	Sys_umask: function () { },
 	getStreamChecked: getStreamChecked,
+
+	// --- Low-Level IO (Unistd.h) ---
+	open: Sys_FOpen,
+	read: Sys_FRead,
+	write: Sys_FWrite,
+	lseek: Sys_llseek,
+	close: Sys_FClose,
+	unlink: Sys_Remove,
+	access: Sys_access,
+	rmdir: Sys_Remove, // Simplified for your VFS
+	mkdir: Sys_Mkdir,
+	umask: function () { return 0; },
+	getpid: getpid,
+
+	// --- Stream IO (Stdio.h) ---
+	fopen: Sys_FOpen,
+	fclose: Sys_FClose,
+	fread: Sys_FRead,
+	fwrite: Sys_FWrite,
+	fseek: fd_seek,
+	ftell: Sys_FTell,
+	fflush: Sys_FFlush,
+	fgets: Sys_fgets,
+	fputs: Sys_fputs,
+	fprintf: Sys_fprintf,
+	vfprintf: Sys_fprintf,
+	fputc: Sys_fputc,
+	putc: Sys_fputc,
+	fgetc: Sys_fgetc,
+	getc: Sys_fgetc,
+	feof: Sys_feof,
+
+	// --- Directory & Metadata ---
+	opendir: Sys_ListFiles, // Closest match for your readdir logic
+	stat: Sys_stat,
+	fstat: fd_filestat_get,
+	rename: Sys_Rename,
+
+	// --- Extensions / Internal ---
+	mkdirp: Sys_Mkdirp,
 }
 
 
@@ -1071,9 +1120,10 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 				size: 0,
 				path: localName
 			};
-		} else {
-			return 44; // WASI_ENOENT
 		}
+		//else {
+		//	return 44; // WASI_ENOENT
+		//}
 	} else {
 		if ((oflags & O_CREAT) && (oflags & O_EXCL)) return 20; // WASI_EEXIST
 		if (oflags & O_TRUNC) {
@@ -1087,26 +1137,51 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	const canRead = (rb & 2n) !== 0n;
 	const canWrite = (rb & 64n) !== 0n;
 	const modeStr = (canRead ? 'r' : '') + (canWrite ? 'w' : '')
-	// 4. Create File Descriptor (Stream)
-	// Layout: [position, path, node]
-	let createFP = function () {
-		FS.filePointer++
-		FS.pointers[FS.filePointer] = [
-			0, // seek/tell
-			modeStr,
-			FS.virtual[localName],
-			localName,
-			FS.filePointer
-		]
-		// DO THIS ON OPEN SO WE CAN CHANGE ICONS
-		if (!(oflags & O_TRUNC))
-			Sys_notify(FS.virtual[localName], localName)
-		return FS.filePointer // not zero
+	const view = new DataView(Module.memory.buffer); // Result ALWAYS goes to host memory
+
+	if (api.memfs) {
+
+		let result = api.memfs.exports.path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, rights_inheriting, fdflags, openedFdPtr)
+		if (result === 0) {
+
+			let localPointer = FS.filePointer = view.getUint32(openedFdPtr, true);
+			FS.pointers[localPointer] = [
+				0, // seek/tell
+				modeStr,
+				FS.virtual[localName],
+				localName,
+				localPointer
+			]
+			// DO THIS ON OPEN SO WE CAN CHANGE ICONS
+			if (!(oflags & O_TRUNC))
+				Sys_notify(FS.virtual[localName], localName)
+		}
+		return result;
 	}
 
-	// 5. Write result to guest memory
-	const view = new DataView(Module.memory.buffer); // Result ALWAYS goes to host memory
-	view.setUint32(openedFdPtr, createFP(), true);
+	else {
+
+		// 4. Create File Descriptor (Stream)
+		// Layout: [position, path, node]
+		let createFP = function () {
+			FS.filePointer++
+			FS.pointers[FS.filePointer] = [
+				0, // seek/tell
+				modeStr,
+				FS.virtual[localName],
+				localName,
+				FS.filePointer
+			]
+			// DO THIS ON OPEN SO WE CAN CHANGE ICONS
+			if (!(oflags & O_TRUNC))
+				Sys_notify(FS.virtual[localName], localName)
+			return FS.filePointer // not zero
+		}
+
+		// 5. Write result to guest memory
+		view.setUint32(openedFdPtr, createFP(), true);
+
+	}
 
 	return 0; // WASI_ESUCCESS
 }
@@ -1341,10 +1416,43 @@ function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
 
 	return 0; // WASI_ESUCCESS
 }
+/**
+ * fd_renumber(fd, to)
+ * Maps to POSIX dup2(fd, to) logic.
+ */
+function fd_renumber(fd, to) {
+
+	// 1. Validate the source descriptor
+	const stream = FS.pointers[fd];
+	if (!stream) {
+		return 8; // WASI_EBADF
+	}
+
+	// 2. If 'to' is already open, POSIX says we silently close it first
+	if (FS.pointers[to]) {
+		// You might want to call Sys_FClose(to) here to ensure 
+		// any pending Sys_notify calls fire.
+		FS.pointers[to] = null;
+	}
+
+	// 3. Renumber: Copy the reference to the new 'to' index
+	FS.pointers[to] = stream;
+
+	// 4. Update the internal FD stored in your stream array [pos, mode, node, path, FD]
+	// stream[4] is where you store the FD index
+	FS.pointers[to][4] = to;
+
+	// 5. Remove the old reference
+	FS.pointers[fd] = null;
+
+	return 0; // WASI_ESUCCESS
+}
 
 const FILED = {
 
 	//setModuleInstance : setModuleInstance,
+	fputs: Sys_fputs,
+
 	environ_sizes_get: environ_sizes_get,
 	args_sizes_get: args_sizes_get,
 	fd_fdstat_set_flags: function () { debugger },
@@ -1368,7 +1476,7 @@ const FILED = {
 	fd_close: _fd_close,
 	fd_pwrite: function () { debugger },
 	fd_readdir: fd_readdir,
-	fd_renumber: function () { debugger },
+	fd_renumber: fd_renumber,
 	fd_sync: function () { debugger },
 	fd_tell: function () { debugger },
 	path_create_directory: function () { debugger },
@@ -1377,7 +1485,7 @@ const FILED = {
 	path_link: function () { debugger },
 	path_readlink: path_readlink,
 	path_remove_directory: function () { debugger },
-	path_symlink: function () { debugger },
+	path_symlink: path_symlink,
 	path_unlink_file: path_unlink_file,
 	proc_raise: function () { debugger },
 	sched_yield: function () { debugger },
@@ -1385,8 +1493,8 @@ const FILED = {
 	sock_recv: function () { debugger },
 	sock_send: function () { debugger },
 	sock_shutdown: function () { debugger },
-	AddDirectoryNode: function AddDirectoryNode() { debugger },
-	AddFileNode: function AddFileNode() { debugger },
+	AddDirectoryNode: AddDirectoryNode,
+	AddFileNode: AddFileNode,
 	FindNode: function FindNode() { debugger },
 	GetFileNodeAddress: function GetFileNodeAddress() { debugger },
 	GetFileNodeSize: function GetFileNodeSize() { debugger },
@@ -1400,7 +1508,6 @@ const FILED = {
 	path_create_directory: function path_create_directory() { debugger },
 	path_remove_directory: function path_remove_directory() { debugger },
 	path_rename: path_rename,
-	path_symlink: function path_symlink() { debugger },
 	Sys_gettime: clock_gettime,
 	clock_time_get: clock_gettime,
 	poll_oneoff: poll_oneoff,
@@ -1410,32 +1517,113 @@ const FILED = {
 	wait: wait,
 	execv: execv,
 	_spawnvp: _spawnvp,
-	getStringsFromArgv: getStringsFromArgv 
+	//getStringsFromArgv: getStringsFromArgv
 }
 
-function getStringsFromArgv(argvPtr) {
-    const memory = Module.memory.buffer;
-    const view = new DataView(memory);
-    const args = [];
-    
-    // argv is a NULL-terminated array of pointers.
-    // Each pointer is 4 bytes in a 32-bit WASM environment.
-    for (let i = 0; ; i++) {
-        // Calculate offset for the i-th pointer
-        const pointerAddress = argvPtr + (i * 4);
-        
-        // Read the 32-bit address stored at that position
-        const stringAddress = view.getUint32(pointerAddress, true); // true for little-endian
-        
-        // If the pointer is 0 (NULL), we've reached the end of the array
-        if (stringAddress === 0) break;
-        
-        // Extract the string from that address
-        args.push(decodeNullTerminatedString(memory, stringAddress));
-    }
-    
-    return args;
+function path_symlink(oldPathPtr, oldPathLen, dirfd, newPathPtr, newPathLen) {
+
+	const buffer = Module.memory.buffer;
+
+	const target = new TextDecoder().decode(new Uint8Array(buffer, oldPathPtr, oldPathLen));
+	const linkName = new TextDecoder().decode(new Uint8Array(buffer, newPathPtr, newPathLen));
+
+	// Resolve virtual path
+	let localLink = linkName.startsWith('/') ? linkName.substring(1) : linkName;
+
+	FS.virtual[localLink] = {
+		contents: new TextEncoder().encode(target), // The 'data' of a symlink is the path it points to
+		timestamp: new Date(),
+		mode: (7 << 12) + FS_DEFAULT, // S_IFLNK (Symbolic Link)
+		size: target.length,
+		path: localLink,
+		target: target // Helper for your path resolution logic
+	};
+
+	if (api.memfs) {
+		return api.memfs.exports.path_symlink(oldPathPtr, oldPathLen, dirfd, newPathPtr, newPathLen);
+	}
+
+	return 0;
 }
+
+function AddDirectoryNode(parentFd, pathPtr, pathLen) {
+	const buffer = Module.memory.buffer;
+	const name = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
+
+	// Normalize path to prevent leading slash panics
+	let localName = name;
+	if (localName.startsWith('/')) localName = localName.substring(1);
+	if (localName.endsWith('/')) localName = localName.substring(0, localName.length - 1);
+
+	if (typeof FS.virtual[localName] === 'undefined') {
+		FS.virtual[localName] = {
+			contents: null, // Directories don't have binary contents
+			timestamp: new Date(),
+			mode: FS_DIR,
+			size: 4096, // Standard directory block size
+			path: localName
+		};
+	}
+
+	if (api.memfs) {
+		// Only call the WASM export if we know it's a safe creation
+		// Note: We use the normalized length to match the buffer write
+		return api.memfs.exports.AddDirectoryNode(parentFd, pathPtr, pathLen);
+	}
+
+	return 0;
+}
+
+function AddFileNode(parentFd, pathPtr, pathLen) {
+	const buffer = Module.memory.buffer;
+	const name = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
+
+	// Resolve path (Assuming root dirfd 3 for context if not specified)
+	const localName = name.startsWith('/') ? name.substring(1) : name;
+
+	// Check if it already exists to avoid the 'unreachable' panic
+	if (typeof FS.virtual[localName] === 'undefined') {
+		FS.virtual[localName] = {
+			contents: new Uint8Array(0),
+			timestamp: new Date(),
+			mode: FS_FILE,
+			size: 0,
+			path: localName
+		};
+	}
+
+	if (api.memfs) {
+		// Sync with WASM backend
+		return api.memfs.exports.AddFileNode(parentFd, pathPtr, pathLen);
+	}
+
+	return 0; // WASI_ESUCCESS
+}
+
+
+function getStringsFromArgv(argv) {
+	const u8 = new Uint8Array(Module.memory.buffer)
+	const args = [];
+
+	// If argv is a number, it's a pointer to a NULL-terminated array in WASM memory
+	if (typeof argv === 'number') {
+		const view = new DataView(Module.memory.buffer);
+		for (let i = 0; ; i++) {
+			const stringPointer = view.getUint32(argv + (i * 4), true);
+			if (stringPointer === 0) break; // NULL terminator
+
+			// Using your Mem lib's string reader (assuming it's called readString or similar)
+			args.push(readStr(u8, stringPointer));
+		}
+	}
+	// If argv is already an array (passed via ...argv in JS), just sanitize it
+	else if (Array.isArray(argv)) {
+		return argv.map(arg => (typeof arg === 'number' ? readStr(u8, arg) : arg));
+	}
+
+	return args;
+}
+
 
 async function _spawnvp(mode, cmdnamePtr, argvPtr) {
 	debugger
@@ -1476,9 +1664,41 @@ async function _spawnvp(mode, cmdnamePtr, argvPtr) {
 
 
 function getpid() { return 42; }
-function fork() { Module.errno = WASI_ENOSYS; }
-function wait(status) { Module.errno = WASI_ENOSYS; return -1; }
-function execv(path, ...argv) { Module.errno = WASI_ENOSYS; return -1; }
+function fork() { return 0; }
+function wait(status) { 
+	debugger
+	Module.errno = WASI_ENOSYS; 
+	return -1; 
+}
+
+
+function readStr(u8, o, len = -1) {
+	let str = '';
+	let end = u8.length;
+	if (len != -1)
+		end = o + len;
+	for (let i = o; i < end && u8[i] != 0; ++i)
+		str += String.fromCharCode(u8[i]);
+	return str;
+}
+
+
+function execv(pathPtr, argvPtr) {
+	const u8 = new Uint8Array(Module.memory.buffer)
+	const path = readStr(u8, pathPtr);
+	const cmdArgs = getStringsFromArgv(argvPtr);
+
+	if (api && api.moduleCache[path || cmdArgs[0]]) {
+		let result = api.runSync(path || cmdArgs[0], ...cmdArgs);
+		return result.output;
+	}
+	else {
+		log('Would have run: ' + [path, ...cmdArgs].join(' '))
+		Module.errno = WASI_ENOSYS;
+		return -1;
+	}
+	return 0;
+}
 
 function path_unlink_file(dirfd, pathPtr, pathLen) {
 	const buffer = Module.memory.buffer;

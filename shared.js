@@ -84,6 +84,11 @@ const API = (function () {
     }
   }
 
+  function getInstanceSync(module, imports) {
+    // This is synchronous and returns the instance immediately
+    return new WebAssembly.Instance(module, imports);
+  }
+
   function getInstance(module, imports) {
     return WebAssembly.instantiate(module, imports);
   }
@@ -202,29 +207,33 @@ const API = (function () {
     }
 
     mkdirp(path) {
-      // Ensure we have a clean array of directory segments
-      // Filter(Boolean) removes empty strings from leading/double slashes
+      // Normalize: remove leading/trailing slashes for segmenting
       const parts = path.split('/').filter(Boolean);
-      let currentPath = path.startsWith('/') ? '/' : '';
+
+      // Track where we are in the tree
+      // Start with an empty string or '.' to signify relative to root
+      let accumulated = "";
 
       for (const part of parts) {
-        // If we're at the root, don't double up the slash
-        currentPath = currentPath === '' ? `${part}` : `${currentPath}/${part}`;
+        accumulated = accumulated === "" ? part : `${accumulated}/${part}`;
 
         try {
           this.mem.check();
-          this.mem.write(this.exports.GetPathBuf(), currentPath);
 
-          // We call the Wasm export to create the directory node
-          // Note: If your Wasm AddDirectoryNode asserts on existing dirs, 
-          // you'll need to check existence first or wrap this in a try/catch.
-          if (!this.exists(currentPath))
-            this.exports.AddDirectoryNode(currentPath.length);
-        } catch (e) {
-          // Log only if it's a real crash, not just an "already exists" error
-          if (!e.message.includes("exists")) {
-            console.warn(`mkdirp segment failed: ${currentPath}`, e);
+          // Existence check using your internal helper
+          if (!this.exists(accumulated)) {
+            // Write the segment to the WASM buffer
+            // TRICK: Ensure you don't have a leading slash here
+            this.mem.write(this.exports.GetPathBuf(), accumulated);
+
+            // Call the export. 
+            // NOTE: If unreachable persists, try accumulated.length + 1
+            this.exports.AddDirectoryNode(accumulated.length);
           }
+        } catch (e) {
+          // Catching the WASM abort
+          console.error(`Crashed creating: ${accumulated}`, e);
+          throw e;
         }
       }
     }
@@ -473,6 +482,7 @@ const API = (function () {
 
   class App {
     constructor(api, hostWrite, module, sysrootFilename, name, ...args) {
+      this.module = module;
       this.api = api;
       this.hostWrite = hostWrite
       this.sysrootFilename = sysrootFilename;
@@ -536,7 +546,8 @@ const API = (function () {
 
       const wasi_unstable = getImportObject(this, [
         'proc_exit', 'environ_sizes_get', 'environ_get', 'args_sizes_get',
-        'args_get', 'random_get', 'clock_time_get', 'poll_oneoff'
+        'args_get', 'random_get', 'clock_time_get', 'poll_oneoff',
+        // 'fork', // 'execv' // , 'fd_renumber'
       ]);
       Module.errno = new WebAssembly.Global({ value: 'i32', mutable: true }, 0);
       //const wasi_unstable = {
@@ -547,27 +558,37 @@ const API = (function () {
         || module.name.includes('clang')
 
       if (!needMemfs) {
+
         if (!wasi_unstable.table) {
           const importTable = new WebAssembly.Table({
             initial: 2000,
             element: 'anyfunc',
             maximum: 10000
           })
-          env.__indirect_function_table = wasi_unstable.table = ENV.__indirect_function_table = importTable
+          this.table = env.__indirect_function_table = wasi_unstable.table = ENV.__indirect_function_table = importTable
         }
+
         if (!wasi_unstable.memory) {
-          ENV.memory = Module.memory = wasi_unstable.memory = new WebAssembly.Memory({
+          env.memory = ENV.memory = Module.memory = wasi_unstable.memory = new WebAssembly.Memory({
             initial: 4096,
             maximum: 32000,
             //'shared': true
           })
+          if (this.api.memfs)
+            this.api.memfs.hostMem = this.mem = new Memory(Module.memory)
         }
-        //wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
+
+        wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
         wasi_unstable.imports = wasi_unstable
         Object.assign(wasi_unstable, this.api.memfs.exports);
+        //Object.assign(wasi_unstable, FS);
         wasi_unstable.getpid = FS.getpid
         wasi_unstable.wait = FS.wait
-        //Object.assign(wasi_unstable, FS);
+        wasi_unstable.fd_renumber = FS.fd_renumber
+        wasi_unstable.path_open = FS.path_open
+        wasi_unstable._spawnvp = FS._spawnvp
+        wasi_unstable.execv = FS.execv
+        wasi_unstable.fork = FS.fork
       }
       else {
         Object.assign(wasi_unstable, this.api.memfs.exports);
@@ -577,18 +598,6 @@ const API = (function () {
 
 
 
-
-
-
-      Object.assign(wasi_unstable, {
-        fork: () => 0,
-        execv: function (path, ...argv) {
-          debugger
-          var cmdArgs = FS.getStringsFromArgv(argv)
-          this.api.run(cmdArgs)
-          return 0
-        }
-      });
 
       //else
       if (needMemfs) {
@@ -620,26 +629,42 @@ const API = (function () {
       Object.assign(env, wasi_unstable)
       const imports = WebAssembly.Module.imports(module);
 
-      this.ready = getInstance(module, { wasi_unstable, env }).then(instance => {
-        this.instance = instance;
-        Module.exports = this.exports = this.instance.exports;
-        this.mem = new Memory(this.exports.memory);
-        if (this.api.memfs)
-          this.api.memfs.hostMem = this.mem;
-        if (!Module.memory || needMemfs)
-          ENV.memory = Module.memory = this.exports.memory
-        window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
-        Module.errno.value = (this.exports['___errno_location'])
-          ? this.exports['___errno_location']()
-          : 0 || this.exports['errno'];
-        updateGlobalBufferAndViews()
-      });
+
+      if (module.sync) {
+        let instance = getInstanceSync(module, { wasi_unstable, env })
+        this.assignExports(instance)
+        this.ready = Promise.resolve();
+      }
+      else
+        this.ready = getInstance(module, { wasi_unstable, env }).then(instance => this.assignExports(instance));
     }
 
-    async run() {
-      await this.ready;
+
+    assignExports(instance) {
+      if (this.instance) return;
+      this.instance = instance;
+      Module.exports = this.exports = this.instance.exports;
+      if (this.exports.memory) {
+        this.mem = new Memory(this.exports.memory);
+        ENV.memory = Module.memory = this.exports.memory
+      }
+      if (this.api.memfs) {
+        this.api.memfs.hostMem = this.mem;
+      }
+      if (this.exports.__indirect_function_table) {
+        this.table = this.exports.__indirect_function_table;
+      }
+      window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
+      Module.errno.value = (this.exports['___errno_location'])
+        ? this.exports['___errno_location']()
+        : 0 || this.exports['errno'];
+      updateGlobalBufferAndViews()
+    }
+
+    runSync() {
       try {
-        this.exports._start();
+
+        this.output = this.exports._start();
       } catch (exn) {
         let writeStack = true;
 
@@ -650,6 +675,8 @@ const API = (function () {
         if (exn instanceof ProcExit
           || exn.message === 'WASI_ENOSYS'
         ) {
+           this.output = exn.code
+
           if (exn.code === RAF_PROC_EXIT_CODE
             || exn.code === 0
           ) {
@@ -690,8 +717,106 @@ const API = (function () {
       }
     }
 
+    fd_renumber(from, to) {
+      this.mem.check();
+      const path = this.fdPathMap[from];
+
+      if (!path) {
+        console.error(`Renumber failed: No path found for FD ${from}`);
+        return 8; // WASI_EBADF
+      }
+
+      // 1. Close the target (usually stdout/FD 1)
+      this.exports.fd_close(to);
+
+      // 2. Prepare for the "Open Loop"
+      // WASI path_open always picks the lowest available FD.
+      // If 'to' (1) is lower than 'from' (10), simply opening the path
+      // again will naturally fill the '1' slot.
+      const pathPtr = this.exports.GetPathBuf();
+      this.mem.write(pathPtr, path);
+
+      const openedFdPtr = pathPtr + path.length + 1; // Use spare buffer space for the return pointer
+
+      const result = this.exports.path_open(
+        3,          // root dirfd
+        0,          // lookup flags (default)
+        pathPtr,
+        path.length,
+        0,          // oflags
+        0xffffffffn, // rights_base (grant all)
+        0xffffffffn, // rights_inheriting
+        0,          // fdflags
+        openedFdPtr
+      );
+
+      if (result === 0) {
+        const newFd = this.mem.readU32(openedFdPtr);
+        // If it didn't land on 'to', we have a logic gap in the WASM allocator
+        if (newFd !== to) {
+          console.warn(`Renumber Warning: Opened as ${newFd}, expected ${to}`);
+        }
+        this.fdPathMap[newFd] = path;
+      }
+
+      // 3. Close the original source
+      this.exports.fd_close(from);
+      delete this.fdPathMap[from];
+
+      return result;
+    }
+
+    async run() {
+      await this.ready;
+      let result = await this.runSync();
+      return this.output || result
+    }
+
+    /*
+    fork() { return 0 }
+
+    execv(pathPtr, argvPtr) {
+      const path = this.mem.readStr(pathPtr);
+      const cmdArgs = this.getStringsFromArgv(argvPtr);
+      if (this.api.moduleCache[path || cmdArgs[0]]) {
+        let result = this.api.runSync(path || cmdArgs[0], ...cmdArgs)
+        return result
+      }
+      else {
+        log('Would have run: ' + [path, ...cmdArgs].join(' '))
+        Module.errno = WASI_ENOSYS;
+        return -1;
+      }
+      return 0;
+    }
+      */
+
+
     proc_exit(code) {
       throw new ProcExit(code);
+    }
+
+    getStringsFromArgv(argv) {
+      this.mem.check();
+      const args = [];
+
+      // If argv is a number, it's a pointer to a NULL-terminated array in WASM memory
+      if (typeof argv === 'number') {
+        const view = new DataView(this.mem.buffer);
+        for (let i = 0; ; i++) {
+          const stringPointer = view.getUint32(argv + (i * 4), true);
+          if (stringPointer === 0) break; // NULL terminator
+
+          // Using your Mem lib's string reader (assuming it's called readString or similar)
+          args.push(this.mem.readStr(stringPointer));
+        }
+      }
+      // If argv is already an array (passed via ...argv in JS), just sanitize it
+      else if (Array.isArray(argv)) {
+        return argv.map(arg => (typeof arg === 'number' ? this.mem.readStr(arg) : arg));
+      }
+
+      return args;
     }
 
     environ_sizes_get(environ_count_out, environ_buf_size_out) {
@@ -1026,6 +1151,7 @@ const API = (function () {
             FS.virtual[entry.filename] = {
               timestamp: new Date(),
               mode: FS_DIR,
+              size: 4096,
               path: entry.filename,
               parent: entry.filename.substring(0, entry.filename.lastIndexOf('/'))
             }
@@ -1057,6 +1183,7 @@ const API = (function () {
     }
 
 
+
     initMemFS() {
 
       this.memfs = new MemFS({
@@ -1064,8 +1191,13 @@ const API = (function () {
         hostWrite: this.hostWrite,
         memfsFilename: this.options.memfs || 'memfs.wasm',
       });
+
       this.ready = this.memfs.ready.then(
-        () => { return this.untar(this.memfs, this.sysrootFilename); });
+        () => {
+          this.mkdirp('/home')
+          this.mkdirp('/tmp')
+          return this.untar(this.memfs, this.sysrootFilename);
+        });
 
     }
 
@@ -1084,7 +1216,7 @@ const API = (function () {
       if (this.showTiming) {
         const green = '\x1b[92m';
         const normal = '\x1b[0m';
-        this.hostWrite(` ${green}(${msToSec(start, end)}s)${normal}\n`);
+        this.hostWrite(` ${green}(${msToSec(start, end)}s)${normal}\n\r`);
       }
       return result;
     }
@@ -1136,10 +1268,11 @@ const API = (function () {
 
           if (this.memfs && this.memfs.exists(filePath)) {
             contents = this.memfs.getFileContents(filePath)
-            if (!FS.virtual[filePath] || !FS.virtual[filePath].contents || FS.virtual[filePath].contents.length == 0) {
+            if (!FS.virtual[filePath] || contents.length === 0) {
               console.error('Assetion virtual fs not empty for wasm: ' + name)
               debugger
             }
+            FS.virtual[filePath].contents = contents
           }
           else if (FS.virtual[filePath]) {
             contents = FS.virtual[filePath].contents
@@ -1165,6 +1298,14 @@ const API = (function () {
 
         module.name = name
         this.moduleCache[name] = module;
+
+        if (name.includes('q3lcc')) {
+          let q3cpp = await this.getModule('q3cpp', database, true)
+          q3cpp.sync = true
+          let q3rcc = await this.getModule('q3rcc', database, true)
+          q3cpp.sync = true
+        }
+
         return module;
       }
       catch (up) {
@@ -1238,6 +1379,7 @@ const API = (function () {
           FS.virtual[currentPath] = {
             timestamp: new Date(),
             mode: FS_DIR,
+            size: 4096,
             path: currentPath,
             parent: currentPath.substring(0, currentPath.lastIndexOf('/'))
           }
@@ -1280,6 +1422,8 @@ const API = (function () {
 
       if (this.memfs)
         this.memfs.addFile(record.path, record.contents);
+
+      this.hostWrite('Loading: ' + record.path + '\n\r')
 
       return true
     }
@@ -1571,6 +1715,67 @@ const API = (function () {
 
     }
 
+
+    runSync(module, ...args) {
+
+      if (typeof module == 'string' || !module)
+        module = this.moduleCache[module];
+
+      if (typeof module == 'string' || !module)
+        throw new Error('Cannot load module: ' + name)
+
+      this.mkdirp('/tmp')
+
+      if (args) {
+        for (var filePath of args) {
+          if (!filePath) continue
+          //if (FS.virtual[filePath]) continue
+          try {
+
+            var record = FS.virtual[filePath]
+            if (!record) continue
+
+            const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
+            if (fileDir.trim().length > 0)
+              this.mkdirp(fileDir)
+
+            if (this.memfs)
+              this.memfs.addFile(record.path, record.contents);
+
+            this.hostWrite('Loading: ' + record.path + '\n\r')
+          } catch (e) {
+            console.log(e)
+          }
+        }
+      }
+
+      if (!args)
+        args = []
+
+      if (args.length == 0)
+        args[0] = module.name
+
+      this.hostLog(`${args.join(' ')}\n`);
+
+      const start = +new Date();
+      const instantiate = +new Date();
+      if (!(module instanceof App)) {
+        module = new App(this, this.hostWrite, module, this.sysrootFilename, ...args || []);
+      }
+      const stillRunning = module.runSync();
+      const end = +new Date();
+
+      if (this.showTiming) {
+        const green = '\x1b[92m';
+        const normal = '\x1b[0m';
+        let msg = `${green}(${msToSec(start, instantiate)}s`;
+        msg += `/${msToSec(instantiate, end)}s)${normal}\n\r`;
+        this.hostWrite(msg);
+      }
+
+      return module;
+    }
+
     async run(module, ...args) {
       await this.ready
 
@@ -1617,9 +1822,11 @@ const API = (function () {
       this.hostLog(`${args.join(' ')}\n`);
 
       const start = +new Date();
-      const app = new App(this, this.hostWrite, module, this.sysrootFilename, ...args || []);
       const instantiate = +new Date();
-      const stillRunning = await app.run();
+      if (!(module instanceof App)) {
+        module = new App(this, this.hostWrite, module, this.sysrootFilename, ...args || []);
+      }
+      const stillRunning = await module.run();
       const end = +new Date();
 
       if (this.showTiming) {
@@ -1630,7 +1837,7 @@ const API = (function () {
         this.hostWrite(msg);
       }
 
-      return stillRunning ? app : null;
+      return module.output || stillRunning ? module : null;
     }
 
     async compileLinkRun(options) {
@@ -1652,6 +1859,8 @@ const API = (function () {
   const FS_DEFAULT = (6 << 3) + (6 << 6) + (6)
   const FS_FILE = (ST_FILE << 12) + FS_DEFAULT
   const FS_DIR = (ST_DIR << 12) + FS_DEFAULT
+
+  API.App = App;
 
   return API;
 

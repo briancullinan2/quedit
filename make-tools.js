@@ -112,13 +112,22 @@ const lccToolHeaders = [
 ];
 
 
+const asmToolHeaders = [
+    'cmdlib.h',
+    'opstrings.h',
+    'qvm.h',
+]
+
 const toolLdFlags = [
     //"-D__WASM__=1",
     //"--no-standard-libraries",
     '--no-threads',
     "--export-dynamic",
+    //"--import-memory",
+    //"--import-table",
+
     //"--export-memory",
-    "--export-table",
+    //"--export-table",
     "--error-limit=200",
     '-z', `stack-size=${1024 * 1024}`,
     '-Llib/wasm32-wasi',
@@ -145,18 +154,20 @@ async function buildLBurg(database = null) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
+    TERMINATE = false
     PREAMBLE = TOOLS_PREAMBLE
 
     log("Building LBURG...");
-    const lburgObjs = [];
     for (const file of lburgFiles) {
+        if (TERMINATE) return
+
         try {
 
             const src = path.join("lburg", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.LBURG, file);
 
             log(`CC: ${src}\n\r`);
-            lburgObjs.push(await compileToolFile(src, obj, "lburg", database));
+            await compileToolFile(src, obj, "lburg", database);
         } catch (e) {
             log(e)
         }
@@ -178,7 +189,7 @@ async function linkLburg(database) {
 
 
     const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
-
+    const lburgObjs = lburgFiles.map(f => path.join(CONFIGURATION + '/' + toolDirs.LBURG, f))
 
     let exeRecord = await getRecord(DB_STORE_NAME, lburgExe, database)
     FS.virtual[lburgExe] = exeRecord
@@ -188,8 +199,8 @@ async function linkLburg(database) {
         // TODO: compare LATEST input and output mtime
         // && FS.virtual[file]?.timestamp < FS.virtual[lburgExe]?.timestamp
     ) {
-        log(lburgExe + " already up to date...");
-        return
+        //log(lburgExe + " already up to date...");
+        //return
     }
 
     log(`LD: ${lburgExe}\n\r`);
@@ -218,6 +229,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
         let ownerName = parts.length == 2 ? parts[0] : owner.value;
         let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
 
+        PREAMBLE = TOOLS_PREAMBLE
 
         if (!BRANCH || !FILELIST) {
             BRANCH = await getDefaultBranch(ownerName, repoName)
@@ -230,6 +242,8 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
 
         if (needsHeaders) {
             needsHeaders = false;
+
+            log("Syncing TOOL headers...");
 
             await downloadHeaders(lccToolHeaders, 10, database)
 
@@ -298,11 +312,12 @@ async function buildRCC(database = null, skipTool = false) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
+    TERMINATE = false
     PREAMBLE = TOOLS_PREAMBLE
 
-    if (!skipTool) {
+    const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
 
-        const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
+    if (!skipTool) {
 
         let exeRecord = await getRecord(DB_STORE_NAME, lburgExe, database)
         if (!exeRecord) {
@@ -314,10 +329,14 @@ async function buildRCC(database = null, skipTool = false) {
     }
 
     log("Building RCC...");
-    const rccObjs = [];
+
     for (const file of rccFiles) {
-        const obj = path.join(CONFIGURATION + '/' + toolDirs.RCC, file);
+        if (TERMINATE) return
+
+        PREAMBLE = TOOLS_PREAMBLE
+
         try {
+            const obj = path.join(CONFIGURATION + '/' + toolDirs.RCC, file);
             if (file === 'dagcheck.o') {
                 // Special case: Generate dagcheck.c using lburg
                 log("Generating dagcheck.c via lburg...");
@@ -327,26 +346,28 @@ async function buildRCC(database = null, skipTool = false) {
 
                 await cacheFile(ownerName, repoName, dagMd, (FILELIST[dagMd] || {}).sha);
                 // Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
+                PREAMBLE = TOOLS_PREAMBLE
 
                 log(`BURG: ${dagMd}`);
                 await api.run({
                     tool: lburgExe,
                     args: [lburgExe, dagMd, dagC],
-                    database
+                    database,
+                    paths: [dagMd, dagC]
                 });
 
                 log(`CC: ${dagC}\n\r`);
-                rccObjs.push(await compileToolFile(dagC, obj, "src", database, ["-Wno-unused"]));
+                await compileToolFile(dagC, obj, "src", database, ["-Wno-unused"]);
             } else {
                 const src = path.join("src", file.replace('.o', '.c'));
 
                 log(`CC: ${src}\n\r`);
-                rccObjs.push(await compileToolFile(src, obj, "src", database));
+                await compileToolFile(src, obj, "src", database);
             }
         } catch (e) {
             PREAMBLE = TOOLERR_PREAMBLE
 
-            log(e)
+            log(`Error compiling: ${file}: ${e}\n\r${e.stack || e.stacktrace}`)
         }
     }
 
@@ -367,7 +388,7 @@ async function linkRCC(database = null) {
 
     PREAMBLE = TOOLS_PREAMBLE
 
-    let rccObjs = rccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.RCC, file))
+    const rccObjs = rccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.RCC, file))
     const rccExe = path.join(CONFIGURATION, "q3rcc" + config.BINEXT);
 
     let exeRecord = await getRecord(DB_STORE_NAME, rccExe, database)
@@ -378,8 +399,8 @@ async function linkRCC(database = null) {
         // TODO: compare LATEST input and output mtime
         // && FS.virtual[file]?.timestamp < FS.virtual[rccExe]?.timestamp
     ) {
-        log(rccExe + " already up to date...");
-        return
+        //log(rccExe + " already up to date...");
+        //return
     }
 
     log(`LD: ${rccExe}\n\r`);
@@ -411,14 +432,16 @@ async function buildCPP(database = null) {
     PREAMBLE = TOOLS_PREAMBLE
 
     log("Building CPP...");
-    const cppObjs = [];
+
     for (const file of cppFiles) {
+        if (TERMINATE) return
+
         try {
             const src = path.join("cpp", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.CPP, file);
 
             log(`CC: ${src}\n\r`);
-            cppObjs.push(await compileToolFile(src, obj, "cpp", database));
+            await compileToolFile(src, obj, "cpp", database);
         } catch (e) {
             log(e)
         }
@@ -438,7 +461,7 @@ async function linkCPP(database = null) {
 
     PREAMBLE = TOOLS_PREAMBLE
 
-    let cppObjs = cppFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.CPP, file))
+    const cppObjs = cppFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.CPP, file))
     const cppExe = path.join(CONFIGURATION, "q3cpp" + config.BINEXT);
 
 
@@ -450,8 +473,8 @@ async function linkCPP(database = null) {
         // TODO: compare LATEST input and output mtime
         // && FS.virtual[file]?.timestamp < FS.virtual[lburgExe]?.timestamp
     ) {
-        log(cppExe + " already up to date...");
-        return
+        //log(cppExe + " already up to date...");
+        //return
     }
 
     log(`LD: ${cppExe}\n\r`);
@@ -482,18 +505,22 @@ async function buildLCC(database = null) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
+    TERMINATE = false
     PREAMBLE = TOOLS_PREAMBLE
 
     log("Building LCC...");
-    const lccObjs = [];
+
     for (const file of lccFiles) {
+        if (TERMINATE) return
+
+
         try {
             const src = path.join("etc", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.ETC, file);
             const lccFlags = [`-DTEMPDIR=\"${config.TEMPDIR}\"`, `-DSYSTEM=\"\"`];
 
             log(`CC: ${src}\n\r`);
-            lccObjs.push(await compileToolFile(src, obj, "src", database, lccFlags));
+            await compileToolFile(src, obj, "src", database, lccFlags);
         } catch (e) {
             log(e)
         }
@@ -518,7 +545,7 @@ async function linkLCC(database = null) {
 
     PREAMBLE = TOOLS_PREAMBLE
 
-    let lccObjs = lccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.ETC, file))
+    const lccObjs = lccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.ETC, file))
     const lccExe = path.join(CONFIGURATION, "q3lcc" + config.BINEXT);
 
 
@@ -562,6 +589,7 @@ async function buildTools(database = null, noBounce = false) {
         return
     }
 
+    TERMINATE = false
     PREAMBLE = TOOLS_PREAMBLE
 
     if (building) return
@@ -582,14 +610,31 @@ async function buildTools(database = null, noBounce = false) {
         // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
         await buildLBurg(database)
 
+        if (TERMINATE) return
+
+
         // 2. Build RCC (The Compiler Core)
         await buildRCC(database, true)
+
+        if (TERMINATE) return
+
 
         // 3. Build CPP (Preprocessor)
         await buildCPP(database)
 
+        if (TERMINATE) return
+
+
         // 4. Build LCC (Frontend)
         await buildLCC(database)
+
+        if (TERMINATE) return
+
+
+        await buildAsmTool(database)
+
+        if (TERMINATE) return
+
 
         log("Toolchain build complete.");
 
@@ -631,15 +676,7 @@ async function buildAsmTool(database = null) {
 
     needsHeaders = true
 
-
-    if (needsHeaders) {
-        needsHeaders = false;
-
-        await downloadHeaders(lccToolHeaders, 10, database)
-
-    }
-
-
+    TERMINATE = false
     PREAMBLE = TOOLS_PREAMBLE
 
 
@@ -648,10 +685,24 @@ async function buildAsmTool(database = null) {
     const toolSourceDir = "code/tools/asm"; // Adjust to your actual source path
 
     for (const file of q3asmFiles) {
-        const src = path.join(toolSourceDir, file);
-        const obj = path.join(CONFIGURATION, file.replace('.c', '.o'));
+
+        if (TERMINATE) return
+
+
+        if (needsHeaders) {
+            needsHeaders = false;
+
+            log("Syncing ASM headers...");
+            await downloadHeaders(asmToolHeaders, 10, database)
+
+        }
+
+        PREAMBLE = TOOLS_PREAMBLE
 
         try {
+
+            const src = path.join(toolSourceDir, file);
+            const obj = path.join(CONFIGURATION, file.replace('.c', '.o'));
             const sha = files[database][src].sha;
             const content = await cacheFile(ownerName, repoName, src, sha);
 
@@ -686,7 +737,7 @@ async function linkAsm(database = null) {
 
     PREAMBLE = TOOLS_PREAMBLE
 
-    let asmObjs = q3asmFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.ETC, file))
+    let asmObjs = q3asmFiles.map(file => path.join(CONFIGURATION, file))
 
     const q3asmExe = path.join(CONFIGURATION, "q3asm" + config.BINEXT);
 
@@ -698,8 +749,8 @@ async function linkAsm(database = null) {
         // TODO: compare LATEST input and output mtime
         // && FS.virtual[file]?.timestamp < FS.virtual[q3asmExe]?.timestamp
     ) {
-        log(q3asmExe + " already up to date...");
-        return
+        //log(q3asmExe + " already up to date...");
+        //return
     }
 
     log(`LD: ${q3asmExe}\n\r`);
@@ -721,7 +772,7 @@ async function linkAsm(database = null) {
         log("q3asm build complete.");
     } catch (e) {
         PREAMBLE = TOOLERR_PREAMBLE
-        log("Linker Error for q3asm: " + e);
+        log(`Linker Error for q3asm: ${q3asmExe}: ${e}\n\r${e.stack || e.stacktrace}`);
     }
 }
 

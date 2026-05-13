@@ -189,7 +189,7 @@ async function buildCommand(argv, database) {
     }
 
 
-    let validMode = api.configuration = configuration.value
+    let validMode = configuration.value
 
     if (mode === 'q3lcc'
         || mode === 'q3rcc'
@@ -218,8 +218,10 @@ async function buildCommand(argv, database) {
         validMode = 'release'
 
 
-    if (configuration.querySelector(`[value="${validMode}"]`))
+    if (configuration.querySelector(`[value="${validMode}"]`)) {
         configuration.value = validMode
+        api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
+    }
     else if (mode) {
         let modes = Array.from(configuration.children).map(m => m.value)
         term.write(`Valid modes ${modes.join('|')}: ${mode} given.\n\r`);
@@ -227,8 +229,26 @@ async function buildCommand(argv, database) {
     }
 
 
-
     term.write(`Starting ${mode} build...\n\r`);
+
+    if (selected === engineRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
+    {
+        await downloadHeaders(q3eCommonHeaders, 10, selected)
+    }
+
+    if (selected === gameRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
+    {
+        await downloadHeaders(qvmHeaders, 10, selected)
+    }
+
+    if (selected === toolsRepo) {
+        await downloadHeaders(lccToolHeaders, 10, selected)
+    }
+
+    if (selected === toolsRepo2) {
+        await downloadHeaders(asmToolHeaders, 10, selected)
+    }
+
 
     if (mode === 'stringify' || mode === 'all')
         await buildStringify(selected)
@@ -243,18 +263,18 @@ async function buildCommand(argv, database) {
 
     if (mode === 'lburg' || mode === 'all' || mode === 'tools')
         await buildLBurg(selected)
-    if (mode === 'q3rcc' || mode === 'all'  || mode === 'tools')
+    if (mode === 'q3rcc' || mode === 'all' || mode === 'tools')
         await buildRCC(selected)
-    if (mode === 'q3cpp' || mode === 'all'  || mode === 'tools')
+    if (mode === 'q3cpp' || mode === 'all' || mode === 'tools')
         await buildCPP(selected)
-    if (mode === 'q3lcc' || mode === 'all'  || mode === 'tools')
+    if (mode === 'q3lcc' || mode === 'all' || mode === 'tools')
         await buildLCC(selected)
-    if (mode === 'asm' || mode === 'all'  || mode === 'tools')
+    if (mode === 'asm' || mode === 'all' || mode === 'tools')
         await buildAsmTool(selected)
 
-    if (mode === 'game' || mode === 'all'  || mode === 'qvms')
+    if (mode === 'game' || mode === 'all' || mode === 'qvms')
         await buildGame(selected)
-    if (mode === 'cgame' || mode === 'all'  || mode === 'qvms')
+    if (mode === 'cgame' || mode === 'all' || mode === 'qvms')
         await buildCGame(selected)
     if (mode === 'ui' || mode === 'all' || mode === 'qvms')
         await buildUI(selected)
@@ -267,7 +287,35 @@ async function buildCommand(argv, database) {
 async function link(argv, database) {
     const mode = argv[0] || 'engine';
 
+
     let selected = api.database = argv[1] || engineRepo || database
+    if (mode === 'q3lcc'
+        || mode === 'q3rcc'
+        || mode === 'q3cpp'
+        || mode === 'lburg'
+        || mode === 'asm'
+        || mode === 'tools'
+    )
+        selected = argv[1] || toolsRepo
+    if (mode === 'all'
+        || mode === 'release'
+        || mode === 'debug'
+        || mode === 'stringify'
+        || mode === 'shaders'
+        || mode === 'client'
+        || mode === 'engine'
+        || mode === 'server'
+    )
+        selected = argv[1] || engineRepo
+
+    if (mode === 'cgame'
+        || mode === 'game'
+        || mode === 'uid'
+        || mode === 'qvms'
+    )
+        selected = argv[1] || gameRepo
+
+
     let parts = selected.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
@@ -277,7 +325,30 @@ async function link(argv, database) {
     }
 
 
-    term.write(`Starting ${mode} build...\n\r`);
+    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
+
+
+    term.write(`Starting ${mode} linking...\n\r`);
+
+
+    if (selected === engineRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
+    {
+        await downloadHeaders(q3eCommonHeaders, 10, selected)
+    }
+
+    if (selected === gameRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
+    {
+        await downloadHeaders(qvmHeaders, 10, selected)
+    }
+
+    if (selected === toolsRepo || file.includes('src/')) {
+        await downloadHeaders(lccToolHeaders, 10, selected)
+    }
+
+    if (selected === toolsRepo2 && !file.includes('src/') && !file.includes('code/')) {
+        await downloadHeaders(asmToolHeaders, 10, selected)
+    }
+
 
     if (mode === 'stringify' || mode === 'all')
         await linkStringify(selected)
@@ -351,7 +422,41 @@ function edit(argv) {
 }
 async function compileWorker(argv, database) {
     let file = argv[0] || currentSession()
-    let selected = toolsRepo || argv[1] || database
+    let selected = argv[1] || engineRepo || database
+
+    if (file.includes('src')
+        || file.includes('cpp')
+        || file.includes('etc')
+        || file.includes('lburg')
+    ) {
+        selected = toolsRepo
+    }
+
+    if (q3asmFiles.indexOf(file) > -1) {
+        selected = toolsRepo2
+    }
+
+
+    if (file.includes('code/client')
+        || file.includes('code/server')
+        || file.includes('code/qcommon')
+        || file.includes('code/renderer2')
+        || file.includes('code/botlib')
+        || file.includes('code/wasm')
+        || file.includes('code/renderercommon')
+    ) {
+        selected = engineRepo
+    }
+
+    if (file.includes('code/cgame')
+        || file.includes('code/game')
+        || file.includes('code/q3_ui')
+        || file.includes('code/ui')
+    ) {
+        selected = gameRepo
+    }
+
+
     let parts = selected.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
@@ -361,9 +466,26 @@ async function compileWorker(argv, database) {
         await loadGitHubTree(ownerName, repoName, branch)
     }
 
-    let sha = files[selected][file].sha
+    if (selected === engineRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
+    {
+        await downloadHeaders(q3eCommonHeaders, 10, selected)
+    }
 
-    let contents = await cacheFile(ownerName, repoName, file, sha);
+    if (selected === gameRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
+    {
+        await downloadHeaders(qvmHeaders, 10, selected)
+    }
+
+    if (selected === toolsRepo || file.includes('src/')) {
+        await downloadHeaders(lccToolHeaders, 10, selected)
+    }
+
+    if (selected === toolsRepo2 && !file.includes('src/') && !file.includes('code/')) {
+        await downloadHeaders(asmToolHeaders, 10, selected)
+    }
+
+    //let sha = files[selected][file].sha
+    let contents = await cacheFile(ownerName, repoName, file);
 
     let CONFIGURATION = configuration.value == 'release'
         ? dirs.ENGINE_RELEASE
@@ -371,7 +493,60 @@ async function compileWorker(argv, database) {
 
     let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
 
-    api.configuration = configuration.value
+    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
+
+    if (selected === gameRepo
+        || file.includes('code/cgame')
+        || file.includes('code/game')
+        || file.includes('code/q3_ui')
+        || file.includes('code/ui')
+    ) {
+
+        let vm = 'game'
+        if (file.includes('code/cgame'))
+            vm = 'cgame'
+        if (file.includes('code/q3_ui') || file.includes('code/ui'))
+            vm = 'ui'
+
+
+        let tempPath = CONFIGURATION + '/' + file.replace('.c', '.i')
+
+        /*
+q3lcc -v -v -D__LCC__ -D__CHAR_UNSIGNED__ -U_CHAR_IS_SIGNED -DQ3_VM -D_Q3_VM -Icode/game -Icode/cgame -Icode/q3_ui code/g
+ame/bg_lib.c build/debug-wasm-js/code/game/bg_lib.i
+q3lcc $Id$
+code/game/bg_lib.c:
+q3cpp -D__STDC__=1 -D__STRICT_ANSI__ -D__signed__=signed -DQ3_VM -D__LCC__ -D__LCC__ -D__CHAR_UNSIGNED__ -U_CHAR_IS_SIGNED 
+-DQ3_VM -D_Q3_VM -Icode/game -Icode/cgame -Icode/q3_ui code/game/bg_lib.c /tmp/lcc420.i
+q3rcc -target=bytecode -v /tmp/lcc420.i bg_lib.asm
+build/debug-wasm-js/code/game/bg_lib.i:
+q3rcc -target=bytecode -v build/debug-wasm-js/code/game/bg_lib.i bg_lib.asm
+rm /tmp/lcc420.i
+*/
+
+
+        await api.run({
+            tool: 'q3lcc.js.wasm',
+            args: [
+                'q3lcc', // '-v', '-v',
+                ...QVM_CFLAGS,
+                file,
+                tempPath,
+            ],
+            database: selected,
+            toolsRepo: toolsRepo,
+            paths: [file, tempPath],
+
+            // TODO:
+            contents: contents,
+            width: term.cols,
+            input: file,
+            tempPath,
+            github_token: api.github_token
+        })
+
+        return
+    }
 
     return await api.compile({
         CFLAGS: [
@@ -381,11 +556,10 @@ async function compileWorker(argv, database) {
             ] : ['-o', obj]),
             file
         ],
-        configuration: configuration.value,
         contents: contents,
         width: term.cols,
         input: file,
-        database: database,
+        database: selected,
         obj,
         github_token: api.github_token
     })
@@ -394,7 +568,6 @@ async function clang(argv, database) {
     let file = argv[0] || currentSession()
     return await api.compile({
         CFLAGS: argv,
-        configuration: configuration.value,
         contents: editor.getValue(),
         width: term.cols,
         input: file,
@@ -417,7 +590,6 @@ async function runWorker(argv, database) {
         thisDatabase = engineRepo
 
     return await api.run({
-        configuration: configuration.value,
         tool: argv[0],
         args: argv,
         database: thisDatabase,
@@ -440,7 +612,8 @@ async function lburg(argv, database) {
         : dirs.ENGINE_DEBUG
 
 
-    api.configuration = configuration.value
+    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
+
 
     let paths = [
         argv[0] || 'src/dagcheck.md',
@@ -457,7 +630,6 @@ async function lburg(argv, database) {
     ]
 
     return await api.run({
-        configuration: configuration.value,
         tool: 'lburg.js.wasm',
         args: args,
         database: selected,
@@ -488,7 +660,6 @@ async function lcc(argv) {
 async function wasm(argv, database = null) {
     return await api.link({
         LDFLAGS: argv,
-        configuration: configuration.value,
         database: database,
         github_token: api.github_token
     })
@@ -498,4 +669,5 @@ function reset() {
 }
 function clear() {
     term.clear()
+    triggerIncrementalSave()
 }

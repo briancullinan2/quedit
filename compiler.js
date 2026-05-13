@@ -9,7 +9,7 @@ class WorkerAPI {
         const channel = new MessageChannel();
         this.port = channel.port1;
         this.port.onmessage = this.onmessage.bind(this);
-        this.configuration = configuration.value
+        this.configuration = 
         this.hostWrite = options.hostWrite
 
         const remotePort = channel.port2;
@@ -27,8 +27,8 @@ class WorkerAPI {
 
 
     inject(options) {
-
-        this.configuration = options.configuration = options.configuration || configuration.value || this.configuration || 'release'
+        let currentConfig = options.configuration || configuration.value || this.configuration || 'release'
+        this.configuration = options.configuration = configuration.value === 'debug' ? 'debug' : 'release'
         this.database = options.database || engineRepo || this.database
         this.width = options.width = term.cols
         this.github_token = options.github_token = this.github_token
@@ -161,15 +161,13 @@ const api = new WorkerAPI({
         //term.write(msg + '\r\n');
         term.write(msg);
 
-        // 4. If the cursor wasn't at the end, move it back to the correct spot
+        /*
         if (cursorPosition < currentLine.length) {
             const moveBack = currentLine.length - cursorPosition;
             term.write(`\x1b[${moveBack}D`);
         }
-
-        // 3. Redraw the user's current input line
-        // We use cursorPosition to put the blinking block back where it was        
         term.write('> ' + currentLine);
+        */
 
         status.children[0].innerText = 'Status: ' + msg;
         triggerIncrementalSave();

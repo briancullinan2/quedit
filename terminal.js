@@ -1,5 +1,9 @@
 
-var term = new Terminal({ convertEol: true });
+var term = new Terminal({ 
+    convertEol: true,
+    scrollback: 20000, // Increase this from the default 1000
+    cursorBlink: true, 
+});
 term.open(document.getElementById('terminal'));
 
 const container = document.getElementById('terminal');
@@ -16,6 +20,9 @@ const loadedHistory = JSON.parse(localStorage.getItem('history') || '[]')
 const commandHistory = loadedHistory instanceof Array ? loadedHistory : []
 const loadedLog = JSON.parse(localStorage.getItem('terminal_log') || '[]');
 term.write(loadedLog.join('\n\r'))
+term.write('\n\r')
+term.write('> ');
+
 let historyIndex = -1;
 let currentLine = '';
 let cursorPosition = 0;
@@ -81,8 +88,11 @@ term.attachCustomKeyEventHandler((arg) => {
                 return false;
             }
             triggerIncrementalSave()
-            term.write('CTRL+C\n\r> ')
+            TERMINATE = true
+            term.write('\n\rCTRL+C\n\r> ')
+            cursorPosition = 0
             currentLine = ''
+            debugger
         }
 
         if (arg.code === "Backspace") {
@@ -118,6 +128,7 @@ term.attachCustomKeyEventHandler((arg) => {
                         c >= String.fromCharCode(0x20) && c <= String.fromCharCode(0x7e)
                     ).join('');
 
+                    cursorPosition += filtered.length
                     //currentLine += filtered;
                     //term.write(filtered);
                 }
@@ -157,7 +168,7 @@ term.onData(async data => {
                 cursorPosition = 0;
                 await handleCommand(thisLine);
             } catch (e) {
-                term.write(e.toString() + '\r\n' + (e.stack || '') + '\r\n');
+                term.write(e.toString() + '\r\n' + (e.stack || e.stacktrace) + '\r\n');
             }
 
             term.write('\r\n> ');
@@ -176,7 +187,6 @@ term.onData(async data => {
             if (commandHistory.length > 0) {
                 if (historyIndex === -1) historyIndex = commandHistory.length - 1;
                 else if (historyIndex > 0) historyIndex--;
-
                 updateLineFromHistory();
             }
             break;
@@ -482,4 +492,6 @@ function updateLineFromHistory(specificValue = null) {
 
     // 3. Write the new line
     term.write(currentLine);
+    cursorPosition = currentLine.length
+
 }

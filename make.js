@@ -2,6 +2,8 @@
  * Quake3e Build Configuration Script - Browser Version
  */
 
+let TERMINATE = false
+
 // 1. Implementation of path.join for the browser
 const path = {
     join: (...parts) => {
@@ -51,7 +53,8 @@ const dirs = {
 
     CGDIR: path.join(config.MOUNT_DIR, "cgame"),
     QADIR: path.join(config.MOUNT_DIR, "game"),
-    UIDIR: path.join(config.MOUNT_DIR, "q3_ui"),
+    UIDIR: path.join(config.MOUNT_DIR, "ui"),
+    Q3UIDIR: path.join(config.MOUNT_DIR, "q3_ui"),
 
     CDIR: path.join(config.MOUNT_DIR, "client"),
     SDIR: path.join(config.MOUNT_DIR, "server"),
@@ -718,6 +721,9 @@ async function buildClient(database = null, noBounce = false) {
 
         for (let file of [...allCompileObjects]) {
 
+            if (TERMINATE) return
+
+
             try {
                 PREAMBLE = BUILD_PREAMBLE
 
@@ -867,6 +873,7 @@ async function buildShaders(database = null) {
 
         PREAMBLE = BUILD_PREAMBLE
 
+        if (TERMINATE) return
 
         try {
             let sha = files[database][shader].sha
@@ -924,6 +931,9 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
     // Process in chunks to avoid slamming the network/API
     for (let i = 0; i < headers.length; i += batchSize) {
         const batch = headers.slice(i, i + batchSize);
+
+        if (TERMINATE) return
+
 
         await Promise.all(batch.map(async (header) => {
             try {

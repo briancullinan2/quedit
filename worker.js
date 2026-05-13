@@ -273,6 +273,10 @@ const onAnyMessage = async event => {
 
         await api.ready
 
+        let module = await api.getModule(event.data.data.tool)
+        let app = new API.App(api, api.hostWrite, module, api.sysrootFilename, ...event.data.data.args || [])
+
+
         let paths = event.data.data.paths
         if (paths && api.database) {
           for (filePath of paths) {
@@ -302,12 +306,11 @@ const onAnyMessage = async event => {
           }
         }
 
-
-
         await api.run(
-          event.data.data.tool,
+          app || event.data.data.tool,
           ...event.data.data.args || []
         );
+
 
         if (paths && api.database && api.memfs) {
           for (filePath of paths) {

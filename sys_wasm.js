@@ -196,7 +196,7 @@ async function run(database = null, noBounce = false) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-    api.configuration = configuration.value
+    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
 
     try {
         let enginePath = CONFIGURATION + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
@@ -314,6 +314,7 @@ async function readPreFS() {
     FS.virtual['/home'] = {
         timestamp: new Date(),
         mode: FS_DIR,
+        size: 4096,
         path: '/home',
         parent: ''
     }

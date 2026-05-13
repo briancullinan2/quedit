@@ -31,7 +31,7 @@ const gameFiles = [
 ];
 
 // User Interface (ui) specific files
-const uiFiles = [
+const q3uiFiles = [
     ...commonFiles,
     'ui_main.o', 'ui_addbots.o', 'ui_atoms.o', 'ui_cdkey.o',
     'ui_cinematics.o', 'ui_confirm.o', 'ui_connect.o', 'ui_controls2.o',
@@ -46,21 +46,32 @@ const uiFiles = [
 ];
 
 
+const uiFiles = [
+    'ui_main.o',
+    'ui_atoms.o',
+    'ui_gameinfo.o',
+    'ui_players.o',
+    'ui_shared.o',
+    'ui_syscalls.o'
+]
+
+
 const qvmHeaders = [
     // --- Shared Core Engine Headers ---
-    "qcommon/q_shared.h",
-    "qcommon/q_platform.h",
-    "qcommon/qcommon.h",
-    "qcommon/qfiles.h",
-    "qcommon/surfaceflags.h",
-    "qcommon/unzip.h",
-    "qcommon/cm_public.h",
-    "qcommon/cm_local.h",
+    "game/q_shared.h",
+    "game/q_platform.h",
+    "game/qcommon.h",
+    "game/qfiles.h",
+    "game/surfaceflags.h",
+    "game/unzip.h",
+    "game/cm_public.h",
+    "game/cm_local.h",
 
     // --- Game Module Interfaces ---
     "game/g_public.h",     // Engine interface for Game
     "game/bg_public.h",    // Shared Game/CGame logic
     "game/bg_local.h",
+    "game/bg_lib.h",
     "game/g_local.h",      // Game module internal state
     "game/ai_chat.h",
     "game/ai_main.h",
@@ -100,24 +111,28 @@ const QVMLIB_CFLAGS = [
 
 
 const QVM_CFLAGS = [
+    "-D__LCC__",
+    "-D__CHAR_UNSIGNED__", 
+    "-U_CHAR_IS_SIGNED",
     "-DQ3_VM",
     "-D_Q3_VM",
-    "-I/code/game",
-    "-I/code/cgame",
-    "-I/code/q3_ui"
+    "-Icode/game",
+    "-Icode/cgame",
+    "-Icode/q3_ui"
 ];
 
 
 let QVM_MODE = true;
 
 
-const QVM_PREAMBLE    = '\x1b[38;5;135m[QVM]\x1b[0m '
+const QVM_PREAMBLE = '\x1b[38;5;135m[QVM]\x1b[0m '
 const QVMERR_PREAMBLE = '\x1b[38;5;161m[QVM ERROR]\x1b[0m '
 
 
 
 async function buildModule(name, sourceDir, filesList, database, extraDefines = []) {
 
+    TERMINATE = false
     PREAMBLE = QVM_PREAMBLE
 
     log(`Compiling ${name} module...`);
@@ -152,21 +167,25 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
     for (const file of filesList) {
-        let srcPath;
-        // Q3 Makefile logic: shared files are in the game/ directory
-        if (file.startsWith('bg_') || file.startsWith('q_')) {
-            srcPath = path.join(dirs.QADIR, file.replace('.o', '.c'));
-        } else {
-            srcPath = path.join(sourceDir, file.replace('.o', '.c'));
-        }
-
-        PREAMBLE = QVM_PREAMBLE
-
-        // TODO: if using q3lcc
-        //const asmPath = path.join(CONFIGURATION, name, file.replace('.o', '.asm'));
-        const outPath = path.join(CONFIGURATION, name, file);
+        if (TERMINATE) return
 
         try {
+
+            let srcPath;
+            // Q3 Makefile logic: shared files are in the game/ directory
+            if (file.startsWith('bg_') || file.startsWith('q_')) {
+                srcPath = path.join(dirs.QADIR, file.replace('.o', '.c'));
+            } else {
+                srcPath = path.join(sourceDir, file.replace('.o', '.c'));
+            }
+
+            PREAMBLE = QVM_PREAMBLE
+
+            // TODO: if using q3lcc
+            //const asmPath = path.join(CONFIGURATION, name, file.replace('.o', '.asm'));
+            const outPath = path.join(CONFIGURATION, name, file);
+            const tempPath = path.join(CONFIGURATION, name, file.replace('.o', '.i'));
+
             if (!files[database][srcPath]) {
                 debugger
             }
@@ -192,24 +211,37 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                 ...QVM_CFLAGS,
                 ...(QVM_MODE ? [] : DEBUG_CFLAGS),
                 ...extraDefines.map(d => `-D${d}`),
-                ...(api.configuration == 'pre' ? [
-                    '-o', outPath.replace('.o', '.a')
-                ] : ['-o', outPath]),
-                srcPath
             ]
 
             if (QVM_MODE) {
                 // TODO: look for program in multiple databases
+                // 1. Run the Preprocessor
                 await api.run({
-                    tool: 'q3lcc.js.wasm',
+                    tool: 'q3cpp.js.wasm',
                     args: [
-                        'q3lcc.js.wasm',
-                        ...CCFLAGS
+                        'q3cpp', ...QVM_CFLAGS,
+                        srcPath,
+                        tempPath,
                     ],
                     database: database,
                     toolsRepo: toolsRepo,
-                    paths: [srcPath, outPath]
-                })
+                    paths: [srcPath, tempPath]
+                });
+
+                // 2. Run the Compiler (RCC)
+                // Note: lcc usually passes specific target flags to rcc here
+                await api.run({
+                    tool: 'q3rcc.js.wasm',
+                    args: ['q3rcc',
+                        '-target=bytecode',
+                        tempPath,
+                        outPath,
+                    ],
+                    database: database,
+                    toolsRepo: toolsRepo,
+                    paths: [tempPath, outPath]
+                });
+
             }
             else {
                 await api.compile({
@@ -227,6 +259,8 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
         }
     }
 
+    if (TERMINATE) return
+
 
     await linkModule(database, name, filesList)
 }
@@ -235,6 +269,10 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
 async function linkModule(database, name, filesList) {
+    if (!database) database = gameRepo || api.database;
+    let parts = database.split('/')
+    let ownerName = parts.length == 2 ? parts[0] : owner.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
 
     let CONFIGURATION = api.configuration == 'release'
@@ -350,6 +388,19 @@ async function buildUI(database = null) {
 
 
 
+async function buildUI(database = null) {
+    if (!database) database = gameRepo || api.database;
+
+    needsHeaders = true
+
+    await buildModule('ui', dirs.Q3UIDIR, uiFiles, database, ['UI']);
+
+
+}
+
+
+
+
 
 
 
@@ -359,7 +410,7 @@ async function buildQVM(database = null) {
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
-
+    TERMINATE = false
     PREAMBLE = QVM_PREAMBLE
 
     // 3. Start building modules
@@ -371,11 +422,29 @@ async function buildQVM(database = null) {
     // CGAME
     await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME']);
 
+    
+    if (TERMINATE) return
+
+
     // 2. Build GAME (qagame)
     await buildModule('game', dirs.QADIR, gameFiles, database, ['QAGAME']);
 
+    if (TERMINATE) return
+
+
     // 3. Build UI
     await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI']);
+
+    if (TERMINATE) return
+
+
+
+    // 3. Build UI
+    await buildModule('q3_ui', dirs.Q3UIDIR, q3uiFiles, database, ['UI']);
+
+    if (TERMINATE) return
+
+
 
     log("QVM Build Process Finished.");
 }
