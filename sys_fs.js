@@ -972,7 +972,7 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 	}
 
 	// 3. Handle Standard I/O (fd 1 and 2)
-	if (fd <= 2) {
+	if (fd <= 2 && !stream[2].rewrite) {
 		// Concatenate for the host console/logs
 		let totalBuf = new Uint8Array(written);
 		let offset = 0;
@@ -1024,7 +1024,12 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 
 	// Notify UI/Storage that the file has changed
 	if (typeof Sys_notify !== 'undefined') {
-		Sys_notify(node, stream[3], fd);
+		if (node.rewrite) {
+			FS.pointers[node.rewrite][2].contents = node.contents
+			Sys_notify(FS.pointers[node.rewrite][2], FS.pointers[node.rewrite][3], fd);
+		}
+		else
+			Sys_notify(node, stream[3], fd);
 	}
 
 	return 0; // WASI_ESUCCESS
@@ -1111,7 +1116,9 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	const exists = typeof FS.virtual[localName] !== 'undefined';
 
 	if (!exists) {
-		if (oflags & O_CREAT) {
+		if (oflags & O_CREAT
+			&& !FS.virtual[localName]
+		) {
 			// Create a new virtual node
 			FS.virtual[localName] = {
 				contents: new Uint8Array(0),
@@ -1128,8 +1135,8 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 		if ((oflags & O_CREAT) && (oflags & O_EXCL)) return 20; // WASI_EEXIST
 		if (oflags & O_TRUNC) {
 			//debugger
-			FS.virtual[localName].contents = new Uint8Array(0);
-			FS.virtual[localName].size = 0;
+			//FS.virtual[localName].contents = new Uint8Array(0);
+			//FS.virtual[localName].size = 0;
 		}
 	}
 
@@ -1153,8 +1160,8 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 				localPointer
 			]
 			// DO THIS ON OPEN SO WE CAN CHANGE ICONS
-			if (!(oflags & O_TRUNC))
-				Sys_notify(FS.virtual[localName], localName)
+			//if (!(oflags & O_TRUNC))
+			//	Sys_notify(FS.virtual[localName], localName)
 		}
 		return result;
 	}
@@ -1173,8 +1180,8 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 				FS.filePointer
 			]
 			// DO THIS ON OPEN SO WE CAN CHANGE ICONS
-			if (!(oflags & O_TRUNC))
-				Sys_notify(FS.virtual[localName], localName)
+			//if (!(oflags & O_TRUNC))
+			//	Sys_notify(FS.virtual[localName], localName)
 			return FS.filePointer // not zero
 		}
 
@@ -1277,8 +1284,12 @@ function writeU32(ptr, value) {
 
 function fd_read(fd, iovs, iovsLen, nreadPtr) {
 
-	const stream = FS.pointers[fd];
+	let stream = FS.pointers[fd];
 	if (!stream) return 8; // WASI_EBADF
+	if(stream[2].rewrite)
+	{
+		stream = FS.pointers[stream[2].rewrite]
+	}
 
 	//console.log(stream[3])
 
@@ -1432,18 +1443,19 @@ function fd_renumber(fd, to) {
 	if (FS.pointers[to]) {
 		// You might want to call Sys_FClose(to) here to ensure 
 		// any pending Sys_notify calls fire.
-		FS.pointers[to] = null;
+		//FS.pointers[to] = null;
+		FS.pointers[to][2].rewrite = fd
 	}
 
 	// 3. Renumber: Copy the reference to the new 'to' index
-	FS.pointers[to] = stream;
+	//FS.pointers[to] = stream;
 
 	// 4. Update the internal FD stored in your stream array [pos, mode, node, path, FD]
 	// stream[4] is where you store the FD index
-	FS.pointers[to][4] = to;
+	FS.pointers[to][4] = fd;
 
 	// 5. Remove the old reference
-	FS.pointers[fd] = null;
+	//FS.pointers[fd] = null;
 
 	return 0; // WASI_ESUCCESS
 }
@@ -1665,10 +1677,10 @@ async function _spawnvp(mode, cmdnamePtr, argvPtr) {
 
 function getpid() { return 42; }
 function fork() { return 0; }
-function wait(status) { 
+function wait(status) {
 	debugger
-	Module.errno = WASI_ENOSYS; 
-	return -1; 
+	Module.errno = WASI_ENOSYS;
+	return -1;
 }
 
 

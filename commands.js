@@ -491,7 +491,7 @@ async function compileWorker(argv, database) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-    let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
+    let obj = CONFIGURATION + '/' + file.replace('.c', '.asm')
 
     api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
 
@@ -502,11 +502,18 @@ async function compileWorker(argv, database) {
         || file.includes('code/ui')
     ) {
 
+        let DEFINE = ['-DGAME']
         let vm = 'game'
         if (file.includes('code/cgame'))
+        {
+            DEFINE = ['-DCGAME']
             vm = 'cgame'
+        }
         if (file.includes('code/q3_ui') || file.includes('code/ui'))
+        {
+            DEFINE = ['-DUI']
             vm = 'ui'
+        }
 
 
         let tempPath = CONFIGURATION + '/' + file.replace('.c', '.i')
@@ -526,10 +533,11 @@ rm /tmp/lcc420.i
 
 
         await api.run({
-            tool: 'q3lcc.js.wasm',
+            tool: 'q3cpp.js.wasm',
             args: [
-                'q3lcc', // '-v', '-v',
+                'q3cpp', // '-v', '-v',
                 ...QVM_CFLAGS,
+                ...DEFINE,
                 file,
                 tempPath,
             ],
@@ -543,6 +551,20 @@ rm /tmp/lcc420.i
             input: file,
             tempPath,
             github_token: api.github_token
+        })
+
+        await api.run({
+            tool: 'q3rcc.js.wasm',
+            args: [
+                'q3rcc', // '-v', '-v',
+                '-target=bytecode',
+                '-v',
+                tempPath,
+                file.split('/').pop().replace('.c', '.asm'),
+            ],
+            database: selected,
+            toolsRepo: toolsRepo,
+            paths: [obj, tempPath],
         })
 
         return

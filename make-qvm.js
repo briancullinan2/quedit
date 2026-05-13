@@ -111,11 +111,13 @@ const QVMLIB_CFLAGS = [
 
 
 const QVM_CFLAGS = [
-    "-D__LCC__",
-    "-D__CHAR_UNSIGNED__", 
-    "-U_CHAR_IS_SIGNED",
-    "-DQ3_VM",
-    "-D_Q3_VM",
+    '-D__STDC__=1',
+    '-D__STRICT_ANSI__',
+    '-D__signed__=signed',
+    '-DQ3_VM',
+    '-D__LCC__',
+    '-D__CHAR_UNSIGNED__',
+    '-U_CHAR_IS_SIGNED',
     "-Icode/game",
     "-Icode/cgame",
     "-Icode/q3_ui"

@@ -58,7 +58,7 @@ const apiOptions = {
       return WebAssembly.compileStreaming(fetch(filename));
     } else {
       const response = await fetch(filename);
-      if(!response.ok) throw new Error('Response code: ' + response.status)
+      if (!response.ok) throw new Error('Response code: ' + response.status)
       return WebAssembly.compile(await response.arrayBuffer());
     }
   },
@@ -71,21 +71,21 @@ const apiOptions = {
 let currentApp = null;
 
 const onAnyMessage = async event => {
-  if(event.data.data && event.data.data.github_token)
+  if (event.data.data && event.data.data.github_token)
     api.github_token = event.data.data.github_token
-  if(event.data.data && event.data.data.width)
+  if (event.data.data && event.data.data.width)
     api.width = event.data.data.width
-  if(event.data.data && event.data.data.database)
+  if (event.data.data && event.data.data.database)
     api.database = event.data.data.database
-  if(event.data.data && event.data.data.toolsRepo)
+  if (event.data.data && event.data.data.toolsRepo)
     api.toolsRepo = event.data.data.toolsRepo
-  if(event.data.data && event.data.data.engineRepo)
+  if (event.data.data && event.data.data.engineRepo)
     api.engineRepo = event.data.data.engineRepo
-  if(event.data.data && event.data.data.gameRepo)
+  if (event.data.data && event.data.data.gameRepo)
     api.gameRepo = event.data.data.gameRepo
-  if(event.data.data && event.data.data.assetRepo)
+  if (event.data.data && event.data.data.assetRepo)
     api.assetRepo = event.data.data.assetRepo
-  if(event.data.data && event.data.data.toolsRepo2)
+  if (event.data.data && event.data.data.toolsRepo2)
     api.toolsRepo2 = event.data.data.toolsRepo2
   switch (event.data.id) {
     case 'constructor':
@@ -319,18 +319,27 @@ const onAnyMessage = async event => {
 
 
               if (api.memfs.exists(filePath)) {
-                var bytes = api.memfs.getFileContents(filePath)
-                FS.virtual[filePath] = {
-                  timestamp: new Date(),
-                  mode: FS_FILE,
-                  contents: bytes,
-                  path: filePath,
-                  sha: await getGitShaBrowser(bytes),
-                  parent: filePath.substring(0, filePath.lastIndexOf('/'))
-                }
+                try {
+                  var bytes = api.memfs.getFileContents(filePath)
+                  if (bytes.length > 0) {
+                    FS.virtual[filePath] = {
+                      timestamp: new Date(),
+                      mode: FS_FILE,
+                      contents: bytes,
+                      path: filePath,
+                      sha: await getGitShaBrowser(bytes),
+                      parent: filePath.substring(0, filePath.lastIndexOf('/'))
+                    }
 
-                if (api.database)
-                  await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
+                    if (api.database)
+                      await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
+                  }
+                  else if(FS.virtual[filePath].contents.length) {
+                    api.memfs.addFile(filePath, FS.virtual[filePath].contents)
+                  }
+                } catch (e) {
+
+                }
 
                 api.hostWrite('Succeeded: ' + filePath + '\n\r')
               }

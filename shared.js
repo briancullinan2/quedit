@@ -399,14 +399,31 @@ const API = (function () {
       return new DataView(this.exports.memory.buffer).getUint32(resultFdPtr, true);
     }
 
+
     getFileContents(path) {
       this.mem.check();
+
+      // 1. Write path to shared buffer
       this.mem.write(this.exports.GetPathBuf(), path);
+
+      // 2. Try to find the node. 
+      // Try passing the root FD (usually 3) if path.length alone fails.
       const inode = this.exports.FindNode(path.length);
+
+      if (inode === 0) {
+        console.error(`FindNode failed for path: ${path}. Inode is 0.`);
+        return new Uint8Array(0);
+      }
+
       const addr = this.exports.GetFileNodeAddress(inode);
       const size = this.exports.GetFileNodeSize(inode);
+
+      console.log(`Node found: Inode=${inode}, Addr=${addr}, Size=${size}`);
+
+      // 3. Slice the buffer to get a clean copy, or use subarray to stay linked
       return new Uint8Array(this.mem.buffer, addr, size);
     }
+
 
     abort() { throw new AbortError(); }
 
@@ -581,14 +598,7 @@ const API = (function () {
         wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
         wasi_unstable.imports = wasi_unstable
         Object.assign(wasi_unstable, this.api.memfs.exports);
-        //Object.assign(wasi_unstable, FS);
-        wasi_unstable.getpid = FS.getpid
-        wasi_unstable.wait = FS.wait
-        wasi_unstable.fd_renumber = FS.fd_renumber
-        wasi_unstable.path_open = FS.path_open
-        wasi_unstable._spawnvp = FS._spawnvp
-        wasi_unstable.execv = FS.execv
-        wasi_unstable.fork = FS.fork
+        Object.assign(wasi_unstable, FS);
       }
       else {
         Object.assign(wasi_unstable, this.api.memfs.exports);
@@ -597,33 +607,6 @@ const API = (function () {
       }
 
 
-
-
-      //else
-      if (needMemfs) {
-        //wasi_unstable.fd_prestat_dir_name = this.api.memfs.exports.fd_prestat_dir_name
-        //wasi_unstable.fd_prestat_get = this.api.memfs.exports.fd_prestat_get
-        wasi_unstable.path_open = this.api.memfs.exports.path_open
-        wasi_unstable.fd_read = this.api.memfs.exports.fd_read
-        wasi_unstable.fd_pread = this.api.memfs.exports.fd_pread
-        wasi_unstable.fd_seek = this.api.memfs.exports.fd_seek
-        wasi_unstable.fd_filestat_get = this.api.memfs.exports.fd_filestat_get
-        wasi_unstable.fd_fdstat_get = this.api.memfs.exports.fd_fdstat_get
-        wasi_unstable.path_filestat_get = this.api.memfs.exports.path_filestat_get
-        wasi_unstable.path_rename = this.api.memfs.exports.path_rename
-        wasi_unstable.fd_readdir = this.api.memfs.exports.fd_readdir
-        //wasi_unstable.fd_close = this.api.memfs.exports.fd_close
-        //wasi_unstable.path_unlink_file = this.api.memfs.exports.path_unlink_file
-        //wasi_unstable.path_readlink = this.api.memfs.exports.path_readlink
-
-        //wasi_unstable.fd_allocate = this.api.memfs.exports.fd_allocate
-        //wasi_unstable.fd_fdstat_set_flags = this.api.memfs.exports.fd_fdstat_set_flags
-        //wasi_unstable.fd_filestat_set_size = this.api.memfs.exports.fd_filestat_set_size
-        wasi_unstable.fd_write = this.api.memfs.exports.fd_write
-        //wasi_unstable.path_create_directory = this.api.memfs.exports.path_create_directory
-        //wasi_unstable.path_remove_directory = this.api.memfs.exports.path_remove_directory
-        //wasi_unstable.path_symlink = this.api.memfs.exports.path_symlink
-      }
 
 
       Object.assign(env, wasi_unstable)
@@ -675,7 +658,7 @@ const API = (function () {
         if (exn instanceof ProcExit
           || exn.message === 'WASI_ENOSYS'
         ) {
-           this.output = exn.code
+          this.output = exn.code
 
           if (exn.code === RAF_PROC_EXIT_CODE
             || exn.code === 0
@@ -1368,28 +1351,30 @@ const API = (function () {
       // Ensure we have a clean array of directory segments
       // Filter(Boolean) removes empty strings from leading/double slashes
       const parts = path.split('/').filter(Boolean);
-      let currentPath = path.startsWith('/') ? '/' : '';
-      let previousPath = ''
+
+      // Track where we are in the tree
+      // Start with an empty string or '.' to signify relative to root
+      let accumulated = "";
+      let previousPath = "";
+
       for (const part of parts) {
-        // If we're at the root, don't double up the slash
-        previousPath = currentPath
-        currentPath = currentPath === '' ? `${part}` : `${currentPath}/${part}`;
+        accumulated = accumulated === "" ? part : `${accumulated}/${part}`;
 
         try {
-          FS.virtual[currentPath] = {
+          FS.virtual[accumulated] = {
             timestamp: new Date(),
             mode: FS_DIR,
             size: 4096,
-            path: currentPath,
-            parent: currentPath.substring(0, currentPath.lastIndexOf('/'))
+            path: accumulated,
+            parent: accumulated.substring(0, accumulated.lastIndexOf('/'))
           }
-          FS.virtual[currentPath + '/.'] = FS.virtual[currentPath]
+          FS.virtual[accumulated + '/.'] = FS.virtual[accumulated]
           if (previousPath)
-            FS.virtual[currentPath + '/..'] = FS.virtual[previousPath]
+            FS.virtual[accumulated + '/..'] = FS.virtual[previousPath]
         } catch (e) {
           // Log only if it's a real crash, not just an "already exists" error
           if (!e.message.includes("exists")) {
-            console.warn(`mkdirp segment failed: ${currentPath}`, e);
+            console.warn(`mkdirp segment failed: ${accumulated}`, e);
           }
         }
       }
