@@ -131,7 +131,15 @@ async function setupDatabase(dbName, stores) {
 }
 
 
-async function putRecord(storeName, record, dbName = null) {
+const debouncePath = {}
+async function putRecord(storeName, record, dbName = null, noBounce = false) {
+    if(typeof debouncePath[record.path] !== 'undefined')
+    {
+        clearTimeout(debouncePath)
+    }
+    if(!noBounce)
+        return debouncePath[record.path] = setTimeout(() => putRecord(storeName, record, dbName, noBounce, true), 100)
+
     const db = await getDB(dbName)
     const tx = db.transaction(storeName, 'readwrite')
     const store = tx.objectStore(storeName)

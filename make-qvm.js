@@ -221,7 +221,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
             FS.virtual[outPath] = objRecord
 
             if (FS.virtual[outPath]
-                && FS.virtual[srcPath]?.timestamp < FS.virtual[outPath]?.timestamp
+                //&& FS.virtual[srcPath]?.timestamp < FS.virtual[outPath]?.timestamp
             ) {
                 log(`${outPath} already up to date...\n\r`)
 
@@ -264,7 +264,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                         '-target=bytecode',
                         '-v',
                         tempPath,
-                        outPath.split('/').pop(),
+                        outPath //.split('/').pop(),
                     ],
                     database: database,
                     toolsRepo: toolsRepo,

@@ -1253,6 +1253,8 @@ const API = (function () {
           q3cpp.sync = true
           let q3rcc = await this.getModule('q3rcc', database, true)
           q3cpp.sync = true
+          let q3asm = await this.getModule('q3asm', database, true)
+          q3asm.sync = true
         }
 
         return module;

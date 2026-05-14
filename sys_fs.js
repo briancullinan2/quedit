@@ -768,7 +768,7 @@ function fd_filestat_get(fd, bufPtr) {
 
 	// 1. Resolve Metadata from your FS.virtual layout
 	// stream[2] appears to be your 'node' containing the mode/size
-	const node = stream[2] || { mode: FS_FILE, size: 0 };
+	const node = stream[2] || { mode: FS_FILE, contents: new Uint8Array(0) };
 	const modeType = node.mode >> 12;
 
 	// Map your ST_DIR/ST_FILE to WASI types
@@ -791,7 +791,7 @@ function fd_filestat_get(fd, bufPtr) {
 	view.setUint32(bufPtr + 24, 1, true);
 
 	// Size (Offset 32) - 64-bit
-	const size = node.size || 0;
+	const size = node.contents.length || 0;
 	view.setUint32(bufPtr + 32, size, true);
 	view.setUint32(bufPtr + 36, 0, true);
 
@@ -1134,7 +1134,6 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 			&& !FS.virtual[localName]
 		) {
 			// Create a new virtual node
-			debugger
 			FS.virtual[localName] = {
 				contents: new Uint8Array(0),
 				timestamp: new Date(),
@@ -1152,7 +1151,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 		if (oflags & O_TRUNC) {
 			//debugger
 			FS.virtual[localName].contents = new Uint8Array(0);
-			FS.virtual[localName].size = 0;
+			//FS.virtual[localName].size = 0;
 		}
 	}
 
