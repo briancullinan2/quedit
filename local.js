@@ -5,15 +5,17 @@ const DB_NAME = "QueditOffline"
 const DB_STORE_NAME = 'FILE_DATA';
 
 const DB_SCHEME = [
-    {key: DB_STORE_NAME, value: {
-        item1: 'path', item2: [{
-            key: 'timestamp', value: ['path', 'mode']
-        }, {
-            key: 'path', value: ['path', 'mode']
-        }, {
-            key: 'parent', value: ['parent', 'path', 'mode']
-        }]
-    }}
+    {
+        key: DB_STORE_NAME, value: {
+            item1: 'path', item2: [{
+                key: 'timestamp', value: ['path', 'mode']
+            }, {
+                key: 'path', value: ['path', 'mode']
+            }, {
+                key: 'parent', value: ['parent', 'path', 'mode']
+            }]
+        }
+    }
 ]
 
 async function getDB(dbName = null, dbVersion = null) {
@@ -134,7 +136,19 @@ async function putRecord(storeName, record, dbName = null) {
     const tx = db.transaction(storeName, 'readwrite')
     const store = tx.objectStore(storeName)
     return new Promise((rs, rj) => {
-        const req = store.put(record)
+        const newRecord = {
+            timestamp: record.timestamp,
+            mode: record.mode,
+            contents: record.contents,
+            path: record.path,
+            sha: record.sha,
+            parent: record.parent
+        }
+        if(!newRecord.path)
+        {
+            debugger
+        }
+        const req = store.put(newRecord)
         tx.oncomplete = function () { rs(req.result) }
         req.onerror = () => {
             console.log(req.error)
@@ -218,7 +232,7 @@ async function deleteRecord(storeName, key, dbName = null) {
 
 async function readAll(database, callback) {
     // ... your existing setup/install logic ...
-    
+
     let db = await getDB(database);
     let transaction = db.transaction([DB_STORE_NAME], 'readonly');
     let objStore = transaction.objectStore(DB_STORE_NAME);
@@ -229,14 +243,14 @@ async function readAll(database, callback) {
     return new Promise((resolve, reject) => {
         request.onsuccess = async (event) => {
             const allItems = event.target.result;
-            
+
             if (callback && typeof callback === 'function') {
                 // You can pass the whole array to your callback at once
-                allItems.forEach(callback); 
+                allItems.forEach(callback);
             }
             resolve(allItems);
         };
-        
+
         request.onerror = (err) => {
             console.error("IndexedDB Read Error:", err);
             reject(err);

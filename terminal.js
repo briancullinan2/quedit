@@ -1,8 +1,8 @@
 
-var term = new Terminal({ 
+var term = new Terminal({
     convertEol: true,
-    scrollback: 20000, // Increase this from the default 1000
-    cursorBlink: true, 
+    scrollback: 5000, // Increase this from the default 1000
+    cursorBlink: true,
 });
 term.open(document.getElementById('terminal'));
 
@@ -98,23 +98,36 @@ term.attachCustomKeyEventHandler((arg) => {
         if (arg.code === "Backspace") {
             if (arg.preventDefault) arg.preventDefault();
 
+            // Use cursorPosition as the source of truth for logic
+            if (cursorPosition > 0) {
+                // 1. Logic: Slice the string at the current cursor
+                const leftSide = currentLine.slice(0, cursorPosition - 1);
+                const rightSide = currentLine.slice(cursorPosition);
+                currentLine = leftSide + rightSide;
+                cursorPosition--;
 
-            if (currentLine.length > 0) {
+                // 2. Terminal View: Move back and redraw
                 const cursorX = term.buffer.active.cursorX;
 
                 if (cursorX === 0) {
-                    // Move cursor up 1 row, and to the end of the terminal width
-                    term.write('\b \b'); // Standard backspace doesn't always wrap up
-                    // Or use sequences: \x1b[A (Up) and \x1b[999C (Right to end)
-                    term.write('\x1b[A\x1b[' + term.cols + 'C');
+                    // Case: We are at the start of a wrapped line, move UP
+                    // \x1b[A (Up), \x1b[G (Column 0), \x1b[nC (Move right to end)
+                    term.write(`\x1b[A\x1b[${term.cols}C`);
                 } else {
-                    term.write('\b \b');
+                    // Case: Standard movement back
+                    term.write('\b');
                 }
-                currentLine = currentLine.slice(0, -1);
-                cursorPosition--
+
+                // 3. The "Fancy" Splicing Redraw
+                // \x1b[s: Save position
+                // \x1b[K: Erase to end of line (kills ghost characters)
+                // \x1b[u: Restore position
+                term.write('\x1b[s');
+                term.write(rightSide + '\x1b[K');
+                term.write('\x1b[u');
             }
 
-            return false
+            return false;
         }
 
         // --- Ctrl+V: Paste ---
@@ -142,6 +155,83 @@ term.attachCustomKeyEventHandler((arg) => {
     return true;
 });
 
+
+let lastNewLine = false;
+
+function specialWrite(msg) {
+    if (!msg) return;
+
+    term.write(msg)
+    return
+
+    if (msg.includes('memory access out of bounds')) {
+        needsHeaders = true;
+    }
+
+    // 1. Save Position & Hide Cursor
+    term.write('\x1b[s\x1b[?25l');
+
+    const buffer = term.buffer.active;
+
+    // 2. Inspect the "Live" Buffer state
+    // We want the line the prompt is currently sitting on
+    const absoluteRowIndex = buffer.baseY + buffer.cursorY;
+    const currentRow = buffer.getLine(absoluteRowIndex);
+
+    // Determine if the line ABOVE the prompt ended with a manual newline
+    // We look at the line above (absoluteRowIndex - 1)
+    const prevRow = buffer.getLine(absoluteRowIndex - 1);
+    const prevLineIsWrapped = prevRow ? prevRow.isWrapped : false;
+
+    // 3. Clear the User's Prompt Line
+    // \r moves to col 0, \x1b[2K clears the line
+    //term.write('\r\x1b[2K');
+
+    // 4. The Backtrack Logic
+    // If the previous line was NOT wrapped, it means we (the host) 
+    // forced a newline there to draw the prompt. 
+    // We jump back UP to append the new background data to that line.
+    if (buffer.cursorY > 0 && !prevLineIsWrapped
+        && !lastNewLine
+    ) {
+        term.write('\x1b[A'); // Move Cursor Up
+
+        // Find the last non-empty character on that line to 'resume' writing
+        const lastContent = prevRow.translateToString(true)
+        const lastContentCol = lastContent.length;
+        term.write(`\x1b[${lastContentCol + 1}G`); // Move to the end of text on that line
+        const previousEndsWithNewline = lastContent.endsWith('\n\r') || lastContent.endsWith('\n');
+        if (!previousEndsWithNewline)
+            lastNewLine = lastContentCol
+    }
+
+    // 5. Write the message
+    // If msg ends in \n, it will naturally move the cursor down
+    term.write(msg.replaceAll(/\n|\n\r|\r\n/g, '\n\r'));
+
+    // 6. Ensure Prompt is on a Fresh Line
+    // If the log stream is still partial, we force a newline for the prompt
+    const endsWithNewline = msg.endsWith('\n\r') || msg.endsWith('\n');
+    if (!endsWithNewline) {
+        term.write('\n\r');
+        lastNewLine = false
+    } else {
+        lastNewLine = true
+    }
+
+    // 7. Redraw User State
+    term.write('> ' + currentLine);
+
+    // 8. Restore Cursor & Show
+    const promptOffset = 2; // "> "
+    term.write(`\r\x1b[${promptOffset + cursorPosition}C\x1b[?25h`);
+
+    status.children[0].innerText = 'Status: ' + msg;
+    triggerIncrementalSave();
+}
+
+
+
 term.onData(async data => {
     switch (data) {
 
@@ -159,7 +249,6 @@ term.onData(async data => {
                 localStorage.setItem('history', JSON.stringify(commandHistory));
             }
 
-            term.write('\r\n');
             triggerIncrementalSave()
 
             try {
@@ -175,16 +264,26 @@ term.onData(async data => {
 
             break;
 
-        case '\u007f': // Backspace (DEL)
-            if (currentLine.length > 0) {
-                currentLine = currentLine.slice(0, -1);
-                // Move cursor back, print space to clear, move cursor back again
-                term.write('\b \b');
-            }
-            break;
+        /*
+    case '\u007f': // Backspace (DEL)
+        if (cursorPosition > 0) {
+            const leftSide = currentLine.slice(0, cursorPosition - 1);
+            const rightSide = currentLine.slice(cursorPosition);
+            currentLine = leftSide + rightSide;
+            cursorPosition--;
+
+            term.write('\b'); // Move back to the char we want to erase
+            term.write('\x1b[s'); // Save position
+            // Write the rest of the line + \x1b[K to wipe the old trailing char
+            term.write(rightSide + '\x1b[K');
+            term.write('\x1b[u'); // Restore to the gap
+        }
+        break;
+        */
 
         case '\u001b[A': // Up Arrow
             if (commandHistory.length > 0) {
+                commandHistory[historyIndex] = currentLine
                 if (historyIndex === -1) historyIndex = commandHistory.length - 1;
                 else if (historyIndex > 0) historyIndex--;
                 updateLineFromHistory();
@@ -193,13 +292,16 @@ term.onData(async data => {
 
         case '\u001b[B': // Down Arrow
             if (historyIndex !== -1) {
+                commandHistory[historyIndex] = currentLine
                 if (historyIndex < commandHistory.length - 1) {
                     historyIndex++;
                     updateLineFromHistory();
                 } else {
                     historyIndex = -1;
-                    updateLineFromHistory(""); // Clear if we go past the end
+                    updateLineFromHistory(commandHistory[-1] || ''); // Clear if we go past the end
                 }
+            } else {
+
             }
             break;
 
@@ -246,10 +348,23 @@ term.onData(async data => {
             break;
 
         default: // Standard typing
-            // Only echo and buffer printable characters
             if (data >= String.fromCharCode(0x20) && data <= String.fromCharCode(0x7e)) {
-                currentLine += data;
-                term.write(data);
+                const leftSide = currentLine.slice(0, cursorPosition);
+                const rightSide = currentLine.slice(cursorPosition);
+                currentLine = leftSide + data + rightSide;
+                cursorPosition += data.length;
+
+                if (rightSide.length === 0) {
+                    term.write(data);
+                } else {
+                    // REDRAW with cleaning
+                    term.write(data + rightSide);
+                    // Move back exactly rightSide.length
+                    term.write(`\x1b[${rightSide.length}D`);
+
+                    // Optional: If you see flickering, wrap the above in save/restore 
+                    // and add \x1b[K at the end of the rightSide write.
+                }
             }
     }
 });
@@ -467,14 +582,15 @@ terminalContainer.addEventListener('mousedown', async (event) => {
 
     if (match) {
         const filePath = match[1];
-        if(!files[database][filePath]) return
         const lineNumber = parseInt(match[2], 10);
         // TODO: whatever project the console output is initiated on
         let database = owner.value + '/' + repo.value
         let parts = database.split('/')
         let ownerName = parts.length == 2 ? parts[0] : owner.value
         let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
-        
+
+        if (!files[database][filePath]) return
+
         let sha = files[database][filePath].sha
         currentOpenFileId = sha
         await openFile(owner.value, repo.value, filePath, sha)

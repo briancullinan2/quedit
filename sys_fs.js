@@ -1004,9 +1004,10 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 	// Expand buffer if writing beyond current capacity
 	if (pos + written > node.contents.byteLength) {
 		let newSize = pos + written;
-		let newBuf = new Uint8Array(newSize);
-		newBuf.set(node.contents);
-		node.contents = newBuf;
+		// TODO:
+		//let newBuf = new Uint8Array(newSize);
+		//newBuf.set(node.contents);
+		//node.contents = newBuf;
 	}
 
 	// Copy each iov buffer into the node's contents at the current position
@@ -1135,8 +1136,8 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 		if ((oflags & O_CREAT) && (oflags & O_EXCL)) return 20; // WASI_EEXIST
 		if (oflags & O_TRUNC) {
 			//debugger
-			//FS.virtual[localName].contents = new Uint8Array(0);
-			//FS.virtual[localName].size = 0;
+			FS.virtual[localName].contents = new Uint8Array(0);
+			FS.virtual[localName].size = 0;
 		}
 	}
 

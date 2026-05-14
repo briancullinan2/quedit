@@ -66,12 +66,32 @@ const qvmHeaders = [
     "game/unzip.h",
     "game/cm_public.h",
     "game/cm_local.h",
+    "game/g_team.h",
+    "game/g_cvar.h",
+    "game/be_aas.h",
+    "game/be_ea.h",
+    "game/be_ai_char.h",
+    "game/be_ai_chat.h",
+    "game/be_ai_gen.h",
+    "game/be_ai_goal.h",
+    "game/be_ai_move.h",
+    "game/be_ai_weap.h",
+    "game/ai_dmq3.h",
+    "game/ai_cmd.h",
+    "game/ai_dmnet.h",
+    "game/chars.h",
+    "game/inv.h",
+    "game/syn.h",
+    "game/match.h",
+    "game/ai_vcmd.h",
 
     // --- Game Module Interfaces ---
     "game/g_public.h",     // Engine interface for Game
     "game/bg_public.h",    // Shared Game/CGame logic
     "game/bg_local.h",
     "game/bg_lib.h",
+    "game/bg_events.h",
+    "game/bg_mods.h",
     "game/g_local.h",      // Game module internal state
     "game/ai_chat.h",
     "game/ai_main.h",
@@ -171,21 +191,23 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
     for (const file of filesList) {
         if (TERMINATE) return
 
-        try {
+        let srcPath;
+        // Q3 Makefile logic: shared files are in the game/ directory
+        if (file.startsWith('bg_') || file.startsWith('q_')) {
+            srcPath = path.join(dirs.QADIR, file.replace('.o', '.c'));
+        } else {
+            srcPath = path.join(sourceDir, file.replace('.o', '.c'));
+        }
 
-            let srcPath;
-            // Q3 Makefile logic: shared files are in the game/ directory
-            if (file.startsWith('bg_') || file.startsWith('q_')) {
-                srcPath = path.join(dirs.QADIR, file.replace('.o', '.c'));
-            } else {
-                srcPath = path.join(sourceDir, file.replace('.o', '.c'));
-            }
+        try {
 
             PREAMBLE = QVM_PREAMBLE
 
             // TODO: if using q3lcc
-            //const asmPath = path.join(CONFIGURATION, name, file.replace('.o', '.asm'));
-            const outPath = path.join(CONFIGURATION, name, file);
+            let outPath = path.join(CONFIGURATION, name, file);
+            if (QVM_MODE)
+                outPath = path.join(CONFIGURATION, name, file.replace('.o', '.asm'));
+
             const tempPath = path.join(CONFIGURATION, name, file.replace('.o', '.i'));
 
             if (!files[database][srcPath]) {
@@ -216,34 +238,35 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
             ]
 
             if (QVM_MODE) {
-                // TODO: look for program in multiple databases
-                // 1. Run the Preprocessor
+
                 await api.run({
                     tool: 'q3cpp.js.wasm',
                     args: [
-                        'q3cpp', ...QVM_CFLAGS,
+                        'q3cpp', // '-v', '-v',
+                        ...QVM_CFLAGS,
+                        ...extraDefines.map(d => `-D${d}`),
                         srcPath,
                         tempPath,
                     ],
                     database: database,
                     toolsRepo: toolsRepo,
-                    paths: [srcPath, tempPath]
-                });
+                    paths: [srcPath, tempPath],
 
-                // 2. Run the Compiler (RCC)
-                // Note: lcc usually passes specific target flags to rcc here
+                })
+
                 await api.run({
                     tool: 'q3rcc.js.wasm',
-                    args: ['q3rcc',
+                    args: [
+                        'q3rcc', // '-v', '-v',
                         '-target=bytecode',
+                        '-v',
                         tempPath,
-                        outPath,
+                        outPath.split('/').pop(),
                     ],
                     database: database,
                     toolsRepo: toolsRepo,
-                    paths: [tempPath, outPath]
-                });
-
+                    paths: [outPath, tempPath],
+                })
             }
             else {
                 await api.compile({
@@ -424,7 +447,7 @@ async function buildQVM(database = null) {
     // CGAME
     await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME']);
 
-    
+
     if (TERMINATE) return
 
 

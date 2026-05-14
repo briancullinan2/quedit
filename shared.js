@@ -1292,6 +1292,7 @@ const API = (function () {
         return module;
       }
       catch (up) {
+        debugger
         this.hostWrite(name + ' not found at: ' + this.commonPaths(name).join('\n\r')
           + '\n\r' + window.location + '/' + name + '\n\r')
         console.error(up)
@@ -1485,6 +1486,8 @@ const API = (function () {
 
       const clang = await this.getModule(this.clangFilename);
       var result = await this.run(clang, 'clang', ...options.CFLAGS || []);
+      if (!obj)
+        debugger
       if (this.memfs && this.memfs.exists(obj)) {
         var bytes = this.memfs.getFileContents(obj)
         FS.virtual[obj] = {
@@ -1495,14 +1498,26 @@ const API = (function () {
           parent: obj.substring(0, obj.lastIndexOf('/'))
         }
 
-        if (this.database)
-          await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
+        try {
+          if (this.database)
+            await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
 
-        this.hostWrite('Succeeded: ' + obj + '\n\r')
+          this.hostWrite('Succeeded: ' + obj + '\n\r')
+        } catch (e) {
+          debugger
+          console.error(e)
+        }
+      }
+      else if (this.database && FS.virtual[obj]) {
+        try {
+          await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
+        } catch (e) {
+          debugger
+          console.error(e)
+        }
       }
 
-      if (this.database && FS.virtual[obj])
-        await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
+
       return result
     }
 
@@ -1640,24 +1655,33 @@ const API = (function () {
       await this.run(
         lld, 'wasm-ld', ...options.LDFLAGS || [])
 
-      if (wasm && this.memfs && this.memfs.exists(wasm)) {
-        var bytes = this.memfs.getFileContents(wasm)
-        FS.virtual[wasm] = {
-          timestamp: new Date(),
-          mode: FS_FILE,
-          contents: bytes,
-          path: wasm,
-          parent: wasm.substring(0, wasm.lastIndexOf('/'))
+      try {
+        if (wasm && this.memfs && this.memfs.exists(wasm)) {
+          var bytes = this.memfs.getFileContents(wasm)
+          if (bytes.length > 0) {
+            FS.virtual[wasm] = {
+              timestamp: new Date(),
+              mode: FS_FILE,
+              contents: bytes,
+              path: wasm,
+              parent: wasm.substring(0, wasm.lastIndexOf('/'))
+            }
+
+            if (this.database)
+              await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database)
+
+          }
         }
 
-        if (this.database)
+        if (this.database && FS.virtual[wasm])
           await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database)
 
-        this.hostWrite('Succeeded: ' + wasm + '\n\r')
+      } catch (e) {
+        console.log(e)
       }
 
-      if (this.database && FS.virtual[wasm])
-        await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database)
+      if (FS.virtual[wasm].contents.length > 1024)
+        this.hostWrite('Succeeded: ' + wasm + '\n\r')
 
       return FS.virtual[wasm];
     }

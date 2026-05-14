@@ -342,15 +342,14 @@ function Sys_Frame() {
 
 async function Sys_notify(ifile, path, fp) {
 	var database = Module.database || owner.value + '/' + repo.value
-	ifile.sha = await getGitShaBrowser(ifile.contents)
-	getDB(database).then(function (db) {
-		putRecord(DB_STORE_NAME, ifile, database)
-	})
-	// TODO: ADD FILESYSTEM WATCHERS API INOTIFY 
-	//   THAT READS A LIST GENERATED HERE
-	if (typeof window.updateFilelist != 'undefined'
-		&& !ACE.filestimer) {
-		ACE.filestimer = setTimeout(updateFilelist, 100)
+	try {
+		ifile.sha = await getGitShaBrowser(ifile.contents)
+		getDB(database).then(function (db) {
+			putRecord(DB_STORE_NAME, ifile, database)
+		})
+	} catch (e) {
+		debugger
+		console.error(e)
 	}
 }
 
@@ -692,23 +691,23 @@ var ydayFromDate = (date) => {
 };
 
 function assert(condition, text) {
-  if (!condition) {
-    abort('Assertion failed' + (text ? ': ' + text : ''));
-  }
+	if (!condition) {
+		abort('Assertion failed' + (text ? ': ' + text : ''));
+	}
 }
 
 
 var convertI32PairToI53Checked = (lo, hi) => {
-    // If Clang is passing BigInts, convert them to Number safely
-    // BigInt(x) | 0 is an easy way to ensure i32/u32 behavior
-    const l = Number(lo) >>> 0;
-    const h = Number(hi) | 0;
+	// If Clang is passing BigInts, convert them to Number safely
+	// BigInt(x) | 0 is an easy way to ensure i32/u32 behavior
+	const l = Number(lo) >>> 0;
+	const h = Number(hi) | 0;
 
-    // Original safety check for the 53-bit Number limit
-    if ((h + 0x200000) >>> 0 < 0x400001 - !!l) {
-        return l + (h * 4294967296);
-    }
-    return NaN; 
+	// Original safety check for the 53-bit Number limit
+	if ((h + 0x200000) >>> 0 < 0x400001 - !!l) {
+		return l + (h * 4294967296);
+	}
+	return NaN;
 };
 
 

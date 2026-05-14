@@ -144,34 +144,7 @@ const API_PREAMBLE = '\x1b[38;5;214m[COMPILER]\x1b[0m '
 
 
 const api = new WorkerAPI({
-    hostWrite: (msg) => {
-        if (!msg) return;
-
-        if (msg.includes('memory access out of bounds')) {
-            needsHeaders = true;
-        }
-
-        // 1. Move to the start of the line and clear it
-        // \x1b[2K clears the entire line
-        // \x1b[G (or \r) moves cursor to column 0
-        //term.write(api.PREAMBLE || API_PREAMBLE);
-
-        // 2. Write the log message
-        // Ensure it ends with a newline so the prompt stays below it
-        //term.write(msg + '\r\n');
-        term.write(msg);
-
-        /*
-        if (cursorPosition < currentLine.length) {
-            const moveBack = currentLine.length - cursorPosition;
-            term.write(`\x1b[${moveBack}D`);
-        }
-        term.write('> ' + currentLine);
-        */
-
-        status.children[0].innerText = 'Status: ' + msg;
-        triggerIncrementalSave();
-    }
+    hostWrite: specialWrite
 });
 
 if (typeof localStorage !== 'undefined')

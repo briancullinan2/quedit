@@ -192,11 +192,11 @@ async function run(database = null, noBounce = false) {
     if(!database)
         database = owner.value + '/' + repo.value
 
-    let CONFIGURATION = configuration.value == 'release'
+    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
+
+    let CONFIGURATION = api.configuration === 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
-
-    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
 
     try {
         let enginePath = CONFIGURATION + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM

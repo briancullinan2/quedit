@@ -48,18 +48,29 @@ const apiOptions = {
   },
 
   async compileStreaming(filename) {
-    // TODO: make compileStreaming work. It needs the server to use the
-    // application/wasm mimetype.
-    if (filename instanceof Uint8Array || filename instanceof ArrayBuffer) {
-      return await WebAssembly.compile(filename);
-    }
+    try {
 
-    if (false && WebAssembly.compileStreaming) {
-      return WebAssembly.compileStreaming(fetch(filename));
-    } else {
-      const response = await fetch(filename);
-      if (!response.ok) throw new Error('Response code: ' + response.status)
-      return WebAssembly.compile(await response.arrayBuffer());
+      // TODO: make compileStreaming work. It needs the server to use the
+      // application/wasm mimetype.
+      if (filename instanceof Uint8Array || filename instanceof ArrayBuffer) {
+        return await WebAssembly.compile(filename);
+      }
+
+      if (WebAssembly.compileStreaming) {
+        return WebAssembly.compileStreaming(fetch(filename));
+      } else {
+        const response = await fetch(filename.startsWith('/') ? filename : ('/' + filename), {
+          mode: 'cors', // or 'same-origin'
+          credentials: 'omit'
+        });
+        if (!response.ok) throw new Error('Response code: ' + response.status)
+        const result = await response.arrayBuffer()
+        return WebAssembly.compile(result);
+      }
+    }
+    catch (e) {
+      debugger
+      throw e
     }
   },
 
@@ -334,7 +345,7 @@ const onAnyMessage = async event => {
                     if (api.database)
                       await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
                   }
-                  else if(FS.virtual[filePath].contents.length) {
+                  else if (FS.virtual[filePath].contents.length) {
                     api.memfs.addFile(filePath, FS.virtual[filePath].contents)
                   }
                 } catch (e) {

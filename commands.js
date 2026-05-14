@@ -9,7 +9,9 @@ async function handleCommand(input) {
     const tokens = tokenize(input.trim());
 
 
-    let CONFIGURATION = configuration.value == 'release'
+    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
+
+    let CONFIGURATION = api.configuration === 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
@@ -487,13 +489,14 @@ async function compileWorker(argv, database) {
     //let sha = files[selected][file].sha
     let contents = await cacheFile(ownerName, repoName, file);
 
-    let CONFIGURATION = configuration.value == 'release'
+    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
+
+    let CONFIGURATION = api.configuration === 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-    let obj = CONFIGURATION + '/' + file.replace('.c', '.asm')
-
-    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
+    let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
+    let outPath = CONFIGURATION + '/' + file.replace('.c', '.asm')
 
     if (selected === gameRepo
         || file.includes('code/cgame')
@@ -560,11 +563,11 @@ rm /tmp/lcc420.i
                 '-target=bytecode',
                 '-v',
                 tempPath,
-                file.split('/').pop().replace('.c', '.asm'),
+                outPath.split('/').pop(),
             ],
             database: selected,
             toolsRepo: toolsRepo,
-            paths: [obj, tempPath],
+            paths: [outPath, tempPath],
         })
 
         return
@@ -629,12 +632,11 @@ async function lburg(argv, database) {
         await loadGitHubTree(ownerName, repoName, branch)
     }
 
-    let CONFIGURATION = configuration.value == 'release'
+    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
+
+    let CONFIGURATION = api.configuration === 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
-
-
-    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
 
 
     let paths = [
