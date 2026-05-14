@@ -323,14 +323,14 @@ const onAnyMessage = async event => {
         );
 
 
-        if (paths && api.database && api.memfs) {
+        if (paths && api.database) {
           for (filePath of paths) {
             if (!filePath) continue
             try {
 
 
-              if (api.memfs.exists(filePath)) {
-                try {
+              try {
+                if (api.memfs && api.memfs.exists(filePath)) {
                   var bytes = api.memfs.getFileContents(filePath)
                   if (bytes.length > 0) {
                     FS.virtual[filePath] = {
@@ -342,19 +342,21 @@ const onAnyMessage = async event => {
                       parent: filePath.substring(0, filePath.lastIndexOf('/'))
                     }
 
-                    if (api.database)
-                      await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
                   }
-                  else if (FS.virtual[filePath].contents.length) {
-                    api.memfs.addFile(filePath, FS.virtual[filePath].contents)
-                  }
-                } catch (e) {
-
                 }
+                else if (api.memfs && FS.virtual[filePath].contents.length) {
+                  api.memfs.addFile(filePath, FS.virtual[filePath].contents)
+                }
+              } catch (e) {
 
-                api.hostWrite('Succeeded: ' + filePath + '\n\r')
               }
 
+              if (FS.virtual[filePath].contents.length) {
+                api.hostWrite('Succeeded: ' + filePath + '\n\r')
+
+                if (api.database)
+                  await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
+              }
             } catch (e) {
               console.log(e)
             }

@@ -363,42 +363,6 @@ const API = (function () {
       }
     }
 
-    openPath(pathString) {
-      const scratchPtr = this.exports.GetPathBuf();
-      const scratchLen = this.exports.GetPathBufLen();
-
-      // 1. Write the path string into the Wasm memory
-      const encoder = new TextEncoder();
-      const encodedPath = encoder.encode(pathString);
-      new Uint8Array(this.exports.memory.buffer).set(encodedPath, scratchPtr);
-
-      // 2. Prepare space for the returned FD (4 bytes)
-      // We'll put it at the end of the scratch buffer
-      const resultFdPtr = scratchPtr + scratchLen - 4;
-
-      // 3. Call path_open
-      // We use FD 3 as the base (the first pre-opened directory)
-      const errno = this.exports.path_open(
-        3,                    // dirfd (The first pre-open)
-        1,                    // lookupflags (1 = symlink follow)
-        scratchPtr,           // path_ptr
-        encodedPath.length,   // path_len
-        0,                    // oflags
-        0x2000000n,           // rights (DIRECTORY_LIST / OPEN)
-        0x2000000n,           // inheriting rights
-        0,                    // fdflags
-        resultFdPtr           // output pointer
-      );
-
-      if (errno !== 0) {
-        console.error(`Failed to open path "${pathString}": Errno ${errno}`);
-        return -1;
-      }
-
-      // 4. Read the new FD from memory
-      return new DataView(this.exports.memory.buffer).getUint32(resultFdPtr, true);
-    }
-
 
     getFileContents(path) {
       this.mem.check();
@@ -646,7 +610,9 @@ const API = (function () {
 
     runSync() {
       try {
-
+        window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
+        ENV.memory = Module.memory = this.exports.memory
+        updateGlobalBufferAndViews()
         this.output = this.exports._start();
       } catch (exn) {
         let writeStack = true;

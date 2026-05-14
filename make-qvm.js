@@ -254,6 +254,9 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
                 })
 
+                if (TERMINATE) return
+
+
                 await api.run({
                     tool: 'q3rcc.js.wasm',
                     args: [

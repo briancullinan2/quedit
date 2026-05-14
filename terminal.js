@@ -132,6 +132,8 @@ term.attachCustomKeyEventHandler((arg) => {
 
         // --- Ctrl+V: Paste ---
         if (isModifierPressed && arg.code === "KeyV") {
+            if (arg.preventDefault) arg.preventDefault();
+
             navigator.clipboard.readText().then(text => {
                 if (text) {
                     // Filter the text to match your existing "Standard typing" 
@@ -142,8 +144,8 @@ term.attachCustomKeyEventHandler((arg) => {
                     ).join('');
 
                     cursorPosition += filtered.length
-                    //currentLine += filtered;
-                    //term.write(filtered);
+                    currentLine += filtered;
+                    term.write(filtered);
                 }
             }).catch(err => {
                 // Clipboard access might be denied by the browser
@@ -155,81 +157,33 @@ term.attachCustomKeyEventHandler((arg) => {
     return true;
 });
 
+let shadowLogBuffer = ""; // Stores the current partial line from background
+let lastNewLine = true;   // Tracks if the last write finished a line
 
-let lastNewLine = false;
 
 function specialWrite(msg) {
     if (!msg) return;
 
+    // 1. Hide Cursor & Move to Start of Prompt Block
+    const promptWithCommand = '> ' + currentLine;
+    const numLines = Math.ceil(promptWithCommand.length / term.cols) || 1;
+    //term.write('\r\x1b[A');
+    //term.write(shadowLogBuffer);
     term.write(msg)
-    return
+    shadowLogBuffer = msg.split('\n').pop()
+    // 6. Redraw the Prompt
+    //term.write('\n\r')
+    //term.write(promptWithCommand);
 
-    if (msg.includes('memory access out of bounds')) {
-        needsHeaders = true;
-    }
+    // 7. Restore Cursor Position
+    const totalOffset = 2 + cursorPosition;
+    const targetLineFromTop = Math.floor(totalOffset / term.cols);
+    const targetCol = totalOffset % term.cols;
+    const moveUp = (numLines - 1) - targetLineFromTop;
 
-    // 1. Save Position & Hide Cursor
-    term.write('\x1b[s\x1b[?25l');
-
-    const buffer = term.buffer.active;
-
-    // 2. Inspect the "Live" Buffer state
-    // We want the line the prompt is currently sitting on
-    const absoluteRowIndex = buffer.baseY + buffer.cursorY;
-    const currentRow = buffer.getLine(absoluteRowIndex);
-
-    // Determine if the line ABOVE the prompt ended with a manual newline
-    // We look at the line above (absoluteRowIndex - 1)
-    const prevRow = buffer.getLine(absoluteRowIndex - 1);
-    const prevLineIsWrapped = prevRow ? prevRow.isWrapped : false;
-
-    // 3. Clear the User's Prompt Line
-    // \r moves to col 0, \x1b[2K clears the line
-    //term.write('\r\x1b[2K');
-
-    // 4. The Backtrack Logic
-    // If the previous line was NOT wrapped, it means we (the host) 
-    // forced a newline there to draw the prompt. 
-    // We jump back UP to append the new background data to that line.
-    if (buffer.cursorY > 0 && !prevLineIsWrapped
-        && !lastNewLine
-    ) {
-        term.write('\x1b[A'); // Move Cursor Up
-
-        // Find the last non-empty character on that line to 'resume' writing
-        const lastContent = prevRow.translateToString(true)
-        const lastContentCol = lastContent.length;
-        term.write(`\x1b[${lastContentCol + 1}G`); // Move to the end of text on that line
-        const previousEndsWithNewline = lastContent.endsWith('\n\r') || lastContent.endsWith('\n');
-        if (!previousEndsWithNewline)
-            lastNewLine = lastContentCol
-    }
-
-    // 5. Write the message
-    // If msg ends in \n, it will naturally move the cursor down
-    term.write(msg.replaceAll(/\n|\n\r|\r\n/g, '\n\r'));
-
-    // 6. Ensure Prompt is on a Fresh Line
-    // If the log stream is still partial, we force a newline for the prompt
-    const endsWithNewline = msg.endsWith('\n\r') || msg.endsWith('\n');
-    if (!endsWithNewline) {
-        term.write('\n\r');
-        lastNewLine = false
-    } else {
-        lastNewLine = true
-    }
-
-    // 7. Redraw User State
-    term.write('> ' + currentLine);
-
-    // 8. Restore Cursor & Show
-    const promptOffset = 2; // "> "
-    term.write(`\r\x1b[${promptOffset + cursorPosition}C\x1b[?25h`);
-
-    status.children[0].innerText = 'Status: ' + msg;
-    triggerIncrementalSave();
+    //if (moveUp > 0) term.write(`\x1b[${moveUp}A`);
+    //term.write(`\r\x1b[${targetCol + 1}G\x1b[?25h`);
 }
-
 
 
 term.onData(async data => {
@@ -245,6 +199,7 @@ term.onData(async data => {
                     commandHistory.splice(0, commandHistory.length - 10);
                 }
 
+                lastNewLine = true
                 historyIndex = -1;
                 localStorage.setItem('history', JSON.stringify(commandHistory));
             }

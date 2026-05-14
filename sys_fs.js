@@ -201,8 +201,11 @@ function Sys_llseek(pointer, position, mode) {
  */
 function fd_seek(fd, offset, whence, newOffsetPtr) {
 
-	const stream = FS.pointers[fd];
+	let stream = FS.pointers[fd];
 	if (!stream) return 8; // WASI_EBADF
+	if (stream[2].rewrite) {
+		stream = FS.pointers[stream[2].rewrite]
+	}
 	//console.log(stream[3])
 
 	// 1. Force everything to BigInt for consistent 64-bit math
@@ -749,9 +752,13 @@ function fd_prestat_dir_name(fd, pathPtr, pathLen) {
 function fd_filestat_get(fd, bufPtr) {
 
 
-	const stream = FS.pointers[fd];
+	let stream = FS.pointers[fd];
 
 	if (!stream) return 8; // WASI_EBADF
+	if (stream[2].rewrite) {
+		stream = FS.pointers[stream[2].rewrite]
+	}
+
 	//console.log(stream[3])
 
 	const view = new DataView(Module.memory.buffer);
@@ -908,9 +915,13 @@ function debug_print_mem(ptr, length) {
 function fd_fdstat_get(fd, bufPtr) {
 
 
-	const stream = FS.pointers[fd];
+	let stream = FS.pointers[fd];
 
 	if (!stream) return 8; // WASI_EBADF
+	if (stream[2].rewrite) {
+		stream = FS.pointers[stream[2].rewrite]
+	}
+
 	//console.log(stream[3])
 
 	const view = new DataView(Module.memory.buffer);
@@ -957,8 +968,12 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 	let written = 0;
 
 	// 1. Get the stream/pointer object for this FD
-	const stream = FS.pointers[fd];
+	let stream = FS.pointers[fd];
 	if (!stream) return 8; // WASI_EBADF
+	if (stream[2].rewrite) {
+		stream = FS.pointers[stream[2].rewrite]
+	}
+
 
 	// 2. Collect all bytes from iovs into one Uint8Array
 	// We do this first to calculate total 'written' size
@@ -972,7 +987,7 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 	}
 
 	// 3. Handle Standard I/O (fd 1 and 2)
-	if (fd <= 2 && !stream[2].rewrite) {
+	if (fd <= 2 && !FS.pointers[fd][2].rewrite) {
 		// Concatenate for the host console/logs
 		let totalBuf = new Uint8Array(written);
 		let offset = 0;
@@ -997,17 +1012,15 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 
 	// Ensure node.contents is a Uint8Array
 	if (!(node.contents instanceof Uint8Array)) {
-		debugger
 		node.contents = new Uint8Array(0);
 	}
 
 	// Expand buffer if writing beyond current capacity
 	if (pos + written > node.contents.byteLength) {
 		let newSize = pos + written;
-		// TODO:
-		//let newBuf = new Uint8Array(newSize);
-		//newBuf.set(node.contents);
-		//node.contents = newBuf;
+		let newBuf = new Uint8Array(newSize);
+		newBuf.set(node.contents);
+		node.contents = newBuf;
 	}
 
 	// Copy each iov buffer into the node's contents at the current position
@@ -1025,9 +1038,9 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 
 	// Notify UI/Storage that the file has changed
 	if (typeof Sys_notify !== 'undefined') {
-		if (node.rewrite) {
-			FS.pointers[node.rewrite][2].contents = node.contents
-			Sys_notify(FS.pointers[node.rewrite][2], FS.pointers[node.rewrite][3], fd);
+		if (FS.pointers[fd][2].rewrite) {
+			//FS.pointers[node.rewrite][2].contents = node.contents
+			Sys_notify(FS.pointers[FS.pointers[fd][2].rewrite][2], FS.pointers[FS.pointers[fd][2].rewrite][3], fd);
 		}
 		else
 			Sys_notify(node, stream[3], fd);
@@ -1121,6 +1134,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 			&& !FS.virtual[localName]
 		) {
 			// Create a new virtual node
+			debugger
 			FS.virtual[localName] = {
 				contents: new Uint8Array(0),
 				timestamp: new Date(),
@@ -1129,6 +1143,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 				path: localName
 			};
 		}
+
 		//else {
 		//	return 44; // WASI_ENOENT
 		//}
@@ -1200,7 +1215,12 @@ function _fd_close(fd) {
 	try {
 		//var stream = SYSCALLS.getStreamFromFD(fd);
 		if (fd <= VFS_NOW) return
-		FS.pointers[fd] = null
+		if (FS.pointers[fd] && FS.pointers[fd][2].rewrite) {
+			FS.pointers[FS.pointers[fd][2].rewrite] = null
+			FS.pointers[fd][2].rewrite = 0
+		}
+		else
+			FS.pointers[fd] = null
 		return 0;
 	} catch (e) {
 		if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;
@@ -1250,7 +1270,10 @@ function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 		*/
 	}
 	else {
-		myNode = myNode[4]
+		if (myNode[2].rewrite)
+			myNode = myNode[2].rewrite
+		else
+			myNode = myNode[4]
 		view.setBigUint64(bufPtr + 8, BigInt(myNode), true);
 	}
 
@@ -1287,8 +1310,7 @@ function fd_read(fd, iovs, iovsLen, nreadPtr) {
 
 	let stream = FS.pointers[fd];
 	if (!stream) return 8; // WASI_EBADF
-	if(stream[2].rewrite)
-	{
+	if (stream[2].rewrite) {
 		stream = FS.pointers[stream[2].rewrite]
 	}
 
@@ -1325,8 +1347,11 @@ function fd_read(fd, iovs, iovsLen, nreadPtr) {
 
 
 function fd_pread(fd, iovs, iovsLen, offset, nreadPtr) {
-	const stream = FS.pointers[Number(fd)];
+	let stream = FS.pointers[Number(fd)];
 	if (!stream) return 8;
+	if (stream[2].rewrite) {
+		stream = FS.pointers[stream[2].rewrite]
+	}
 	//console.log(stream[3])
 
 	const node = stream[2];
@@ -1435,7 +1460,7 @@ function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
 function fd_renumber(fd, to) {
 
 	// 1. Validate the source descriptor
-	const stream = FS.pointers[fd];
+	let stream = FS.pointers[fd];
 	if (!stream) {
 		return 8; // WASI_EBADF
 	}
@@ -1444,15 +1469,21 @@ function fd_renumber(fd, to) {
 	if (FS.pointers[to]) {
 		// You might want to call Sys_FClose(to) here to ensure 
 		// any pending Sys_notify calls fire.
-		//FS.pointers[to] = null;
-		FS.pointers[to][2].rewrite = fd
+		FS.pointers[to][0] = 0;
 	}
-
+	else
 	// 3. Renumber: Copy the reference to the new 'to' index
-	//FS.pointers[to] = stream;
+		FS.pointers[to] = [
+			0, // seek/tell
+			stream[1],
+			stream[2],
+			stream[3],
+			fd
+		]
 
 	// 4. Update the internal FD stored in your stream array [pos, mode, node, path, FD]
 	// stream[4] is where you store the FD index
+	FS.pointers[to][2].rewrite = fd
 	FS.pointers[to][4] = fd;
 
 	// 5. Remove the old reference
@@ -1535,6 +1566,7 @@ const FILED = {
 
 function path_symlink(oldPathPtr, oldPathLen, dirfd, newPathPtr, newPathLen) {
 
+	debugger
 	const buffer = Module.memory.buffer;
 
 	const target = new TextDecoder().decode(new Uint8Array(buffer, oldPathPtr, oldPathLen));

@@ -343,11 +343,11 @@ async function link(argv, database) {
         await downloadHeaders(qvmHeaders, 10, selected)
     }
 
-    if (selected === toolsRepo || file.includes('src/')) {
+    if (selected === toolsRepo) {
         await downloadHeaders(lccToolHeaders, 10, selected)
     }
 
-    if (selected === toolsRepo2 && !file.includes('src/') && !file.includes('code/')) {
+    if (selected === toolsRepo2) {
         await downloadHeaders(asmToolHeaders, 10, selected)
     }
 
@@ -468,21 +468,32 @@ async function compileWorker(argv, database) {
         await loadGitHubTree(ownerName, repoName, branch)
     }
 
-    if (selected === engineRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
+    if (selected === engineRepo 
+        || file.includes('code/client')
+        || file.includes('code/server')
+        || file.includes('code/qcommon')
+        || file.includes('code/renderer2')
+        || file.includes('code/botlib')
+        || file.includes('code/wasm')
+        || file.includes('code/renderercommon')) // TODO: || file.includes('code/') && !file.includes('code/'))
     {
         await downloadHeaders(q3eCommonHeaders, 10, selected)
     }
 
-    if (selected === gameRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
+    if (selected === gameRepo || file.includes('code/game')
+     || file.includes('code/cgame') || file.includes('code/ui')
+     || file.includes('code/q3_ui')) // TODO: || file.includes('code/') && !file.includes('code/'))
     {
         await downloadHeaders(qvmHeaders, 10, selected)
     }
 
-    if (selected === toolsRepo || file.includes('src/')) {
+    if (selected === toolsRepo || file.includes('src/')
+     || file.includes('cpp/') || file.includes('etc/')
+     || file.includes('lburg/')) {
         await downloadHeaders(lccToolHeaders, 10, selected)
     }
 
-    if (selected === toolsRepo2 && !file.includes('src/') && !file.includes('code/')) {
+    if (selected === toolsRepo2 || q3asmFiles.indexOf(file) > -1) {
         await downloadHeaders(asmToolHeaders, 10, selected)
     }
 
@@ -563,7 +574,7 @@ rm /tmp/lcc420.i
                 '-target=bytecode',
                 '-v',
                 tempPath,
-                outPath.split('/').pop(),
+                outPath //.split('/').pop(),
             ],
             database: selected,
             toolsRepo: toolsRepo,

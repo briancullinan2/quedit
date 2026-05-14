@@ -144,7 +144,9 @@ async function putRecord(storeName, record, dbName = null) {
             sha: record.sha,
             parent: record.parent
         }
-        if(!newRecord.path)
+        if(!newRecord.path
+            || newRecord.path === 'build/release-wasm-js/cpp/lex.o'
+        )
         {
             debugger
         }
