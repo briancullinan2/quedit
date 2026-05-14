@@ -249,7 +249,6 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                         tempPath,
                     ],
                     database: database,
-                    toolsRepo: toolsRepo,
                     paths: [srcPath, tempPath],
 
                 })
@@ -267,7 +266,6 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                         outPath //.split('/').pop(),
                     ],
                     database: database,
-                    toolsRepo: toolsRepo,
                     paths: [outPath, tempPath],
                 })
             }
@@ -347,7 +345,6 @@ async function linkModule(database, name, filesList) {
                     ...LDFLAGS
                 ],
                 database: database,
-                toolsRepo: toolsRepo2,
                 paths: [...qvmObjs, qvmOutput]
             })
         }

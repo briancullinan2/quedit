@@ -212,7 +212,10 @@ async function linkLburg(database) {
             "-o", lburgExe,
             ...lburgObjs,
             ...includeFlags
-        ], obj: lburgObjs, database, wasm: lburgExe
+        ],
+        obj: lburgObjs,
+        database,
+        wasm: lburgExe,
     });
 
 
@@ -271,7 +274,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
             contents: content,
             input: src,
             database,
-            obj: obj
+            obj: obj,
         });
         return obj;
     } catch (e) {
@@ -411,7 +414,10 @@ async function linkRCC(database = null) {
             "-o", rccExe,
             ...rccObjs,
             ...includeFlags
-        ], obj: rccObjs, database, wasm: rccExe
+        ],
+        obj: rccObjs,
+        database,
+        wasm: rccExe,
     });
 
 }
@@ -488,7 +494,10 @@ async function linkCPP(database = null) {
             ...cppObjs,
             ...includeFlags
 
-        ], obj: cppObjs, database, wasm: cppExe
+        ],
+        obj: cppObjs,
+        database,
+        wasm: cppExe,
     });
 }
 
@@ -570,7 +579,10 @@ async function linkLCC(database = null) {
             "-o", lccExe,
             ...lccObjs,
             ...includeFlags
-        ], obj: lccObjs, database, wasm: lccExe
+        ],
+        obj: lccObjs,
+        database,
+        wasm: lccExe,
     });
 
 }
@@ -667,7 +679,7 @@ const Q3ASM_CFLAGS = [
  * Appends the q3asm build to your existing buildTools function
  */
 async function buildAsmTool(database = null) {
-    if (!database) database = toolsRepo2 || api.database;
+    if (!database) database = toolsRepo2 || api.toolsRepo2 || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
@@ -718,7 +730,7 @@ async function buildAsmTool(database = null) {
                 contents: content,
                 input: src,
                 database,
-                obj: obj
+                obj: obj,
             });
         } catch (e) {
             log(`Error compiling q3asm component: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
@@ -731,7 +743,7 @@ async function buildAsmTool(database = null) {
 
 
 async function linkAsm(database = null) {
-    if (!database) database = toolsRepo2 || api.database;
+    if (!database) database = toolsRepo2 || api.toolsRepo2 || api.database;
 
 
     let CONFIGURATION = api.configuration == 'release'
@@ -771,6 +783,7 @@ async function linkAsm(database = null) {
             obj: asmObjs,
             database,
             wasm: q3asmExe,
+
         });
         log("q3asm build complete.");
     } catch (e) {

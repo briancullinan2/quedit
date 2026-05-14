@@ -1,6 +1,6 @@
 const GITHUB_PREAMBLE = '\x1b[38;5;33m[GITHUB]\x1b[0m '
-const FETCH_PREAMBLE  = '\x1b[38;5;81m[FETCH]\x1b[0m '
-const ERROR_PREAMBLE  = '\x1b[38;5;202m[ERROR]\x1b[0m '
+const FETCH_PREAMBLE = '\x1b[38;5;81m[FETCH]\x1b[0m '
+const ERROR_PREAMBLE = '\x1b[38;5;202m[ERROR]\x1b[0m '
 
 
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false) {
@@ -161,10 +161,11 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
         let record = await getRecord(DB_STORE_NAME, filePath, repoOwner + '/' + repoName)
         FS.virtual[filePath] = record
         if (record /*&& (record.sha == sha)*/) {
-            const decoder = new TextDecoder();
-            const str = decoder.decode(record.contents);
-            return str
+            if (api.memfs && !api.memfs.exists(filePath))
+                api.memfs.addFile(filePath, record.contents)
+            return record.contents
         }
+
     } catch (e) {
         console.error(e)
     }
@@ -196,13 +197,14 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
         // async to filesystem
         // does it REALLY matter if it makes it? wont it just redownload?
         await putRecord(DB_STORE_NAME, FS.virtual[filePath], repoOwner + '/' + repoName)
+
+        if (api.memfs && !api.memfs.exists(filePath))
+            api.memfs.addFile(filePath, bytes)
     } catch (e) {
 
     }
 
-    const decoder = new TextDecoder();
-    const str = decoder.decode(bytes);
-    return str
+    return bytes
 }
 
 

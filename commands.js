@@ -509,6 +509,8 @@ async function compileWorker(argv, database) {
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
+
+    let srcPath = file.replace('.o', '.c')
     let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
     let outPath = CONFIGURATION + '/' + file.replace('.c', '.asm')
 
@@ -531,7 +533,7 @@ async function compileWorker(argv, database) {
         }
 
 
-        let tempPath = CONFIGURATION + '/' + file.replace('.c', '.i')
+        let tempPath = CONFIGURATION + '/' + srcPath.replace('.c', '.i')
 
         /*
 q3lcc -v -v -D__LCC__ -D__CHAR_UNSIGNED__ -U_CHAR_IS_SIGNED -DQ3_VM -D_Q3_VM -Icode/game -Icode/cgame -Icode/q3_ui code/g
@@ -553,7 +555,7 @@ rm /tmp/lcc420.i
                 'q3cpp', // '-v', '-v',
                 ...QVM_CFLAGS,
                 ...DEFINE,
-                file,
+                srcPath,
                 tempPath,
             ],
             database: selected,
@@ -563,7 +565,7 @@ rm /tmp/lcc420.i
             // TODO:
             contents: contents,
             width: term.cols,
-            input: file,
+            input: srcPath,
             tempPath,
             github_token: api.github_token
         })
@@ -591,11 +593,11 @@ rm /tmp/lcc420.i
             ...(configuration.value == 'pre' ? [
                 '-o', obj.replace('.o', '.a')
             ] : ['-o', obj]),
-            file
+            srcPath
         ],
         contents: contents,
         width: term.cols,
-        input: file,
+        input: srcPath,
         database: selected,
         obj,
         github_token: api.github_token

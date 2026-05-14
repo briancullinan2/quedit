@@ -610,6 +610,9 @@ const API = (function () {
 
     runSync() {
       try {
+        FS.virtual['/dev/stdin'].rewrite = 0
+        FS.virtual['/dev/stdout'].rewrite = 0
+        FS.virtual['/dev/stderr'].rewrite = 0
         window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
         ENV.memory = Module.memory = this.exports.memory
         updateGlobalBufferAndViews()
@@ -1260,7 +1263,7 @@ const API = (function () {
         return module;
       }
       catch (up) {
-        debugger
+
         this.hostWrite(name + ' not found at: \n\r' + this.commonPaths(name).join('\n\r')
           + '\n\r' + window.location + '/' + name + '\n\r')
         console.error(up)
@@ -1359,6 +1362,16 @@ const API = (function () {
         this.github_token = options.github_token
       if (options.database)
         this.database = options.database || database
+      if (options.toolsRepo)
+        this.toolsRepo = options.toolsRepo
+      if (options.toolsRepo2)
+        this.toolsRepo2 = options.toolsRepo2
+      if (options.engineRepo)
+        this.engineRepo = options.engineRepo
+      if (options.gameRepo)
+        this.gameRepo = options.gameRepo
+      if (options.assetRepo)
+        this.assetRepo = options.assetRepo
     }
 
 
@@ -1408,12 +1421,12 @@ const API = (function () {
           this.mkdirp(inDir)
 
         if (this.memfs && input && contents)
-          this.memfs.addFile(input, Uint8Array.from(contents, c => c.charCodeAt(0)));
+          this.memfs.addFile(input, contents);
 
         FS.virtual[input] = {
           timestamp: new Date(),
           mode: FS_FILE,
-          contents: Uint8Array.from(contents, c => c.charCodeAt(0)),
+          contents: contents,
           path: input,
           parent: input.substring(0, input.lastIndexOf('/'))
         }
@@ -1508,7 +1521,7 @@ const API = (function () {
         FS.virtual[input] = {
           timestamp: new Date(),
           mode: FS_FILE,
-          contents: Uint8Array.from(contents, c => c.charCodeAt(0)),
+          contents: contents,
           path: input,
           sha: await getGitShaBrowser(contents),
           parent: input.substring(0, input.lastIndexOf('/'))
@@ -1535,7 +1548,7 @@ const API = (function () {
       FS.virtual[input] = {
         timestamp: new Date(),
         mode: FS_FILE,
-        contents: Uint8Array.from(contents, c => c.charCodeAt(0)),
+        contents: contents,
         path: input,
         parent: input.substring(0, input.lastIndexOf('/'))
       }

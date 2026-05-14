@@ -138,7 +138,7 @@ async function putRecord(storeName, record, dbName = null, noBounce = false) {
         clearTimeout(debouncePath)
     }
     if(!noBounce)
-        return debouncePath[record.path] = setTimeout(() => putRecord(storeName, record, dbName, noBounce, true), 100)
+        return debouncePath[record.path] = setTimeout(() => putRecord(storeName, record, dbName, true), 100)
 
     const db = await getDB(dbName)
     const tx = db.transaction(storeName, 'readwrite')

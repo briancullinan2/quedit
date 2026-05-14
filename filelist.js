@@ -76,7 +76,7 @@ async function initializeFiletrees() {
         var newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
         var newOwner = parts.length == 2 ? parts[0] : owner.value
         var branches = await getBranches(newOwner, newRepo)
-        engineRepo = newOwner + '/' + newRepo 
+        engineRepo = newOwner + '/' + newRepo
         updateSelectOptions('branch', branches)
         if (newOwner && newRepo)
             await loadFileTree(newOwner, newRepo, branches[0]?.name || 'main', '#filelist')
@@ -237,9 +237,11 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     api.github_token = localStorage.getItem('github_token');
 
     var content = await cacheFile(repoOwner, repoName, filePath, sha)
+    const decoder = new TextDecoder();
+    const str = decoder.decode(content);
 
     // 2. Ace Session
-    const session = getOrCreateAceSession(filePath, content);
+    const session = getOrCreateAceSession(filePath, str);
     const mode = getModeByFilename(filePath);
     session.setMode(mode);
     editor.setSession(session);
@@ -300,17 +302,17 @@ function renderHashCommand(fileName, noBounce = false) {
             openFile(owner.value, repo.value, filePath, fileId, false);
         }
     }
-    
+
     if (document.getElementById('toolbar')
         .querySelector(`[href="#${fileName}"]`)) {
         renderToolbarCommand(fileName)
     }
-    
+
     if (document.getElementById('tabs')
         .querySelector(`[href="#${fileName}"]`)) {
         renderTabsCommand(fileName || 'filelist')
     }
-    
+
     if (document.getElementById('terminals')
         .querySelector(`[href="#${fileName}"]`)) {
         renderTerminalsCommand(fileName)

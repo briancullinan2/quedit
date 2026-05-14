@@ -545,6 +545,61 @@ function Sys_feof(fp) {
 	return 0
 }
 
+const virtual = {
+	'/': {
+		timestamp: new Date(),
+		mode: FS_DIR,
+		size: 4096,
+		path: '/',
+		parent: ''
+	},
+	'.': {
+		timestamp: new Date(),
+		mode: FS_DIR,
+		size: 4096,
+		path: '.',
+		parent: ''
+	},
+	'/home': {
+		timestamp: new Date(),
+		mode: FS_DIR,
+		size: 4096,
+		path: '/home',
+		parent: '/'
+	},
+	'/tmp': {
+		timestamp: new Date(),
+		mode: FS_DIR, // ST_DIR + standard permissions
+		size: 4096,
+		path: '/tmp',
+		parent: '/'
+	},
+	'/dev/stdin': {
+		timestamp: new Date(),
+		mode: FS_FILE,
+		size: 0,
+		contents: new Uint8Array(),
+		path: '/dev/stdin',
+		parent: '/dev'
+	},
+	'/dev/stdout': {
+		timestamp: new Date(),
+		mode: FS_FILE,
+		size: 0,
+		contents: new Uint8Array(),
+		path: '/dev/stdin',
+		parent: '/dev'
+	},
+	'/dev/stderr': {
+		timestamp: new Date(),
+		mode: FS_FILE,
+		size: 0,
+		contents: new Uint8Array(),
+		path: '/dev/stdin',
+		parent: '/dev'
+	}
+}
+
 const FS = {
 	ST_FILE: ST_FILE,
 	ST_DIR: ST_DIR,
@@ -552,70 +607,15 @@ const FS = {
 	FS_DIR: FS_DIR,
 	ENOENT: ENOENT,
 	modeToStr: ['r', 'w', 'rw'],
-	pointers: {
-		0: [0, 'r', {
-			timestamp: new Date(),
-			mode: FS_FILE,
-			size: 0,
-			contents: new Uint8Array(),
-			path: '/dev/stdin',
-			parent: '/dev'
-		}, '/dev/stdin', 0],
-		1: [0, 'w', {
-			timestamp: new Date(),
-			mode: FS_FILE,
-			size: 0,
-			contents: new Uint8Array(),
-			path: '/dev/stdout',
-			parent: '/dev'
-		}, '/dev/stdout', 1],
-		2: [0, 'w', {
-			timestamp: new Date(),
-			mode: FS_FILE,
-			size: 0,
-			contents: new Uint8Array(),
-			path: '/dev/stderr',
-			parent: '/dev'
-		}, '/dev/stderr', 2],
-		3: [0, 'rw', {
-			timestamp: new Date(),
-			mode: FS_DIR,
-			size: 4096,
-			path: '/',
-			parent: ''
-		}, '/', 3],
-	},
 	filePointer: 3,
-	virtual: {
-		'/': {
-			timestamp: new Date(),
-			mode: FS_DIR,
-			size: 4096,
-			path: '/',
-			parent: ''
-		},
-		'.': {
-			timestamp: new Date(),
-			mode: FS_DIR,
-			size: 4096,
-			path: '.',
-			parent: ''
-		},
-		'/home': {
-			timestamp: new Date(),
-			mode: FS_DIR,
-			size: 4096,
-			path: '/home',
-			parent: '/'
-		},
-		'/tmp': {
-			timestamp: new Date(),
-			mode: FS_DIR, // ST_DIR + standard permissions
-			size: 4096,
-			path: '/tmp',
-			parent: '/'
-		}
-	}, // temporarily store items as they go in and out of memory
+	virtual: virtual, // temporarily store items as they go in and out of memory
+	pointers: {
+		0: [0, 'r', virtual['/dev/stdin'], '/dev/stdin', 0],
+		1: [0, 'w', virtual['/dev/stdout'], '/dev/stdout', 1],
+		2: [0, 'w', virtual['/dev/stderr'], '/dev/stderr', 2],
+		3: [0, 'rw', virtual['/'], '/', 3],
+	},
+
 	Sys_ListFiles: Sys_ListFiles,
 	Sys_FTell: Sys_FTell,
 	Sys_FSeek: fd_seek,
@@ -1471,7 +1471,7 @@ function fd_renumber(fd, to) {
 		FS.pointers[to][0] = 0;
 	}
 	else
-	// 3. Renumber: Copy the reference to the new 'to' index
+		// 3. Renumber: Copy the reference to the new 'to' index
 		FS.pointers[to] = [
 			0, // seek/tell
 			stream[1],

@@ -508,12 +508,16 @@ const shLibLdFlags = [
 ];
 */
 function generateFallbackC(fileName, content) {
+
+    const decoder = new TextDecoder();
+    const str = decoder.decode(content);
+
     // Strip path and extension (basename equivalent)
     const base = fileName.split('/').pop().split('.').shift();
 
     let output = `const char *fallbackShader_${base} =\n`;
 
-    const lines = content.split(/\r?\n/);
+    const lines = str.split(/\r?\n/);
 
     lines.forEach(line => {
         // Trim trailing whitespace and escape double quotes
