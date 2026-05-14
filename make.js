@@ -612,7 +612,7 @@ async function buildStringify(database = null) {
 
 const BUILD_PREAMBLE = '\x1b[38;5;82m[BUILD]\x1b[0m '
 
-async function linkStringify(database = null) {
+async function linkStringify(database = null, forceChanged = true) {
 
     if (!database) database = api.database
 
@@ -632,10 +632,10 @@ async function linkStringify(database = null) {
 
     if (FS.virtual[stringifyExe]
         // TODO: compare LATEST input and output mtime
-        // && FS.virtual[file]?.timestamp < FS.virtual[stringifyExe]?.timestamp
+        && !forceChanged
     ) {
-        //log(stringifyExe + " already up to date...");
-        //return
+        log(stringifyExe + " already up to date...");
+        return
     }
 
     log(`LD: ${stringifyExe}\n\r`);
@@ -665,14 +665,14 @@ async function linkStringify(database = null) {
 let building = false
 let buildDebounce = null
 
-async function buildClient(database = null, noBounce = false) {
+async function buildClient(database = null, forceChanged = false, noBounce = false) {
 
     if (buildDebounce) {
         clearTimeout(buildDebounce)
     }
 
     if (!noBounce) {
-        buildDebounce = setTimeout(() => buildClient(database, true), 500)
+        buildDebounce = setTimeout(() => buildClient(database, forceChanged, true), 500)
         return
     }
 
@@ -722,6 +722,7 @@ async function buildClient(database = null, noBounce = false) {
 
         await buildStringify(database)
 
+        let hasChanged = false
 
         for (let file of [...allCompileObjects]) {
 
@@ -741,11 +742,14 @@ async function buildClient(database = null, noBounce = false) {
                 if (FS.virtual[obj]
                     // compare input and output mtime
                     && FS.virtual[file]?.timestamp < FS.virtual[obj]?.timestamp
+                    && !forceChanged
                 ) {
                     log(`${obj} already up to date...\n\r`)
 
                     continue
                 }
+
+                hasChanged = true
 
                 log(`CC: ${obj}\n\r`)
 
@@ -777,9 +781,9 @@ async function buildClient(database = null, noBounce = false) {
 
         }
 
-        await buildShaders(database)
+        hasChanged = hasChanged || await buildShaders(database, forceChanged)
 
-        await linkEngine(database)
+        await linkEngine(database, hasChanged)
 
 
 
@@ -795,7 +799,7 @@ async function buildClient(database = null, noBounce = false) {
 
 
 
-async function linkEngine(database = null) {
+async function linkEngine(database = null, forceChanged = true) {
     if (!database) database = api.database
 
 
@@ -817,7 +821,7 @@ async function linkEngine(database = null) {
 
     if (FS.virtual[engineExe]
         // TODO: compare LATEST input and output mtime
-        // && FS.virtual[file]?.timestamp < FS.virtual[engineExe]?.timestamp
+        && !forceChanged
     ) {
         log(engineExe + " already up to date...");
         return
@@ -851,7 +855,7 @@ async function linkEngine(database = null) {
 
 
 
-async function buildShaders(database = null) {
+async function buildShaders(database = null, forceChanged = false) {
 
     if (!database) database = api.database
     let parts = database.split('/')
@@ -872,6 +876,7 @@ async function buildShaders(database = null) {
 
     let DEBUG_CFLAGS = BUILDCFLAGS()
 
+    let hasChanged = false
 
     for (let shader of allRend2ShaderObjects) {
 
@@ -894,11 +899,14 @@ async function buildShaders(database = null) {
 
             if (FS.virtual[obj]
                 && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
+                && !forceChanged
             ) {
                 log(`${obj} already up to date...\n\r`)
 
                 continue
             }
+
+            let hasChanged = true
 
             log(`CC: ${shader}\n\r`);
 
@@ -921,6 +929,7 @@ async function buildShaders(database = null) {
     }
 
 
+    return hasChanged
 }
 
 

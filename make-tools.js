@@ -303,7 +303,7 @@ function log(msg, ...args) {
 let needsHeaders = true
 
 
-async function buildRCC(database = null, skipTool = false) {
+async function buildRCC(database = null, skipTool = false, forceChanged = false) {
     if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
@@ -346,6 +346,14 @@ async function buildRCC(database = null, skipTool = false) {
                 const dagMd = "src/dagcheck.md";
                 const dagC = path.join(CONFIGURATION, "src/dagcheck.c");
 
+                if (FS.virtual[obj]
+                    && FS.virtual[dagMd]?.timestamp < FS.virtual[obj]?.timestamp
+                    && !forceChanged
+                ) {
+                    log(obj + " already up to date...");
+                    return
+                }
+
 
                 await cacheFile(ownerName, repoName, dagMd, (FILELIST[dagMd] || {}).sha);
                 // Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
@@ -363,6 +371,14 @@ async function buildRCC(database = null, skipTool = false) {
                 await compileToolFile(dagC, obj, "src", database, ["-Wno-unused"]);
             } else {
                 const src = path.join("src", file.replace('.o', '.c'));
+
+                if (FS.virtual[obj]
+                    && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+                    && !forceChanged
+                ) {
+                    log(obj + " already up to date...");
+                    return
+                }
 
                 log(`CC: ${src}\n\r`);
                 await compileToolFile(src, obj, "src", database);
@@ -382,7 +398,7 @@ async function buildRCC(database = null, skipTool = false) {
 
 
 
-async function linkRCC(database = null) {
+async function linkRCC(database = null, forceChanged = false) {
     if (!database) database = toolsRepo || api.database;
 
     let CONFIGURATION = api.configuration == 'release'
@@ -399,11 +415,10 @@ async function linkRCC(database = null) {
 
 
     if (FS.virtual[rccExe]
-        // TODO: compare LATEST input and output mtime
-        // && FS.virtual[file]?.timestamp < FS.virtual[rccExe]?.timestamp
+        !forceChanged
     ) {
-        //log(rccExe + " already up to date...");
-        //return
+        log(rccExe + " already up to date...");
+        return
     }
 
     log(`LD: ${rccExe}\n\r`);
@@ -423,7 +438,7 @@ async function linkRCC(database = null) {
 }
 
 
-async function buildCPP(database = null) {
+async function buildCPP(database = null, forceChanged = false) {
     if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
@@ -446,6 +461,14 @@ async function buildCPP(database = null) {
             const src = path.join("cpp", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.CPP, file);
 
+            if (FS.virtual[obj]
+                && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+                && !forceChanged
+            ) {
+                log(obj + " already up to date...");
+                return
+            }
+
             log(`CC: ${src}\n\r`);
             await compileToolFile(src, obj, "cpp", database);
         } catch (e) {
@@ -458,7 +481,7 @@ async function buildCPP(database = null) {
 
 
 
-async function linkCPP(database = null) {
+async function linkCPP(database = null, forceChanged = false) {
     if (!database) database = toolsRepo || api.database;
 
     let CONFIGURATION = api.configuration == 'release'
@@ -476,11 +499,10 @@ async function linkCPP(database = null) {
 
 
     if (FS.virtual[cppExe]
-        // TODO: compare LATEST input and output mtime
-        // && FS.virtual[file]?.timestamp < FS.virtual[lburgExe]?.timestamp
+        && !forceChanged
     ) {
-        //log(cppExe + " already up to date...");
-        //return
+        log(cppExe + " already up to date...");
+        return
     }
 
     log(`LD: ${cppExe}\n\r`);
@@ -502,7 +524,7 @@ async function linkCPP(database = null) {
 }
 
 
-async function buildLCC(database = null) {
+async function buildLCC(database = null, forceChanged = false) {
     if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
@@ -528,6 +550,15 @@ async function buildLCC(database = null) {
             const obj = path.join(CONFIGURATION + '/' + toolDirs.ETC, file);
             const lccFlags = [`-DTEMPDIR=\"${config.TEMPDIR}\"`, `-DSYSTEM=\"\"`];
 
+            if (FS.virtual[obj]
+                && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+                && !forceChanged
+            ) {
+                log(obj + " already up to date...");
+                return
+            }
+
+
             log(`CC: ${src}\n\r`);
             await compileToolFile(src, obj, "src", database, lccFlags);
         } catch (e) {
@@ -544,7 +575,7 @@ async function buildLCC(database = null) {
 
 
 
-async function linkLCC(database = null) {
+async function linkLCC(database = null, forceChanged = false) {
 
     if (!database) database = toolsRepo || api.database;
 
@@ -564,10 +595,10 @@ async function linkLCC(database = null) {
 
     if (FS.virtual[lccExe]
         // TODO: compare LATEST input and output mtime
-        // && FS.virtual[file]?.timestamp < FS.virtual[lburgExe]?.timestamp
+        && !forceChanged
     ) {
-        //log(lccExe + " already up to date...");
-        //return
+        log(lccExe + " already up to date...");
+        return
     }
 
     log(`LD: ${lccExe}\n\r`);
@@ -590,22 +621,23 @@ async function linkLCC(database = null) {
 
 // --- Build Logic ---
 
-async function buildTools(database = null, noBounce = false) {
+async function buildTools(database = null, toolName = 'all', noBounce = false) {
 
     if (buildDebounce) {
         clearTimeout(buildDebounce)
     }
 
     if (!noBounce) {
-        buildDebounce = setTimeout(() => buildTools(database, true), 500)
+        buildDebounce = setTimeout(() => buildTools(database, toolName, true), 500)
         return
     }
 
-    TERMINATE = false
-    PREAMBLE = TOOLS_PREAMBLE
-
     if (building) return
     building = true
+
+
+    TERMINATE = false
+    PREAMBLE = TOOLS_PREAMBLE
 
     try {
 
@@ -619,31 +651,36 @@ async function buildTools(database = null, noBounce = false) {
 
         // TODO: check if tool final output exists just like obj check
 
-        // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
-        await buildLBurg(database)
+        if (toolName === 'lburg' || toolName === 'all')
+            // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
+            await buildLBurg(database)
 
         if (TERMINATE) return
 
 
-        // 2. Build RCC (The Compiler Core)
-        await buildRCC(database, true)
+        if (toolName === 'q3rcc' || toolName === 'all')
+            // 2. Build RCC (The Compiler Core)
+            await buildRCC(database, true)
 
         if (TERMINATE) return
 
 
-        // 3. Build CPP (Preprocessor)
-        await buildCPP(database)
+        if (toolName === 'q3cpp' || toolName === 'all')
+            // 3. Build CPP (Preprocessor)
+            await buildCPP(database)
 
         if (TERMINATE) return
 
 
-        // 4. Build LCC (Frontend)
-        await buildLCC(database)
+        if (toolName === 'q3lcc' || toolName === 'all')
+            // 4. Build LCC (Frontend)
+            await buildLCC(database)
 
         if (TERMINATE) return
 
 
-        await buildAsmTool(database)
+        if (toolName === 'q3asm' || toolName === 'all')
+            await buildAsmTool(database)
 
         if (TERMINATE) return
 
@@ -678,7 +715,9 @@ const Q3ASM_CFLAGS = [
 /**
  * Appends the q3asm build to your existing buildTools function
  */
-async function buildAsmTool(database = null) {
+async function buildAsmTool(database = null, forceChanged = false) {
+
+
     if (!database) database = toolsRepo2 || api.toolsRepo2 || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
@@ -742,7 +781,7 @@ async function buildAsmTool(database = null) {
 }
 
 
-async function linkAsm(database = null) {
+async function linkAsm(database = null, forceChanged = false) {
     if (!database) database = toolsRepo2 || api.toolsRepo2 || api.database;
 
 
@@ -763,9 +802,10 @@ async function linkAsm(database = null) {
     if (FS.virtual[q3asmExe]
         // TODO: compare LATEST input and output mtime
         // && FS.virtual[file]?.timestamp < FS.virtual[q3asmExe]?.timestamp
+        && !forceChanged
     ) {
-        //log(q3asmExe + " already up to date...");
-        //return
+        log(q3asmExe + " already up to date...");
+        return
     }
 
     log(`LD: ${q3asmExe}\n\r`);

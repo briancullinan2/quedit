@@ -151,191 +151,250 @@ const QVM_PREAMBLE = '\x1b[38;5;135m[QVM]\x1b[0m '
 const QVMERR_PREAMBLE = '\x1b[38;5;161m[QVM ERROR]\x1b[0m '
 
 
-
-async function buildModule(name, sourceDir, filesList, database, extraDefines = []) {
+async function buildModule(name, sourceDir, filesList, database, extraDefines = [], forceChanged = false, noBounce = false) {
 
     TERMINATE = false
     PREAMBLE = QVM_PREAMBLE
 
-    log(`Compiling ${name} module...`);
-
-
-    if (!database) database = gameRepo || api.database;
-    let parts = database.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
-
-
-    if (needsHeaders) {
-        log("Syncing QVM Headers...");
-        await downloadHeaders(qvmHeaders, 10, database);
+    if (buildDebounce) {
+        clearTimeout(buildDebounce)
     }
 
-    PREAMBLE = QVM_PREAMBLE
-
-    let CONFIGURATION = api.configuration == 'release'
-        ? dirs.ENGINE_RELEASE
-        : dirs.ENGINE_DEBUG
-
-    log(`Building ${name}.qvm...`);
-
-    if (!files[database]) {
-        let branch = await getDefaultBranch(ownerName, repoName)
-        await loadGitHubTree(ownerName, repoName, branch)
+    if (!noBounce) {
+        buildDebounce = setTimeout(() => buildModule(name, sourceDir, filesList, database, extraDefines, forceChanged, true), 500)
+        return
     }
 
+    if (building) return
+    building = true
 
-    let DEBUG_CFLAGS = BUILDCFLAGS(CONFIGURATION)
+    try {
+        log(`Compiling ${name} module...`);
 
 
-    for (const file of filesList) {
+        if (!database) database = gameRepo || api.database;
+        let parts = database.split('/')
+        let ownerName = parts.length == 2 ? parts[0] : owner.value
+        let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+
+        if (needsHeaders) {
+            log("Syncing QVM Headers...");
+            await downloadHeaders(qvmHeaders, 10, database);
+        }
+
+        PREAMBLE = QVM_PREAMBLE
+
+        let CONFIGURATION = api.configuration == 'release'
+            ? dirs.ENGINE_RELEASE
+            : dirs.ENGINE_DEBUG
+
+        log(`Building ${name}.qvm...`);
+
+        if (!files[database]) {
+            let branch = await getDefaultBranch(ownerName, repoName)
+            await loadGitHubTree(ownerName, repoName, branch)
+        }
+
+
+        let DEBUG_CFLAGS = BUILDCFLAGS(CONFIGURATION)
+
+        let hasChanged = false
+
+        for (const file of filesList) {
+            if (TERMINATE) return
+
+            let srcPath;
+            // Q3 Makefile logic: shared files are in the game/ directory
+            if (file.startsWith('bg_') || file.startsWith('q_')) {
+                srcPath = path.join(dirs.QADIR, file.replace('.o', '.c'));
+            } else {
+                srcPath = path.join(sourceDir, file.replace('.o', '.c'));
+            }
+
+            try {
+
+                PREAMBLE = QVM_PREAMBLE
+
+                // TODO: if using q3lcc
+                let outPath = path.join(CONFIGURATION, name, file);
+                if (QVM_MODE)
+                    outPath = path.join(CONFIGURATION, name, file.replace('.o', '.asm'));
+
+                const tempPath = path.join(CONFIGURATION, name, file.replace('.o', '.i'));
+
+                if (!files[database][srcPath]) {
+                    debugger
+                }
+                const sha = files[database][srcPath].sha;
+                const content = await cacheFile(ownerName, repoName, srcPath, sha);
+
+
+                let objRecord = await getRecord(DB_STORE_NAME, outPath, database)
+                FS.virtual[outPath] = objRecord
+
+                if (FS.virtual[outPath]
+                    //&& FS.virtual[srcPath]?.timestamp < FS.virtual[outPath]?.timestamp
+                    && !forceChanged
+                ) {
+                    log(`${outPath} already up to date...\n\r`)
+
+                    continue
+                }
+
+                hasChanged = true
+
+                log(`QVMCC: ${srcPath}`);
+
+                let CCFLAGS = [
+                    ...(QVM_MODE ? [] : QVMLIB_CFLAGS),
+                    ...QVM_CFLAGS,
+                    ...(QVM_MODE ? [] : DEBUG_CFLAGS),
+                    ...extraDefines.map(d => `-D${d}`),
+                ]
+
+                if (QVM_MODE) {
+
+                    await api.run({
+                        tool: 'q3cpp.js.wasm',
+                        args: [
+                            'q3cpp', // '-v', '-v',
+                            ...QVM_CFLAGS,
+                            ...extraDefines.map(d => `-D${d}`),
+                            srcPath,
+                            tempPath,
+                        ],
+                        database: database,
+                        paths: [srcPath, tempPath],
+
+                    })
+
+                    if (TERMINATE) return
+
+
+                    await api.run({
+                        tool: 'q3rcc.js.wasm',
+                        args: [
+                            'q3rcc', // '-v', '-v',
+                            '-target=bytecode',
+                            '-v',
+                            tempPath,
+                            outPath //.split('/').pop(),
+                        ],
+                        database: database,
+                        paths: [outPath, tempPath],
+                    })
+                }
+                else {
+                    await api.compile({
+                        CFLAGS: CCFLAGS,
+                        contents: content,
+                        input: srcPath,
+                        database,
+                        obj: outPath // For QVM, we output .asm first
+                    });
+                }
+
+            } catch (e) {
+                PREAMBLE = QVMERR_PREAMBLE
+                log(`CC: ${srcPath}: ${e.message}\n\r${e.stack || e.stacktrace}`);
+            }
+        }
+
         if (TERMINATE) return
 
-        let srcPath;
-        // Q3 Makefile logic: shared files are in the game/ directory
-        if (file.startsWith('bg_') || file.startsWith('q_')) {
-            srcPath = path.join(dirs.QADIR, file.replace('.o', '.c'));
-        } else {
-            srcPath = path.join(sourceDir, file.replace('.o', '.c'));
-        }
 
-        try {
+        await linkModule(database, name, filesList, 
+            true /* prevent loops */, 
+            hasChanged /* always link after build something */, 
+            true /* already debounced above */
+        )
 
-            PREAMBLE = QVM_PREAMBLE
-
-            // TODO: if using q3lcc
-            let outPath = path.join(CONFIGURATION, name, file);
-            if (QVM_MODE)
-                outPath = path.join(CONFIGURATION, name, file.replace('.o', '.asm'));
-
-            const tempPath = path.join(CONFIGURATION, name, file.replace('.o', '.i'));
-
-            if (!files[database][srcPath]) {
-                debugger
-            }
-            const sha = files[database][srcPath].sha;
-            const content = await cacheFile(ownerName, repoName, srcPath, sha);
-
-
-            let objRecord = await getRecord(DB_STORE_NAME, outPath, database)
-            FS.virtual[outPath] = objRecord
-
-            if (FS.virtual[outPath]
-                //&& FS.virtual[srcPath]?.timestamp < FS.virtual[outPath]?.timestamp
-            ) {
-                log(`${outPath} already up to date...\n\r`)
-
-                continue
-            }
-
-            log(`QVMCC: ${srcPath}`);
-
-            let CCFLAGS = [
-                ...(QVM_MODE ? [] : QVMLIB_CFLAGS),
-                ...QVM_CFLAGS,
-                ...(QVM_MODE ? [] : DEBUG_CFLAGS),
-                ...extraDefines.map(d => `-D${d}`),
-            ]
-
-            if (QVM_MODE) {
-
-                await api.run({
-                    tool: 'q3cpp.js.wasm',
-                    args: [
-                        'q3cpp', // '-v', '-v',
-                        ...QVM_CFLAGS,
-                        ...extraDefines.map(d => `-D${d}`),
-                        srcPath,
-                        tempPath,
-                    ],
-                    database: database,
-                    paths: [srcPath, tempPath],
-
-                })
-
-                if (TERMINATE) return
-
-
-                await api.run({
-                    tool: 'q3rcc.js.wasm',
-                    args: [
-                        'q3rcc', // '-v', '-v',
-                        '-target=bytecode',
-                        '-v',
-                        tempPath,
-                        outPath //.split('/').pop(),
-                    ],
-                    database: database,
-                    paths: [outPath, tempPath],
-                })
-            }
-            else {
-                await api.compile({
-                    CFLAGS: CCFLAGS,
-                    contents: content,
-                    input: srcPath,
-                    database,
-                    obj: outPath // For QVM, we output .asm first
-                });
-            }
-
-        } catch (e) {
-            PREAMBLE = QVMERR_PREAMBLE
-            log(`CC: ${srcPath}: ${e.message}\n\r${e.stack || e.stacktrace}`);
-        }
     }
-
-    if (TERMINATE) return
-
-
-    await linkModule(database, name, filesList)
+    finally {
+        building = false
+    }
 }
 
 
 
 
-async function linkModule(database, name, filesList) {
+async function linkModule(database, name, filesList, noModule = false, forceChanged = true, noBounce = false) {
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
 
-    let CONFIGURATION = api.configuration == 'release'
-        ? dirs.ENGINE_RELEASE
-        : dirs.ENGINE_DEBUG
+    if (buildDebounce) {
+        clearTimeout(buildDebounce)
+    }
 
-    PREAMBLE = QVM_PREAMBLE
-
-    // Link phase (q3asm)
-    const qvmOutput = path.join(CONFIGURATION, repoName || config.MOD, `${name === 'game' ? 'qagame' : name}.qvm`);
-    log(`Assembling ${qvmOutput}...`);
-
-    let qvmObjs = filesList.map(file => path.join(CONFIGURATION, name, file))
-
-
-
-    let exeRecord = await getRecord(DB_STORE_NAME, qvmOutput, database)
-    FS.virtual[qvmOutput] = exeRecord
-
-
-    if (FS.virtual[qvmOutput]
-        // TODO: compare LATEST input and output mtime
-        // && FS.virtual[file]?.timestamp < FS.virtual[qvmOutput]?.timestamp
-    ) {
-        log(qvmOutput + " already up to date...");
+    if (!noBounce) {
+        buildDebounce = setTimeout(() => linkModule(database, name, filesList, noModule, forceChanged, true), 500)
         return
     }
 
-    log(`LD: ${qvmOutput}\n\r`);
+    if (building) return
+    building = true
 
 
-    let LDFLAGS = [
-        ...(QVM_MODE ? [] : ["--no-entry"]),
-        "-o", qvmOutput,
-        ...qvmObjs
-    ]
     try {
+
+        let CONFIGURATION = api.configuration == 'release'
+            ? dirs.ENGINE_RELEASE
+            : dirs.ENGINE_DEBUG
+
+        PREAMBLE = QVM_PREAMBLE
+
+        // Link phase (q3asm)
+        const qvmOutput = path.join(CONFIGURATION, repoName || config.MOD, `${name === 'game' ? 'qagame' : name}.qvm`);
+
+        let qvmObjs = filesList.map(file => path.join(CONFIGURATION, name, file))
+
+
+        if (!noModule) {
+
+
+            if (name === 'game')
+                await buildModule(name, dirs.QADIR, filesList, database, ['GAME'], false, true);
+
+            if (name === 'cgame')
+                await buildModule(name, dirs.CGDIR, filesList, database, ['CGAME'], false, true);
+
+            if (name === 'ui')
+                await buildModule(name, dirs.UIDIR, filesList, database, ['UI'], false, true);
+
+            if (name === 'q3_ui')
+                await buildModule(name, dirs.Q3UIDIR, filesList, database, ['UI', 'Q3UI'], false, true);
+
+        }
+
+
+
+        let exeRecord = await getRecord(DB_STORE_NAME, qvmOutput, database)
+        FS.virtual[qvmOutput] = exeRecord
+
+        log(`Assembling ${qvmOutput}...`);
+
+        if (FS.virtual[qvmOutput]
+            // TODO: compare LATEST input and output mtime
+            // && FS.virtual[file]?.timestamp < FS.virtual[qvmOutput]?.timestamp
+            && !forceChanged
+        ) {
+            log(qvmOutput + " already up to date...");
+            return
+        }
+
+        log(`LD: ${qvmOutput}\n\r`);
+
+
+        let LDFLAGS = [
+            ...(QVM_MODE ? [] : ["--no-entry"]),
+            "-o", qvmOutput,
+            ...qvmObjs
+        ]
+
         if (QVM_MODE) {
 
             await api.run({
@@ -363,11 +422,14 @@ async function linkModule(database, name, filesList) {
         PREAMBLE = QVMERR_PREAMBLE
         log(`Linker Error in ${name}`);
     }
+    finally {
+        building = false
+    }
 }
 
 
 
-async function buildGame(database = null) {
+async function buildGame(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -375,13 +437,13 @@ async function buildGame(database = null) {
 
     needsHeaders = true
 
-    await buildModule('game', dirs.QADIR, gameFiles, database, ['QAGAME']);
+    await buildModule('game', dirs.QADIR, gameFiles, database, ['QAGAME'], forceChanged);
 
 
 }
 
 
-async function buildCGame(database = null) {
+async function buildCGame(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -390,14 +452,14 @@ async function buildCGame(database = null) {
     needsHeaders = true
 
 
-    await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME']);
+    await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged);
 
 
 }
 
 
 
-async function buildUI(database = null) {
+async function buildUI(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -405,7 +467,8 @@ async function buildUI(database = null) {
 
     needsHeaders = true
 
-    await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI']);
+
+    await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI'], forceChanged);
 
 
 }
@@ -413,12 +476,12 @@ async function buildUI(database = null) {
 
 
 
-async function buildUI(database = null) {
+async function buildUI(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
 
     needsHeaders = true
 
-    await buildModule('ui', dirs.Q3UIDIR, uiFiles, database, ['UI']);
+    await buildModule('ui', dirs.Q3UIDIR, uiFiles, database, ['UI'], forceChanged);
 
 
 }
@@ -429,7 +492,7 @@ async function buildUI(database = null) {
 
 
 
-async function buildQVM(database = null) {
+async function buildQVM(database = null, forceChanged = false, noBounce = false) {
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -438,38 +501,55 @@ async function buildQVM(database = null) {
     TERMINATE = false
     PREAMBLE = QVM_PREAMBLE
 
-    // 3. Start building modules
-    log("Starting QVM compilation...");
 
-    needsHeaders = true
+    if (buildDebounce) {
+        clearTimeout(buildDebounce)
+    }
 
+    if (!noBounce) {
+        buildDebounce = setTimeout(() => buildQVM(database, forceChanged, true), 500)
+        return
+    }
 
-    // CGAME
-    await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME']);
+    if (building) return
+    building = true
 
+    try {
+        // 3. Start building modules
+        log("Starting QVM compilation...");
 
-    if (TERMINATE) return
+        needsHeaders = true
 
-
-    // 2. Build GAME (qagame)
-    await buildModule('game', dirs.QADIR, gameFiles, database, ['QAGAME']);
-
-    if (TERMINATE) return
-
-
-    // 3. Build UI
-    await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI']);
-
-    if (TERMINATE) return
+        // CGAME
+        await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged, true);
 
 
-
-    // 3. Build UI
-    await buildModule('q3_ui', dirs.Q3UIDIR, q3uiFiles, database, ['UI']);
-
-    if (TERMINATE) return
+        if (TERMINATE) return
 
 
+        // 2. Build GAME (qagame)
+        await buildModule('game', dirs.QADIR, gameFiles, database, ['QAGAME'], forceChanged, true);
 
-    log("QVM Build Process Finished.");
+        if (TERMINATE) return
+
+
+        // 3. Build UI
+        await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI'], forceChanged, true);
+
+        if (TERMINATE) return
+
+
+
+        // 3. Build UI
+        await buildModule('q3_ui', dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged, true);
+
+        if (TERMINATE) return
+
+
+
+        log("QVM Build Process Finished.");
+    }
+    finally {
+        building = false
+    }
 }

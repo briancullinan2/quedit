@@ -381,6 +381,8 @@ async function link(argv, database) {
         await linkModule(selected, 'cgame', cgameFiles)
     if (mode === 'ui' || mode === 'qvms' || mode === 'all')
         await linkModule(selected, 'ui', uiFiles)
+    if (mode === 'q3_ui' || mode === 'qvms' || mode === 'all')
+        await linkModule(selected, 'q3_ui', q3uiFiles)
 
     // TODO: link dedicated server
 
