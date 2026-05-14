@@ -160,7 +160,6 @@ async function buildCommand(argv, database) {
         || mode === 'q3rcc'
         || mode === 'q3cpp'
         || mode === 'lburg'
-
         || mode === 'tools'
     )
         selected = argv[1] || toolsRepo
@@ -255,33 +254,33 @@ async function buildCommand(argv, database) {
 
 
     if (mode === 'stringify' || mode === 'all')
-        await buildStringify(selected)
-    if (mode === 'shaders' || mode === 'all')
-        await buildShaders(selected)
+        await buildStringify(selected, true)
+    if (mode === 'shaders')
+        await buildShaders(selected, true)
     if (mode === 'client'
         || mode === 'release' || mode === 'debug'
         || mode === 'all'
     )
-        await buildClient(selected)
+        await buildClient(selected, true) // also builds shaders
 
 
     if (mode === 'lburg' || mode === 'all' || mode === 'tools')
-        await buildLBurg(selected)
+        await buildTools(selected, 'lburg') // shared debouncer
     if (mode === 'q3rcc' || mode === 'all' || mode === 'tools')
-        await buildRCC(selected)
+        await buildTools(selected, 'q3rcc') // implicit forcedChanged = true
     if (mode === 'q3cpp' || mode === 'all' || mode === 'tools')
-        await buildCPP(selected)
+        await buildTools(selected, 'q3cpp')
     if (mode === 'q3lcc' || mode === 'all' || mode === 'tools')
-        await buildLCC(selected)
+        await buildTools(selected, 'q3lcc')
     if (mode === 'q3asm' || mode === 'all' || mode === 'tools')
-        await buildAsmTool(selected)
+        await buildTools(selected), 'q3asm'
 
     if (mode === 'game' || mode === 'all' || mode === 'qvms')
-        await buildGame(selected)
+        await buildGame(selected, true) // shared debouncer
     if (mode === 'cgame' || mode === 'all' || mode === 'qvms')
-        await buildCGame(selected)
+        await buildCGame(selected, true)
     if (mode === 'ui' || mode === 'all' || mode === 'qvms')
-        await buildUI(selected)
+        await buildUI(selected, true)
 
 }
 
@@ -356,33 +355,34 @@ async function link(argv, database) {
 
 
     if (mode === 'stringify' || mode === 'all')
-        await linkStringify(selected)
+        await linkStringify(selected, true)
+    
     if (mode === 'client' || mode === 'engine'
         || mode === 'shaders' || mode === 'release'
         || mode === 'debug' || mode === 'all'
     )
-        await linkEngine(selected)
+        await linkEngine(selected, true)
 
     if (mode === 'lburg' || mode === 'tools' || mode === 'all')
-        await linkLburg(selected)
+        await linkLburg(selected, true)
     if (mode === 'q3rcc' || mode === 'tools' || mode === 'all')
-        await linkRCC(selected)
+        await linkRCC(selected, true)
     if (mode === 'q3cpp' || mode === 'tools' || mode === 'all')
-        await linkCPP(selected)
+        await linkCPP(selected, true)
     if (mode === 'q3lcc' || mode === 'tools' || mode === 'all')
-        await linkLCC(selected)
+        await linkLCC(selected, true)
     if (mode === 'q3asm' || mode === 'tools' || mode === 'all')
-        await linkAsm(selected)
+        await linkAsm(selected, true)
 
 
     if (mode === 'game' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'game', gameFiles)
+        await linkModule(selected, 'game', gameFiles, true)
     if (mode === 'cgame' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'cgame', cgameFiles)
+        await linkModule(selected, 'cgame', cgameFiles, true)
     if (mode === 'ui' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'ui', uiFiles)
+        await linkModule(selected, 'ui', uiFiles, true)
     if (mode === 'q3_ui' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'q3_ui', q3uiFiles)
+        await linkModule(selected, 'q3_ui', q3uiFiles, true)
 
     // TODO: link dedicated server
 

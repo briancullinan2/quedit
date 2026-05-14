@@ -558,7 +558,7 @@ function BUILDCFLAGS(CONFIGURATION) {
 
 
 
-async function buildStringify(database = null) {
+async function buildStringify(database = null, forceChanged = false, noLinking = false) {
 
 
     let DEBUG_CFLAGS = BUILDCFLAGS()
@@ -579,8 +579,23 @@ async function buildStringify(database = null) {
     //await api.upload(database)
 
     let stringify = 'code/renderer2/stringify.c'
+    let obj = CONFIGURATION + '/stringify.o'
     let sha = files[database][stringify].sha
     let content = await cacheFile(ownerName, repoName, stringify, sha)
+
+    let hasChanged = false
+
+    if (FS.virtual[obj]
+        // compare input and output mtime
+        && FS.virtual[stringify]?.timestamp < FS.virtual[obj]?.timestamp
+        && !forceChanged
+    ) {
+        log(`${obj} already up to date...\n\r`)
+
+        return
+    }
+
+    hasChanged = true
 
     try {
         await api.compile({
@@ -594,25 +609,27 @@ async function buildStringify(database = null) {
                 "-std=gnu11",
                 ...DEBUG_CFLAGS,
                 ...(api.configuration == 'pre' ? [
-                    '-o', CONFIGURATION + '/stringify.a',
-                ] : ['-o', CONFIGURATION + '/stringify.o']),
+                    '-o', obj.replace('.o', '.a'),
+                ] : ['-o', obj]),
                 stringify
             ],
             contents: content,
             input: stringify,
             database,
-            obj: CONFIGURATION + '/stringify.o'
+            obj: obj
         })
     } catch (e) {
         log(e)
     }
 
-    await linkStringify(database)
+    if (!noLinking) {
+        await linkStringify(database, hasChanged, true)
+    }
 }
 
 const BUILD_PREAMBLE = '\x1b[38;5;82m[BUILD]\x1b[0m '
 
-async function linkStringify(database = null, forceChanged = true) {
+async function linkStringify(database = null, forceChanged = false, noBuild = false) {
 
     if (!database) database = api.database
 
@@ -623,6 +640,10 @@ async function linkStringify(database = null, forceChanged = true) {
 
     PREAMBLE = BUILD_PREAMBLE
 
+
+    if (!noBuild) {
+        await buildStringify(database, false, true)
+    }
 
     let stringifyExe = CONFIGURATION + '/stringify' + config.BINEXT
 
@@ -665,14 +686,14 @@ async function linkStringify(database = null, forceChanged = true) {
 let building = false
 let buildDebounce = null
 
-async function buildClient(database = null, forceChanged = false, noBounce = false) {
+async function buildClient(database = null, forceChanged = false, noLinking = false, noBounce = false) {
 
     if (buildDebounce) {
         clearTimeout(buildDebounce)
     }
 
     if (!noBounce) {
-        buildDebounce = setTimeout(() => buildClient(database, forceChanged, true), 500)
+        buildDebounce = setTimeout(() => buildClient(database, forceChanged, noLinking, true), 500)
         return
     }
 
@@ -783,7 +804,9 @@ async function buildClient(database = null, forceChanged = false, noBounce = fal
 
         hasChanged = hasChanged || await buildShaders(database, forceChanged)
 
-        await linkEngine(database, hasChanged)
+        if (!noLinking) {
+            await linkEngine(database, hasChanged, true)
+        }
 
 
 
@@ -799,7 +822,7 @@ async function buildClient(database = null, forceChanged = false, noBounce = fal
 
 
 
-async function linkEngine(database = null, forceChanged = true) {
+async function linkEngine(database = null, forceChanged = true, noBuild = false) {
     if (!database) database = api.database
 
 
@@ -812,6 +835,11 @@ async function linkEngine(database = null, forceChanged = true) {
 
     let clientObjs = allCompileObjects.map(s => CONFIGURATION + '/' + s.replace('.c', '.o'))
     let renderObjs = allRend2ShaderObjects.map(s => CONFIGURATION + '/' + s.replace('.glsl', '.o'))
+
+    if(!noBuild) {
+        await buildClient(database, false, true)
+    }
+
 
     let engineExe = CONFIGURATION + '/' + config.CNAME + config.BINEXT
 

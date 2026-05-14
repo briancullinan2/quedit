@@ -151,7 +151,7 @@ const QVM_PREAMBLE = '\x1b[38;5;135m[QVM]\x1b[0m '
 const QVMERR_PREAMBLE = '\x1b[38;5;161m[QVM ERROR]\x1b[0m '
 
 
-async function buildModule(name, sourceDir, filesList, database, extraDefines = [], forceChanged = false, noBounce = false) {
+async function buildModule(name, sourceDir, filesList, database, extraDefines = [], forceChanged = false, noLinking = false /* called from linkModule */, noBounce = false) {
 
     TERMINATE = false
     PREAMBLE = QVM_PREAMBLE
@@ -161,7 +161,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
     }
 
     if (!noBounce) {
-        buildDebounce = setTimeout(() => buildModule(name, sourceDir, filesList, database, extraDefines, forceChanged, true), 500)
+        buildDebounce = setTimeout(() => buildModule(name, sourceDir, filesList, database, extraDefines, forceChanged, noLinking, true), 500)
         return
     }
 
@@ -234,7 +234,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                 FS.virtual[outPath] = objRecord
 
                 if (FS.virtual[outPath]
-                    //&& FS.virtual[srcPath]?.timestamp < FS.virtual[outPath]?.timestamp
+                    && FS.virtual[srcPath]?.timestamp < FS.virtual[outPath]?.timestamp
                     && !forceChanged
                 ) {
                     log(`${outPath} already up to date...\n\r`)
@@ -303,12 +303,15 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
         if (TERMINATE) return
 
+        if (!noLinking) {
 
-        await linkModule(database, name, filesList, 
-            true /* prevent loops */, 
-            hasChanged /* always link after build something */, 
-            true /* already debounced above */
-        )
+            await linkModule(database, name, filesList,
+                hasChanged /* always link after build something */,
+                true /* prevent loops */,
+                true /* already debounced above */
+            )
+
+        }
 
     }
     finally {
@@ -319,7 +322,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
 
-async function linkModule(database, name, filesList, noModule = false, forceChanged = true, noBounce = false) {
+async function linkModule(database, name, filesList, forceChanged = false, noModule = false /* from buildModule */, noBounce = false) {
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -331,12 +334,9 @@ async function linkModule(database, name, filesList, noModule = false, forceChan
     }
 
     if (!noBounce) {
-        buildDebounce = setTimeout(() => linkModule(database, name, filesList, noModule, forceChanged, true), 500)
+        buildDebounce = setTimeout(() => linkModule(database, name, filesList, forceChanged, noModule /* from buildModule */, true), 500)
         return
     }
-
-    if (building) return
-    building = true
 
 
     try {
@@ -353,23 +353,28 @@ async function linkModule(database, name, filesList, noModule = false, forceChan
         let qvmObjs = filesList.map(file => path.join(CONFIGURATION, name, file))
 
 
+        // prevent recursion
         if (!noModule) {
 
+            // called from command or UI
 
             if (name === 'game')
-                await buildModule(name, dirs.QADIR, filesList, database, ['GAME'], false, true);
+                await buildModule(name, dirs.QADIR, filesList, database, ['GAME'], false, true /* prevent recursion */, true);
 
             if (name === 'cgame')
-                await buildModule(name, dirs.CGDIR, filesList, database, ['CGAME'], false, true);
+                await buildModule(name, dirs.CGDIR, filesList, database, ['CGAME'], false, true /* prevent recursion */, true);
 
             if (name === 'ui')
-                await buildModule(name, dirs.UIDIR, filesList, database, ['UI'], false, true);
+                await buildModule(name, dirs.UIDIR, filesList, database, ['UI'], false, true /* prevent recursion */, true);
 
             if (name === 'q3_ui')
-                await buildModule(name, dirs.Q3UIDIR, filesList, database, ['UI', 'Q3UI'], false, true);
+                await buildModule(name, dirs.Q3UIDIR, filesList, database, ['UI', 'Q3UI'], false, true /* prevent recursion */, true);
 
         }
 
+
+        if (building) return
+        building = true
 
 
         let exeRecord = await getRecord(DB_STORE_NAME, qvmOutput, database)
@@ -378,8 +383,6 @@ async function linkModule(database, name, filesList, noModule = false, forceChan
         log(`Assembling ${qvmOutput}...`);
 
         if (FS.virtual[qvmOutput]
-            // TODO: compare LATEST input and output mtime
-            // && FS.virtual[file]?.timestamp < FS.virtual[qvmOutput]?.timestamp
             && !forceChanged
         ) {
             log(qvmOutput + " already up to date...");

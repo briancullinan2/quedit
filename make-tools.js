@@ -143,7 +143,7 @@ const toolLdFlags = [
 
 
 
-async function buildLBurg(database = null) {
+async function buildLBurg(database = null, forceChanged = false, noLinking = false) {
     if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
@@ -157,6 +157,8 @@ async function buildLBurg(database = null) {
     TERMINATE = false
     PREAMBLE = TOOLS_PREAMBLE
 
+    let hasChanged = false
+
     log("Building LBURG...");
     for (const file of lburgFiles) {
         if (TERMINATE) return
@@ -166,19 +168,38 @@ async function buildLBurg(database = null) {
             const src = path.join("lburg", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.LBURG, file);
 
+            if (FS.virtual[obj]
+                && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+                && !forceChanged
+            ) {
+                log(`${obj} already up to date...\n\r`)
+                return obj
+            }
+
+            hasChanged = true
+
             log(`CC: ${src}\n\r`);
-            await compileToolFile(src, obj, "lburg", database);
+            await compileToolFile(src, obj, "lburg", database, [], forceChanged);
         } catch (e) {
             log(e)
         }
 
     }
 
-    await linkLburg(database)
+    // this is the control structure i was looking for
+    //   `build` command forces a full compile
+    //   `link` command only builds missing and forces link
+    //  *sigh* voidzero would have been so much more descriptive
+    //    i could have defined a single module "build pattern"
+    //    with only this workflow and then templates for the
+    //    files variable, it would look similar to `make`
+    if (!noLinking) {
+        await linkLburg(database, hasChanged, true /* prevent recusion */)
+    }
 }
 
 
-async function linkLburg(database) {
+async function linkLburg(database, forceChanged = false, noBuild = false) {
     if (!database) database = toolsRepo || api.database;
 
     let CONFIGURATION = api.configuration == 'release'
@@ -191,16 +212,24 @@ async function linkLburg(database) {
     const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
     const lburgObjs = lburgFiles.map(f => path.join(CONFIGURATION + '/' + toolDirs.LBURG, f))
 
+    if (!noBuild
+        // TODO: check objs mtimes?
+    ) {
+        // contradicts forcedChanged because if noBuild === false then we just built
+        await buildLBurg(database, false /* here's what makes it special */, true /* prevent recursion */)
+    }
+
+
+
     let exeRecord = await getRecord(DB_STORE_NAME, lburgExe, database)
     FS.virtual[lburgExe] = exeRecord
 
 
     if (FS.virtual[lburgExe]
-        // TODO: compare LATEST input and output mtime
-        // && FS.virtual[file]?.timestamp < FS.virtual[lburgExe]?.timestamp
+        && !forceChanged
     ) {
-        //log(lburgExe + " already up to date...");
-        //return
+        log(lburgExe + " already up to date...");
+        return
     }
 
     log(`LD: ${lburgExe}\n\r`);
@@ -225,7 +254,7 @@ async function linkLburg(database) {
 let BRANCH
 let FILELIST
 
-async function compileToolFile(src, obj, includeDir, database, extraFlags = []) {
+async function compileToolFile(src, obj, includeDir, database, extraFlags = [], forceChanged = false) {
     try {
         if (!database) database = toolsRepo || api.database;
         let parts = database.split('/');
@@ -258,11 +287,11 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = []) 
         FS.virtual[obj] = objRecord
 
         if (FS.virtual[obj]
-            //    && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+            && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+            && !forceChanged
         ) {
-            //    log(`${obj} already up to date...\n\r`)
-
-            //    return obj
+            log(`${obj} already up to date...\n\r`)
+            return obj
         }
 
         await api.compile({
@@ -303,7 +332,7 @@ function log(msg, ...args) {
 let needsHeaders = true
 
 
-async function buildRCC(database = null, skipTool = false, forceChanged = false) {
+async function buildRCC(database = null, skipTool = false, forceChanged = false, noLinking = false) {
     if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
@@ -324,7 +353,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false)
 
         let exeRecord = await getRecord(DB_STORE_NAME, lburgExe, database)
         if (!exeRecord) {
-            await buildLBurg(database)
+            await buildLBurg(database, forceChanged)
             exeRecord = await getRecord(DB_STORE_NAME, lburgExe, database)
         }
         FS.virtual[lburgExe] = exeRecord
@@ -332,6 +361,8 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false)
     }
 
     log("Building RCC...");
+
+    let hasChanged = false
 
     for (const file of rccFiles) {
         if (TERMINATE) return
@@ -354,6 +385,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false)
                     return
                 }
 
+                hasChanged = true
 
                 await cacheFile(ownerName, repoName, dagMd, (FILELIST[dagMd] || {}).sha);
                 // Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
@@ -368,7 +400,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false)
                 });
 
                 log(`CC: ${dagC}\n\r`);
-                await compileToolFile(dagC, obj, "src", database, ["-Wno-unused"]);
+                await compileToolFile(dagC, obj, "src", database, ["-Wno-unused"], forceChanged);
             } else {
                 const src = path.join("src", file.replace('.o', '.c'));
 
@@ -380,8 +412,10 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false)
                     return
                 }
 
+                hasChanged = true
+
                 log(`CC: ${src}\n\r`);
-                await compileToolFile(src, obj, "src", database);
+                await compileToolFile(src, obj, "src", database, [], forceChanged);
             }
         } catch (e) {
             PREAMBLE = TOOLERR_PREAMBLE
@@ -391,14 +425,15 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false)
     }
 
 
-
-    await linkRCC(database)
+    if (!noLinking) {
+        await linkRCC(database, hasChanged)
+    }
 
 }
 
 
 
-async function linkRCC(database = null, forceChanged = false) {
+async function linkRCC(database = null, forceChanged = false, noBuild = false) {
     if (!database) database = toolsRepo || api.database;
 
     let CONFIGURATION = api.configuration == 'release'
@@ -413,9 +448,13 @@ async function linkRCC(database = null, forceChanged = false) {
     let exeRecord = await getRecord(DB_STORE_NAME, rccExe, database)
     FS.virtual[rccExe] = exeRecord
 
+    if (!noBuild) {
+        await buildRCC(database, false, false, true /* prevent recursion */)
+    }
+
 
     if (FS.virtual[rccExe]
-        !forceChanged
+        && !forceChanged
     ) {
         log(rccExe + " already up to date...");
         return
@@ -438,7 +477,7 @@ async function linkRCC(database = null, forceChanged = false) {
 }
 
 
-async function buildCPP(database = null, forceChanged = false) {
+async function buildCPP(database = null, forceChanged = false, noLinking = false) {
     if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
@@ -453,6 +492,8 @@ async function buildCPP(database = null, forceChanged = false) {
     PREAMBLE = TOOLS_PREAMBLE
 
     log("Building CPP...");
+
+    let hasChanged = false
 
     for (const file of cppFiles) {
         if (TERMINATE) return
@@ -469,19 +510,23 @@ async function buildCPP(database = null, forceChanged = false) {
                 return
             }
 
+            hasChanged = true
+
             log(`CC: ${src}\n\r`);
-            await compileToolFile(src, obj, "cpp", database);
+            await compileToolFile(src, obj, "cpp", database, [], forceChanged);
         } catch (e) {
             log(e)
         }
     }
 
-    await linkCPP(database)
+    if (!noLinking) {
+        await linkCPP(database, hasChanged, true)
+    }
 }
 
 
 
-async function linkCPP(database = null, forceChanged = false) {
+async function linkCPP(database = null, forceChanged = false, noBuild = false) {
     if (!database) database = toolsRepo || api.database;
 
     let CONFIGURATION = api.configuration == 'release'
@@ -497,6 +542,10 @@ async function linkCPP(database = null, forceChanged = false) {
     let exeRecord = await getRecord(DB_STORE_NAME, cppExe, database)
     FS.virtual[cppExe] = exeRecord
 
+
+    if (!noBuild) {
+        await buildCPP(database, false, true)
+    }
 
     if (FS.virtual[cppExe]
         && !forceChanged
@@ -524,7 +573,7 @@ async function linkCPP(database = null, forceChanged = false) {
 }
 
 
-async function buildLCC(database = null, forceChanged = false) {
+async function buildLCC(database = null, forceChanged = false, noLinking = false) {
     if (!database) database = toolsRepo || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
@@ -540,6 +589,8 @@ async function buildLCC(database = null, forceChanged = false) {
     PREAMBLE = TOOLS_PREAMBLE
 
     log("Building LCC...");
+
+    let hasChanged = false
 
     for (const file of lccFiles) {
         if (TERMINATE) return
@@ -558,16 +609,19 @@ async function buildLCC(database = null, forceChanged = false) {
                 return
             }
 
+            hasChanged = true
 
             log(`CC: ${src}\n\r`);
-            await compileToolFile(src, obj, "src", database, lccFlags);
+            await compileToolFile(src, obj, "src", database, lccFlags, forceChanged);
         } catch (e) {
             log(e)
         }
     }
 
 
-    await linkLCC(database)
+    if (!noLinking) {
+        await linkLCC(database, hasChanged, true)
+    }
 
 
 }
@@ -575,7 +629,7 @@ async function buildLCC(database = null, forceChanged = false) {
 
 
 
-async function linkLCC(database = null, forceChanged = false) {
+async function linkLCC(database = null, forceChanged = false, noBuild = false) {
 
     if (!database) database = toolsRepo || api.database;
 
@@ -588,6 +642,10 @@ async function linkLCC(database = null, forceChanged = false) {
     const lccObjs = lccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.ETC, file))
     const lccExe = path.join(CONFIGURATION, "q3lcc" + config.BINEXT);
 
+
+    if (!noBuild) {
+        await buildLCC(database, false, true)
+    }
 
     let exeRecord = await getRecord(DB_STORE_NAME, lccExe, database)
     FS.virtual[lccExe] = exeRecord
@@ -653,34 +711,34 @@ async function buildTools(database = null, toolName = 'all', noBounce = false) {
 
         if (toolName === 'lburg' || toolName === 'all')
             // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
-            await buildLBurg(database)
+            await buildLBurg(database, true)
 
         if (TERMINATE) return
 
 
         if (toolName === 'q3rcc' || toolName === 'all')
             // 2. Build RCC (The Compiler Core)
-            await buildRCC(database, true)
+            await buildRCC(database, false, true)
 
         if (TERMINATE) return
 
 
         if (toolName === 'q3cpp' || toolName === 'all')
             // 3. Build CPP (Preprocessor)
-            await buildCPP(database)
+            await buildCPP(database, true)
 
         if (TERMINATE) return
 
 
         if (toolName === 'q3lcc' || toolName === 'all')
             // 4. Build LCC (Frontend)
-            await buildLCC(database)
+            await buildLCC(database, true)
 
         if (TERMINATE) return
 
 
         if (toolName === 'q3asm' || toolName === 'all')
-            await buildAsmTool(database)
+            await buildAsmTool(database, true)
 
         if (TERMINATE) return
 
@@ -715,7 +773,7 @@ const Q3ASM_CFLAGS = [
 /**
  * Appends the q3asm build to your existing buildTools function
  */
-async function buildAsmTool(database = null, forceChanged = false) {
+async function buildAsmTool(database = null, forceChanged = false, noLinking = false) {
 
 
     if (!database) database = toolsRepo2 || api.toolsRepo2 || api.database;
@@ -736,7 +794,7 @@ async function buildAsmTool(database = null, forceChanged = false) {
 
     log("Building q3asm...");
 
-    //const toolSourceDir = "code/tools/asm"; // Adjust to your actual source path
+    let hasChanged = false
 
     for (const file of q3asmFiles) {
 
@@ -750,6 +808,8 @@ async function buildAsmTool(database = null, forceChanged = false) {
             await downloadHeaders(asmToolHeaders, 10, database)
 
         }
+
+        hasChanged = true
 
         PREAMBLE = TOOLS_PREAMBLE
 
@@ -776,12 +836,14 @@ async function buildAsmTool(database = null, forceChanged = false) {
         }
     }
 
-    await linkAsm(database)
+    if (noLinking) {
+        await linkAsm(database, hasChanged)
+    }
 
 }
 
 
-async function linkAsm(database = null, forceChanged = false) {
+async function linkAsm(database = null, forceChanged = false, noBuild = false) {
     if (!database) database = toolsRepo2 || api.toolsRepo2 || api.database;
 
 
@@ -793,6 +855,11 @@ async function linkAsm(database = null, forceChanged = false) {
 
     let asmObjs = q3asmFiles.map(file => path.join(CONFIGURATION, file.replace('.c', '.o')))
 
+    if (!noBuild) {
+        await buildAsmTool(database, false, true)
+    }
+
+
     const q3asmExe = path.join(CONFIGURATION, "q3asm" + config.BINEXT);
 
     let exeRecord = await getRecord(DB_STORE_NAME, q3asmExe, database)
@@ -801,7 +868,6 @@ async function linkAsm(database = null, forceChanged = false) {
 
     if (FS.virtual[q3asmExe]
         // TODO: compare LATEST input and output mtime
-        // && FS.virtual[file]?.timestamp < FS.virtual[q3asmExe]?.timestamp
         && !forceChanged
     ) {
         log(q3asmExe + " already up to date...");
