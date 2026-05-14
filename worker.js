@@ -372,7 +372,7 @@ const onAnyMessage = async event => {
         throw e
       }
       finally {
-        port.postMessage({ id: 'runAsync', responseId, data: FS.virtual[filePath] });
+        port.postMessage({ id: 'runAsync', responseId, data: output });
       }
       break;
     }

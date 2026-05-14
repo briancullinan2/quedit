@@ -1261,11 +1261,13 @@ const API = (function () {
       }
       catch (up) {
         debugger
-        this.hostWrite(name + ' not found at: ' + this.commonPaths(name).join('\n\r')
+        this.hostWrite(name + ' not found at: \n\r' + this.commonPaths(name).join('\n\r')
           + '\n\r' + window.location + '/' + name + '\n\r')
         console.error(up)
-        if (up.message.includes('Response code: 404')
-          && (this.toolsRepo || this.database)
+        if (
+          (up.message.includes('Response code: 404')
+          || up.message.includes('HTTP status code is not ok'))
+          && (this.toolsRepo || this.toolsRepo2 || this.database)
           && !alreadyTried
         ) {
 
@@ -1280,7 +1282,7 @@ const API = (function () {
           if (name.includes('q3cpp'))
             await buildCPP(this.toolsRepo || this.database)
           if (name.includes('q3asm'))
-            await buildAsmTool(this.toolsRepo || this.database)
+            await buildAsmTool(this.toolsRepo2 || this.database)
           if (name.includes('quake3e'))
             await buildClient(this.toolsRepo || this.database)
           if (name.includes('quake3e.ded'))
@@ -1679,7 +1681,7 @@ const API = (function () {
         await buildCPP(selected)
       if (mode === 'q3lcc' || mode === 'tools' || mode === 'all')
         await buildLCC(selected)
-      if (mode == 'asm' || mode === 'tools' || mode === 'all')
+      if (mode == 'q3asm' || mode === 'tools' || mode === 'all')
         await buildAsmTool(selected)
 
       if (mode == 'game' || mode === 'qvms' || mode === 'all')

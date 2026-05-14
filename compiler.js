@@ -132,7 +132,10 @@ class WorkerAPI {
                 const promise = this.responseCBs.get(responseId);
                 if (promise) {
                     this.responseCBs.delete(responseId);
-                    promise.resolve(event.data.data);
+                    if(event.data.data instanceof Error)
+                        promise.reject(event.data.data)
+                    else
+                        promise.resolve(event.data.data);
                 }
                 break;
             }

@@ -668,6 +668,9 @@ const Q3ASM_CFLAGS = [
  */
 async function buildAsmTool(database = null) {
     if (!database) database = toolsRepo2 || api.database;
+    let parts = database.split('/');
+    let ownerName = parts.length == 2 ? parts[0] : owner.value;
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
 
 
     let CONFIGURATION = api.configuration == 'release'
@@ -682,7 +685,7 @@ async function buildAsmTool(database = null) {
 
     log("Building q3asm...");
 
-    const toolSourceDir = "code/tools/asm"; // Adjust to your actual source path
+    //const toolSourceDir = "code/tools/asm"; // Adjust to your actual source path
 
     for (const file of q3asmFiles) {
 
@@ -701,7 +704,7 @@ async function buildAsmTool(database = null) {
 
         try {
 
-            const src = path.join(toolSourceDir, file);
+            const src = file;
             const obj = path.join(CONFIGURATION, file.replace('.c', '.o'));
             const sha = files[database][src].sha;
             const content = await cacheFile(ownerName, repoName, src, sha);
@@ -709,7 +712,7 @@ async function buildAsmTool(database = null) {
             log(`CC: ${file}\n\r`);
             await api.compile({
                 CFLAGS: [
-                    ...QVM_CFLAGS,
+                    ...LCC_CFLAGS,
                     '-o', obj, src
                 ],
                 contents: content,
@@ -718,7 +721,7 @@ async function buildAsmTool(database = null) {
                 obj: obj
             });
         } catch (e) {
-            log(`Error compiling q3asm component: ${file}`);
+            log(`Error compiling q3asm component: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
         }
     }
 
@@ -737,7 +740,7 @@ async function linkAsm(database = null) {
 
     PREAMBLE = TOOLS_PREAMBLE
 
-    let asmObjs = q3asmFiles.map(file => path.join(CONFIGURATION, file))
+    let asmObjs = q3asmFiles.map(file => path.join(CONFIGURATION, file.replace('.c', '.o')))
 
     const q3asmExe = path.join(CONFIGURATION, "q3asm" + config.BINEXT);
 
@@ -760,7 +763,7 @@ async function linkAsm(database = null) {
         log("Linking q3asm...");
         await api.link({
             LDFLAGS: [
-                ...baseLdFlags,
+                ...toolLdFlags,
                 "-o", q3asmExe,
                 ...asmObjs,
                 ...includeFlags

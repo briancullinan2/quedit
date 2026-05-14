@@ -160,10 +160,12 @@ async function buildCommand(argv, database) {
         || mode === 'q3rcc'
         || mode === 'q3cpp'
         || mode === 'lburg'
-        || mode === 'asm'
+
         || mode === 'tools'
     )
         selected = argv[1] || toolsRepo
+    if (mode === 'q3asm')
+        selected = argv[1] || toolsRepo2
     if (mode === 'all'
         || mode === 'release'
         || mode === 'debug'
@@ -197,7 +199,7 @@ async function buildCommand(argv, database) {
         || mode === 'q3rcc'
         || mode === 'q3cpp'
         || mode === 'lburg'
-        || mode === 'asm'
+        || mode === 'q3asm'
         || mode === 'tools'
     )
         validMode = 'tools'
@@ -271,7 +273,7 @@ async function buildCommand(argv, database) {
         await buildCPP(selected)
     if (mode === 'q3lcc' || mode === 'all' || mode === 'tools')
         await buildLCC(selected)
-    if (mode === 'asm' || mode === 'all' || mode === 'tools')
+    if (mode === 'q3asm' || mode === 'all' || mode === 'tools')
         await buildAsmTool(selected)
 
     if (mode === 'game' || mode === 'all' || mode === 'qvms')
@@ -295,10 +297,11 @@ async function link(argv, database) {
         || mode === 'q3rcc'
         || mode === 'q3cpp'
         || mode === 'lburg'
-        || mode === 'asm'
         || mode === 'tools'
     )
         selected = argv[1] || toolsRepo
+    if (mode === 'q3asm')
+        selected = argv[1] || toolsRepo2
     if (mode === 'all'
         || mode === 'release'
         || mode === 'debug'
@@ -368,7 +371,7 @@ async function link(argv, database) {
         await linkCPP(selected)
     if (mode === 'q3lcc' || mode === 'tools' || mode === 'all')
         await linkLCC(selected)
-    if (mode === 'asm' || mode === 'tools' || mode === 'all')
+    if (mode === 'q3asm' || mode === 'tools' || mode === 'all')
         await linkAsm(selected)
 
 
@@ -468,7 +471,7 @@ async function compileWorker(argv, database) {
         await loadGitHubTree(ownerName, repoName, branch)
     }
 
-    if (selected === engineRepo 
+    if (selected === engineRepo
         || file.includes('code/client')
         || file.includes('code/server')
         || file.includes('code/qcommon')
@@ -481,15 +484,15 @@ async function compileWorker(argv, database) {
     }
 
     if (selected === gameRepo || file.includes('code/game')
-     || file.includes('code/cgame') || file.includes('code/ui')
-     || file.includes('code/q3_ui')) // TODO: || file.includes('code/') && !file.includes('code/'))
+        || file.includes('code/cgame') || file.includes('code/ui')
+        || file.includes('code/q3_ui')) // TODO: || file.includes('code/') && !file.includes('code/'))
     {
         await downloadHeaders(qvmHeaders, 10, selected)
     }
 
     if (selected === toolsRepo || file.includes('src/')
-     || file.includes('cpp/') || file.includes('etc/')
-     || file.includes('lburg/')) {
+        || file.includes('cpp/') || file.includes('etc/')
+        || file.includes('lburg/')) {
         await downloadHeaders(lccToolHeaders, 10, selected)
     }
 
@@ -518,13 +521,11 @@ async function compileWorker(argv, database) {
 
         let DEFINE = ['-DGAME']
         let vm = 'game'
-        if (file.includes('code/cgame'))
-        {
+        if (file.includes('code/cgame')) {
             DEFINE = ['-DCGAME']
             vm = 'cgame'
         }
-        if (file.includes('code/q3_ui') || file.includes('code/ui'))
-        {
+        if (file.includes('code/q3_ui') || file.includes('code/ui')) {
             DEFINE = ['-DUI']
             vm = 'ui'
         }
