@@ -61,7 +61,7 @@ function updatePlaceholder() {
         tokenInput.placeholder = `Currently set: ${masked}`;
         tokenInput.classList.add('has-token');
     } else {
-        tokenInput.placeholder = "Enter ghp_your_token_here...";
+        tokenInput.placeholder = "Enter ghp your token here...";
         tokenInput.classList.remove('has-token');
     }
 

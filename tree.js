@@ -24,14 +24,14 @@
 /******/ 		if (installedModules[moduleId]) {
 /******/ 			return installedModules[moduleId].exports;
         /******/
-}
+      }
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = installedModules[moduleId] = {
 /******/ 			i: moduleId,
 /******/ 			l: false,
 /******/ 			exports: {}
         /******/
-};
+      };
 /******/
 /******/ 		// Execute the module function
 /******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
@@ -42,7 +42,7 @@
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
       /******/
-}
+    }
 /******/
 /******/
 /******/ 	// expose the modules object (__webpack_modules__)
@@ -56,19 +56,19 @@
 /******/ 		if (!__webpack_require__.o(exports, name)) {
 /******/ 			Object.defineProperty(exports, name, { enumerable: true, get: getter });
         /******/
-}
+      }
       /******/
-};
+    };
 /******/
 /******/ 	// define __esModule on exports
 /******/ 	__webpack_require__.r = function (exports) {
 /******/ 		if (typeof Symbol !== 'undefined' && Symbol.toStringTag) {
 /******/ 			Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
         /******/
-}
+      }
 /******/ 		Object.defineProperty(exports, '__esModule', { value: true });
       /******/
-};
+    };
 /******/
 /******/ 	// create a fake namespace object
 /******/ 	// mode & 1: value is a module id, require it
@@ -85,7 +85,7 @@
 /******/ 		if (mode & 2 && typeof value != 'string') for (var key in value) __webpack_require__.d(ns, key, function (key) { return value[key]; }.bind(null, key));
 /******/ 		return ns;
       /******/
-};
+    };
 /******/
 /******/ 	// getDefaultExport function for compatibility with non-harmony modules
 /******/ 	__webpack_require__.n = function (module) {
@@ -95,7 +95,7 @@
 /******/ 		__webpack_require__.d(getter, 'a', getter);
 /******/ 		return getter;
       /******/
-};
+    };
 /******/
 /******/ 	// Object.prototype.hasOwnProperty.call
 /******/ 	__webpack_require__.o = function (object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
@@ -107,7 +107,7 @@
 /******/ 	// Load entry module and return exports
 /******/ 	return __webpack_require__(__webpack_require__.s = 0);
     /******/
-})
+  })
 /************************************************************************/
 /******/([
 /* 0 */
@@ -429,15 +429,44 @@
 
       Tree.prototype.setValues = function (values) {
         var _this4 = this;
-
         this.emptyNodesCheckStatus();
         values.forEach(function (value) {
           _this4.setValue(value);
+
+          // --- NEW: Auto-expand logic ---
+          var node = _this4.nodesById[value];
+          if (node) {
+            var parent = node.parent;
+            while (parent) {
+              var parentLi = _this4.liElementsById[parent.id];
+              if (parentLi && parentLi.classList.contains('treejs-node__close')) {
+                // Find the switcher and click it to trigger the animation and state change
+                var switcher = parentLi.querySelector('.treejs-switcher');
+                if (switcher) _this4.onSwitcherClick(switcher);
+              }
+              parent = parent.parent;
+
+
+              const targetLi = _this4.liElementsById[value];
+              if (targetLi) {
+                setTimeout(() => {
+                  targetLi.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                    inline: 'nearest'
+                  });
+                }, 300)
+              }
+
+            }
+          }
+          // ------------------------------
         });
         this.updateLiElements();
         var onChange = this.options.onChange;
         onChange && onChange.call(this);
       };
+
 
       Tree.prototype.setDisable = function (value) {
         var node = this.nodesById[value];
@@ -743,7 +772,7 @@
       };
 
       /***/
-}),
+    }),
 /* 1 */
 /***/ (function (module, exports, __webpack_require__) {
 
@@ -819,7 +848,7 @@
       }
 
       /***/
-}),
+    }),
 /* 2 */
 /***/ (function (module, exports, __webpack_require__) {
 
@@ -845,7 +874,7 @@
       if (false) { }
 
       /***/
-}),
+    }),
 /* 3 */
 /***/ (function (module, exports, __webpack_require__) {
 
@@ -860,7 +889,7 @@
 
 
       /***/
-}),
+    }),
 /* 4 */
 /***/ (function (module, exports) {
 
@@ -943,7 +972,7 @@
 
 
       /***/
-}),
+    }),
 /* 5 */
 /***/ (function (module, exports, __webpack_require__) {
 
@@ -1330,7 +1359,7 @@
 
 
       /***/
-}),
+    }),
 /* 6 */
 /***/ (function (module, exports) {
 
@@ -1426,7 +1455,7 @@
 
 
       /***/
-})
+    })
 /******/])["default"];
 });
 //# sourceMappingURL=tree.js.map

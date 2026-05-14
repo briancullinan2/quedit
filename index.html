@@ -22,15 +22,21 @@
                     <ul>
                         <li><a onclick="updatePlaceholder()" alt="Github login" class="bx bx-arrow-in-right-square-half"
                                 target="_new" href="https://github.com/settings/tokens?type=beta"></a></li>
-                        <li class="setting"><select name="owner" id="owner">
+                        <li class="setting" placeholder="Repository owner">
+                            <select required name="owner" id="owner">
+                                <option value="" selected disabled>Repository owner</option>
                                 <option value="briancullinan2">briancullinan2</option>
                                 <option value="ec-">ec-</option>
                             </select></li>
-                        <li class="setting"><select name="repository" id="repository">
+                        <li class="setting" placeholder="Current repository">
+                            <select required name="repository" id="repository">
+                                <option value="" selected disabled>Current repository</option>
                                 <option value="Quake3e">Quake3e</option>
                                 <option value="baseq3a">baseq3a</option>
                             </select></li>
-                        <li class="setting"><select name="branch" id="branch">
+                        <li class="setting" placeholder="Current branch">
+                            <select required name="branch" id="branch">
+                                <option value="" selected disabled>Current branch</option>
                                 <option value="main">main</option>
                             </select></li>
                     </ul>
@@ -46,7 +52,9 @@
                         <li><a alt="Next" href="#next" class="bx bx-redo"></a></li>
                     </ul>
                 </li>
-                <li style="min-width: 200px;"><select name="filename" id="filename">
+                <li style="min-width: 200px;" placeholder="Current filename">
+                    <select required name="filename" id="filename">
+                        <option value="" selected disabled>Current filename</option>
                         <option value="">Current filename</option>
                     </select>
                 </li>
@@ -61,8 +69,9 @@
                         <li><a alt="Reload" href="#reload" class="bx bx-refresh-cw-alt"></a></li>
                     </ul>
                 </li>
-                <li class="setting">
-                    <select placeholder="Key binding" name="keybinding" id="keybinding">
+                <li class="setting" placeholder="Key binding">
+                    <select required name="keybinding" id="keybinding">
+                        <option value="" selected disabled>Key binding</option>
                         <option value="null">Ace</option>
                         <option value="ace/keybinding/vim">Vim</option>
                         <option value="ace/keybinding/emacs">Emacs</option>
@@ -70,8 +79,9 @@
                         <option value="ace/keybinding/vscode">VS Code</option>
                     </select>
                 </li>
-                <li class="setting">
-                    <select placeholder="Build configuration" name="configuration" id="configuration">
+                <li class="setting" placeholder="Build configuration">
+                    <select required name="configuration" id="configuration">
+                        <option value="" disabled selected>Build configuration</option>
                         <option value="debug">Debug</option>
                         <option value="release">Release</option>
                         <option value="pre">Preprocess</option>
@@ -83,30 +93,34 @@
                         <option value="analyze">Analyze</option>
                     </select>
                 </li>
-                <li class="setting" style="min-width: 200px;">
+                <li class="setting" style="min-width: 200px;" placeholder="Automatically reload">
                     <div style="display: flex; align-items: center;">
                         <span>Hot reload: &nbsp; </span>
-                        <input type="checkbox" name="reload" id="reload" checked="checked" />
+                        <input type="checkbox" name="reload"
+                            id="reload" checked="checked" />
                     </div>
                 </li>
                 <li class="engine">
                     <ul>
-                        <li>
-                            <select name="spawn" id="spawn">
-                                <option value="">Spawn point</option>
+                        <li placeholder="Spawn point">
+                            <select required name="spawn" id="spawn">
+                                <option value="" selected disabled>Spawn point</option>
                             </select>
                         </li>
-                        <li class="engine"><select name="map" id="map">
-                                <option value="">Current map</option>
+                        <li class="engine" placeholder="Current map">
+                            <select required name="map" id="map">
+                                <option value="" selected disabled>Current map</option>
                             </select>
                         </li>
                     </ul>
                 </li>
-                <li class="setting"><select name="wasi" id="wasi">
-                        <option value="">WASI-SDK v33 (Not downloaded)</option>
+                <li class="setting" placeholder="Current WASI-SDK">
+                    <select required name="wasi" id="wasi">
+                        <option value="" selected disabled>WASI-SDK v33 (Not downloaded)</option>
                     </select></li>
-                <li class="setting">
-                    <select id="theme" name="theme">
+                <li class="setting" placeholder="Current theme">
+                    <select required name="theme" id="theme">
+                        <option value="" selected disabled>Current theme</option>
                         <optgroup label="The Classics & Defaults">
                             <option value="ace/theme/monokai" selected>Monokai (OG High Contrast)</option>
                             <option value="ace/theme/textmate">TextMate (The Standard)</option>
@@ -253,7 +267,7 @@ int main() {
                     <li><a href="#terminal-container">Console</a></li>
                     <li><a href="#ai">AI Integration</a></li>
                     <li style="flex-grow: 1;"><span>&nbsp;</span></li>
-                    <li><input autocomplete="off" type="search" id="search-terminal" name="search-terminal"
+                    <li placeholder="Search..."><input autocomplete="off" type="search" id="search-terminal" name="search-terminal"
                             placeholder="Search..." /></li>
                 </ul>
             </div>
@@ -269,14 +283,19 @@ int main() {
 
     <div id="token-modal" class="hidden">
         <div class="modal-content">
-            <button class="close-btn" onclick="modal.classList.add('hidden')">&times;</button>
-            <h3>GitHub Access Token</h3>
-            <p>Required for API access</p>
-            <input type="password" id="gh-token-input" />
-            <div class="actions">
-                <button onclick="saveToken()">Save Token</button>
-                <button onclick="clearToken()" class="danger">Clear</button>
-            </div>
+            <form onsubmit="saveToken()" action="#">
+                <button class="close-btn" onclick="modal.classList.add('hidden')">&times;</button>
+                <h3>GitHub Access Token</h3>
+                <p>Required for API access</p>
+                <div placeholder="Enter ghp your token here...">
+                    <input placeholder="Enter ghp your token here..." type="password" id="gh-token-input"
+                        name="gh-token-input" />
+                </div>
+                <div class="actions">
+                    <button onclick="saveToken()">Save Token</button>
+                    <button onclick="clearToken()" class="danger">Clear</button>
+                </div>
+            </form>
         </div>
     </div>
 

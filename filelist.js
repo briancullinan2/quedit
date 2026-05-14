@@ -233,7 +233,7 @@ function loadTree(database, cursor) {
 }
 
 
-async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true) {
+async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true, hidePanels = true) {
     api.github_token = localStorage.getItem('github_token');
 
     var content = await cacheFile(repoOwner, repoName, filePath, sha)
@@ -247,7 +247,8 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     editor.setSession(session);
     editor.resize();
     editor.renderer.updateFull();
-    hideOpenPanels()
+    if(hidePanels)
+        hideOpenPanels()
     document.getElementById('editor').classList.add('not-hidden')
 
     // 3. Record it in history if this isn't a "Back/Forward" action

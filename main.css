@@ -124,8 +124,9 @@ body {
     flex-direction: column;
 }
 
-*[id] {
+[id] {
     scroll-margin-top: 100vh;
+    scroll-margin-left: 100%;
 }
 
 #assetlist,
@@ -327,6 +328,7 @@ button {
 #terminals ul {
     display: flex;
     flex-direction: row;
+    align-items: center;
 }
 
 #toolbar li {
@@ -430,26 +432,42 @@ button {
     flex-basis: 100%;
 }
 
+[placeholder],
 [alt],
 [data-tooltip] {
     position: relative;
-    cursor: pointer;
 }
 
+#toolbar [placeholder]:not([type="checkbox"])::after,
 #toolbar [alt]::after,
 #toolbar [data-tooltip]::after {
     top: 100%;
     bottom: auto;
 }
 
+
+[placeholder]:has(#search-terminal:active)::after,
+[placeholder]:has(#search-terminal:focus)::after
+{
+    opacity: 1;
+}
+
+#toolbar [placeholder]:has(:empty)::after
+{
+    opacity: 1;
+}
+
+[placeholder]:not([type="checkbox"])::after,
 [alt]::after,
 [data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
-    bottom: 50%;
+    cursor: pointer;
+    top: 100%;
+    bottom: auto;
     /*left: max(10px, 50%);
     transform: translateX(-50%); */
-    display: inline-block;
+    display: block;
     padding: 5px 10px;
     border-radius: 4px;
     white-space: nowrap;
@@ -460,14 +478,24 @@ button {
     z-index: 9999;
 }
 
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+}
+
+[placeholder]:not([type="checkbox"])::after {
+    content: attr(placeholder);
+}
+
 [alt]::after {
     content: attr(alt);
 }
 
+[placeholder]:hover::after,
 [alt]:hover::after,
 [data-tooltip]:hover::after {
     opacity: 1;
 }
+
 
 #gh-token-input {
     width: 100%;
@@ -514,7 +542,7 @@ button {
     font-size: 24px;
     cursor: pointer;
     transition: color 0.2s, transform 0.2s;
-    width: var(--global-line-height);
+    width: var(--global-height);
     border-radius: 0 8px 0 0;
 }
 

@@ -1,11 +1,14 @@
 :root {
-    --global-line-height: 1.6em;
+    --global-height: 1.6;
+    --default-size: 16px; /* calc(var(--global-height) * 1rem); */
 }
 
 /* Global Styles */
-body, html {
-    line-height: var(--global-line-height);
+body {
+    font-size: var(--default-size);
+    line-height: var(--global-height);
 }
+
 
 .theme-monokai {
     /* Main Backgrounds */
@@ -687,13 +690,13 @@ button {
     /* Text color from the editor foreground */
     color: var(--ace-foreground);
     font-family: inherit;
-    line-height: var(--global-line-height);
+    line-height: var(--global-height);
 }
 
 #statusbar {
     background-color: var(--ace-gutter-bg);
     color: var(--ace-foreground);
-    max-height: var(--global-line-height);
+    max-height: var(--global-height);
 }
 
 input:focus,
@@ -711,7 +714,8 @@ input:placeholder-shown {
 
 input::placeholder {
     color: var(--ace-foreground);
-    opacity: 0.75;    /* Firefox lowers opacity by default, so set to 1 */
+    opacity: 0.75;
+    /* Firefox lowers opacity by default, so set to 1 */
 }
 
 /* For older versions of Internet Explorer/Edge */
@@ -754,8 +758,7 @@ select option {
 }
 
 
-#toolbar
-{
+#toolbar {
     color: var(--ace-foreground);
 }
 
@@ -772,8 +775,7 @@ select option {
 
 
 #terminals a.active,
-#terminals a:active
-{
+#terminals a:active {
     border-top-color: rgb(from var(--ace-blue) r g b / 50%);
 }
 
@@ -785,6 +787,7 @@ select option {
 }
 
 
+[placeholder]:not([type="checkbox"])::after,
 [alt]::after,
 [data-tooltip]::after {
     background: var(--ace-gutter-bg);
@@ -806,8 +809,15 @@ select option {
         "DejaVu Sans Mono",
         /* 7. The Final Safety Net */
         monospace;
+    line-height: var(--global-height);
+    font-size: var(--default-size);
 }
 
+
+
+#terminals a {
+    font-size: var(--default-size);
+}
 
 #assetlist .treejs .treejs-switcher:before,
 #gamelist .treejs .treejs-switcher:before,
@@ -842,37 +852,35 @@ input[type="checkbox"] {
     background-color: var(--ace-gutter-bg);
     border-color: var(--ace-blue);
     box-shadow: 1px 2px 5px rgb(from var(--ace-foreground) r g b / 50%);
-    height: calc(var(--global-line-height) + 4px);
+    height: calc(var(--global-height) + 4px);
 }
 
-input[type="checkbox"]::before
-{
+input[type="checkbox"]::before {
     background-color: var(--ace-bg);
     box-shadow: -1px -2px 5px inset rgba(0, 0, 0, 0.5);
-    width: calc(var(--global-line-height) - 4px);
-    height: calc(var(--global-line-height) - 4px);
+    width: calc(var(--global-height) - 4px);
+    height: calc(var(--global-height) - 4px);
 
 }
 
 
-input[type="checkbox"]::after
-{
+input[type="checkbox"]::after {
     color: var(--ace-foreground);
 }
 
-input[type="checkbox"]:checked::after
-{
+input[type="checkbox"]:checked::after {
     color: var(--ace-bg);
 }
 
 input[type="checkbox"]:checked {
-    background-color: var(--ace-blue); /* iOS Green */
+    background-color: var(--ace-blue);
+    /* iOS Green */
     border-color: var(--ace-blue);
 }
 
 input[type="checkbox"]:checked::before {
     transform: translateX(26px);
-    transform: translateX(calc(60px - var(--global-line-height) - 2px));
+    transform: translateX(calc(60px - var(--global-height) - 2px));
 }
 
 input[type="checkbox"]:focus-visible {

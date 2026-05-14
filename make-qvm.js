@@ -373,6 +373,9 @@ async function linkModule(database, name, filesList, forceChanged = false, noMod
         }
 
 
+        if (TERMINATE) return
+
+
         if (building) return
         building = true
 

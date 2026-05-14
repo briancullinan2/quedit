@@ -358,7 +358,7 @@ const API = (function () {
             this.exports.fd_close(subDirFd);
           }
         } else {
-          console.log(`File: ${fullPath}`);
+          console.log(`resursiveDir: ${fullPath}`);
         }
       }
     }
@@ -614,7 +614,8 @@ const API = (function () {
         FS.virtual['/dev/stdout'].rewrite = 0
         FS.virtual['/dev/stderr'].rewrite = 0
         window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
-        ENV.memory = Module.memory = this.exports.memory
+        if (this.exports.memory)
+          ENV.memory = Module.memory = this.exports.memory
         updateGlobalBufferAndViews()
         this.output = this.exports._start();
       } catch (exn) {
@@ -1161,16 +1162,23 @@ const API = (function () {
 
     async hostLogAsync(message, promise) {
       const start = +new Date();
-      this.hostLog(`${message}...`);
-      const result = await promise;
-      const end = +new Date();
-      this.hostWrite(' done.\n\r');
-      if (this.showTiming) {
-        const green = '\x1b[92m';
-        const normal = '\x1b[0m';
-        this.hostWrite(` ${green}(${msToSec(start, end)}s)${normal}\n\r`);
+      try {
+        this.hostLog(`${message}...`);
+        const result = await promise;
+        this.hostWrite(' done.\n\r');
+        return result;
+      } catch (e) {
+        this.hostWrite(' failed.\n\r');
+        throw e
+      } finally {
+        if (this.showTiming) {
+          const end = +new Date();
+          const green = '\x1b[92m';
+          const normal = '\x1b[0m';
+          this.hostWrite(` ${green}(${msToSec(start, end)}s)${normal}\n\r`);
+        }
+
       }
-      return result;
     }
 
 
@@ -1269,7 +1277,7 @@ const API = (function () {
         console.error(up)
         if (
           (up.message.includes('Response code: 404')
-          || up.message.includes('HTTP status code is not ok'))
+            || up.message.includes('HTTP status code is not ok'))
           && (this.toolsRepo || this.toolsRepo2 || this.database)
           && !alreadyTried
         ) {

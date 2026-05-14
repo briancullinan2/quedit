@@ -1,7 +1,9 @@
+const LINES_TO_SAVE = 1000
+const LINES_TO_SCROLLBACK = 5000
 
 var term = new Terminal({
     convertEol: true,
-    scrollback: 5000, // Increase this from the default 1000
+    scrollback: LINES_TO_SCROLLBACK, // Increase this from the default 1000
     cursorBlink: true,
 });
 term.open(document.getElementById('terminal'));
@@ -51,7 +53,7 @@ function getInternalTerminalLog() {
 
     // Determine the range: last 100 lines relative to the viewport/insertion point
     const endRow = buffer.baseY + buffer.cursorY;
-    const startRow = Math.max(0, endRow - 100);
+    const startRow = Math.max(0, endRow - LINES_TO_SAVE);
 
     for (let i = startRow; i <= endRow; i++) {
         const line = buffer.getLine(i);
@@ -65,10 +67,128 @@ function getInternalTerminalLog() {
 
 
 async function triggerIncrementalSave() {
-    const last100 = getInternalTerminalLog();
-    localStorage.setItem('terminal_log', JSON.stringify(last100));
+    const last1000 = getInternalTerminalLog();
+    localStorage.setItem('terminal_log', JSON.stringify(last1000));
 }
 
+let searchIndex = -1;
+let searchResults = [];
+let debounceTimeout;
+
+const searchTerminal = document.getElementById('search-terminal');
+
+// Helper to clear existing search highlights or state
+function clearSearch() {
+    searchIndex = -1;
+    searchResults = [];
+}
+
+searchTerminal.addEventListener('keydown', triggerFind);
+
+
+function triggerFind(e) {
+    if (e && e.key === 'Enter') {
+        e.preventDefault();
+
+    }
+
+    // 2. Debounced search for real-time results (optional, cancels on new input)
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+        if (searchTerminal.value.length > 2) {
+
+            performSearch(searchTerminal.value);
+
+
+            const termToFind = searchTerminal.value;
+            if (!termToFind) return;
+
+            if (searchResults.length > 0) {
+                if (e && e.key === 'Enter' && e.shiftKey) {
+                    // Move Backwards
+                    searchIndex = (searchIndex <= 0) ? searchResults.length - 1 : searchIndex - 1;
+                } else if (e && e.key === 'Enter') {
+                    // Move Forwards
+                    searchIndex = (searchIndex >= searchResults.length - 1) ? 0 : searchIndex + 1;
+                } else {
+                    // Find result nearest to current scroll view
+                    const currentScroll = searchIndex > -1
+                        && searchResults[searchIndex] 
+                        ? searchResults[searchIndex].line
+                        : term.buffer.active.baseY;
+
+                    // Find the first result that is at or after the current scroll position
+                    let nearest = searchResults.findIndex(res => res.line >= currentScroll);
+
+                    // If no results are below the current scroll, wrap to the last result 
+                    // or keep it at the top (0) depending on preference.
+                    searchIndex = (nearest !== -1) ? nearest : 0;
+                }
+
+                // Scroll the terminal display buffer to the result
+                // xterm.js rows are indexed from the top of the buffer
+                term.scrollToLine(searchResults[searchIndex].line);
+            }
+
+        } else {
+            clearSearch();
+        }
+
+
+
+
+        if (searchTerminal.value.length <= 2)
+            searchTerminal.parentElement.setAttribute('placeholder', 'Search...')
+        if (searchResults.length === 0)
+            searchTerminal.parentElement.setAttribute('placeholder', 'Search (0 results)...')
+        else
+            searchTerminal.parentElement.setAttribute('placeholder', 'Search (' + (searchIndex + 1) + '/' + searchResults.length + ')...')
+
+    }, 250);
+}
+
+
+function performSearch(termToSearch, caseSensitive = false) {
+    searchResults = [];
+    const buffer = term.buffer.active;
+    const flags = caseSensitive ? 'g' : 'gi';
+    const regex = new RegExp(termToSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+
+    // 1. Iterate through the visible and scrollback buffer
+    for (let i = 0; i < buffer.baseY + term.rows; i++) {
+        const line = buffer.getLine(i);
+        if (!line) continue;
+
+        const lineText = line.translateToString();
+        let match;
+
+        while ((match = regex.exec(lineText)) !== null) {
+            const xPos = match.index + 1; // 1-based for ANSI
+            const yPos = (i - buffer.baseY + buffer.cursorY) + 1; // Relative to viewport
+
+            // Only highlight if it's currently on screen
+            if (yPos > 0 && yPos <= term.rows) {
+                highlightMatch(xPos, yPos, match[0]);
+            }
+
+            searchResults.push({ line: i, x: xPos });
+        }
+    }
+}
+
+/**
+ * Uses ANSI Escape Codes to jump to a position and "overprint" with inverted colors
+ */
+function highlightMatch(x, y, text) {
+    // Save cursor position
+    term.write('\x1b[s');
+
+    // Move to Y;X, apply Inverse (7m), write text, Reset (0m)
+    term.write(`\x1b[${y};${x}H\x1b[7m${text}\x1b[0m`);
+
+    // Restore cursor position
+    term.write('\x1b[u');
+}
 
 
 term.attachCustomKeyEventHandler((arg) => {
@@ -78,6 +198,16 @@ term.attachCustomKeyEventHandler((arg) => {
     if (arg.type === "keydown") {
         // Check for Ctrl (Windows/Linux) or Cmd (Mac)
         isModifierPressed = arg.ctrlKey || arg.metaKey;
+
+
+        if (isModifierPressed && arg.code === "KeyF") {
+            if (arg.preventDefault) arg.preventDefault();
+            searchTerminal.focus()
+            let selection = term.getSelection()
+            if (selection)
+                searchTerminal.value = selection
+            triggerFind()
+        }
 
 
         // --- Ctrl+C: Copy ---
@@ -94,6 +224,7 @@ term.attachCustomKeyEventHandler((arg) => {
             currentLine = ''
             debugger
         }
+
 
         if (arg.code === "Backspace") {
             if (arg.preventDefault) arg.preventDefault();
@@ -199,17 +330,20 @@ term.onData(async data => {
                     commandHistory.splice(0, commandHistory.length - 10);
                 }
 
-                lastNewLine = true
-                historyIndex = -1;
                 localStorage.setItem('history', JSON.stringify(commandHistory));
             }
 
             triggerIncrementalSave()
 
             try {
+
+                lastNewLine = true
+                historyIndex = -1;
                 let thisLine = currentLine;
                 currentLine = '';
                 cursorPosition = 0;
+                term.write('\n\r')
+
                 await handleCommand(thisLine);
             } catch (e) {
                 term.write(e.toString() + '\r\n' + (e.stack || e.stacktrace) + '\r\n');
@@ -493,10 +627,69 @@ document.getElementById('terminals').addEventListener('click', async (e) => {
 
 });
 
+
+function extractFiles(col, row) {
+    const offsets = [-2, -1, 0, 2];
+    const lines = offsets.map(off => ({
+        off,
+        text: term.buffer.active.getLine(row + off)?.translateToString(true) || ""
+    }));
+
+    // 1. Build the full string
+    const lineText = lines.map(l => l.text).join('\n\r');
+
+    // 2. Calculate the targetIndex (where the click happened in lineText)
+    let targetIndex = 0;
+    for (const line of lines) {
+        if (line.off === 0) { // Offset 0 is the actual 'row' clicked
+            targetIndex += col;
+            break;
+        }
+        // Add the length of the line and the 2 characters for '\n\r'
+        targetIndex += line.text.length + 2;
+    }
+
+    // 3. Match all and sort
+    const filePattern = /([\w\d\._\-\/]+\.\w+)\b(?::(\d+))?(?::(\d+))?/g;
+    const matches = [
+        ...lineText.matchAll(filePattern)].map(m => Object.assign({
+            path: m[1],
+            line: m[2] ? parseInt(m[2], 10) : null,
+            index: m.index,
+            center: m.index + (m[0].length / 2) // Middle of the match for better accuracy
+        }, lines[(lineText.substring(0, m.index).match(/\n/g) || []).length]));
+
+
+    const sortedMatches = matches
+        .map(match => ({
+            ...match,
+            distance: Math.abs(match.center - targetIndex)
+        }))
+        .sort((a, b) => a.distance - b.distance);
+
+    // 2. Return the sorted list (closest file is at index 0)
+    if (sortedMatches.length > 0)
+        return sortedMatches;
+
+    return [{
+        off: 0,
+        text: lines[2].line.trim(),
+        path: null,
+        line: null,
+        index: targetIndex - col, // Start of the clicked line
+        center: targetIndex,      // Point of the click
+        distance: 0,              // It's the only option, so distance is 0
+        isFallback: true          // Useful flag for your UI
+    }]
+
+}
+
+
 const terminalContainer = document.getElementById('terminal');
 
 terminalContainer.addEventListener('mousedown', async (event) => {
     if (!event.ctrlKey && !isModifierPressed) return;
+    event.preventDefault()
 
     const rect = terminalContainer.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -507,6 +700,50 @@ terminalContainer.addEventListener('mousedown', async (event) => {
 
     // Only update cursor if the click is on the "active" input line
     const activeRow = term.buffer.active.baseY + term.buffer.active.cursorY;
+
+    const files = extractFiles(col, row);
+    const lineText = files[0]?.text.trim()
+        || term.buffer.active.getLine(row)?.translateToString(true)
+    if (files.length === 0
+        || lineText.length === 0
+    ) return;
+
+
+
+    // 3. Regex to find "filename.ext:line" or "filename.ext:line:col"
+    // This matches standard compiler/error output formats
+    const filePattern = /([\w\d\._\-\/]+\.\w+)\b(?::(\d+))?(?::(\d+))?[\n\r\s$]*/;
+    const match = lineText.match(filePattern);
+    const filePath = files[0].path
+    const lineNumber = files[0].line
+
+    if (files[0].path) {
+        console.log(`File: ${files[0].path}, Line: ${files[0].line}`);
+    }
+
+    let history
+    if (row === activeRow) {
+        changeCursorPosition(event, x, y, activeRow, col, row, lineText, filePath, lineNumber)
+    } else if ((history = commandHistory.findIndex(i => i.trim() === lineText.trim()))
+        && history >= y
+        || (history = commandHistory.findIndex(i => i.trim().includes(lineText.trim())))
+        && history >= y
+        || (history = commandHistory.findIndex(i => lineText.trim().includes(i.trim())))
+        && history >= y
+    ) {
+        // if they click on a previous command with ctrl button, insert it into the current line
+        historyIndex = history
+        updateLineFromHistory()
+    } else if (!files[0].isFallback) {
+
+        await clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber)
+    }
+
+    return false
+});
+
+
+function changeCursorPosition(event, x, y, activeRow, col, row, lineText, filePath, lineNumber) {
     if (row === activeRow) {
         const promptLength = 2; // Adjust based on your actual prompt (e.g., "> ")
         let newPos = col - promptLength;
@@ -521,38 +758,58 @@ terminalContainer.addEventListener('mousedown', async (event) => {
         // \x1b[G moves to col 0, then we move right by the prompt + index
         term.write(`\x1b[G\x1b[${promptLength + cursorPosition}C`);
     }
-
-    const lineText =
-        term.buffer.active.getLine(row - 2)?.translateToString(true)
-        + term.buffer.active.getLine(row - 1)?.translateToString(true)
-        + term.buffer.active.getLine(row)?.translateToString(true)
-        + term.buffer.active.getLine(row + 2)?.translateToString(true);
-    if (lineText.trim().length == 0) return;
+}
 
 
-    // 3. Regex to find "filename.ext:line" or "filename.ext:line:col"
-    // This matches standard compiler/error output formats
-    const filePattern = /([\w\d\._\-\/]+\.\w+):(\d+)(?::(\d+))?/;
-    const match = lineText.match(filePattern);
+async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber) {
 
-    if (match) {
-        const filePath = match[1];
-        const lineNumber = parseInt(match[2], 10);
-        // TODO: whatever project the console output is initiated on
-        let database = owner.value + '/' + repo.value
-        let parts = database.split('/')
-        let ownerName = parts.length == 2 ? parts[0] : owner.value
-        let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    let database = owner.value + '/' + repo.value
+    let parts = database.split('/')
+    let ownerName = parts.length == 2 ? parts[0] : owner.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
-        if (!files[database][filePath]) return
-
-        let sha = files[database][filePath].sha
-        currentOpenFileId = sha
-        await openFile(owner.value, repo.value, filePath, sha)
-        editor.gotoLine(lineNumber, 0, true);
-        editor.focus();
+    let dbFile
+    if (!dbFile && files[engineRepo]) {
+        dbFile = files[engineRepo][filePath]
+        if (dbFile)
+            trees[engineRepo].values = [dbFile.sha];
+        renderTabsCommand('filelist')
     }
-});
+    if (!dbFile && files[gameRepo]) {
+        dbFile = files[gameRepo][filePath]
+        if (dbFile)
+            trees[gameRepo].values = [dbFile.sha];
+        renderTabsCommand('gamelist')
+    }
+    if (!dbFile && files[assetRepo]) {
+        dbFile = files[assetRepo][filePath]
+        if (dbFile)
+            trees[assetRepo].values = [dbFile.sha];
+        renderTabsCommand('assetlist')
+    }
+    if (!dbFile && files[toolsRepo]) dbFile = files[toolsRepo][filePath]
+    if (!dbFile && files[toolsRepo2]) dbFile = files[toolsRepo2][filePath]
+
+    // TODO: FS.virtual for IDB access and database
+    if (!dbFile && FS.virtual[filePath]) {
+        dbFile = FS.virtual[filePath]
+        renderTabsCommand('database')
+    }
+
+    if (!dbFile) dbFile = files[database][filePath]
+
+
+    if (!dbFile) return
+
+    currentOpenFileId = dbFile.sha
+    await openFile(owner.value, repo.value, filePath, dbFile.sha, true /* record history */, false /* show file list */)
+    if(lineNumber)
+        editor.gotoLine(lineNumber, 0, true);
+    editor.focus();
+
+}
+
+
 
 function updateLineFromHistory(specificValue = null) {
     // 1. Erase current line in terminal: Move to start, clear to end
