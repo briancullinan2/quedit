@@ -480,44 +480,56 @@
       Tree.prototype.setValues = function (values) {
         var _this4 = this;
         this.emptyNodesCheckStatus();
+
         values.forEach(function (value) {
           _this4.setValue(value);
 
-          // --- NEW: Auto-expand logic ---
           var node = _this4.nodesById[value];
           if (node) {
-            var parent = node.parent;
+            // 1. Collect lineage (Root -> Parent -> Target)
+            var lineage = [];
+            var current = node; // Start with the target node itself
 
-            while (parent) {
-              var parentLi = _this4.liElementsById[parent.id];
-              if (parentLi && parentLi.classList.contains('treejs-node__close')) {
-                // Find the switcher and click it to trigger the animation and state change
-                var switcher = parentLi.querySelector('.treejs-switcher');
-                if (switcher) _this4.onSwitcherClick(switcher);
+            while (current) {
+              // We only care about nodes that are folders (have children)
+              // because files/placeholders don't have switchers to open
+              if (current.children && current.children.length > 0) {
+                lineage.unshift(current);
               }
-              parent = parent.parent;
+              current = current.parent;
+            }
 
-
-              const targetLi = _this4.liElementsById[value];
-              if (targetLi) {
-                setTimeout(() => {
-                  targetLi.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'nearest',
-                    inline: 'nearest'
-                  });
-                }, 300)
+            // 2. Open lineage top-down
+            lineage.forEach(function (nodeToOpen, index) {
+              var liEle = _this4.liElementsById[nodeToOpen.id];
+              if (liEle && liEle.classList.contains('treejs-node__close')) {
+                var switcher = liEle.querySelector('.treejs-switcher');
+                if (switcher) {
+                  setTimeout(function () {
+                    _this4.onSwitcherClick(switcher);
+                  }, (index + 1) * 250);
+                }
               }
+            });
 
+            // 3. Final Scroll to Target
+            var targetLi = _this4.liElementsById[value];
+            if (targetLi) {
+              setTimeout(function () {
+                targetLi.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'nearest',
+                  inline: 'nearest'
+                });
+              }, (lineage.length + 1) * 300);
             }
           }
-          // ------------------------------
         });
+
         this.updateLiElements();
         var onChange = this.options.onChange;
-        onChange && onChange.call(this);
+        if (onChange) onChange.call(this);
       };
-
 
       Tree.prototype.setDisable = function (value) {
         var node = this.nodesById[value];
@@ -635,7 +647,7 @@
               // Stagger the clicks slightly if you want a cascading animation effect
               setTimeout(() => {
                 _this.onSwitcherClick(switcher);
-              }, index * 50);
+              }, (index + 1) * 250);
             }
           }
         });
@@ -656,7 +668,7 @@
               block: 'nearest',
               inline: 'nearest'
             });
-          }, (lineage.length + 1) * 100);
+          }, (lineage.length + 1) * 300);
         }
       };
 

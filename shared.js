@@ -1153,7 +1153,7 @@ const API = (function () {
               mode: FS_FILE,
               contents: entry.contents,
               path: entry.filename,
-              sha: await getGitShaBrowser(entry.contents),
+              sha: null,
               parent: entry.filename.substring(0, entry.filename.lastIndexOf('/'))
             }
             if (memfs && !memfs.exists(entry.filename))

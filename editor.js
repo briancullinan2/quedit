@@ -25,8 +25,7 @@ function getOrCreateAceSession(fileId, content) {
 }
 
 
-function currentSession()
-{
+function currentSession() {
     return Object.keys(sessionCache).find(k => sessionCache[k] === editor.getSession())
 }
 
@@ -42,15 +41,15 @@ editor.renderer.$gutterLayer.setShowLineNumbers(true)
 editor.renderer.$loop.schedule(editor.renderer.CHANGE_GUTTER);
 const keybinding = document.getElementById('keybinding')
 let savedKeybinding = localStorage.getItem('keybinding') || keybinding.value || 'ace/keybinding/vim'
-if(!document.querySelector(`[value*="${savedKeybinding}"]`))
+if (!document.querySelector(`[value*="${savedKeybinding}"]`))
     savedKeybinding = keybinding.value || 'ace/keybinding/vim'
-if(!savedKeybinding || savedKeybinding == 'null')
+if (!savedKeybinding || savedKeybinding == 'null')
     editor.setKeyboardHandler(null);
 else
     editor.setKeyboardHandler(savedKeybinding);
 editor.session.setUseWorker(false);
 editor.session.setMode("ace/mode/c_cpp");
-;++tempCount;
+; ++tempCount;
 sessionCache['temp' + (tempCount)] = editor.session
 let currentOpenFileId = 'temp' + (tempCount)
 
@@ -101,7 +100,7 @@ editor.on("changeSelection", function () {
 editor.commands.addCommand({
     name: "save",
     bindKey: { win: "Ctrl-S", mac: "Command-S" },
-    exec: function(editor) {
+    exec: function (editor) {
         saveFile()
     }
 });
@@ -191,6 +190,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         modal.classList.add('hidden')
     }
+    isModifierPressed = e.ctrlKey || e.metaKey;
 });
 
 
@@ -209,7 +209,7 @@ async function newFile() {
 async function saveFile() {
     var database = owner.value + '/' + repo.value
     var filePath = currentSession()
-    if(!currentSession())
+    if (!currentSession())
         filePath = trees[database].nodesById[currentOpenFileId].path
     var content = editor.getValue()
     var newSha = await getGitShaBrowser(content)
@@ -222,10 +222,9 @@ async function saveFile() {
         parent: filePath.substring(0, filePath.lastIndexOf('/'))
     }
     currentOpenFileId = newSha
-    if(files[database])
-    {
+    if (files[database]) {
         await putRecord(DB_STORE_NAME, FS.virtual[filePath], database)
-        if(files[database][filePath])
+        if (files[database][filePath])
             files[database][filePath].sha = newSha
         else
             files[database][filePath] = FS.virtual[filePath]
@@ -244,6 +243,8 @@ const getModeByFilename = (filePath) => {
         'c': 'c_cpp',
         'cpp': 'c_cpp',
         'h': 'c_cpp',
+        'i': 'c_cpp',
+        'a': 'c_cpp',
         'cs': 'csharp',
         'html': 'html',
         'css': 'css',
@@ -278,5 +279,6 @@ function updateMaxLines() {
         });
     }
 }
+
 
 

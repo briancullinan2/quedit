@@ -195,7 +195,7 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
     //    with only this workflow and then templates for the
     //    files variable, it would look similar to `make`
     if (!noLinking) {
-        await linkLburg(database, hasChanged, true /* prevent recusion */)
+        await linkLburg(database, true, true /* prevent recusion */)
     }
 }
 
@@ -216,7 +216,7 @@ async function linkLburg(database, forceChanged = false, noBuild = false) {
     if (!noBuild
         // TODO: check objs mtimes?
     ) {
-        // contradicts forcedChanged because if noBuild === false then we just built
+        // contradicts forceChanged because if noBuild === false then we just built
         await buildLBurg(database, false /* here's what makes it special */, true /* prevent recursion */)
     }
 
@@ -443,7 +443,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
 
 
     if (!noLinking) {
-        await linkRCC(database, hasChanged)
+        await linkRCC(database, true, true)
     }
 
 }
@@ -540,7 +540,7 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
     }
 
     if (!noLinking) {
-        await linkCPP(database, hasChanged, true)
+        await linkCPP(database, true, true)
     }
 }
 
@@ -643,7 +643,7 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
 
 
     if (!noLinking) {
-        await linkLCC(database, hasChanged, true)
+        await linkLCC(database, true, true)
     }
 
 
@@ -702,14 +702,14 @@ async function linkLCC(database = null, forceChanged = false, noBuild = false) {
 
 // --- Build Logic ---
 
-async function buildTools(database = null, toolName = 'all', noBounce = false) {
+async function buildTools(database = null, toolName = 'all', forceChanged = false, noBounce = false) {
 
     if (buildDebounce) {
         clearTimeout(buildDebounce)
     }
 
     if (!noBounce) {
-        buildDebounce = setTimeout(() => buildTools(database, toolName, true), 500)
+        buildDebounce = setTimeout(() => buildTools(database, toolName, forceChanged, true), 500)
         return
     }
 
@@ -734,34 +734,34 @@ async function buildTools(database = null, toolName = 'all', noBounce = false) {
 
         if (toolName === 'lburg' || toolName === 'all')
             // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
-            await buildLBurg(database, true)
+            await buildLBurg(database, forceChanged)
 
         if (TERMINATE) return
 
 
         if (toolName === 'q3rcc' || toolName === 'all')
             // 2. Build RCC (The Compiler Core)
-            await buildRCC(database, false, true)
+            await buildRCC(database, false, forceChanged)
 
         if (TERMINATE) return
 
 
         if (toolName === 'q3cpp' || toolName === 'all')
             // 3. Build CPP (Preprocessor)
-            await buildCPP(database, true)
+            await buildCPP(database, forceChanged)
 
         if (TERMINATE) return
 
 
         if (toolName === 'q3lcc' || toolName === 'all')
             // 4. Build LCC (Frontend)
-            await buildLCC(database, true)
+            await buildLCC(database, forceChanged)
 
         if (TERMINATE) return
 
 
         if (toolName === 'q3asm' || toolName === 'all')
-            await buildAsmTool(database, true)
+            await buildAsmTool(toolsRepo2 || api.toolsRepo2 || api.database, forceChanged)
 
         if (TERMINATE) return
 

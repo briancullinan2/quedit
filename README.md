@@ -21,6 +21,16 @@ for S_Spatialize
 
 ## So far
 
+####  5/14/2026
+
+More build tools. QVMs nearly linking in the browser from wasms built with clang in the browser. 
+Trying to harden start up process so basic commands can be run and every builds locally.
+
+
+![ASM](./Screenshot%202026-05-14%20223006.png)
+
+
+
 
 #### 5/9/2026
 

@@ -171,7 +171,13 @@ async function getRecord(storeName, key, dbName = null) {
     const store = tx.objectStore(storeName)
     return new Promise((rs, rj) => {
         const req = store.get(key)
-        req.onsuccess = () => rs(req.result)
+        req.onsuccess = () => {
+            if(req.result && (req.result.parent === null
+                || req.result.parent === void 0)
+            )
+                req.result.parent = req.result.path.substring(0, req.result.path.lastIndexOf('/'))
+            rs(req.result)
+        }
         req.onerror = () => {
             console.log(req.error)
             return rj(req.error)

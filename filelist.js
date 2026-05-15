@@ -70,12 +70,12 @@ async function initializeFiletrees() {
 
     engineRepo = localStorage.getItem('engine_repository');
 
-    var parts = engineRepo?.split('/') || document.getElementById('filelist').dataset['repository']?.split('/')
+    let parts = engineRepo?.split('/') || document.getElementById('filelist').dataset['repository']?.split('/')
 
     if (parts) {
-        var newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
-        var newOwner = parts.length == 2 ? parts[0] : owner.value
-        var branches = await getBranches(newOwner, newRepo)
+        let newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
+        let newOwner = parts.length == 2 ? parts[0] : owner.value
+        let branches = await getBranches(newOwner, newRepo)
         engineRepo = newOwner + '/' + newRepo
         updateSelectOptions('branch', branches)
         if (newOwner && newRepo)
@@ -84,12 +84,12 @@ async function initializeFiletrees() {
 
     gameRepo = localStorage.getItem('game_repository');
 
-    var parts2 = gameRepo?.split('/') || document.getElementById('gamelist').dataset['repository']?.split('/')
+    let parts2 = gameRepo?.split('/') || document.getElementById('gamelist').dataset['repository']?.split('/')
     if (parts2) {
 
-        var newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repo.value
-        var newOwner2 = parts2.length == 2 ? parts2[0] : owner.value
-        var branches2 = await getBranches(newOwner2, newRepo2)
+        let newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repo.value
+        let newOwner2 = parts2.length == 2 ? parts2[0] : owner.value
+        let branches2 = await getBranches(newOwner2, newRepo2)
         gameRepo = newOwner2 + '/' + newRepo2
 
         if (newOwner2 && newRepo2)
@@ -99,13 +99,13 @@ async function initializeFiletrees() {
 
     assetRepo = localStorage.getItem('asset_repository');
 
-    var parts3 = assetRepo?.split('/') || document.getElementById('assetlist').dataset['repository']?.split('/')
+    let parts3 = assetRepo?.split('/') || document.getElementById('assetlist').dataset['repository']?.split('/')
 
     if (parts3) {
 
-        var newRepo3 = parts3.length == 2 ? parts3[1] : parts3[0] || repo.value
-        var newOwner3 = parts3.length == 2 ? parts3[0] : owner.value
-        var branches3 = await getBranches(newOwner3, newRepo3)
+        let newRepo3 = parts3.length == 2 ? parts3[1] : parts3[0] || repo.value
+        let newOwner3 = parts3.length == 2 ? parts3[0] : owner.value
+        let branches3 = await getBranches(newOwner3, newRepo3)
         assetRepo = newOwner3 + '/' + newRepo3
 
         if (newOwner3 && newRepo3)
@@ -144,9 +144,13 @@ let hasUntared = false
 const TAR_PREAMBLE = '\x1b[38;5;202m[TAR]\x1b[0m '
 
 async function untarFrontent() {
+
     PREAMBLE = TAR_PREAMBLE
-    const response = await fetch('sysroot.tar');
-    const tar = new API.Tar(await response.arrayBuffer(response), log);
+    const response = await fetch('/sysroot.tar', {
+        mode: 'cors',
+        credentials: 'omit',
+    });
+    const tar = new API.Tar(await response.arrayBuffer(), log);
     const count = await tar.untar(this.memfs);
     log(`${count} files read.`);
     hasUntared = true
@@ -154,12 +158,12 @@ async function untarFrontent() {
 }
 
 
-var treeLoading = false
+let treeLoading = false
 let refreshTree = null
 
 async function expandDatabaseTree(target, folderId) {
     const parts = folderId.split('/')
-    const database = parts[0] + '/' + parts[1]
+    const database = folderId.startsWith('Virtual Memory') ? 'Virtual Memory' : (parts[0] + '/' + parts[1])
     const baseDir = parts.slice(2).join('/')
     const dirPath = baseDir.substring(0, baseDir.lastIndexOf('/'));
     const parentDir = database + (dirPath.trim().length > 0 ? ('/' + dirPath) : '')
@@ -180,17 +184,32 @@ async function expandDatabaseTree(target, folderId) {
             await untarFrontent()
         }
 
-
-        let result = await queryIndex(DB_STORE_NAME, 'parent', baseDir, null, null, database)
-        for(let r of result) {
-            FS.virtual[r.path] = r
+        let resultSet = {}
+        let resultKeys = []
+        if (database === 'Virtual Memory') {
+            resultSet = FS.virtual
+            resultKeys = Object.keys(FS.virtual)
         }
-        let result2 = await queryIndex(DB_STORE_NAME, 'parent', baseDir + '/', null, null, database)
-        for(let r of result2) {
-            FS.virtual[r.path] = r
+        else {
+
+            let result = await queryIndex(DB_STORE_NAME, 'parent', baseDir, null, null, database)
+            for (let r of result) {
+                FS.virtual[r.path] = r
+            }
+            let result2 = await queryIndex(DB_STORE_NAME, 'parent', baseDir + '/', null, null, database)
+            for (let r of result2) {
+                FS.virtual[r.path] = r
+            }
+
+            resultSet = result.concat(result2).reduce((a, r) => {
+                a[r.path] = r
+                return a
+            }, {})
+            resultKeys = Object.keys(resultSet)
         }
 
-        const childrenKeys = Object.keys(FS.virtual).filter(path => {
+
+        const childrenKeys = resultKeys.filter(path => {
             // Must start with the folder path
             let firstMatch = baseDir === '/' || baseDir === '' || path.startsWith(baseDir + '/')
             if (!firstMatch) return false;
@@ -206,7 +225,7 @@ async function expandDatabaseTree(target, folderId) {
 
 
         const newChildren = childrenKeys.map(path => {
-            const node = FS.virtual[path];
+            const node = resultSet[path];
             const isDir = node.mode === FS_DIR; // Use your constant or (node.mode >> 12) == ST_DIR
             const name = path.split('/').pop() || path;
 
@@ -234,10 +253,12 @@ async function expandDatabaseTree(target, folderId) {
         if (newChildren.length === 0)
             newChildren.push({ text: 'Empty...', id: `${folderId}/empty` })
 
+        sortNodes(newChildren)
+
         loadedDatabases[folderId].children = trees['#database'].nodesById[folderId].children = newChildren
 
     } catch (err) {
-        console.error("Failed to load tree node:", err);
+        console.error("Failed to load tree node: " + err.message + '\n\r' + (err.stack || err.stacktrace));
         loadedDatabases[folderId] = [{ text: 'Error loading files', id: 'err' }];
     }
 
@@ -279,7 +300,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
 
 async function showDatabases(folderId) {
-    var databases = await getDatabaseMetadata()
+    let databases = await getDatabaseMetadata()
 
 
     const topDatabases = []
@@ -308,8 +329,32 @@ async function showDatabases(folderId) {
 
         topDatabases.push(loadedDatabases[d.key])
     }
-    
-    
+
+
+    if (!loadedDatabases[`Virtual Memory`]) {
+        loadedDatabases[`Virtual Memory`] = {
+            id: `Virtual Memory`,
+            text: `Virtual Memory`,
+            state: {
+                open: false,
+                expanded: false
+            },
+            path: `Virtual Memory`,
+            children: [{
+                id: `Virtual Memory/loading`,
+                text: 'Loading...',
+                state: {
+                    open: false,
+                    expanded: false
+                },
+                path: `Virtual Memory/loading`,
+            }]
+        }
+    }
+
+    topDatabases.push(loadedDatabases['Virtual Memory'])
+
+
     if (!trees['#database']) {
 
         trees['#database'] = new Tree('#database', {
@@ -322,8 +367,8 @@ async function showDatabases(folderId) {
         trees['#database'].options.data = topDatabases
         trees['#database'].renderPartial(folderId)
     } else {
-        trees['#database'].options.data = topDatabases
-        trees['#database'].render(trees['#database'].options.data)
+        //trees['#database'].options.data = topDatabases
+        //trees['#database'].render(trees['#database'].options.data)
     }
 }
 
@@ -347,7 +392,8 @@ function loadTree(database, cursor) {
         mode: cursor.mode,
         contents: cursor.contents,
         path: cursor.path,
-        sha: cursor.sha
+        sha: cursor.sha,
+        parent: cursor.parent,
     }
 }
 
@@ -355,7 +401,7 @@ function loadTree(database, cursor) {
 async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true, hidePanels = true) {
     api.github_token = localStorage.getItem('github_token');
 
-    var content = await cacheFile(repoOwner, repoName, filePath, sha)
+    let content = await cacheFile(repoOwner, repoName, filePath, sha)
     const decoder = new TextDecoder();
     const str = decoder.decode(content);
 
@@ -453,14 +499,39 @@ function treeHandler(selector, e) {
         const filePath = trees[selector].nodesById[fileId].path
         currentOpenFileId = fileId;
         trees[selector].values = [fileId];
-        openFile(owner.value, repo.value, filePath, trees[selector].nodesById[fileId].sha);
+        let selected = owner.value + '/' + repo.value
+        let nodeDB
+        if (nodeDB = node.getAttribute('data-database')) {
+            selected = nodeDB
+        }
+        if (node.closest('#filelist')) {
+            selected = engineRepo
+        }
+        if (node.closest('#gamelist')) {
+            selected = gameRepo
+        }
+        if (node.closest('#assetRepo')) {
+            selected = assetRepo
+        }
+        if (node.closest('#database')) {
+            let parent = node.closest('#database > div > ul > li[data-id]')
+            if(nodeDB = parent.getAttribute('data-id'))
+                selected = nodeDB
+
+        }
+
+        const parts = selected.split('/')
+        const newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
+        const newOwner = parts.length == 2 ? parts[0] : owner.value
+
+        openFile(newOwner, newRepo, filePath, trees[selector].nodesById[fileId].sha);
     }
 }
 
 document.getElementById('filelist').addEventListener('click', treeHandler.bind(null, '#filelist'));
 document.getElementById('gamelist').addEventListener('click', treeHandler.bind(null, '#gamelist'));
 document.getElementById('assetlist').addEventListener('click', treeHandler.bind(null, '#assetlist'));
-
+document.getElementById('database').addEventListener('click', treeHandler.bind(null, '#database'));
 
 
 function renderTabsCommand(panelId) {
@@ -481,12 +552,12 @@ function renderTabsCommand(panelId) {
 
         document.querySelector(`#tabs [href="#${panelId}"]`)?.classList.add('active')
 
-        var panel = document.getElementById(panelId)
+        let panel = document.getElementById(panelId)
         if (panel) {
             panel.classList.remove('hidden')
             panel.classList.add('not-hidden')
 
-            var newRepo = panel.dataset['repository']
+            let newRepo = panel.dataset['repository']
             if (panelId == 'filelist')
                 newRepo = localStorage.getItem('engine_repository') || newRepo
             if (panelId == 'gamelist')
@@ -513,7 +584,7 @@ function renderTabsCommand(panelId) {
 
 
 
-var panels = document.querySelectorAll('#filesearch, #filelist, #gamelist, #assetlist, #database, #github')
+let panels = document.querySelectorAll('#filesearch, #filelist, #gamelist, #assetlist, #database, #github')
 
 document.getElementById('tabs').addEventListener('click', async (e) => {
 
@@ -523,9 +594,9 @@ document.getElementById('tabs').addEventListener('click', async (e) => {
 
 
 function hideOpenPanels() {
-    var hasOpen = false;
+    let hasOpen = false;
 
-    var buttons = document.getElementById('tabs').children[0].children
+    let buttons = document.getElementById('tabs').children[0].children
 
     document.getElementById('viewport-frame').classList.remove('not-hidden')
     document.getElementById('editor').classList.remove('not-hidden')

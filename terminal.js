@@ -688,7 +688,9 @@ function extractFiles(col, row) {
 const terminalContainer = document.getElementById('terminal');
 
 terminalContainer.addEventListener('mousedown', async (event) => {
-    if (!event.ctrlKey && !isModifierPressed) return;
+
+    if (!event.ctrlKey || !isModifierPressed) return;
+
     event.preventDefault()
 
     const rect = terminalContainer.getBoundingClientRect();
@@ -791,9 +793,31 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
     if (!dbFile && files[toolsRepo2]) dbFile = files[toolsRepo2][filePath]
 
     // TODO: FS.virtual for IDB access and database
-    if (!dbFile && FS.virtual[filePath]) {
+    if (!dbFile && filePath.includes('build/')) {
+
         dbFile = FS.virtual[filePath]
-        renderTabsCommand('database')
+        let databases = await getDatabaseMetadata()
+        let item
+        for (item of databases) {
+
+            if (trees['#database'].nodesById[item.key + '/' + filePath]) {
+                dbFile = trees['#database'].nodesById[item.key + '/' + filePath]
+                break;
+            }
+
+            let record = await getRecord(DB_STORE_NAME, filePath, item.key)
+            if (record) {
+                 dbFile = trees['#database'].nodesById[item.key + '/' + filePath]
+                    = FS.virtual[filePath] = record
+                break;
+            }
+        }
+
+        if(dbFile) {
+            renderTabsCommand('database')
+            trees['#database'].values = [item.key];
+        }
+
     }
 
     if (!dbFile) dbFile = files[database][filePath]

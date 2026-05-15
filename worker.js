@@ -303,15 +303,16 @@ const onAnyMessage = async event => {
                 api.mkdirp(fileDir)
 
               if (!FS.virtual[filePath]) {
-                var record = await getRecord(DB_STORE_NAME, filePath, api.database)
+                let record = await getRecord(DB_STORE_NAME, filePath, api.database)
                 if (!record) continue
                 FS.virtual[record.path] = record
+
+                if (api.memfs)
+                  api.memfs.addFile(record.path, record.contents);
+
               }
+              api.hostWrite('Loading: ' + filePath + '\n\r')
 
-              if (api.memfs)
-                api.memfs.addFile(record.path, record.contents);
-
-              api.hostWrite('Loading: ' + record.path + '\n\r')
             } catch (e) {
               console.log(e)
             }
@@ -332,7 +333,7 @@ const onAnyMessage = async event => {
 
               try {
                 if (api.memfs && api.memfs.exists(filePath)) {
-                  var bytes = api.memfs.getFileContents(filePath)
+                  let bytes = api.memfs.getFileContents(filePath)
                   if (bytes.length > 0) {
                     FS.virtual[filePath] = {
                       timestamp: new Date(),

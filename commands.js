@@ -265,15 +265,15 @@ async function buildCommand(argv, database) {
 
 
     if (mode === 'lburg' || mode === 'all' || mode === 'tools')
-        await buildTools(selected, 'lburg') // shared debouncer
+        await buildTools(selected, 'lburg', mode === 'lburg', true) // shared debouncer
     if (mode === 'q3rcc' || mode === 'all' || mode === 'tools')
-        await buildTools(selected, 'q3rcc') // implicit forcedChanged = true
+        await buildTools(selected, 'q3rcc', mode === 'q3rcc', true) // implicit forceChanged = true
     if (mode === 'q3cpp' || mode === 'all' || mode === 'tools')
-        await buildTools(selected, 'q3cpp')
+        await buildTools(selected, 'q3cpp', mode === 'q3cpp', true)
     if (mode === 'q3lcc' || mode === 'all' || mode === 'tools')
-        await buildTools(selected, 'q3lcc')
+        await buildTools(selected, 'q3lcc', mode === 'q3lcc', true)
     if (mode === 'q3asm' || mode === 'all' || mode === 'tools')
-        await buildTools(selected), 'q3asm'
+        await buildTools(selected, 'q3asm', mode === 'q3asm', true)
 
     if (mode === 'game' || mode === 'all' || mode === 'qvms')
         await buildGame(selected, true) // shared debouncer
@@ -356,7 +356,7 @@ async function link(argv, database) {
 
     if (mode === 'stringify' || mode === 'all')
         await linkStringify(selected, true)
-    
+
     if (mode === 'client' || mode === 'engine'
         || mode === 'shaders' || mode === 'release'
         || mode === 'debug' || mode === 'all'

@@ -1,5 +1,5 @@
 :root {
-    --global-height: 1.6;
+    --global-height: 1.6em;
     --default-size: 16px; /* calc(var(--global-height) * 1rem); */
 }
 
@@ -248,7 +248,7 @@ body {
 
 .theme-vibrant-ink {
     --ace-bg: #000000;
-    --ace-gutter-bg: #000000;
+    --ace-gutter-bg: #1a1a1a;
     --ace-foreground: #FFFFFF;
     --ace-comment: #9933CC;
     --ace-selection-bg: #354932;
@@ -486,19 +486,6 @@ body {
     --ace-purple: #FF0000;
     --ace-blue: #0000FF;
     --ace-green: #008000;
-}
-
-
-.theme-vibrant-ink {
-    --ace-bg: #000000;
-    --ace-gutter-bg: #000000;
-    --ace-foreground: #FFFFFF;
-    --ace-comment: #9933CC;
-    --ace-selection-bg: #354932;
-    --ace-pink: #FF6600;
-    --ace-purple: #339999;
-    --ace-blue: #FFCC00;
-    --ace-green: #66FF00;
 }
 
 .theme-merbivore {

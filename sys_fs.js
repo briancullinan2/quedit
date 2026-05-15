@@ -1139,7 +1139,8 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 				timestamp: new Date(),
 				mode: (oflags & O_DIRECTORY) ? FS_DIR : FS_FILE,
 				size: 0,
-				path: localName
+				path: localName,
+				parent: localName.substring(0, localName.lastIndexOf('/'))
 			};
 		}
 
@@ -1580,7 +1581,8 @@ function path_symlink(oldPathPtr, oldPathLen, dirfd, newPathPtr, newPathLen) {
 		mode: (7 << 12) + FS_DEFAULT, // S_IFLNK (Symbolic Link)
 		size: target.length,
 		path: localLink,
-		target: target // Helper for your path resolution logic
+		target: target, // Helper for your path resolution logic
+		parent: localLink.substring(0, localLink.lastIndexOf('/')),
 	};
 
 	if (api.memfs) {
@@ -1605,7 +1607,8 @@ function AddDirectoryNode(parentFd, pathPtr, pathLen) {
 			timestamp: new Date(),
 			mode: FS_DIR,
 			size: 4096, // Standard directory block size
-			path: localName
+			path: localName,
+			parent: localName.substring(0, localName.lastIndexOf('/'))
 		};
 	}
 
@@ -1632,7 +1635,8 @@ function AddFileNode(parentFd, pathPtr, pathLen) {
 			timestamp: new Date(),
 			mode: FS_FILE,
 			size: 0,
-			path: localName
+			path: localName,
+			parent: localName.substring(0, localName.lastIndexOf('/'))
 		};
 	}
 
@@ -1830,12 +1834,14 @@ function path_rename(oldFd, oldPathPtr, oldPathLen, newFd, newPathPtr, newPathLe
 			if (p.startsWith(oldPrefix)) {
 				const updated = newPrefix + p.substring(oldPrefix.length);
 				FS.virtual[updated] = FS.virtual[p];
+				FS.virtual[updated].parent = updated.substring(0, updated.lastIndexOf('/'))
 				delete FS.virtual[p];
 			}
 		});
 	}
 
 	FS.virtual[newPath] = node;
+	FS.virtual[newPath].parent = newPath.substring(0, newPath.lastIndexOf('/'))
 	delete FS.virtual[oldPath];
 
 	return 0; // SUCCESS
