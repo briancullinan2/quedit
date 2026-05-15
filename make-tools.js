@@ -182,7 +182,8 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
             log(`CC: ${src}\n\r`);
             await compileToolFile(src, obj, "lburg", database, [], forceChanged);
         } catch (e) {
-            log(e)
+            PREAMBLE = TOOLERR_PREAMBLE
+            log(`Build error in lburg: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
         }
 
     }
@@ -269,12 +270,12 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
             FILELIST = await loadGitHubTree(ownerName, repoName, BRANCH)
         }
 
-        const sha = (FILELIST[src] || {}).sha;
+
         let content
         if (FS.virtual[src])
             content = FS.virtual[srv].contents
         else if (!src.includes('build/'))
-            content = await cacheFile(ownerName, repoName, src, sha);
+            content = await cacheFile(ownerName, repoName, src);
         else {
             FS.virtual[src] = await getRecord(DB_STORE_NAME, src, database)
             if (!FS.virtual[src])
@@ -332,7 +333,8 @@ const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m '
 let PREAMBLE = TOOLS_PREAMBLE
 function log(msg, ...args) {
 
-    if (typeof term !== 'undefined') term.write(`${PREAMBLE}${msg}\r\n`);
+    if (msg.includes('TypeError:')) debugger
+    if (typeof term !== 'undefined') term.write(`${PREAMBLE}${msg}${msg.stack || msg.stacktrace || ''}\r\n`);
     else if (typeof api.hostWrite != 'undefined') api.hostWrite(`${PREAMBLE}${msg}\r\n`);
     else console.log(msg);
     if (typeof triggerIncrementalSave !== 'undefined')
@@ -637,7 +639,8 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
             log(`CC: ${src}\n\r`);
             await compileToolFile(src, obj, "src", database, lccFlags, forceChanged);
         } catch (e) {
-            log(e)
+            PREAMBLE = TOOLERR_PREAMBLE
+            log(`Build error in q3lcc: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
         }
     }
 
@@ -868,6 +871,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
             });
 
         } catch (e) {
+            PREAMBLE = TOOLERR_PREAMBLE
             log(`Error compiling q3asm component: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
         }
     }
@@ -931,6 +935,7 @@ async function linkAsm(database = null, forceChanged = false, noBuild = false) {
     } catch (e) {
         PREAMBLE = TOOLERR_PREAMBLE
         log(`Linker Error for q3asm: ${q3asmExe}: ${e}\n\r${e.stack || e.stacktrace}`);
+        throw e
     }
 }
 

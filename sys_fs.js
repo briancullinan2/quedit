@@ -23,6 +23,7 @@ const F_OK = 4
 
 
 function Sys_Mkdir(filename) {
+	debugger
 	let fileStr = addressToString(filename)
 	let localName = fileStr
 	if (localName.startsWith('//'))
@@ -88,6 +89,7 @@ function Sys_FOpen(filename, mode) {
 	let modeStr = addressToString(mode)
 	let localName = fileStr.trim()
 
+	debugger
 	//console.log(localName)
 	if (localName.startsWith('/')) localName = localName;
 	if (localName.startsWith('base/')) localName = localName.substring(5);
@@ -303,12 +305,6 @@ function Sys_Rename(src, dest) {
 
 
 function Sys_ListFiles(directory, extension, filter, numfiles, wantsubs) {
-	let files = {
-		'default.cfg': {
-			mtime: 0,
-			size: 1024,
-		}
-	}
 	let dironly = wantsubs
 	// TODO: don't combine /home and /base?
 	let localName = addressToString(directory)
@@ -325,12 +321,12 @@ function Sys_ListFiles(directory, extension, filter, numfiles, wantsubs) {
 	let matches = Object.keys(FS.virtual).filter(function (key) {
 		let subdirI = key.substring(localName.length + 1).indexOf('/')
 		return (!extensionStr || key.endsWith(extensionStr)
-			|| (extensionStr == '/' && (FS.virtual[key].mode >> 12) == ST_DIR))
+			|| (extensionStr == '/' && (FS.virtual[key].mode >> 12) === ST_DIR))
 			// TODO: match directory 
 			&& (key[localName.length] == '/')
 			&& (wantsubs || subdirI == -1 || subdirI == key.length - 1)
 			&& (!localName || key.startsWith(localName))
-			&& (!dironly || (FS.virtual[key].mode >> 12) == ST_DIR)
+			&& (!dironly || (FS.virtual[key].mode >> 12) === ST_DIR)
 	})
 	// return a copy!
 	let listInMemory
@@ -753,6 +749,7 @@ function fd_filestat_get(fd, bufPtr) {
 
 
 	let stream = FS.pointers[fd];
+	debugger
 
 	if (!stream) return 8; // WASI_EBADF
 	if (stream[2].rewrite) {
@@ -1309,6 +1306,7 @@ function writeU32(ptr, value) {
 function fd_read(fd, iovs, iovsLen, nreadPtr) {
 
 	let stream = FS.pointers[fd];
+
 	if (!stream) return 8; // WASI_EBADF
 	if (stream[2].rewrite) {
 		stream = FS.pointers[stream[2].rewrite]
@@ -1418,6 +1416,7 @@ function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
 	const buffer = Module.memory.buffer;
 	const path = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
 
+	debugger
 	// 1. Normalize path
 	let localName = path;
 	if (localName.startsWith('/')) localName = localName.substring(1);
@@ -1430,7 +1429,6 @@ function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
 	// WASI filetype for symbolic_link is 7
 	// If you don't support symlinks, return EINVAL (28)
 	if (!file) {
-		debugger
 		return 44; // ENOENT
 	}
 
@@ -1461,6 +1459,7 @@ function fd_renumber(fd, to) {
 
 	// 1. Validate the source descriptor
 	let stream = FS.pointers[fd];
+
 	if (!stream) {
 		return 8; // WASI_EBADF
 	}
@@ -1523,12 +1522,10 @@ const FILED = {
 	fd_renumber: fd_renumber,
 	fd_sync: function () { debugger },
 	fd_tell: function () { debugger },
-	path_create_directory: function () { debugger },
 	path_filestat_get: path_filestat_get,
 	path_filestat_set_times: function () { debugger },
 	path_link: function () { debugger },
 	path_readlink: path_readlink,
-	path_remove_directory: function () { debugger },
 	path_symlink: path_symlink,
 	path_unlink_file: path_unlink_file,
 	proc_raise: function () { debugger },
@@ -1549,8 +1546,8 @@ const FILED = {
 	fd_filestat_get: fd_filestat_get,
 	fd_filestat_set_size: function fd_filestat_set_size() { debugger },
 	init: function init() { debugger },
-	path_create_directory: function path_create_directory() { debugger },
-	path_remove_directory: function path_remove_directory() { debugger },
+	path_create_directory: path_create_directory,
+	path_remove_directory: path_remove_directory,
 	path_rename: path_rename,
 	Sys_gettime: clock_gettime,
 	clock_time_get: clock_gettime,
@@ -1795,16 +1792,12 @@ function path_rename(oldFd, oldPathPtr, oldPathLen, newFd, newPathPtr, newPathLe
 
 	const heap = new Uint8Array(Module.memory.buffer);
 
-	// Helper to decode strings from WASM memory
-	const readStr = (ptr, len) => {
-		const bytes = heap.subarray(ptr, ptr + len);
-		return new TextDecoder().decode(bytes);
-	};
+	debugger
 
 	// 1. Read the paths
 	// In your log, oldPathPtr was actually 6635560 (the 2nd argument)
-	let oldPath = readStr(oldPathPtr, oldPathLen);
-	let newPath = readStr(newPathPtr, newPathLen);
+	let oldPath = readStr(heap, oldPathPtr, oldPathLen);
+	let newPath = readStr(heap, newPathPtr, newPathLen);
 
 	/*
 	// 2. Resolve them against their respective FDs
@@ -1847,6 +1840,92 @@ function path_rename(oldFd, oldPathPtr, oldPathLen, newFd, newPathPtr, newPathLe
 	return 0; // SUCCESS
 }
 
+
+/**
+ * WASI path_create_directory implementation
+ * @param {number} fd - Base file descriptor (e.g., 3 for root preopen)
+ * @param {number} pathPtr - Linear memory address of the directory name string
+ * @param {number} pathLen - Explicit byte length of the directory name string
+ * @returns {number} WASI errno (0 = Success, 76 = ENOTDIR, 20 = EEXIST, etc.)
+ */
+function path_create_directory(fd, pathPtr, pathLen) {
+    // 1. Ensure the global views are active and valid
+    if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
+        updateGlobalBufferAndViews();
+    }
+    const heap = Module.HEAPU8 || window.HEAPU8;
+
+    // 2. WASI Optimization: Decode using the exact length provided by the engine
+    const folderBytes = heap.subarray(pathPtr, pathPtr + pathLen);
+    const dirPath = new TextDecoder("utf-8").decode(folderBytes);
+    const normalizedPath = dirPath.replace(/\/$/, "");
+
+    if (!FS.virtual) FS.virtual = {};
+
+    // 3. POSIX/WASI Check: Check if path already exists
+    if (FS.virtual[normalizedPath]) {
+        const isDir = (FS.virtual[normalizedPath].mode >> 12) === 4; // S_IFDIR check (or use your ST_DIR)
+        if (!isDir) {
+            console.error(`WASI VFS Error: Path exists and is a file -> ${normalizedPath}`);
+            return 20; // WASI_EEXIST (File exists)
+        }
+        return 0; // Success, directory is already accessible
+    }
+
+    // 4. Inject the compliant WASI directory entry
+    FS.virtual[normalizedPath] = {
+        path: normalizedPath,
+        parent: normalizedPath.substring(0, normalizedPath.lastIndexOf('/')),
+        sha: "virtual_dir_sha",
+        type: 'dir',
+        mode: 0o040000 | 0o755, // S_IFDIR | permissions (755)
+        size: 4096,
+        timestamp: new Date()
+    };
+
+    console.log(`WASI VFS: Created directory via fd(${fd}) -> "${normalizedPath}"`);
+    return 0; // WASI_ESUCCESS
+}
+
+/**
+ * WASI path_remove_directory implementation
+ * @param {number} fd - Base file descriptor
+ * @param {number} pathPtr - Linear memory address
+ * @param {number} pathLen - String byte length
+ */
+function path_remove_directory(fd, pathPtr, pathLen) {
+    if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
+        updateGlobalBufferAndViews();
+    }
+    const heap = Module.HEAPU8 || window.HEAPU8;
+
+    const folderBytes = heap.subarray(pathPtr, pathPtr + pathLen);
+    const dirPath = new TextDecoder("utf-8").decode(folderBytes);
+    const normalizedPath = dirPath.replace(/\/$/, "");
+
+    if (!FS.virtual || !FS.virtual[normalizedPath]) {
+        console.warn(`WASI VFS Error: Directory not found -> ${normalizedPath}`);
+        return 44; // WASI_ENOENT (No such file or directory)
+    }
+
+    if (FS.virtual[normalizedPath].type !== 'dir') {
+        console.error(`WASI VFS Error: Path is not a directory -> ${normalizedPath}`);
+        return 76; // WASI_ENOTDIR (Not a directory)
+    }
+
+    // Check if empty
+    const prefix = normalizedPath + "/";
+    const isNotEmpty = Object.keys(FS.virtual).some(filePath => filePath.startsWith(prefix));
+
+    if (isNotEmpty) {
+        console.error(`WASI VFS Error: Directory not empty -> ${normalizedPath}`);
+        return 54; // WASI_ENOTEMPTY (Directory not empty)
+    }
+
+    delete FS.virtual[normalizedPath];
+    console.log(`WASI VFS: Removed directory via fd(${fd}) -> "${normalizedPath}"`);
+    return 0; // WASI_ESUCCESS
+}
 
 
 

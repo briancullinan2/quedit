@@ -204,12 +204,12 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
         for (const file of filesList) {
             if (TERMINATE) return
 
-            let srcPath;
+            let src;
             // Q3 Makefile logic: shared files are in the game/ directory
             if (file.startsWith('bg_') || file.startsWith('q_')) {
-                srcPath = path.join(dirs.QADIR, file.replace('.o', '.c'));
+                src = path.join(dirs.QADIR, file.replace('.o', '.c'));
             } else {
-                srcPath = path.join(sourceDir, file.replace('.o', '.c'));
+                src = path.join(sourceDir, file.replace('.o', '.c'));
             }
 
             try {
@@ -217,34 +217,41 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                 PREAMBLE = QVM_PREAMBLE
 
                 // TODO: if using q3lcc
-                let outPath = path.join(CONFIGURATION, name, file);
+                let obj = path.join(CONFIGURATION, name, file);
                 if (QVM_MODE)
-                    outPath = path.join(CONFIGURATION, name, file.replace('.o', '.asm'));
+                    obj = obj.replace('.o', '.asm');
 
                 const tempPath = path.join(CONFIGURATION, name, file.replace('.o', '.i'));
 
-                if (!files[database][srcPath]) {
-                    debugger
+
+                let content
+                if (FS.virtual[src])
+                    content = FS.virtual[src].contents
+                else if (!src.includes('build/'))
+                    content = await cacheFile(ownerName, repoName, src);
+                else {
+                    FS.virtual[src] = await getRecord(DB_STORE_NAME, src, database)
+                    if (!FS.virtual[src])
+                        throw new Error('Output file not found: ' + src)
                 }
-                const sha = files[database][srcPath].sha;
-                const content = await cacheFile(ownerName, repoName, srcPath, sha);
 
 
-                let objRecord = await getRecord(DB_STORE_NAME, outPath, database)
-                FS.virtual[outPath] = objRecord
 
-                if (FS.virtual[outPath]
-                    && FS.virtual[srcPath]?.timestamp < FS.virtual[outPath]?.timestamp
+                let objRecord = await getRecord(DB_STORE_NAME, obj, database)
+                FS.virtual[obj] = objRecord
+
+                if (FS.virtual[obj]
+                    && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
                     && !forceChanged
                 ) {
-                    log(`${outPath} already up to date...\n\r`)
-
+                    log(`${obj} already up to date...\n\r`)
                     continue
                 }
 
+
                 hasChanged = true
 
-                log(`QVMCC: ${srcPath}`);
+                log(`QVMCC: ${src}`);
 
                 let CCFLAGS = [
                     ...(QVM_MODE ? [] : QVMLIB_CFLAGS),
@@ -261,11 +268,11 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                             'q3cpp', // '-v', '-v',
                             ...QVM_CFLAGS,
                             ...extraDefines.map(d => `-D${d}`),
-                            srcPath,
+                            src,
                             tempPath,
                         ],
                         database: database,
-                        paths: [srcPath, tempPath],
+                        paths: [src, tempPath],
 
                     })
 
@@ -279,25 +286,25 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                             '-target=bytecode',
                             '-v',
                             tempPath,
-                            outPath //.split('/').pop(),
+                            obj //.split('/').pop(),
                         ],
                         database: database,
-                        paths: [outPath, tempPath],
+                        paths: [obj, tempPath],
                     })
                 }
                 else {
                     await api.compile({
                         CFLAGS: CCFLAGS,
                         contents: content,
-                        input: srcPath,
+                        input: src,
                         database,
-                        obj: outPath // For QVM, we output .asm first
+                        obj: obj // For QVM, we output .asm first
                     });
                 }
 
             } catch (e) {
                 PREAMBLE = QVMERR_PREAMBLE
-                log(`CC: ${srcPath}: ${e.message}\n\r${e.stack || e.stacktrace}`);
+                log(`CC: ${src}: ${e.message}\n\r${e.stack || e.stacktrace}`);
             }
         }
 
@@ -351,6 +358,8 @@ async function linkModule(database, name, filesList, forceChanged = false, noMod
         const qvmOutput = path.join(CONFIGURATION, repoName || config.MOD, `${name === 'game' ? 'qagame' : name}.qvm`);
 
         let qvmObjs = filesList.map(file => path.join(CONFIGURATION, name, file))
+        if (QVM_MODE)
+            qvmObjs = filesList.map(file => path.join(CONFIGURATION, name, file.replace('.o', '.asm')))
 
 
         // prevent recursion
@@ -426,7 +435,8 @@ async function linkModule(database, name, filesList, forceChanged = false, noMod
         log(`Success: ${qvmOutput}`);
     } catch (e) {
         PREAMBLE = QVMERR_PREAMBLE
-        log(`Linker Error in ${name}`);
+        log(`Linker Error in ${name}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+        throw e
     }
     finally {
         building = false

@@ -139,22 +139,24 @@ async function putRecord(storeName, record, dbName = null, noBounce = false) {
         sha: record.sha,
         parent: record.parent
     }
+
+    if (!newRecord.path
+        || newRecord.path === 'build/release-wasm-js/cpp/lex.o'
+        || newRecord.path.includes('.qvm')
+    ) {
+        debugger
+    }
     if (typeof debouncePath[record.path] !== 'undefined') {
-        clearTimeout(debouncePath)
+        clearTimeout(debouncePath[record.path])
     }
     if (!noBounce)
-        return debouncePath[record.path] = setTimeout(() => putRecord(storeName, newRecord, dbName, true), 100)
+        return debouncePath[record.path] = setTimeout(() => putRecord(storeName, newRecord, dbName, true), 200)
 
     const db = await getDB(dbName)
     const tx = db.transaction(storeName, 'readwrite')
     const store = tx.objectStore(storeName)
     return new Promise((rs, rj) => {
 
-        if (!newRecord.path
-            || newRecord.path === 'build/release-wasm-js/cpp/lex.o'
-        ) {
-            debugger
-        }
         const req = store.put(newRecord)
         tx.oncomplete = function () { rs(req.result) }
         req.onerror = () => {
@@ -165,26 +167,45 @@ async function putRecord(storeName, record, dbName = null, noBounce = false) {
     })
 }
 
-async function getRecord(storeName, key, dbName = null) {
-    const db = await getDB(dbName)
-    const tx = db.transaction(storeName, 'readonly')
-    const store = tx.objectStore(storeName)
-    return new Promise((rs, rj) => {
-        const req = store.get(key)
-        req.onsuccess = () => {
-            if(req.result && (req.result.parent === null
-                || req.result.parent === void 0)
-            )
-                req.result.parent = req.result.path.substring(0, req.result.path.lastIndexOf('/'))
-            rs(req.result)
-        }
-        req.onerror = () => {
-            console.log(req.error)
-            return rj(req.error)
-        }
-    })
-}
 
+async function getRecord(storeName, key, dbName = null) {
+    const db = await getDB(dbName);
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+
+    return new Promise((rs, rj) => {
+        const req = store.get(key);
+
+        req.onsuccess = () => {
+            const result = req.result;
+
+            // 1. If no record was found, exit early with null
+            if (!result) {
+                return rs(null);
+            }
+
+            // 2. Safely fix the "Homeless Node" issue
+            if (result.parent === null || result.parent === undefined) {
+                const path = result.path || "";
+                const lastSlash = path.lastIndexOf('/');
+
+                // If no slash, parent is root '/'. If slash at 0, parent is root '/'.
+                if (lastSlash <= 0) {
+                    result.parent = '/';
+                } else {
+                    result.parent = path.substring(0, lastSlash);
+                }
+            }
+
+            rs(result);
+        };
+
+        req.onerror = () => {
+            console.error("IDB GetRecord Error:", req.error);
+            rj(req.error);
+        };
+    });
+}
 
 
 async function queryIndex(storeName, indexName, exactIndex = null, lower = null, upper = null, dbName = null) {

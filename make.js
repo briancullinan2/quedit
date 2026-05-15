@@ -675,7 +675,7 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
         })
     } catch (e) {
         PREAMBLE = ERROR_PREAMBLE
-        log(e)
+        log(`Link error in stringify\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
     }
 
 
@@ -797,7 +797,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
             } catch (e) {
                 PREAMBLE = ERROR_PREAMBLE
-                log(e)
+                log(`Build error in client: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
             }
 
         }
@@ -875,7 +875,7 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
             wasm: engineExe
         })
     } catch (e) {
-        log(e)
+        log(`Link error in click\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
     }
 
 
@@ -952,7 +952,7 @@ async function buildShaders(database = null, forceChanged = false) {
             })
 
         } catch (e) {
-            log(e)
+            log(`Build error in shaders: ${shader}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
         }
     }
 
@@ -1020,7 +1020,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
             } catch (e) {
                 PREAMBLE = ERROR_PREAMBLE
 
-                log(`Failed to cache ${header}: ` + e + '\n\r' + (e.stack || e.stacktrace));
+                log(`Failed to download header ${header}: ` + e + '\n\r' + (e.stack || e.stacktrace));
             }
         }));
 

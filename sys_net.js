@@ -677,7 +677,7 @@ function CL_Download(cmd, name, auto) {
       //  result = await readStore(nameStr)
       //}
       let responseData
-      //if (!result || (result.mode >> 12) == ST_DIR
+      //if (!result || (result.mode >> 12) === ST_DIR
         // bust the caches!
       //  || result.timestamp.getTime() < NET.cacheBuster) {
         responseData = (await Promise.all([

@@ -194,11 +194,11 @@ async function expandDatabaseTree(target, folderId) {
 
             let result = await queryIndex(DB_STORE_NAME, 'parent', baseDir, null, null, database)
             for (let r of result) {
-                FS.virtual[r.path] = r
+                files[database][r.path] = FS.virtual[r.path] = r
             }
             let result2 = await queryIndex(DB_STORE_NAME, 'parent', baseDir + '/', null, null, database)
             for (let r of result2) {
-                FS.virtual[r.path] = r
+                files[database][r.path] = FS.virtual[r.path] = r
             }
 
             resultSet = result.concat(result2).reduce((a, r) => {
@@ -226,7 +226,7 @@ async function expandDatabaseTree(target, folderId) {
 
         const newChildren = childrenKeys.map(path => {
             const node = resultSet[path];
-            const isDir = node.mode === FS_DIR; // Use your constant or (node.mode >> 12) == ST_DIR
+            const isDir = node.mode === FS_DIR; // Use your constant or (node.mode >> 12) === ST_DIR
             const name = path.split('/').pop() || path;
 
             let newNode = {

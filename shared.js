@@ -1271,8 +1271,8 @@ const API = (function () {
           if (!filePath) continue
           let contents
           try {
-            if (this.database) {
-              let record = await getRecord(DB_STORE_NAME, filePath, this.database)
+            if (database) {
+              let record = await getRecord(DB_STORE_NAME, filePath, database)
               if (record) {
                 contents = record.contents
               }
@@ -1284,6 +1284,28 @@ const API = (function () {
           try {
             if (!contents && this.toolsRepo) {
               let record = await getRecord(DB_STORE_NAME, filePath, this.toolsRepo)
+              if (record) {
+                contents = record.contents
+              }
+            }
+          } catch (e) {
+            console.log(e)
+          }
+
+          try {
+            if (!contents && this.database) {
+              let record = await getRecord(DB_STORE_NAME, filePath, this.database)
+              if (record) {
+                contents = record.contents
+              }
+            }
+          } catch (e) {
+            console.log(e)
+          }
+
+          try {
+            if (!contents && this.database) {
+              let record = await getRecord(DB_STORE_NAME, filePath, this.toolsRepo2)
               if (record) {
                 contents = record.contents
               }
@@ -1326,11 +1348,11 @@ const API = (function () {
         this.moduleCache[name] = module;
 
         if (name.includes('q3lcc')) {
-          let q3cpp = await this.getModule('q3cpp', database, true)
+          let q3cpp = await this.getModule('q3cpp', database || this.toolsRepo, true)
           q3cpp.sync = true
-          let q3rcc = await this.getModule('q3rcc', database, true)
+          let q3rcc = await this.getModule('q3rcc', database || this.toolsRepo, true)
           q3cpp.sync = true
-          let q3asm = await this.getModule('q3asm', database, true)
+          let q3asm = await this.getModule('q3asm', database || this.toolsRepo2, true)
           q3asm.sync = true
         }
 
@@ -1351,21 +1373,23 @@ const API = (function () {
 
           // TODO: try compiling ourselves if its a known module + result
           if (name.includes('q3lcc'))
-            await buildLCC(this.toolsRepo || this.database)
+            await buildLCC(this.toolsRepo || database || this.database, false)
           if (name.includes('q3rcc'))
-            await buildRCC(this.toolsRepo || this.database)
+            await buildRCC(this.toolsRepo || database || this.database, false, false)
           if (name.includes('lburg'))
-            await buildLBurg(this.toolsRepo || this.database)
+            await buildLBurg(this.toolsRepo || database || this.database, false)
           if (name.includes('q3cpp'))
-            await buildCPP(this.toolsRepo || this.database)
-          if (name.includes('q3asm'))
-            await buildAsmTool(this.toolsRepo2 || this.database)
+            await buildCPP(this.toolsRepo || database || this.database, false)
+          if (name.includes('q3asm')) {
+            debugger
+            await buildAsmTool(this.toolsRepo2 || database || this.database, false)
+          }
           if (name.includes('quake3e'))
-            await buildClient(this.toolsRepo || this.database)
+            await buildClient(this.toolsRepo || database || this.database, false)
           if (name.includes('quake3e.ded'))
-            await buildDedicated(this.toolsRepo || this.database)
+            await buildDedicated(this.toolsRepo || database || this.database, false)
           if (name.includes('stringify'))
-            await buildStringify(this.toolsRepo || this.database)
+            await buildStringify(this.toolsRepo || database || this.database, false)
 
 
           return await this.getModule(name, database, true)
@@ -1420,8 +1444,8 @@ const API = (function () {
           FS.virtual[accumulated + '/.'] = FS.virtual[accumulated]
           if (previousPath)
             FS.virtual[accumulated + '/..'] = FS.virtual[previousPath]
-          if(this.database)
-            putRecord(DB_STORE_NAME,  FS.virtual[accumulated], this.database)
+          if (this.database)
+            putRecord(DB_STORE_NAME, FS.virtual[accumulated], this.database)
         } catch (e) {
           // Log only if it's a real crash, not just an "already exists" error
           if (!e.message.includes("exists")) {
@@ -1565,7 +1589,7 @@ const API = (function () {
           this.hostWrite('Succeeded: ' + obj + '\n\r')
         } catch (e) {
           debugger
-          console.error(e)
+          log(e)
         }
       }
       else if (this.database && FS.virtual[obj]) {
@@ -1573,7 +1597,7 @@ const API = (function () {
           await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
         } catch (e) {
           debugger
-          console.error(e)
+          log(e)
         }
       }
 

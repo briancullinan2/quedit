@@ -205,6 +205,57 @@ function performSearch(termToSearch, caseSensitive = false) {
     }
 }
 
+
+function refreshBlinker() {
+    if (document.visibilityState === 'visible') {
+        // Force xterm to think it is focused
+        term.focus();
+
+        if (!term || !term._core) return;
+
+        if (document.visibilityState === 'visible') {
+            // 2. Force internal focus state
+            term.focus();
+            
+            // 3. Restart the blink interval timer
+            if (term._core._cursorBlinkContext) {
+                term._core._cursorBlinkContext.restartInterval();
+            }
+            
+            // 4. THE FIX: Use the public-facing or stable internal refresh
+            // This forces the terminal to re-evaluate what needs to be drawn
+            if (term._core.renderService) {
+                // This triggers a full refresh of all layers safely
+                term._core.renderService.refreshRows(0, term.rows - 1);
+            } else if (term.refresh) {
+                // Fallback for older versions
+                term.refresh(0, term.rows - 1);
+            }
+        }
+    }
+};
+
+// 1. Watch for browser tab/window switching
+document.addEventListener('visibilitychange', refreshBlinker);
+
+// 2. Watch for clicks back into the window from other apps
+window.addEventListener('focus', refreshBlinker);
+
+// 3. Handle the 'stuck' blinker when focus shifts to other UI elements (like Ace)
+// We use a slight delay to allow the focus transition to complete
+window.addEventListener('blur', () => {
+    setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+            // If we are still visible, we want the cursor to keep blinking 
+            // even if the terminal technically lost focus to a sidebar
+            refreshBlinker();
+        }
+    }, 100);
+});
+
+
+
+
 function highlightWithAnsi(x, y, text) {
     term.write(`\x1b[${y};${x}H\x1b[7m${text}\x1b[27m`);
 }

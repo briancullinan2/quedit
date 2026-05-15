@@ -343,6 +343,12 @@ function Sys_Frame() {
 async function Sys_notify(ifile, path, fp) {
 	var database = Module.database || owner.value + '/' + repo.value
 	try {
+		if (ifile === false) {
+			getDB(database).then(function (db) {
+				deleteRecord(DB_STORE_NAME, path, database)
+			})
+			return
+		}
 		ifile.sha = await getGitShaBrowser(ifile.contents)
 		getDB(database).then(function (db) {
 			putRecord(DB_STORE_NAME, ifile, database)
