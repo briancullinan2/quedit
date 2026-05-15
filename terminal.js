@@ -1,7 +1,9 @@
 const LINES_TO_SAVE = 1000
 const LINES_TO_SCROLLBACK = 5000
+const MAX_HISTORY_LENGTH = 20
 
 var term = new Terminal({
+    allowProposedApi: true,
     convertEol: true,
     scrollback: LINES_TO_SCROLLBACK, // Increase this from the default 1000
     cursorBlink: true,
@@ -81,6 +83,11 @@ const searchTerminal = document.getElementById('search-terminal');
 function clearSearch() {
     searchIndex = -1;
     searchResults = [];
+    searchAddonMarkers.forEach(decoration => {
+        // This cleans up both the decoration and the associated marker
+        decoration.dispose();
+    });
+    searchAddonMarkers = [];
 }
 
 searchTerminal.addEventListener('keydown', triggerFind);
@@ -148,14 +155,19 @@ function triggerFind(e) {
 }
 
 
+let searchAddonMarkers = [];
 function performSearch(termToSearch, caseSensitive = false) {
+    searchAddonMarkers.forEach(m => m.dispose());
+    searchAddonMarkers = [];
     searchResults = [];
+
+    const themeColors = getAceThemeColors();
     const buffer = term.buffer.active;
     const flags = caseSensitive ? 'g' : 'gi';
     const regex = new RegExp(termToSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
 
-    // 1. Iterate through the visible and scrollback buffer
-    for (let i = 0; i < buffer.baseY + term.rows; i++) {
+    // Scan the entire buffer length
+    for (let i = 0; i < buffer.length; i++) {
         const line = buffer.getLine(i);
         if (!line) continue;
 
@@ -163,17 +175,38 @@ function performSearch(termToSearch, caseSensitive = false) {
         let match;
 
         while ((match = regex.exec(lineText)) !== null) {
-            const xPos = match.index + 1; // 1-based for ANSI
-            const yPos = (i - buffer.baseY + buffer.cursorY) + 1; // Relative to viewport
+            const x = match.index;
+            const length = match[0].length;
 
-            // Only highlight if it's currently on screen
-            if (yPos > 0 && yPos <= term.rows) {
-                highlightMatch(xPos, yPos, match[0]);
+            // CORRECT OFFSET CALCULATION:
+            // registerMarker takes the distance from the current bottom of the buffer
+            const marker = term.registerMarker(i - (buffer.baseY + buffer.cursorY));
+
+            if (marker) {
+                const decoration = term.registerDecoration({
+                    marker,
+                    x,
+                    width: length,
+                    layer: 'top',
+                    backgroundColor: themeColors.foreground,
+                    foregroundColor: themeColors.background,
+                });
+
+                decoration.onRender(element => {
+                    element.style.pointerEvents = 'none';
+                    element.classList.add('terminal-search-highlight');
+                });
+
+                searchAddonMarkers.push(decoration);
             }
 
-            searchResults.push({ line: i, x: xPos });
+            searchResults.push({ line: i, x: x + 1 });
         }
     }
+}
+
+function highlightWithAnsi(x, y, text) {
+    term.write(`\x1b[${y};${x}H\x1b[7m${text}\x1b[27m`);
 }
 
 /**
@@ -325,7 +358,7 @@ term.onData(async data => {
                 commandHistory.push(currentLine);
 
                 // If we exceed 10, remove the difference from the beginning
-                if (commandHistory.length > 10) {
+                if (commandHistory.length > MAX_HISTORY_LENGTH) {
                     // .splice(start, deleteCount) 
                     commandHistory.splice(0, commandHistory.length - 10);
                 }
@@ -807,13 +840,13 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
 
             let record = await getRecord(DB_STORE_NAME, filePath, item.key)
             if (record) {
-                 dbFile = trees['#database'].nodesById[item.key + '/' + filePath]
+                dbFile = trees['#database'].nodesById[item.key + '/' + filePath]
                     = FS.virtual[filePath] = record
                 break;
             }
         }
 
-        if(dbFile) {
+        if (dbFile) {
             renderTabsCommand('database')
             trees['#database'].values = [item.key];
         }

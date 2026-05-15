@@ -69,6 +69,56 @@ function setTheme(theme) {
     // Actually tell Ace to change its internal theme too
     editor.setTheme(theme);
     savedTheme = theme
+    setTimeout(() => {
+        const themeColors = getAceThemeColors();
+        if (!themeColors) return;
+
+        term.options.theme = {
+            background: themeColors.background,
+            foreground: themeColors.foreground,
+            cursor: themeColors.foreground,
+            selection: themeColors.selection,
+            
+            // Mapping for Inverse Logic:
+            // Setting a marker to Black (0) + White (7) will now 
+            // swap the Ace background and foreground colors.
+            black: themeColors.background,   // ANSI 0
+            white: themeColors.foreground,   // ANSI 7
+            
+            // Map syntax colors to ANSI indices
+            magenta: themeColors.pink,       // ANSI 5
+            cyan: themeColors.purple,        // ANSI 6
+            blue: themeColors.blue,          // ANSI 4
+            green: themeColors.green,        // ANSI 2
+            
+            // Optional: Gutter color for bright variants
+            brightBlack: themeColors.gutter  // ANSI 8
+        };
+    }, 500);
+
+}
+
+
+
+function getAceThemeColors() {
+    const editorEle = document.querySelector('.ace_editor');
+    if (!editorEle) return null;
+
+    // We pull directly from the computed style of the editor, 
+    // which now contains your --ace variables.
+    const style = getComputedStyle(editorEle);
+
+    return {
+        background: style.getPropertyValue('--ace-bg').trim(),
+        foreground: style.getPropertyValue('--ace-foreground').trim(),
+        gutter: style.getPropertyValue('--ace-gutter-bg').trim(),
+        selection: style.getPropertyValue('--ace-selection-bg').trim(),
+        pink: style.getPropertyValue('--ace-pink').trim(),
+        purple: style.getPropertyValue('--ace-purple').trim(),
+        blue: style.getPropertyValue('--ace-blue').trim(),
+        green: style.getPropertyValue('--ace-green').trim(),
+        comment: style.getPropertyValue('--ace-comment').trim()
+    };
 }
 
 
