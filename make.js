@@ -757,8 +757,8 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
                 let content = await cacheFile(ownerName, repoName, file, sha)
                 let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
 
-                let objRecord = await getRecord(DB_STORE_NAME, obj, database)
-                FS.virtual[obj] = objRecord
+                if (FS.virtual[obj] && !forceChanged)
+                    FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
 
                 if (FS.virtual[obj]
                     // compare input and output mtime
@@ -836,7 +836,7 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
     let clientObjs = allCompileObjects.map(s => CONFIGURATION + '/' + s.replace('.c', '.o'))
     let renderObjs = allRend2ShaderObjects.map(s => CONFIGURATION + '/' + s.replace('.glsl', '.o'))
 
-    if(!noBuild) {
+    if (!noBuild) {
         await buildClient(database, false, true)
     }
 
@@ -922,8 +922,8 @@ async function buildShaders(database = null, forceChanged = false) {
             log(`GLSL: ${obj}\n\r`)
             const cCode = generateFallbackC(shader, content);
 
-            let objRecord = await getRecord(DB_STORE_NAME, obj, database)
-            FS.virtual[obj] = objRecord
+            if (!FS.virtual[obj] && !forceChanged)
+                FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
 
             if (FS.virtual[obj]
                 && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp

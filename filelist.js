@@ -161,7 +161,7 @@ async function expandDatabaseTree(target, folderId) {
     const parts = folderId.split('/')
     const database = parts[0] + '/' + parts[1]
     const baseDir = parts.slice(2).join('/')
-    const dirPath = baseDir.substring(0, folderId.lastIndexOf('/'));
+    const dirPath = baseDir.substring(0, baseDir.lastIndexOf('/'));
     const parentDir = database + (dirPath.trim().length > 0 ? ('/' + dirPath) : '')
 
     if (!target.classList.contains('treejs-node__open')) return
@@ -180,6 +180,15 @@ async function expandDatabaseTree(target, folderId) {
             await untarFrontent()
         }
 
+
+        let result = await queryIndex(DB_STORE_NAME, 'parent', baseDir, null, null, database)
+        for(let r of result) {
+            FS.virtual[r.path] = r
+        }
+        let result2 = await queryIndex(DB_STORE_NAME, 'parent', baseDir + '/', null, null, database)
+        for(let r of result2) {
+            FS.virtual[r.path] = r
+        }
 
         const childrenKeys = Object.keys(FS.virtual).filter(path => {
             // Must start with the folder path
@@ -224,9 +233,6 @@ async function expandDatabaseTree(target, folderId) {
 
         if (newChildren.length === 0)
             newChildren.push({ text: 'Empty...', id: `${folderId}/empty` })
-
-        let result = await queryIndex(DB_STORE_NAME, 'parent', '', null, null, database)
-        let result2 = await queryIndex(DB_STORE_NAME, 'parent', '/', null, null, database)
 
         loadedDatabases[folderId].children = trees['#database'].nodesById[folderId].children = newChildren
 

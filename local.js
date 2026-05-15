@@ -134,7 +134,7 @@ async function putRecord(storeName, record, dbName = null, noBounce = false) {
     const newRecord = {
         timestamp: record.timestamp,
         mode: record.mode,
-        contents: record.contents.slice(0),
+        contents: record.contents?.slice(0),
         path: record.path,
         sha: record.sha,
         parent: record.parent
@@ -185,16 +185,18 @@ async function queryIndex(storeName, indexName, exactIndex = null, lower = null,
     const db = await getDB(dbName)
     const tx = db.transaction(storeName, 'readonly')
     const store = tx.objectStore(storeName)
+    const index = store.index(indexName || store.keyPath)
 
     var range = null
     if (exactIndex !== null) {
-        range = IDBKeyRange.only([exactIndex])
+        range = IDBKeyRange.only(index.keyPath instanceof Array && !(exactIndex instanceof Array) ? [exactIndex] : exactIndex)
     } else if (upper !== null && lower !== null) {
-        range = IDBKeyRange.bound([lower], [upper])
+        range = IDBKeyRange.bound(index.keyPath instanceof Array && !(lower instanceof Array) ? [lower] : lower,
+            index.keyPath instanceof Array && !(upper instanceof Array) ? [upper] : upper)
     } else if (upper !== null) {
-        range = IDBKeyRange.upperBound([upper])
+        range = IDBKeyRange.upperBound(index.keyPath instanceof Array && !(upper instanceof Array) ? [upper] : upper)
     } else if (lower !== null) {
-        range = IDBKeyRange.lowerBound([lower])
+        range = IDBKeyRange.lowerBound(index.keyPath instanceof Array && !(lower instanceof Array) ? [lower] : lower)
     } else {
         range = null // Get all records
     }
@@ -203,14 +205,13 @@ async function queryIndex(storeName, indexName, exactIndex = null, lower = null,
     return new Promise((rs, rj) => {
         let req;
         if (indexName != null) {
-            const index = store.index(indexName)
             req = index.getAll(range)
         }
         else {
             req = store.getAll(range)
         }
         req.onsuccess = () => {
-            console.log(req.result)
+            //console.log(req.result)
             return rs(req.result)
         }
         req.onerror = () => {

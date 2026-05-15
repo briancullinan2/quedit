@@ -276,7 +276,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
         else if (!src.includes('build/'))
             content = await cacheFile(ownerName, repoName, src, sha);
         else {
-            FS.virtual[src] = getRecord(DB_STORE_NAME, src, database)
+            FS.virtual[src] = await getRecord(DB_STORE_NAME, src, database)
             if (!FS.virtual[src])
                 throw new Error('Output file not found: ' + src)
         }
@@ -388,6 +388,9 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
                 const dagMd = "src/dagcheck.md";
                 const dagC = path.join(CONFIGURATION, "src/dagcheck.c");
 
+                if (!FS.virtual[obj] && !forceChanged)
+                    FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
+
                 if (FS.virtual[obj]
                     && FS.virtual[dagMd]?.timestamp < FS.virtual[obj]?.timestamp
                     && !forceChanged
@@ -414,6 +417,9 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
                 await compileToolFile(dagC, obj, "src", database, ["-Wno-unused"], forceChanged);
             } else {
                 const src = path.join("src", file.replace('.o', '.c'));
+
+                if (!FS.virtual[obj] && !forceChanged)
+                    FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
 
                 if (FS.virtual[obj]
                     && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
@@ -513,6 +519,9 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
             const src = path.join("cpp", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.CPP, file);
 
+            if (!FS.virtual[obj] && !forceChanged)
+                FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
+
             if (FS.virtual[obj]
                 && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
                 && !forceChanged
@@ -611,6 +620,9 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
             const src = path.join("etc", file.replace('.o', '.c'));
             const obj = path.join(CONFIGURATION + '/' + toolDirs.ETC, file);
             const lccFlags = [`-DTEMPDIR=\"${config.TEMPDIR}\"`, `-DSYSTEM=\"\"`];
+
+            if (!FS.virtual[obj] && !forceChanged)
+                FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
 
             if (FS.virtual[obj]
                 && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
@@ -832,6 +844,9 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 
 
 
+            if (!FS.virtual[obj] && !forceChanged)
+                FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
+
             if (FS.virtual[obj]
                 && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
                 && !forceChanged
@@ -851,6 +866,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
                 database,
                 obj: obj,
             });
+
         } catch (e) {
             log(`Error compiling q3asm component: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
         }

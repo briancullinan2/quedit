@@ -1420,6 +1420,8 @@ const API = (function () {
           FS.virtual[accumulated + '/.'] = FS.virtual[accumulated]
           if (previousPath)
             FS.virtual[accumulated + '/..'] = FS.virtual[previousPath]
+          if(this.database)
+            putRecord(DB_STORE_NAME,  FS.virtual[accumulated], this.database)
         } catch (e) {
           // Log only if it's a real crash, not just an "already exists" error
           if (!e.message.includes("exists")) {
