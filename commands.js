@@ -376,13 +376,13 @@ async function link(argv, database) {
 
 
     if (mode === 'game' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'game', gameFiles, true)
+        await linkModule(selected, 'game', dirs.QADIR, gameFiles, true)
     if (mode === 'cgame' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'cgame', cgameFiles, true)
+        await linkModule(selected, 'cgame', dirs.CGDIR, cgameFiles, true)
     if (mode === 'ui' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'ui', uiFiles, true)
+        await linkModule(selected, 'ui', dirs.UIDIR, uiFiles, true)
     if (mode === 'q3_ui' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'q3_ui', q3uiFiles, true)
+        await linkModule(selected, 'q3_ui', dirs.Q3UIDIR, q3uiFiles, true)
 
     // TODO: link dedicated server
 
@@ -577,6 +577,7 @@ rm /tmp/lcc420.i
             args: [
                 'q3rcc', // '-v', '-v',
                 '-target=bytecode',
+                (configuration.value === 'pre' ? '-g' : '-g2'),
                 '-v',
                 tempPath,
                 outPath //.split('/').pop(),

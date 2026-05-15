@@ -2,57 +2,69 @@
  * Quake3e Build Configuration Script - QVM Version
  */
 
+/**
+ * Quake3e Build Configuration Script - QVM Version
+ * Fixed Ordering to Ensure Precise Code Segment Alignment (Index 0 Entry)
+ */
 
-// Shared files used across all modules
+// Shared structural dependencies used across all executable modules
+// Explicitly removed from the top of module vectors to preserve entry offsets
 const commonFiles = [
-    'bg_lib.o', 'bg_misc.o', 'bg_pmove.o', 'bg_slidemove.o',
+    'bg_misc.o', 'bg_lib.o', 'bg_pmove.o', 'bg_slidemove.o',
     'q_math.o', 'q_shared.o'
 ];
 
-// Client Game (cgame) specific files
+// Client Game (cgame) module file sequence
 const cgameFiles = [
-    ...commonFiles,
-    'cg_main.o', 'cg_consolecmds.o', 'cg_draw.o', 'cg_drawtools.o',
-    'cg_effects.o', 'cg_ents.o', 'cg_event.o', 'cg_info.o',
-    'cg_localents.o', 'cg_marks.o', 'cg_players.o', 'cg_playerstate.o',
-    'cg_predict.o', 'cg_scoreboard.o', 'cg_servercmds.o', 'cg_snapshot.o',
-    'cg_view.o', 'cg_weapons.o', 'cg_syscalls.o'
+    'cg_main.o', 'cg_syscalls.o', // CRITICAL: Entry point and system trap must occupy index 0 and 1
+    'cg_consolecmds.o', 'cg_draw.o', 'cg_drawtools.o', 'cg_effects.o', 
+    'cg_ents.o', 'cg_event.o', 'cg_info.o', 'cg_localents.o', 
+    'cg_marks.o', 'cg_players.o', 'cg_playerstate.o', 'cg_predict.o', 
+    'cg_scoreboard.o', 'cg_servercmds.o', 'cg_snapshot.o', 'cg_view.o', 
+    'cg_weapons.o',
+    ...commonFiles 
 ];
 
-// Server Game (qagame) specific files
+// Server Game (qagame) module file sequence
 const gameFiles = [
-    ...commonFiles,
-    'g_main.o', 'ai_chat.o', 'ai_cmd.o', 'ai_dmnet.o', 'ai_dmq3.o',
-    'ai_main.o', 'ai_team.o', 'ai_vcmd.o', 'g_active.o', 'g_arenas.o',
-    'g_bot.o', 'g_client.o', 'g_cmds.o', 'g_combat.o', 'g_items.o',
-    'g_mem.o', 'g_misc.o', 'g_missile.o', 'g_mover.o', 'g_rotation.o',
-    'g_session.o', 'g_spawn.o', 'g_svcmds.o', 'g_target.o', 'g_team.o',
-    'g_trigger.o', 'g_utils.o', 'g_unlagged.o', 'g_weapon.o', 'g_syscalls.o'
+    'g_main.o', 'g_syscalls.o', // CRITICAL: Entry point and system trap must occupy index 0 and 1
+    'bg_misc.o', 'bg_lib.o', 'bg_pmove.o', 'bg_slidemove.o',
+    'q_math.o', 'q_shared.o',
+    'ai_dmnet.o', 'ai_dmq3.o', 'ai_team.o', 'ai_main.o', 'ai_chat.o', 
+    'ai_cmd.o', 'ai_vcmd.o',
+    'g_active.o', 'g_arenas.o', 'g_bot.o', 'g_client.o', 'g_cmds.o', 
+    'g_combat.o', 'g_items.o', 'g_mem.o', 'g_misc.o', 'g_missile.o', 
+    'g_mover.o', 'g_rotation.o', 'g_session.o', 'g_spawn.o', 'g_svcmds.o', 
+    'g_target.o', 'g_team.o', 'g_trigger.o', 'g_unlagged.o', 'g_utils.o', 
+    'g_weapon.o',
+    ...commonFiles
 ];
 
-// User Interface (ui) specific files
+// User Interface (ui / q3_ui) consolidated working target directory list
 const q3uiFiles = [
-    ...commonFiles,
-    'ui_main.o', 'ui_addbots.o', 'ui_atoms.o', 'ui_cdkey.o',
-    'ui_cinematics.o', 'ui_confirm.o', 'ui_connect.o', 'ui_controls2.o',
-    'ui_credits.o', 'ui_demo2.o', 'ui_display.o', 'ui_gameinfo.o',
-    'ui_ingame.o', 'ui_loadconfig.o', 'ui_menu.o', 'ui_mfield.o',
-    'ui_mods.o', 'ui_network.o', 'ui_options.o', 'ui_playermodel.o',
-    'ui_players.o', 'ui_playersettings.o', 'ui_preferences.o', 'ui_qmenu.o',
-    'ui_removebots.o', 'ui_saveconfig.o', 'ui_serverinfo.o', 'ui_servers2.o',
-    'ui_setup.o', 'ui_sound.o', 'ui_sparena.o', 'ui_specifyserver.o',
-    'ui_splevel.o', 'ui_sppostgame.o', 'ui_spskill.o', 'ui_startserver.o',
-    'ui_team.o', 'ui_teamorders.o', 'ui_video.o', 'ui_syscalls.o'
+    'ui_main.o', 'ui_syscalls.o', // CRITICAL: Entry point and system trap must occupy index 0 and 1
+    'ui_gameinfo.o', 'ui_atoms.o', 'ui_cinematics.o', 'ui_connect.o', 
+    'ui_controls2.o', 'ui_demo2.o', 'ui_mfield.o', 'ui_credits.o', 
+    'ui_menu.o', 'ui_ingame.o', 'ui_confirm.o', 'ui_setup.o', 
+    'ui_options.o', 'ui_display.o', 'ui_sound.o', 'ui_network.o', 
+    'ui_playermodel.o', 'ui_players.o', 'ui_playersettings.o', 'ui_preferences.o', 
+    'ui_qmenu.o', 'ui_serverinfo.o', 'ui_servers2.o', 'ui_sparena.o', 
+    'ui_specifyserver.o', 'ui_sppostgame.o', 'ui_splevel.o', 'ui_spskill.o', 
+    'ui_startserver.o', 'ui_team.o', 'ui_video.o', 'ui_addbots.o', 
+    'ui_removebots.o', 'ui_teamorders.o', 'ui_loadconfig.o', 'ui_saveconfig.o', 
+    'ui_cdkey.o', 'ui_mods.o',
+    ...commonFiles
 ];
 
 
 const uiFiles = [
     'ui_main.o',
+    'ui_syscalls.o',
     'ui_atoms.o',
     'ui_gameinfo.o',
     'ui_players.o',
     'ui_shared.o',
-    'ui_syscalls.o'
+    ...commonFiles
 ]
 
 
@@ -217,11 +229,19 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                 PREAMBLE = QVM_PREAMBLE
 
                 // TODO: if using q3lcc
-                let obj = path.join(CONFIGURATION, name, file);
+                let obj = path.join(CONFIGURATION, sourceDir, file);
                 if (QVM_MODE)
                     obj = obj.replace('.o', '.asm');
 
-                const tempPath = path.join(CONFIGURATION, name, file.replace('.o', '.i'));
+                // SKIP: because its already compiled
+                if (obj.includes('cg_syscalls.asm')
+                    || obj.includes('g_syscalls.asm')
+                    || obj.includes('ui_syscalls.asm')
+                )
+                    continue
+
+
+                const tempPath = path.join(CONFIGURATION, sourceDir, file.replace('.o', '.i'));
 
 
                 let content
@@ -284,7 +304,8 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                         args: [
                             'q3rcc', // '-v', '-v',
                             '-target=bytecode',
-                            '-v',
+                            (api.configuration === 'pre' ? '-g' : '-g2'),
+                            //'-v',
                             tempPath,
                             obj //.split('/').pop(),
                         ],
@@ -312,7 +333,10 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
         if (!noLinking) {
 
-            await linkModule(database, name, filesList,
+
+            building = false
+
+            await linkModule(database, name, sourceDir, filesList,
                 hasChanged /* always link after build something */,
                 true /* prevent loops */,
                 true /* already debounced above */
@@ -329,7 +353,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
 
-async function linkModule(database, name, filesList, forceChanged = false, noModule = false /* from buildModule */, noBounce = false) {
+async function linkModule(database, name, sourceDir, filesList, forceChanged = false, noModule = false /* from buildModule */, noBounce = false) {
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
@@ -341,7 +365,7 @@ async function linkModule(database, name, filesList, forceChanged = false, noMod
     }
 
     if (!noBounce) {
-        buildDebounce = setTimeout(() => linkModule(database, name, filesList, forceChanged, noModule /* from buildModule */, true), 500)
+        buildDebounce = setTimeout(() => linkModule(database, name, sourceDir, filesList, forceChanged, noModule /* from buildModule */, true), 500)
         return
     }
 
@@ -357,9 +381,14 @@ async function linkModule(database, name, filesList, forceChanged = false, noMod
         // Link phase (q3asm)
         const qvmOutput = path.join(CONFIGURATION, repoName || config.MOD, `${name === 'game' ? 'qagame' : name}.qvm`);
 
-        let qvmObjs = filesList.map(file => path.join(CONFIGURATION, name, file))
+        let qvmObjs = filesList.map(file => path.join(CONFIGURATION, sourceDir, file))
         if (QVM_MODE)
-            qvmObjs = filesList.map(file => path.join(CONFIGURATION, name, file.replace('.o', '.asm')))
+            qvmObjs = filesList.map(file => {
+                if (file.includes('syscalls.o')) {
+                    return path.join(sourceDir, file.replace('.o', '.asm'))
+                }
+                return path.join(CONFIGURATION, sourceDir, file.replace('.o', '.asm'))
+            })
 
 
         // prevent recursion
@@ -389,6 +418,29 @@ async function linkModule(database, name, filesList, forceChanged = false, noMod
         building = true
 
 
+        if (QVM_MODE) {
+
+            let syscalls = path.join(sourceDir, 'g_syscalls.asm')
+            if (name === 'cgame')
+                syscalls = path.join(sourceDir, 'cg_syscalls.asm')
+            if (name === 'ui' || name === 'q3_ui')
+                syscalls = path.join(sourceDir, 'ui_syscalls.asm')
+
+
+
+            let content
+            if (FS.virtual[syscalls])
+                content = FS.virtual[syscalls].contents
+
+            content = await cacheFile(ownerName, repoName, syscalls);
+            if (!FS.virtual[syscalls]) {
+                FS.virtual[syscalls] = await getRecord(DB_STORE_NAME, syscalls, database)
+                if (!FS.virtual[syscalls])
+                    throw new Error('Syscalls file not found: ' + syscalls)
+            }
+        }
+
+
         let exeRecord = await getRecord(DB_STORE_NAME, qvmOutput, database)
         FS.virtual[qvmOutput] = exeRecord
 
@@ -405,7 +457,7 @@ async function linkModule(database, name, filesList, forceChanged = false, noMod
 
 
         let LDFLAGS = [
-            ...(QVM_MODE ? [] : ["--no-entry"]),
+            ...(QVM_MODE ? ['-vq3', '-r', '-m', '-v'] : ["--no-entry"]),
             "-o", qvmOutput,
             ...qvmObjs
         ]
@@ -537,27 +589,27 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
         needsHeaders = true
 
         // CGAME
-        await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged, true);
+        await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged, false, true);
 
 
         if (TERMINATE) return
 
 
         // 2. Build GAME (qagame)
-        await buildModule('game', dirs.QADIR, gameFiles, database, ['QAGAME'], forceChanged, true);
+        await buildModule('game', dirs.QADIR, gameFiles, database, ['QAGAME'], forceChanged, false, true);
 
         if (TERMINATE) return
 
 
         // 3. Build UI
-        await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI'], forceChanged, true);
+        await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI'], forceChanged, false, true);
 
         if (TERMINATE) return
 
 
 
         // 3. Build UI
-        await buildModule('q3_ui', dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged, true);
+        await buildModule('q3_ui', dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged, false, true);
 
         if (TERMINATE) return
 

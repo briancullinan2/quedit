@@ -331,6 +331,7 @@ const onAnyMessage = async event => {
             try {
 
 
+              /*
               try {
                 if (api.memfs && api.memfs.exists(filePath)) {
                   let bytes = api.memfs.getFileContents(filePath)
@@ -352,6 +353,7 @@ const onAnyMessage = async event => {
               } catch (e) {
 
               }
+              */
 
               if (FS.virtual[filePath] && FS.virtual[filePath].contents.length) {
                 api.hostWrite('Succeeded: ' + filePath + '\n\r')

@@ -96,6 +96,10 @@ function Sys_FOpen(filename, mode) {
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
 
+	if(!FS.virtual[localName]) {
+		debugger
+	}
+
 	let createFP = function () {
 		FS.filePointer++
 		FS.pointers[FS.filePointer] = [
@@ -205,6 +209,10 @@ function fd_seek(fd, offset, whence, newOffsetPtr) {
 
 	let stream = FS.pointers[fd];
 	if (!stream) return 8; // WASI_EBADF
+	if (!stream[2]) {
+		debugger
+
+	}
 	if (stream[2].rewrite) {
 		stream = FS.pointers[stream[2].rewrite]
 	}
@@ -896,10 +904,12 @@ function args_get(argvPtr, argvBufPtr) {
 	return 0;
 }
 
-function debug_print_mem(ptr, length) {
-	const view = new Uint8Array(Module.memory.buffer, ptr, length);
+function debug_print_mem(view, ptr, length) {
+
+	//const view = new Uint8Array(Module.memory.buffer, ptr, length);
 	let hex = "";
 	for (let i = 0; i < length; i++) {
+		if (i > view.length) break;
 		hex += view[i].toString(16).padStart(2, '0') + " ";
 		if ((i + 1) % 8 === 0) hex += " | ";
 	}
@@ -1141,9 +1151,10 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 			};
 		}
 
-		//else {
-		//	return 44; // WASI_ENOENT
-		//}
+		// TODO: memfs passthrough?
+		else {
+			return 44; // WASI_ENOENT
+		}
 	} else {
 		if ((oflags & O_CREAT) && (oflags & O_EXCL)) return 20; // WASI_EEXIST
 		if (oflags & O_TRUNC) {
@@ -1159,7 +1170,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	const modeStr = (canRead ? 'r' : '') + (canWrite ? 'w' : '')
 	const view = new DataView(Module.memory.buffer); // Result ALWAYS goes to host memory
 
-	if (api.memfs) {
+	if (false && api.memfs) {
 
 		let result = api.memfs.exports.path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, rights_inheriting, fdflags, openedFdPtr)
 		if (result === 0) {
@@ -1183,6 +1194,9 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 
 		// 4. Create File Descriptor (Stream)
 		// Layout: [position, path, node]
+		if (!FS.virtual[localName]) {
+			debugger
+		}
 		let createFP = function () {
 			FS.filePointer++
 			FS.pointers[FS.filePointer] = [
@@ -1213,6 +1227,7 @@ function _fd_close(fd) {
 		//var stream = SYSCALLS.getStreamFromFD(fd);
 		if (fd <= VFS_NOW) return
 		if (FS.pointers[fd] && FS.pointers[fd][2].rewrite) {
+			debugger
 			FS.pointers[FS.pointers[fd][2].rewrite] = null
 			FS.pointers[fd][2].rewrite = 0
 		}
@@ -1302,17 +1317,17 @@ function writeU32(ptr, value) {
 	view.setUint32(addr, value, true);
 }
 
-
 function fd_read(fd, iovs, iovsLen, nreadPtr) {
-
 	let stream = FS.pointers[fd];
-
 	if (!stream) return 8; // WASI_EBADF
 	if (stream[2].rewrite) {
-		stream = FS.pointers[stream[2].rewrite]
+		stream = FS.pointers[stream[2].rewrite];
 	}
 
-	//console.log(stream[3])
+	// CRITICAL FIX: Ensure global memory views are freshly updated
+	if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
+		updateGlobalBufferAndViews();
+	}
 
 	const view = new DataView(Module.memory.buffer);
 	const contents = stream[2].contents; // Uint8Array of file data
@@ -1328,6 +1343,7 @@ function fd_read(fd, iovs, iovsLen, nreadPtr) {
 		const toRead = Math.min(bufLen, available);
 
 		if (toRead > 0) {
+			// Fresh target slice allocation to bypass detachment traps
 			const heap = new Uint8Array(Module.memory.buffer);
 			heap.set(contents.subarray(offset, offset + toRead), bufOffset);
 			offset += toRead;
@@ -1338,25 +1354,33 @@ function fd_read(fd, iovs, iovsLen, nreadPtr) {
 	}
 
 	stream[0] = offset; // Update seek position
-	view.setUint32(nreadPtr, totalRead, true);
+
+	// Refresh view write destination point to ensure success
+	const finalView = new DataView(Module.memory.buffer);
+	finalView.setUint32(nreadPtr, totalRead, true);
 	return 0; // WASI_ESUCCESS
 }
 
-
-
-function fd_pread(fd, iovs, iovsLen, offset, nreadPtr) {
+/**
+ * WASI fd_pread Implementation
+ * Handles the 64-bit BigInt offset parameter positioning.
+ */
+function fd_pread(fd, iovs, iovsLen, offsetBigInt, nreadPtr) {
 	let stream = FS.pointers[Number(fd)];
-	if (!stream) return 8;
+	if (!stream) return 8; // WASI_EBADF
 	if (stream[2].rewrite) {
-		stream = FS.pointers[stream[2].rewrite]
+		stream = FS.pointers[stream[2].rewrite];
 	}
-	//console.log(stream[3])
 
+	// Safely cast the 64-bit BigInt offset down to a standard JS safe integer index
+	const baseOffset = Number(offsetBigInt);
 	const node = stream[2];
-	const contents = node.contents;
-	const baseOffset = Number(offset); // Handle BigInt offset
+	const contents = node.contents; // Uint8Array
 	let totalRead = 0;
 
+	if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
+		updateGlobalBufferAndViews();
+	}
 	const view = new DataView(Module.memory.buffer);
 	const iovs_ptr = Number(iovs);
 
@@ -1365,21 +1389,23 @@ function fd_pread(fd, iovs, iovsLen, offset, nreadPtr) {
 		const bufAddr = view.getUint32(iovAddr, true);
 		const bufLen = view.getUint32(iovAddr + 4, true);
 
-		const available = contents.byteLength - (baseOffset + totalRead);
+		const available = contents.length - (baseOffset + totalRead);
 		const toRead = Math.min(bufLen, available);
 
 		if (toRead > 0) {
-			const dest = new Uint8Array(Module.memory.buffer, bufAddr, toRead);
-			dest.set(contents.subarray(baseOffset + totalRead, baseOffset + totalRead + toRead));
+			// Fix: Instantiate directly via the underlying buffer using exact offsets
+			const heap = new Uint8Array(Module.memory.buffer);
+			heap.set(contents.subarray(baseOffset + totalRead, baseOffset + totalRead + toRead), bufAddr);
 			totalRead += toRead;
 		}
 		if (toRead < bufLen) break;
 	}
 
-	writeU32(nreadPtr, totalRead);
-	return 0;
+	// Refresh memory view reference layer for the final size flag registration
+	const finalView = new DataView(Module.memory.buffer);
+	finalView.setUint32(nreadPtr, totalRead, true);
+	return 0; // WASI_ESUCCESS
 }
-
 
 function fd_readdir(fd, buf, buf_len, cookie, nread_ptr) {
 	debugger
@@ -1470,8 +1496,11 @@ function fd_renumber(fd, to) {
 		// any pending Sys_notify calls fire.
 		FS.pointers[to][0] = 0;
 	}
-	else
+	else {
 		// 3. Renumber: Copy the reference to the new 'to' index
+		if (!stream[2]) {
+			debugger
+		}
 		FS.pointers[to] = [
 			0, // seek/tell
 			stream[1],
@@ -1479,6 +1508,7 @@ function fd_renumber(fd, to) {
 			stream[3],
 			fd
 		]
+	}
 
 	// 4. Update the internal FD stored in your stream array [pos, mode, node, path, FD]
 	// stream[4] is where you store the FD index
@@ -1583,6 +1613,7 @@ function path_symlink(oldPathPtr, oldPathLen, dirfd, newPathPtr, newPathLen) {
 	};
 
 	if (api.memfs) {
+		debugger
 		return api.memfs.exports.path_symlink(oldPathPtr, oldPathLen, dirfd, newPathPtr, newPathLen);
 	}
 
@@ -1610,6 +1641,7 @@ function AddDirectoryNode(parentFd, pathPtr, pathLen) {
 	}
 
 	if (api.memfs) {
+		debugger
 		// Only call the WASM export if we know it's a safe creation
 		// Note: We use the normalized length to match the buffer write
 		return api.memfs.exports.AddDirectoryNode(parentFd, pathPtr, pathLen);
@@ -1638,6 +1670,7 @@ function AddFileNode(parentFd, pathPtr, pathLen) {
 	}
 
 	if (api.memfs) {
+		debugger
 		// Sync with WASM backend
 		return api.memfs.exports.AddFileNode(parentFd, pathPtr, pathLen);
 	}
@@ -1849,42 +1882,42 @@ function path_rename(oldFd, oldPathPtr, oldPathLen, newFd, newPathPtr, newPathLe
  * @returns {number} WASI errno (0 = Success, 76 = ENOTDIR, 20 = EEXIST, etc.)
  */
 function path_create_directory(fd, pathPtr, pathLen) {
-    // 1. Ensure the global views are active and valid
-    if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
-        updateGlobalBufferAndViews();
-    }
-    const heap = Module.HEAPU8 || window.HEAPU8;
+	// 1. Ensure the global views are active and valid
+	if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
+		updateGlobalBufferAndViews();
+	}
+	const heap = Module.HEAPU8 || window.HEAPU8;
 
-    // 2. WASI Optimization: Decode using the exact length provided by the engine
-    const folderBytes = heap.subarray(pathPtr, pathPtr + pathLen);
-    const dirPath = new TextDecoder("utf-8").decode(folderBytes);
-    const normalizedPath = dirPath.replace(/\/$/, "");
+	// 2. WASI Optimization: Decode using the exact length provided by the engine
+	const folderBytes = heap.subarray(pathPtr, pathPtr + pathLen);
+	const dirPath = new TextDecoder("utf-8").decode(folderBytes);
+	const normalizedPath = dirPath.replace(/\/$/, "");
 
-    if (!FS.virtual) FS.virtual = {};
+	if (!FS.virtual) FS.virtual = {};
 
-    // 3. POSIX/WASI Check: Check if path already exists
-    if (FS.virtual[normalizedPath]) {
-        const isDir = (FS.virtual[normalizedPath].mode >> 12) === 4; // S_IFDIR check (or use your ST_DIR)
-        if (!isDir) {
-            console.error(`WASI VFS Error: Path exists and is a file -> ${normalizedPath}`);
-            return 20; // WASI_EEXIST (File exists)
-        }
-        return 0; // Success, directory is already accessible
-    }
+	// 3. POSIX/WASI Check: Check if path already exists
+	if (FS.virtual[normalizedPath]) {
+		const isDir = (FS.virtual[normalizedPath].mode >> 12) === 4; // S_IFDIR check (or use your ST_DIR)
+		if (!isDir) {
+			console.error(`WASI VFS Error: Path exists and is a file -> ${normalizedPath}`);
+			return 20; // WASI_EEXIST (File exists)
+		}
+		return 0; // Success, directory is already accessible
+	}
 
-    // 4. Inject the compliant WASI directory entry
-    FS.virtual[normalizedPath] = {
-        path: normalizedPath,
-        parent: normalizedPath.substring(0, normalizedPath.lastIndexOf('/')),
-        sha: "virtual_dir_sha",
-        type: 'dir',
-        mode: 0o040000 | 0o755, // S_IFDIR | permissions (755)
-        size: 4096,
-        timestamp: new Date()
-    };
+	// 4. Inject the compliant WASI directory entry
+	FS.virtual[normalizedPath] = {
+		path: normalizedPath,
+		parent: normalizedPath.substring(0, normalizedPath.lastIndexOf('/')),
+		sha: "virtual_dir_sha",
+		type: 'dir',
+		mode: 0o040000 | 0o755, // S_IFDIR | permissions (755)
+		size: 4096,
+		timestamp: new Date()
+	};
 
-    console.log(`WASI VFS: Created directory via fd(${fd}) -> "${normalizedPath}"`);
-    return 0; // WASI_ESUCCESS
+	console.log(`WASI VFS: Created directory via fd(${fd}) -> "${normalizedPath}"`);
+	return 0; // WASI_ESUCCESS
 }
 
 /**
@@ -1894,37 +1927,37 @@ function path_create_directory(fd, pathPtr, pathLen) {
  * @param {number} pathLen - String byte length
  */
 function path_remove_directory(fd, pathPtr, pathLen) {
-    if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
-        updateGlobalBufferAndViews();
-    }
-    const heap = Module.HEAPU8 || window.HEAPU8;
+	if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
+		updateGlobalBufferAndViews();
+	}
+	const heap = Module.HEAPU8 || window.HEAPU8;
 
-    const folderBytes = heap.subarray(pathPtr, pathPtr + pathLen);
-    const dirPath = new TextDecoder("utf-8").decode(folderBytes);
-    const normalizedPath = dirPath.replace(/\/$/, "");
+	const folderBytes = heap.subarray(pathPtr, pathPtr + pathLen);
+	const dirPath = new TextDecoder("utf-8").decode(folderBytes);
+	const normalizedPath = dirPath.replace(/\/$/, "");
 
-    if (!FS.virtual || !FS.virtual[normalizedPath]) {
-        console.warn(`WASI VFS Error: Directory not found -> ${normalizedPath}`);
-        return 44; // WASI_ENOENT (No such file or directory)
-    }
+	if (!FS.virtual || !FS.virtual[normalizedPath]) {
+		console.warn(`WASI VFS Error: Directory not found -> ${normalizedPath}`);
+		return 44; // WASI_ENOENT (No such file or directory)
+	}
 
-    if (FS.virtual[normalizedPath].type !== 'dir') {
-        console.error(`WASI VFS Error: Path is not a directory -> ${normalizedPath}`);
-        return 76; // WASI_ENOTDIR (Not a directory)
-    }
+	if (FS.virtual[normalizedPath].type !== 'dir') {
+		console.error(`WASI VFS Error: Path is not a directory -> ${normalizedPath}`);
+		return 76; // WASI_ENOTDIR (Not a directory)
+	}
 
-    // Check if empty
-    const prefix = normalizedPath + "/";
-    const isNotEmpty = Object.keys(FS.virtual).some(filePath => filePath.startsWith(prefix));
+	// Check if empty
+	const prefix = normalizedPath + "/";
+	const isNotEmpty = Object.keys(FS.virtual).some(filePath => filePath.startsWith(prefix));
 
-    if (isNotEmpty) {
-        console.error(`WASI VFS Error: Directory not empty -> ${normalizedPath}`);
-        return 54; // WASI_ENOTEMPTY (Directory not empty)
-    }
+	if (isNotEmpty) {
+		console.error(`WASI VFS Error: Directory not empty -> ${normalizedPath}`);
+		return 54; // WASI_ENOTEMPTY (Directory not empty)
+	}
 
-    delete FS.virtual[normalizedPath];
-    console.log(`WASI VFS: Removed directory via fd(${fd}) -> "${normalizedPath}"`);
-    return 0; // WASI_ESUCCESS
+	delete FS.virtual[normalizedPath];
+	console.log(`WASI VFS: Removed directory via fd(${fd}) -> "${normalizedPath}"`);
+	return 0; // WASI_ESUCCESS
 }
 
 

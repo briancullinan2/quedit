@@ -393,6 +393,9 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
                 if (!FS.virtual[obj] && !forceChanged)
                     FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
 
+                if (!FS.virtual[dagMd] && !forceChanged)
+                    FS.virtual[dagMd] = await getRecord(DB_STORE_NAME, dagMd, database)
+
                 if (FS.virtual[obj]
                     && FS.virtual[dagMd]?.timestamp < FS.virtual[obj]?.timestamp
                     && !forceChanged

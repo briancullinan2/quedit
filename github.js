@@ -130,9 +130,9 @@ async function loadGitHubTree(repoOwner, repoName, branch) {
 async function loadGitHubTreeNew(repoOwner, repoName, branch) {
     const database = `${repoOwner}/${repoName}`;
     const branchName = branch || 'main';
-    
+
     // We explicitly target the branch root via expression syntax to force complete recursion
-    const expressionString = `${branchName}:`; 
+    const expressionString = `${branchName}:`;
 
     const treeQuery = `
     query GetRecursiveTree($owner: String!, $name: String!, $expression: String!) {
@@ -166,7 +166,7 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch) {
         }
 
         // Create the base map inside memory
-        if(typeof files[database] === 'undefined')
+        if (typeof files[database] === 'undefined')
             files[database] = {};
         const filesToHydrate = [];
 
@@ -192,7 +192,7 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch) {
 
         // --- PHASE 2: Dynamic Batch Log Hydration via GraphQL Aliasing ---
         // We chunk file updates to prevent generating a massive query payload that gets rejected
-        const BATCH_SIZE = 50; 
+        const BATCH_SIZE = 50;
         const batchPromises = [];
 
         for (let i = 0; i < filesToHydrate.length; i += BATCH_SIZE) {
@@ -259,7 +259,7 @@ async function hydrateFileMTimes(owner, repo, branch, filePaths, targetCache) {
         filePaths.forEach((path, index) => {
             const safeAlias = `file_${index}`;
             const historyNodes = repoData[safeAlias]?.target?.history?.nodes;
-            
+
             if (historyNodes && historyNodes.length > 0) {
                 // Map the authentic Git modification time from the latest commit targeting this path
                 targetCache[path].timestamp = new Date(historyNodes[0].committedDate);
@@ -340,9 +340,14 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
     try {
 
 
+        //if (files[repoOwner + '/' + repoName][filePath])
+        //    FS.virtual[filePath] = files[repoOwner + '/' + repoName][filePath]
         let record = await getRecord(DB_STORE_NAME, filePath, repoOwner + '/' + repoName)
         FS.virtual[filePath] = record
-        FS.virtual[filePath].timestamp = files[repoOwner + '/' + repoName][filePath].timestamp
+        if (files[repoOwner + '/' + repoName][filePath]
+            && FS.virtual[filePath]
+        )
+            FS.virtual[filePath].timestamp = files[repoOwner + '/' + repoName][filePath].timestamp
 
         if (record /*&& (record.sha == sha)*/) {
             if (api.memfs && !api.memfs.exists(filePath))
@@ -381,12 +386,12 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
         if (api.memfs && !api.memfs.exists(filePath))
             api.memfs.addFile(filePath, bytes)
 
+        return bytes
     } catch (e) {
         log(`Cache file error in ${filePath}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
         throw e
     }
 
-    return bytes
 }
 
 

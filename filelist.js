@@ -398,12 +398,116 @@ function loadTree(database, cursor) {
 }
 
 
+
+
+function getQVMHeader(sampleBytes, content, filePath) {
+
+    
+
+    // 1. Read QVM Header Magic Number (0x12721444 or 'qvm\x12')
+    // Standard QVM headers start with Magic (4 bytes), Instruction Count (4 bytes), 
+    // Code Offset/Length (4), Data Offset/Length (4), Lit Offset/Length (4), BSS Length (4)
+    const isQVM = sampleBytes[0] === 0x44 && sampleBytes[1] === 0x14 && sampleBytes[2] === 0x72 && sampleBytes[3] === 0x12;
+
+    let infoStack = `QVM file detected (${content.length} bytes)\n`;
+    infoStack += `========================================================================\n`;
+
+    if (isQVM && sampleBytes.length >= 24) {
+        // Parse 32-bit Little Endian integers from the QVM header metadata
+        const view = new DataView(sampleBytes.buffer, sampleBytes.byteOffset, sampleBytes.byteLength);
+        const instructionCount = view.getUint32(4, true);
+        const codeLength = view.getUint32(8, true);
+        const dataLength = view.getUint32(12, true);
+        const litLength = view.getUint32(16, true);
+        const bssLength = view.getUint32(20, true);
+
+        // Render the compilation metadata block
+        infoStack += `Output filename:      ${filePath}\n`;
+        infoStack += `Compiler Sequence:    pass #1: define -> pass #2: compile -> pass #3: define -> pass #4: compile\n`;
+        infoStack += `------------------------------------------------------------------------\n`;
+        infoStack += `Code Segment size:    ${codeLength.toString().padEnd(10)} bytes\n`;
+        infoStack += `Data Segment size:    ${dataLength.toString().padEnd(10)} bytes\n`;
+        infoStack += `Lit Segment size:     ${litLength.toString().padEnd(10)} bytes\n`;
+        infoStack += `BSS Segment size:     ${bssLength.toString().padEnd(10)} bytes (Uninitialized Data)\n`;
+        infoStack += `Instruction Count:    ${instructionCount.toString().padEnd(10)}\n`;
+        infoStack += `------------------------------------------------------------------------\n`;
+        infoStack += `Status:               Successfully mapped binary targets.\n`;
+    } else {
+        infoStack += `Format:               Unknown Raw Binary Data\n`;
+    }
+
+    //const hexRows = hexDump(sampleBytes, content, filePath)
+
+    return infoStack
+}
+
+
+
+function hexDump(sampleBytes, content, filePath) {
+    let infoStack
+
+    if (filePath.includes('.qvm')) {
+        infoStack = getQVMHeader(sampleBytes, content, filePath)
+    } else {
+        infoStack = `Binary file detected (${content.length} bytes)\n`;
+        infoStack += `========================================================================\n`;
+    }
+
+    infoStack += `========================================================================\n\n`;
+    infoStack += `Raw Header Hex View (First ${sampleBytes.length} bytes):\n`;
+    infoStack += `------------------------------------------------------------------------\n`;
+
+    let hexRows = [];
+    for (let i = 0; i < sampleBytes.length; i += 16) {
+        let chunk = [];
+        for (let j = 0; j < 16; j++) {
+            if (i + j < sampleBytes.length) {
+                let byteHex = sampleBytes[i + j].toString(16).padStart(2, '0').toUpperCase();
+                chunk.push(byteHex);
+            }
+        }
+
+        // Add visual split column delimiter at byte index 8
+        if (chunk.length > 8) {
+            chunk.splice(8, 0, "|");
+        }
+
+        // Pad out short rows at the end of the data chunk sample
+        let hexLine = chunk.join(" ");
+        let offset = i.toString(16).padStart(4, '0').toUpperCase();
+        hexRows.push(`0x${offset}:  ${hexLine}`);
+    }
+
+    let str = infoStack + hexRows.join("\n");
+
+    return str
+}
+
+
+
+
+
+const hasSequentialBinaryRegex = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]{3,}/;
+
 async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true, hidePanels = true) {
     api.github_token = localStorage.getItem('github_token');
 
-    let content = await cacheFile(repoOwner, repoName, filePath, sha)
+    let content = await cacheFile(repoOwner, repoName, filePath, sha);
+
+    // 1. Scan just the first 1024 bytes for binary characters before decoding everything
+    const sampleBytes = content.subarray(0, 1024);
     const decoder = new TextDecoder();
-    const str = decoder.decode(content);
+    const sampleStr = decoder.decode(sampleBytes);
+
+    let str
+    if (hasSequentialBinaryRegex.test(sampleStr)) {
+        str = hexDump(sampleBytes, content, filePath)
+    } else {
+        // Standard plain text file path
+        str = decoder.decode(content);
+    }
+
+
 
     // 2. Ace Session
     const session = getOrCreateAceSession(filePath, str);
@@ -444,6 +548,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     else {
         selector.value == filePath
     }
+    selector.parentElement.setAttribute('placeholder', 'Current file: ' + filePath)
 }
 
 
@@ -515,7 +620,7 @@ function treeHandler(selector, e) {
         }
         if (node.closest('#database')) {
             let parent = node.closest('#database > div > ul > li[data-id]')
-            if(nodeDB = parent.getAttribute('data-id'))
+            if (nodeDB = parent.getAttribute('data-id'))
                 selected = nodeDB
 
         }
