@@ -994,7 +994,9 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 		written += bufLen;
 	}
 
+
 	// 3. Handle Standard I/O (fd 1 and 2)
+
 	if (fd <= 2 && !FS.pointers[fd][2].rewrite) {
 		// Concatenate for the host console/logs
 		let totalBuf = new Uint8Array(written);
@@ -1010,6 +1012,7 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 		view.setUint32(nwritten, written, true);
 		return 0;
 	}
+
 
 	// 4. Handle Actual File Write (fd > 2)
 	// stream layout: [position, mode, node, path, fd]
@@ -1484,6 +1487,7 @@ function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
  */
 function fd_renumber(fd, to) {
 
+
 	// 1. Validate the source descriptor
 	let stream = FS.pointers[fd];
 
@@ -1704,35 +1708,19 @@ function getStringsFromArgv(argv) {
 }
 
 
-async function _spawnvp(mode, cmdnamePtr, argvPtr) {
-	debugger
-	// 1. Convert cmdname from pointer to JS String
-	const cmdname = readString(cmdnamePtr);
-
-	// 2. Reconstruct the argument array from memory
-	const args = [];
-	let currentPtr = argvPtr;
-
-	while (true) {
-		// Read the pointer stored at the current array index
-		const strPtr = Module.getValue(currentPtr, 'i32');
-		if (strPtr === 0) break; // NULL terminator
-
-		args.push(readString(strPtr));
-		currentPtr += 4; // Move to next 32-bit pointer
-	}
-
+function _spawnvp(mode, cmdnamePtr, argvPtr) {
+	const u8 = new Uint8Array(Module.memory.buffer);
+	const path = readStr(u8, cmdnamePtr);
 	try {
-
-		const bin = args[0];
-		const remainingArgs = args.slice(1);
+		const cmdArgs = getStringsFromArgv(argvPtr)
+		const targetKey = path || cmdArgs[0];
 
 		// Await the execution of the WASM tool
-		const exitCode = await api.runSync(bin, ...remainingArgs);
+		let result = api.runSync(targetKey, ...cmdArgs);
 
-		return exitCode;
+		return result;
 	} catch (e) {
-		console.error(`Execution failed for ${cmdname}:`, e);
+		console.error(`Execution failed for ${path}:`, e);
 		return 100; // Standard error exit for LCC
 	}
 }
@@ -1743,63 +1731,63 @@ async function _spawnvp(mode, cmdnamePtr, argvPtr) {
 let virtualChildExitCode = 0;
 let forkToggle = false;
 
-function getpid() { 
-    return 42; 
+function getpid() {
+	return 42;
 }
 
 function fork() {
-    // Alternating state machine behavior:
-    // First call inside _spawnvp returns 0 (Run the Child code block)
-    // Second call inside _spawnvp returns 42 (Run the Parent code block)
-    forkToggle = !forkToggle;
-    if (forkToggle) {
-        return 0; // Trigger case 0: execvp()
-    } else {
-        return 42; // Skip to parent wait() block
-    }
+	// Alternating state machine behavior:
+	// First call inside _spawnvp returns 0 (Run the Child code block)
+	// Second call inside _spawnvp returns 42 (Run the Parent code block)
+	forkToggle = !forkToggle;
+	if (forkToggle) {
+		return 0; // Trigger case 0: execvp()
+	} else {
+		return 42; // Skip to parent wait() block
+	}
 }
 
 function execv(pathPtr, argvPtr) {
-    const u8 = new Uint8Array(Module.memory.buffer);
-    const path = readStr(u8, pathPtr);
-    const cmdArgs = getStringsFromArgv(argvPtr);
-    const targetKey = path || cmdArgs[0];
+	const u8 = new Uint8Array(Module.memory.buffer);
+	const path = readStr(u8, pathPtr);
+	const cmdArgs = getStringsFromArgv(argvPtr);
+	const targetKey = path || cmdArgs[0];
 
-    if (api && api.moduleCache[targetKey]) {
-        // 1. Run the target compiler module synchronously RIGHT NOW
-        let result = api.runSync(targetKey, ...cmdArgs);
-        log('Process resulted in: ' + result);
-        
-        // 2. Save the real exit code in our global virtual tracking state
-        virtualChildExitCode = result;
+	if (api && api.moduleCache[targetKey]) {
+		// 1. Run the target compiler module synchronously RIGHT NOW
+		let result = api.runSync(targetKey, ...cmdArgs);
+		log('Process resulted in: ' + result);
 
-        // 3. FORCE a loop mutation: We recall _spawnvp dynamically to trigger the parent pass
-        // This forces fork() to toggle and return 42 next, skipping straight to wait()
-        Module.exports._spawnvp(0, pathPtr, argvPtr);
+		// 2. Save the real exit code in our global virtual tracking state
+		virtualChildExitCode = result;
 
-        // 4. Clean exit from the child fork branch
-        return 0; 
-    }
-    else {
-        log('Would have run: ' + [path, ...cmdArgs].join(' '));
-        Module.errno = 1; // EPERM / EINVAL
-        return -1;
-    }
+		// 3. FORCE a loop mutation: We recall _spawnvp dynamically to trigger the parent pass
+		// This forces fork() to toggle and return 42 next, skipping straight to wait()
+		Module.exports._spawnvp(0, pathPtr, argvPtr);
+
+		// 4. Clean exit from the child fork branch
+		return 0;
+	}
+	else {
+		log('Would have run: ' + [path, ...cmdArgs].join(' '));
+		Module.errno = 1; // EPERM / EINVAL
+		return -1;
+	}
 }
 
 function wait(statusPtr) {
-    // If a status memory pointer was passed by C, write our captured child status into it
-    // C expects the exit code to be shifted left by 8 bits: (status >> 8) & 0377
-    if (statusPtr && Module.memory) {
-        const view = new DataView(Module.memory.buffer);
-        view.setInt32(Number(statusPtr), (virtualChildExitCode << 8), true);
-    }
-    
-    // Reset our fork toggle tracking flag for the next compilation pass command
-    forkToggle = false;
+	// If a status memory pointer was passed by C, write our captured child status into it
+	// C expects the exit code to be shifted left by 8 bits: (status >> 8) & 0377
+	if (statusPtr && Module.memory) {
+		const view = new DataView(Module.memory.buffer);
+		view.setInt32(Number(statusPtr), (virtualChildExitCode << 8), true);
+	}
 
-    // Return the fake PID (42) to signify the child process successfully reaped
-    return 42; 
+	// Reset our fork toggle tracking flag for the next compilation pass command
+	forkToggle = false;
+
+	// Return the fake PID (42) to signify the child process successfully reaped
+	return 42;
 }
 
 

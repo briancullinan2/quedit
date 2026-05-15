@@ -695,7 +695,7 @@ async function linkLCC(database = null, forceChanged = false, noBuild = false) {
     await api.link({
         LDFLAGS: [
             ...toolLdFlags,
-            "--export=_spawnvp",
+            //"--export=_spawnvp",
             "-o", lccExe,
             ...lccObjs,
             ...includeFlags

@@ -42,6 +42,7 @@ Sys_Microseconds
 Com_DL_Cleanup
 
 _spawnvp
+callsys
 
 emscripten_get_heap_size
 emscripten_resize_heap

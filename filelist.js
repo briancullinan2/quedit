@@ -450,7 +450,6 @@ function hexDump(sampleBytes, content, filePath) {
         infoStack = getQVMHeader(sampleBytes, content, filePath)
     } else {
         infoStack = `Binary file detected (${content.length} bytes)\n`;
-        infoStack += `========================================================================\n`;
     }
 
     infoStack += `========================================================================\n\n`;

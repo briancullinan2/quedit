@@ -338,22 +338,33 @@ async function getGitShaBrowser(content) {
 async function cacheFile(repoOwner, repoName, filePath, sha) {
 
     try {
+        const selected = repoOwner + '/' + repoName
 
-
-        //if (files[repoOwner + '/' + repoName][filePath])
-        //    FS.virtual[filePath] = files[repoOwner + '/' + repoName][filePath]
-        let record = await getRecord(DB_STORE_NAME, filePath, repoOwner + '/' + repoName)
+        //if (files[selected][filePath])
+        //    FS.virtual[filePath] = files[selected][filePath]
+        let record = await getRecord(DB_STORE_NAME, filePath, selected)
         FS.virtual[filePath] = record
-        if (files[repoOwner + '/' + repoName][filePath]
+        if (files[selected][filePath]
             && FS.virtual[filePath]
         )
-            FS.virtual[filePath].timestamp = files[repoOwner + '/' + repoName][filePath].timestamp
+            FS.virtual[filePath].timestamp = files[selected][filePath].timestamp
 
-        //if (record /*&& (record.sha == sha)*/) {
-        //    if (api.memfs && !api.memfs.exists(filePath))
-        //        api.memfs.addFile(filePath, record.contents)
-        //    return record.contents
-        //}
+
+        if (!files[selected]) {
+            let branch = getDefaultBranch(repoOwner, repoName)
+            await loadGitHubTree(repoOwner, repoName, branch)
+        }
+
+
+        // TODO: IF GITHUB, ALWAYS UPDATE
+        if (files[selected][filePath]) {
+
+        }
+        else if (record /*&& (record.sha == sha)*/) {
+            if (api.memfs && !api.memfs.exists(filePath))
+                api.memfs.addFile(filePath, record.contents)
+            return record.contents
+        }
 
         let jsonResponse = await githubRequest(repoOwner, repoName, `contents/${filePath}`)
 
@@ -371,7 +382,7 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
         }
 
         FS.virtual[filePath] = {
-            timestamp: files[repoOwner + '/' + repoName][filePath].timestamp,
+            timestamp: files[selected][filePath].timestamp,
             mode: FS_FILE,
             contents: bytes,
             path: filePath,
@@ -381,7 +392,7 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
 
         // async to filesystem
         // does it REALLY matter if it makes it? wont it just redownload?
-        await putRecord(DB_STORE_NAME, FS.virtual[filePath], repoOwner + '/' + repoName)
+        await putRecord(DB_STORE_NAME, FS.virtual[filePath], selected)
 
         if (api.memfs && !api.memfs.exists(filePath))
             api.memfs.addFile(filePath, bytes)

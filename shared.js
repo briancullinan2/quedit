@@ -629,12 +629,14 @@ const API = (function () {
         let result = this.runInternal()
         return result
       } finally {
-        debugger
-        Module.exports = this.previousExports
-        window.STD.sharedMemory = Module.__heap_base = this.previousHeap
-        ENV.memory = Module.memory = this.previousMemory
-        Module.errno.value = this.previousErrno
-        updateGlobalBufferAndViews()
+
+        if (this.previousExports) {
+          Module.exports = this.previousExports
+          window.STD.sharedMemory = Module.__heap_base = this.previousHeap
+          ENV.memory = Module.memory = this.previousMemory
+          Module.errno.value = this.previousErrno
+          updateGlobalBufferAndViews()
+        }
       }
     }
 
