@@ -452,10 +452,12 @@ button {
     opacity: 1;
 }
 
+/*
 #toolbar [placeholder]:has(:empty)::after
 {
     opacity: 1;
 }
+*/
 
 [placeholder]:not([type="checkbox"])::after,
 [alt]::after,

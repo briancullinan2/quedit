@@ -116,6 +116,7 @@ const asmToolHeaders = [
     'cmdlib.h',
     'opstrings.h',
     'qvm.h',
+    config.MOUNT_DIR + "/wasm/wasm.syms"
 ]
 
 const toolLdFlags = [
@@ -269,7 +270,17 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
         }
 
         const sha = (FILELIST[src] || {}).sha;
-        const content = await cacheFile(ownerName, repoName, src, sha);
+        let content
+        if (FS.virtual[src])
+            content = FS.virtual[srv].contents
+        else if (!src.includes('build/'))
+            content = await cacheFile(ownerName, repoName, src, sha);
+        else {
+            FS.virtual[src] = getRecord(DB_STORE_NAME, src, database)
+            if (!FS.virtual[src])
+                throw new Error('Output file not found: ' + src)
+        }
+
 
 
         if (needsHeaders) {
@@ -817,8 +828,17 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 
             const src = file;
             const obj = path.join(CONFIGURATION, file.replace('.c', '.o'));
-            const sha = files[database][src].sha;
-            const content = await cacheFile(ownerName, repoName, src, sha);
+            const content = await cacheFile(ownerName, repoName, src);
+
+
+
+            if (FS.virtual[obj]
+                && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+                && !forceChanged
+            ) {
+                log(obj + " already up to date...");
+                return
+            }
 
             log(`CC: ${file}\n\r`);
             await api.compile({
@@ -837,7 +857,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
     }
 
     if (noLinking) {
-        await linkAsm(database, hasChanged)
+        await linkAsm(database, hasChanged, true)
     }
 
 }

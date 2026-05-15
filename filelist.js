@@ -208,7 +208,7 @@ async function expandDatabaseTree(target, folderId) {
                 parent: trees['#database'].nodesById[folderId],
                 state: { open: false, expanded: false },
                 // If it's a directory, give it a dummy child so it's expandable
-                children: isDir ? [{ text: 'Loading...', id: `${path}/loading` }] : [{ text: 'Empty...', id: `${path}/empty` }]
+                children: isDir ? [{ text: 'Loading...', id: `${path}/loading` }] : null
             };
 
             loadedDatabases[newNode.id] = trees['#database'].nodesById[newNode.id] = newNode
