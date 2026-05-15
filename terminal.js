@@ -216,12 +216,12 @@ function refreshBlinker() {
         if (document.visibilityState === 'visible') {
             // 2. Force internal focus state
             term.focus();
-            
+
             // 3. Restart the blink interval timer
             if (term._core._cursorBlinkContext) {
                 term._core._cursorBlinkContext.restartInterval();
             }
-            
+
             // 4. THE FIX: Use the public-facing or stable internal refresh
             // This forces the terminal to re-evaluate what needs to be drawn
             if (term._core.renderService) {
@@ -607,7 +607,7 @@ function forceFit(term, container) {
 
 term.onRender(() => {
     // Now the core services are guaranteed to exist
-    setTimeout(() => forceFit(term, container), 100);
+    setTimeout(() => forceFit(term, container), 200);
 });
 
 const originalConsole = {
@@ -849,32 +849,63 @@ function changeCursorPosition(event, x, y, activeRow, col, row, lineText, filePa
 
 async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber) {
 
-    let database = owner.value + '/' + repo.value
-    let parts = database.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
-
+    let selected
     let dbFile
     if (!dbFile && files[engineRepo]) {
         dbFile = files[engineRepo][filePath]
-        if (dbFile)
+        if (dbFile) {
             trees[engineRepo].values = [dbFile.sha];
+            selected = engineRepo
+        }
         renderTabsCommand('filelist')
     }
     if (!dbFile && files[gameRepo]) {
         dbFile = files[gameRepo][filePath]
-        if (dbFile)
+        if (dbFile) {
             trees[gameRepo].values = [dbFile.sha];
+            selected = gameRepo
+        }
         renderTabsCommand('gamelist')
     }
     if (!dbFile && files[assetRepo]) {
         dbFile = files[assetRepo][filePath]
-        if (dbFile)
+        if (dbFile) {
             trees[assetRepo].values = [dbFile.sha];
+            selected = assetRepo
+        }
         renderTabsCommand('assetlist')
     }
-    if (!dbFile && files[toolsRepo]) dbFile = files[toolsRepo][filePath]
-    if (!dbFile && files[toolsRepo2]) dbFile = files[toolsRepo2][filePath]
+
+    if (!dbFile) {
+        if (!files[toolsRepo]) {
+            let parts = toolsRepo.split('/')
+            let ownerName = parts.length == 2 ? parts[0] : owner.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+            let branch = await getDefaultBranch(ownerName, repoName)
+            await loadGitHubTree(ownerName, repoName, branch)
+        }
+        if (files[toolsRepo][filePath]) {
+            selected = toolsRepo
+            dbFile = files[toolsRepo][filePath]
+        }
+    }
+
+
+    if (!dbFile) {
+        if (!files[toolsRepo2]) {
+            let parts = toolsRepo2.split('/')
+            let ownerName = parts.length == 2 ? parts[0] : owner.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+            let branch = await getDefaultBranch(ownerName, repoName)
+            await loadGitHubTree(ownerName, repoName, branch)
+        }
+        if (files[toolsRepo2][filePath]) {
+
+            selected = toolsRepo2
+            dbFile = files[toolsRepo2][filePath]
+        }
+    }
+
 
     // TODO: FS.virtual for IDB access and database
     if (!dbFile && filePath.includes('build/')) {
@@ -886,6 +917,7 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
 
             if (trees['#database'].nodesById[item.key + '/' + filePath]) {
                 dbFile = trees['#database'].nodesById[item.key + '/' + filePath]
+                selected = item.key
                 break;
             }
 
@@ -893,6 +925,7 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
             if (record) {
                 dbFile = trees['#database'].nodesById[item.key + '/' + filePath]
                     = FS.virtual[filePath] = record
+                selected = item.key
                 break;
             }
         }
@@ -904,13 +937,19 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
 
     }
 
-    if (!dbFile) dbFile = files[database][filePath]
+
+    let parts = selected.split('/')
+    let ownerName = parts.length == 2 ? parts[0] : owner.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+    if (!dbFile) dbFile = files[selected][filePath]
 
 
     if (!dbFile) return
 
     currentOpenFileId = dbFile.sha
-    await openFile(owner.value, repo.value, filePath, dbFile.sha, true /* record history */, false /* show file list */)
+
+    await openFile(ownerName, repoName, filePath, dbFile.sha, true /* record history */, false /* show file list */)
     if (lineNumber)
         editor.gotoLine(lineNumber, 0, true);
     editor.focus();

@@ -41,6 +41,8 @@ DebugBreak
 Sys_Microseconds
 Com_DL_Cleanup
 
+_spawnvp
+
 emscripten_get_heap_size
 emscripten_resize_heap
 updateGlobalBufferAndViews

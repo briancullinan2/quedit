@@ -550,6 +550,7 @@ q3rcc -target=bytecode -v build/debug-wasm-js/code/game/bg_lib.i bg_lib.asm
 rm /tmp/lcc420.i
 */
 
+/*
 
         await api.run({
             tool: 'q3cpp.js.wasm',
@@ -577,7 +578,7 @@ rm /tmp/lcc420.i
             args: [
                 'q3rcc', // '-v', '-v',
                 '-target=bytecode',
-                (configuration.value === 'pre' ? '-g' : '-g2'),
+                //(configuration.value === 'pre' ? '-g' : '-g2'),
                 '-v',
                 tempPath,
                 outPath //.split('/').pop(),
@@ -585,6 +586,20 @@ rm /tmp/lcc420.i
             database: selected,
             toolsRepo: toolsRepo,
             paths: [outPath, tempPath],
+        })
+
+        */
+       
+        await api.run({
+            tool: 'q3lcc.js.wasm',
+            args: [
+                'q3lcc', '-v', '-S', '-Wf-g',
+                srcPath,
+                outPath //.split('/').pop(),
+            ],
+            database: selected,
+            toolsRepo: toolsRepo,
+            paths: [outPath, srcPath],
         })
 
         return

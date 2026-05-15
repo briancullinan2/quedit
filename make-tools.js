@@ -45,8 +45,8 @@ const LCC_CFLAGS = [
     "-isysroot", "/",
     '-internal-isystem', 'include/c++/v1',
     "-internal-isystem", "include",
+    '-internal-isystem', 'include/wasi-emulated-signal',
     "-internal-isystem", "lib/clang/8.0.1/include", // Path varies by your Clang version
-    '-isystem', 'include/wasi-emulated-signal',
 
     "-O2",
     "-Wall",
@@ -60,8 +60,8 @@ const LCC_CFLAGS = [
     //'-c',
     //"-fno-strict-aliasing",
     '-ftls-model=global-dynamic',
-    '-D_REENTRANT=0',
-    "-DSIGINT=2",
+    //'-D_REENTRANT=0',
+    //"-DSIGINT=2",
     '-D_Thread_local=',
     //"-Derrno=(*__errno_location())",
     //"-D__errno_location=void",
@@ -124,6 +124,7 @@ const toolLdFlags = [
     //"--no-standard-libraries",
     '--no-threads',
     "--export-dynamic",
+    //"--verbose",
     //"--import-memory",
     //"--import-table",
 
@@ -273,7 +274,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
 
         let content
         if (FS.virtual[src])
-            content = FS.virtual[srv].contents
+            content = FS.virtual[src].contents
         else if (!src.includes('build/'))
             content = await cacheFile(ownerName, repoName, src);
         else {
@@ -694,6 +695,7 @@ async function linkLCC(database = null, forceChanged = false, noBuild = false) {
     await api.link({
         LDFLAGS: [
             ...toolLdFlags,
+            "--export=_spawnvp",
             "-o", lccExe,
             ...lccObjs,
             ...includeFlags

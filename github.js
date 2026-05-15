@@ -349,11 +349,11 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
         )
             FS.virtual[filePath].timestamp = files[repoOwner + '/' + repoName][filePath].timestamp
 
-        if (record /*&& (record.sha == sha)*/) {
-            if (api.memfs && !api.memfs.exists(filePath))
-                api.memfs.addFile(filePath, record.contents)
-            return record.contents
-        }
+        //if (record /*&& (record.sha == sha)*/) {
+        //    if (api.memfs && !api.memfs.exists(filePath))
+        //        api.memfs.addFile(filePath, record.contents)
+        //    return record.contents
+        //}
 
         let jsonResponse = await githubRequest(repoOwner, repoName, `contents/${filePath}`)
 

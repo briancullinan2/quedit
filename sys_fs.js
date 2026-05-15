@@ -96,7 +96,7 @@ function Sys_FOpen(filename, mode) {
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
 
-	if(!FS.virtual[localName]) {
+	if (!FS.virtual[localName]) {
 		debugger
 	}
 
@@ -531,6 +531,7 @@ function Sys_access(filename, i) {
 	if (FS.virtual[localName]) {
 		return 0
 	} else {
+		debugger
 		if (Module.errno.value) {
 			HEAPU32[Module.errno.value >> 2] = ENOENT
 		}
@@ -1722,16 +1723,12 @@ async function _spawnvp(mode, cmdnamePtr, argvPtr) {
 	}
 
 	try {
-		/**
-		 * Mapping to your specific call:
-		 * args[0] is usually the program name (e.g., 'clang')
-		 * the rest are the flags
-		 */
+
 		const bin = args[0];
 		const remainingArgs = args.slice(1);
 
 		// Await the execution of the WASM tool
-		const exitCode = await api.run(bin, ...remainingArgs);
+		const exitCode = await api.runSync(bin, ...remainingArgs);
 
 		return exitCode;
 	} catch (e) {
@@ -1741,12 +1738,68 @@ async function _spawnvp(mode, cmdnamePtr, argvPtr) {
 }
 
 
-function getpid() { return 42; }
-function fork() { return 0; }
-function wait(status) {
-	debugger
-	Module.errno = WASI_ENOSYS;
-	return -1;
+
+// Global tracking state for our simulated single-threaded process table
+let virtualChildExitCode = 0;
+let forkToggle = false;
+
+function getpid() { 
+    return 42; 
+}
+
+function fork() {
+    // Alternating state machine behavior:
+    // First call inside _spawnvp returns 0 (Run the Child code block)
+    // Second call inside _spawnvp returns 42 (Run the Parent code block)
+    forkToggle = !forkToggle;
+    if (forkToggle) {
+        return 0; // Trigger case 0: execvp()
+    } else {
+        return 42; // Skip to parent wait() block
+    }
+}
+
+function execv(pathPtr, argvPtr) {
+    const u8 = new Uint8Array(Module.memory.buffer);
+    const path = readStr(u8, pathPtr);
+    const cmdArgs = getStringsFromArgv(argvPtr);
+    const targetKey = path || cmdArgs[0];
+
+    if (api && api.moduleCache[targetKey]) {
+        // 1. Run the target compiler module synchronously RIGHT NOW
+        let result = api.runSync(targetKey, ...cmdArgs);
+        log('Process resulted in: ' + result);
+        
+        // 2. Save the real exit code in our global virtual tracking state
+        virtualChildExitCode = result;
+
+        // 3. FORCE a loop mutation: We recall _spawnvp dynamically to trigger the parent pass
+        // This forces fork() to toggle and return 42 next, skipping straight to wait()
+        Module.exports._spawnvp(0, pathPtr, argvPtr);
+
+        // 4. Clean exit from the child fork branch
+        return 0; 
+    }
+    else {
+        log('Would have run: ' + [path, ...cmdArgs].join(' '));
+        Module.errno = 1; // EPERM / EINVAL
+        return -1;
+    }
+}
+
+function wait(statusPtr) {
+    // If a status memory pointer was passed by C, write our captured child status into it
+    // C expects the exit code to be shifted left by 8 bits: (status >> 8) & 0377
+    if (statusPtr && Module.memory) {
+        const view = new DataView(Module.memory.buffer);
+        view.setInt32(Number(statusPtr), (virtualChildExitCode << 8), true);
+    }
+    
+    // Reset our fork toggle tracking flag for the next compilation pass command
+    forkToggle = false;
+
+    // Return the fake PID (42) to signify the child process successfully reaped
+    return 42; 
 }
 
 
@@ -1758,24 +1811,6 @@ function readStr(u8, o, len = -1) {
 	for (let i = o; i < end && u8[i] != 0; ++i)
 		str += String.fromCharCode(u8[i]);
 	return str;
-}
-
-
-function execv(pathPtr, argvPtr) {
-	const u8 = new Uint8Array(Module.memory.buffer)
-	const path = readStr(u8, pathPtr);
-	const cmdArgs = getStringsFromArgv(argvPtr);
-
-	if (api && api.moduleCache[path || cmdArgs[0]]) {
-		let result = api.runSync(path || cmdArgs[0], ...cmdArgs);
-		return result.output;
-	}
-	else {
-		log('Would have run: ' + [path, ...cmdArgs].join(' '))
-		Module.errno = WASI_ENOSYS;
-		return -1;
-	}
-	return 0;
 }
 
 function path_unlink_file(dirfd, pathPtr, pathLen) {
@@ -1961,46 +1996,34 @@ function path_remove_directory(fd, pathPtr, pathLen) {
 }
 
 
-
-function clock_gettime(clk_id, tp) {
-	// 1. Force pointers to Numbers immediately to allow bitwise math
-	const tpAddr = Number(tp);
-	const clkAddr = Number(clk_id);
-
-	// Depending on your WASM build, clk_id might be the ID itself 
-	// OR a pointer to it. Your code suggests it's a pointer:
-	let id = HEAPU32[clkAddr >> 2];
+function clock_gettime(clk_id, precision, tp) {
+	// If the engine passes 3 args, 'tp' is the third argument slot (index 2)
+	// If an older tool pass only sent 2 args, fallback gracefully to the second slot
+	const tpAddr = arguments.length === 3 ? Number(tp) : Number(precision);
+	const id = Number(clk_id);
 
 	let now;
 	if (id === 0) { // CLOCK_REALTIME
 		now = Date.now(); // Milliseconds since epoch
-	} else if (id === 1 || id === 4) { // CLOCK_MONOTONIC / CLOCK_THREAD_CPUTIME_ID
-		now = performance.now(); // High-res relative time
-	} else if (Module.errno) {
-		const errnoPtr = Number(Module.errno);
-		HEAP32[errnoPtr >> 2] = 28; // EINVAL
-		return -1;
+	} else { // CLOCK_MONOTONIC / CLOCK_THREAD_CPUTIME_ID etc.
+		now = performance.now();
 	}
 
-	// 2. Convert to Seconds and Nanoseconds
-	// WASI 'timespec' struct:
-	// [0] tv_sec  (8 bytes in WASI, 4 bytes in some unstable versions)
-	// [8] tv_nsec (8 bytes in WASI, 4 bytes in some unstable versions)
+	// WASI standard: timestamp must be written as total nanoseconds since epoch/boot
+	// 1 millisecond = 1,000,000 nanoseconds
+	const totalNanoseconds = BigInt(Math.floor(now * 1e6));
 
-	const sec = Math.floor(now / 1000);
-	const nsec = Math.floor((now % 1000) * 1e6); // ms to ns
+	// Write the 64-bit (8-byte) integer directly to the WebAssembly memory view
+	try {
+		const view = new DataView(Module.memory.buffer);
+		view.setBigUint64(tpAddr, totalNanoseconds, true); // true = Little Endian
+	} catch (err) {
+		// Fallback in case memory.buffer isn't immediately exposed on 'Module'
+		const heapView = new DataView(HEAPU8.buffer);
+		heapView.setBigUint64(tpAddr, totalNanoseconds, true);
+	}
 
-	// 3. Write to memory using standard Number-based indexing
-	// If your Binji build uses 4-byte fields for timespec:
-	HEAP32[tpAddr >> 2] = sec;
-	HEAP32[(tpAddr + 4) >> 2] = nsec;
-
-	// If your build uses 8-byte fields (Standard WASI):
-	// const view = new DataView(Module.memory.buffer);
-	// view.setBigUint64(tpAddr, BigInt(sec), true);
-	// view.setBigUint64(tpAddr + 8, BigInt(nsec), true);
-
-	return 0;
+	return 0; // Success
 }
 
 

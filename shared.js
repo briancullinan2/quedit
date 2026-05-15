@@ -590,6 +590,15 @@ const API = (function () {
     assignExports(instance) {
       if (this.instance) return;
       this.instance = instance;
+
+
+      this.previousExports = Module.exports
+      this.previousErrno = Module.errno.value
+      this.previousMemory = ENV.memory || Module.memory
+      this.previousHeap = window.STD.sharedMemory || Module.__heap_base
+
+
+
       Module.exports = this.exports = this.instance.exports;
       if (this.exports.memory) {
         this.mem = new Memory(this.exports.memory);
@@ -617,7 +626,23 @@ const API = (function () {
         if (this.exports.memory)
           ENV.memory = Module.memory = this.exports.memory
         updateGlobalBufferAndViews()
+        let result = this.runInternal()
+        return result
+      } finally {
+        debugger
+        Module.exports = this.previousExports
+        window.STD.sharedMemory = Module.__heap_base = this.previousHeap
+        ENV.memory = Module.memory = this.previousMemory
+        Module.errno.value = this.previousErrno
+        updateGlobalBufferAndViews()
+      }
+    }
+
+
+    runInternal() {
+      try {
         this.output = this.exports._start();
+        return this.output
       } catch (exn) {
         let writeStack = true;
 
@@ -666,9 +691,11 @@ const API = (function () {
         }
 
         // Propagate error.
+        debugger
         throw exn;
       }
     }
+
 
     fd_renumber(from, to) {
       this.mem.check();
@@ -722,6 +749,23 @@ const API = (function () {
     async run() {
       await this.ready;
       let result = await this.runSync();
+      return this.output || result
+    }
+
+    async runAsync() {
+      await this.ready;
+
+      FS.virtual['/dev/stdin'].rewrite = 0
+      FS.virtual['/dev/stdout'].rewrite = 0
+      FS.virtual['/dev/stderr'].rewrite = 0
+      let previousMemory = ENV.memory || Module.memory
+      let previousHeap = window.STD.sharedMemory || Module.__heap_base
+      window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
+      if (this.exports.memory)
+        ENV.memory = Module.memory = this.exports.memory
+      updateGlobalBufferAndViews()
+      let result = this.runInternal()
+
       return this.output || result
     }
 
@@ -1866,7 +1910,7 @@ const API = (function () {
         this.hostWrite(msg);
       }
 
-      return module;
+      return module.output;
     }
 
     async run(module, ...args) {

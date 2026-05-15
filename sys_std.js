@@ -283,6 +283,7 @@ function Sys_fork() {
 
 
 function Sys_wait(status) {
+  debugger
   // lookup by address status? does this work on git code?
   if (typeof Sys.waitListeners[status] == 'undefined') {
     Sys.waitListeners[status] = 0
