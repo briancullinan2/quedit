@@ -10,9 +10,7 @@ const DB_SCHEME = [
             item1: 'path', item2: [{
                 key: 'timestamp', value: ['path', 'mode']
             }, {
-                key: 'path', value: ['path', 'mode']
-            }, {
-                key: 'parent', value: ['parent', 'path', 'mode']
+                key: 'parent', value: 'parent'
             }]
         }
     }
@@ -133,29 +131,28 @@ async function setupDatabase(dbName, stores) {
 
 const debouncePath = {}
 async function putRecord(storeName, record, dbName = null, noBounce = false) {
-    if(typeof debouncePath[record.path] !== 'undefined')
-    {
+    const newRecord = {
+        timestamp: record.timestamp,
+        mode: record.mode,
+        contents: record.contents.slice(0),
+        path: record.path,
+        sha: record.sha,
+        parent: record.parent
+    }
+    if (typeof debouncePath[record.path] !== 'undefined') {
         clearTimeout(debouncePath)
     }
-    if(!noBounce)
-        return debouncePath[record.path] = setTimeout(() => putRecord(storeName, record, dbName, true), 100)
+    if (!noBounce)
+        return debouncePath[record.path] = setTimeout(() => putRecord(storeName, newRecord, dbName, true), 100)
 
     const db = await getDB(dbName)
     const tx = db.transaction(storeName, 'readwrite')
     const store = tx.objectStore(storeName)
     return new Promise((rs, rj) => {
-        const newRecord = {
-            timestamp: record.timestamp,
-            mode: record.mode,
-            contents: record.contents,
-            path: record.path,
-            sha: record.sha,
-            parent: record.parent
-        }
-        if(!newRecord.path
+
+        if (!newRecord.path
             || newRecord.path === 'build/release-wasm-js/cpp/lex.o'
-        )
-        {
+        ) {
             debugger
         }
         const req = store.put(newRecord)
@@ -184,8 +181,8 @@ async function getRecord(storeName, key, dbName = null) {
 
 
 
-async function queryIndex(storeName, indexName, exactIndex = null, lower = null, upper = null) {
-    const db = await getDB()
+async function queryIndex(storeName, indexName, exactIndex = null, lower = null, upper = null, dbName = null) {
+    const db = await getDB(dbName)
     const tx = db.transaction(storeName, 'readonly')
     const store = tx.objectStore(storeName)
 
@@ -240,10 +237,10 @@ async function deleteRecord(storeName, key, dbName = null) {
     })
 }
 
-async function readAll(database, callback) {
+async function readAll(dbName, callback) {
     // ... your existing setup/install logic ...
 
-    let db = await getDB(database);
+    let db = await getDB(dbName);
     let transaction = db.transaction([DB_STORE_NAME], 'readonly');
     let objStore = transaction.objectStore(DB_STORE_NAME);
 

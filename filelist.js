@@ -119,33 +119,17 @@ async function initializeFiletrees() {
         mutations.forEach(async (mutation) => {
             if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                 const target = mutation.target;
+                const folderId = target.getAttribute('data-id');
 
                 // Check if the node just became expanded
                 if (target.classList.contains('treejs-node__open')) {
-                    const folderId = target.getAttribute('data-id');
-
-                    if (!trees['#database'].nodesById[folderId]) return
-
-                    try {
-                        if (loadedDatabases[folderId]) return
-
-                        debugger
-                        throw new Error("This needs to be optimized")
-                        //await readAll(folderId, loadTree.bind(null, folderId))
-                        const newChildren = convertFlatToNested(Object.values(files[folderId]));
-
-                        loadedDatabases[folderId] = newChildren;
-                    } catch (err) {
-                        console.error("Failed to load tree node:", err);
-                        loadedDatabases[folderId] = [{ text: 'Error loading files', id: 'err' }];
-                    }
-
-                    await showDatabases()
-
+                    expandDatabaseTree(target, folderId)
                 }
             }
         });
     });
+
+
 
     // Observe the tree container for any class changes on nodes
     observer.observe(document.querySelector('#database'), {
@@ -154,6 +138,126 @@ async function initializeFiletrees() {
         attributeFilter: ['class']
     });
 }
+
+let hasUntared = false
+
+const TAR_PREAMBLE = '\x1b[38;5;202m[TAR]\x1b[0m '
+
+async function untarFrontent() {
+    PREAMBLE = TAR_PREAMBLE
+    const response = await fetch('sysroot.tar');
+    const tar = new API.Tar(await response.arrayBuffer(response), log);
+    const count = await tar.untar(this.memfs);
+    log(`${count} files read.`);
+    hasUntared = true
+
+}
+
+
+var treeLoading = false
+let refreshTree = null
+
+async function expandDatabaseTree(target, folderId) {
+    const parts = folderId.split('/')
+    const database = parts[0] + '/' + parts[1]
+    const baseDir = parts.slice(2).join('/')
+    const dirPath = baseDir.substring(0, folderId.lastIndexOf('/'));
+    const parentDir = database + (dirPath.trim().length > 0 ? ('/' + dirPath) : '')
+
+    if (!target.classList.contains('treejs-node__open')) return
+    if (!trees['#database'].nodesById[folderId]) return
+    // if (loadedDatabases[folderId]) return
+
+
+    try {
+
+        // prevent mutation from triggering again when tree loads
+        if (treeLoading) return
+        treeLoading = true
+
+
+        if (!hasUntared) {
+            await untarFrontent()
+        }
+
+
+        const childrenKeys = Object.keys(FS.virtual).filter(path => {
+            // Must start with the folder path
+            let firstMatch = baseDir === '/' || baseDir === '' || path.startsWith(baseDir + '/')
+            if (!firstMatch) return false;
+
+            // Get the portion after the folder name
+            const relativePath = path.substring(baseDir.length + 1);
+
+            // It's an immediate child if there are no more slashes 
+            // (or it's a directory ending in a single slash)
+            const slashIndex = relativePath.indexOf('/');
+            return slashIndex === -1 || slashIndex === relativePath.length - 1;
+        });
+
+
+        const newChildren = childrenKeys.map(path => {
+            const node = FS.virtual[path];
+            const isDir = node.mode === FS_DIR; // Use your constant or (node.mode >> 12) == ST_DIR
+            const name = path.split('/').pop() || path;
+
+            let newNode = {
+                id: database + (path.length === 0 || path[0] === '/' ? '' : '/') + path,
+                text: name,
+                path: path,
+                parent: trees['#database'].nodesById[folderId],
+                state: { open: false, expanded: false },
+                // If it's a directory, give it a dummy child so it's expandable
+                children: isDir ? [{ text: 'Loading...', id: `${path}/loading` }] : [{ text: 'Empty...', id: `${path}/empty` }]
+            };
+
+            loadedDatabases[newNode.id] = trees['#database'].nodesById[newNode.id] = newNode
+
+            let searchParent = loadedDatabases[parentDir].children
+            let parentIndex = searchParent.findIndex(n => n.id === newNode.id)
+            if (parentIndex > -1)
+                searchParent[parentIndex] = newNode
+
+
+            return newNode
+        });
+
+        if (newChildren.length === 0)
+            newChildren.push({ text: 'Empty...', id: `${folderId}/empty` })
+
+        let result = await queryIndex(DB_STORE_NAME, 'parent', '', null, null, database)
+        let result2 = await queryIndex(DB_STORE_NAME, 'parent', '/', null, null, database)
+
+        loadedDatabases[folderId].children = trees['#database'].nodesById[folderId].children = newChildren
+
+    } catch (err) {
+        console.error("Failed to load tree node:", err);
+        loadedDatabases[folderId] = [{ text: 'Error loading files', id: 'err' }];
+    }
+
+
+    // ASYNC!
+    showDatabases(folderId)
+
+
+    if (refreshTree)
+        clearTimeout(refreshTree)
+    refreshTree = setTimeout(async () => {
+        // give tree time to load and render
+        trees['#database'].values = [] // [folderId]
+        const node = trees['#database'].nodesById[folderId];
+
+        if (node) {
+            trees['#database'].open(node);
+        }
+        setTimeout(() => {
+            // give expand time to animate without mutation
+            treeLoading = false
+        }, 300)
+    }, 200)
+}
+
+
 
 
 document.addEventListener('DOMContentLoaded', async (event) => {
@@ -168,42 +272,51 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
 
 
-async function showDatabases() {
+async function showDatabases(folderId) {
     var databases = await getDatabaseMetadata()
 
 
-    var newData = databases.map((d, i) => ({
-        id: `${d.key}`,
-        text: d.key,
-        state: {
-            open: false,
-            expanded: false
-        },
-        path: d.key,
-        children: loadedDatabases[d.key]
-            ? loadedDatabases[d.key]
-            : [{
+    const topDatabases = []
+    for (let d of databases) {
+
+        if (!loadedDatabases[d.key]) {
+            loadedDatabases[d.key] = {
                 id: `${d.key}`,
-                text: 'Loading...',
+                text: d.key,
                 state: {
                     open: false,
                     expanded: false
                 },
-                path: d.key + '/' + 'loading',
-            }]
-    }))
+                path: d.key,
+                children: [{
+                    id: `${d.key}/loading`,
+                    text: 'Loading...',
+                    state: {
+                        open: false,
+                        expanded: false
+                    },
+                    path: d.key + '/' + 'loading',
+                }]
+            }
+        }
 
+        topDatabases.push(loadedDatabases[d.key])
+    }
+    
+    
     if (!trees['#database']) {
 
         trees['#database'] = new Tree('#database', {
 
-            data: newData,
+            data: topDatabases,
             autoOpen: false,
-            closeDepth: 1,
+            closeDepth: null,
         });
-    }
-    else {
-        trees['#database'].options.data = newData
+    } else if (folderId) {
+        trees['#database'].options.data = topDatabases
+        trees['#database'].renderPartial(folderId)
+    } else {
+        trees['#database'].options.data = topDatabases
         trees['#database'].render(trees['#database'].options.data)
     }
 }
@@ -247,7 +360,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     editor.setSession(session);
     editor.resize();
     editor.renderer.updateFull();
-    if(hidePanels)
+    if (hidePanels)
         hideOpenPanels()
     document.getElementById('editor').classList.add('not-hidden')
 

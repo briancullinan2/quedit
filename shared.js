@@ -1039,7 +1039,43 @@ const API = (function () {
     alignUp() {
       this.offset = (this.offset + 511) & ~511;
     }
+    async scanTarMetadata() {
+      while (this.offset + 512 <= this.u8.length) {
+        // 1. Read Header Block (First 512 bytes)
+        const headerOffset = this.offset;
+        const filename = readStr(this.u8, headerOffset, 100).replace(/\0+$/, '');
 
+        // Terminate on empty header (TAR end-of-archive marker)
+        if (!filename) break;
+
+        // 2. Extract Metadata (Octal strings in TAR)
+        const size = parseInt(readStr(this.u8, headerOffset + 124, 12), 8);
+        const typeStr = readStr(this.u8, headerOffset + 156, 1);
+        const modeOctal = parseInt(readStr(this.u8, headerOffset + 100, 8), 8);
+
+        // 3. Register in Virtual FS (Placeholder only)
+        if (!FS.virtual[filename]) {
+          const isDir = typeStr === '5' || filename.endsWith('/');
+
+          FS.virtual[filename] = {
+            timestamp: new Date(),
+            mode: isDir ? FS_DIR : FS_FILE,
+            size: size,
+            path: filename,
+            parent: filename.substring(0, filename.lastIndexOf('/')),
+            // DO NOT assign .contents here to save memory
+            isLazy: true,
+            dataOffset: headerOffset + 512 // Store where the data starts for later
+          };
+        }
+
+        // 4. THE SEEK: Jump over the header (512) + the data (aligned to 512)
+        this.offset += 512;
+        this.offset += (size + 511) & ~511;
+      }
+      // Reset offset if you plan to reuse the Tar instance for actual extraction
+      this.offset = 0;
+    }
     readEntry() {
       if (this.offset + 512 > this.u8.length) {
         return null;
@@ -1081,11 +1117,37 @@ const API = (function () {
 
     async untar(memfs) {
       let entry;
-      while (entry = this.readEntry()) {
+      let count = 0
+      while (this.offset + 512 <= this.u8.length) {
+        // 1. Peek at the filename and size without consuming the whole entry yet
+        // The filename is the first 100 bytes of the current 512-byte block
+        const filename = readStr(this.u8, this.offset, 100).replace(/\0+$/, '');
+
+        // 2. Check existence in your Virtual FS
+        if (FS.virtual[filename]) {
+          // SKIP LOGIC:
+          // Grab the size to know how far to jump (at offset 124, length 12)
+          const sizeStr = readStr(this.u8, this.offset + 124, 12);
+          const size = parseInt(sizeStr, 8);
+
+          // Move offset: 512 (header) + aligned size (data)
+          this.offset += 512;
+          this.offset += (size + 511) & ~511;
+
+          if (memfs && !memfs.exists(entry.filename))
+            memfs.addFile(entry.filename, FS.virtual[filename].contents);
+
+          continue;
+        }
+
+        // 3. If it doesn't exist, proceed with full readEntry
+        entry = this.readEntry();
+        if (!entry) break;
+
+        count++
+
         switch (entry.type) {
           case '0': // Regular file.
-            if (memfs)
-              memfs.addFile(entry.filename, entry.contents);
             FS.virtual[entry.filename] = {
               timestamp: new Date(),
               mode: FS_FILE,
@@ -1094,11 +1156,11 @@ const API = (function () {
               sha: await getGitShaBrowser(entry.contents),
               parent: entry.filename.substring(0, entry.filename.lastIndexOf('/'))
             }
+            if (memfs && !memfs.exists(entry.filename))
+              memfs.addFile(entry.filename, entry.contents);
             //putRecord(DB_STORE_NAME, FS.virtual[entry.filename], )
             break;
           case '5':
-            if (memfs)
-              memfs.addDirectory(entry.filename);
             if (entry.filename.endsWith('/'))
               entry.filename = entry.filename.substring(0, entry.filename.length - 1)
             FS.virtual[entry.filename] = {
@@ -1108,9 +1170,13 @@ const API = (function () {
               path: entry.filename,
               parent: entry.filename.substring(0, entry.filename.lastIndexOf('/'))
             }
+            if (memfs)
+              memfs.addDirectory(entry.filename);
             break;
         }
       }
+
+      return count
     }
   }
 
@@ -1313,10 +1379,11 @@ const API = (function () {
       if (this.memfs)
         await this.memfs.ready;
       const promise = (async () => {
-        const tar = new Tar(await this.readBuffer(filename));
-        await tar.untar(this.memfs);
+        const tar = new Tar(await this.readBuffer(filename), this.hostWrite);
+        const count = await tar.untar(this.memfs);
+        this.hostWrite(`\n\r[TAR]: ${count} files read.`);
       })();
-      await this.hostLogAsync(`Untaring ${filename}`, promise);
+      await this.hostLogAsync(`\n\rUntaring ${filename}`, promise);
     }
 
     async loadEntry(cursor) {
@@ -1861,6 +1928,7 @@ const API = (function () {
   const FS_DIR = (ST_DIR << 12) + FS_DEFAULT
 
   API.App = App;
+  API.Tar = Tar;
 
   return API;
 

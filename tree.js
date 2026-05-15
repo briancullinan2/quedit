@@ -222,7 +222,8 @@
           loaded: null,
           url: null,
           method: 'GET',
-          closeDepth: null
+          closeDepth: null,
+          autoOpen: true,
         };
         this.treeNodes = [];
         this.nodesById = {};
@@ -292,6 +293,55 @@
         }
       }
 
+
+      /**
+ * Renders only the children of a specific node.
+ * Useful for hydrating "Lazy" folders or updating a branch after a file operation.
+ */
+      Tree.prototype.renderPartial = function (nodeId) {
+        const node = this.nodesById[nodeId];
+        if (!node) return;
+
+        const liEle = this.liElementsById[nodeId];
+        if (!liEle) return;
+
+        // 1. Remove the existing children (the <ul> element)
+        const existingUl = liEle.querySelector('.treejs-nodes');
+        if (existingUl) {
+          liEle.removeChild(existingUl);
+        }
+
+        // 2. Re-calculate if this node should have a switcher
+        // (In case children were added to a previously empty folder)
+        const hasChildren = node.children && node.children.length;
+        const currentSwitcher = liEle.querySelector('.treejs-switcher');
+
+        if (hasChildren && !currentSwitcher) {
+          liEle.classList.remove('treejs-placeholder');
+          const switcher = document.createElement('span');
+          switcher.classList.add('treejs-switcher');
+          // Insert switcher before the checkbox
+          liEle.insertBefore(switcher, liEle.querySelector('.treejs-checkbox'));
+        }
+
+        // 3. Rebuild the branch DOM using the internal buildTree method
+        if (hasChildren) {
+          // We use the same depth logic as buildTree to handle auto-open states
+          // Finding depth requires walking up the parent chain
+          let depth = 0;
+          let parent = node.parent;
+          while (parent) { depth++; parent = parent.parent; }
+
+          const newUlEle = this.buildTree(node.children, depth + 1);
+          liEle.appendChild(newUlEle);
+        }
+
+        // 4. Update the visual state (ensure it shows as open if it has new children)
+        if (hasChildren && liEle.classList.contains('treejs-node__close')) {
+          this.onSwitcherClick(liEle.querySelector('.treejs-switcher'));
+        }
+      };
+
       Tree.prototype.init = function (data) {
         console.time('init');
 
@@ -356,7 +406,7 @@
 
         if (nodes && nodes.length) {
           nodes.forEach(function (node) {
-            var liEle = Tree.createLiEle(node, depth === _this2.options.closeDepth - 1);
+            var liEle = Tree.createLiEle(node, _this2.options.autoOpen === false || depth === _this2.options.closeDepth - 1);
             _this2.liElementsById[node.id] = liEle;
             var ulEle = null;
 
@@ -437,6 +487,7 @@
           var node = _this4.nodesById[value];
           if (node) {
             var parent = node.parent;
+
             while (parent) {
               var parentLi = _this4.liElementsById[parent.id];
               if (parentLi && parentLi.classList.contains('treejs-node__close')) {
@@ -558,6 +609,55 @@
 
       Tree.prototype.markWillUpdateNode = function (node) {
         this.willUpdateNodesById[node.id] = node;
+      };
+
+
+      Tree.prototype.open = function (id) {
+        const _this = this;
+        const targetId = id.id || id;
+        const node = this.nodesById[targetId];
+        if (!node) return;
+
+        // 1. Collect the lineage (parent chain)
+        const lineage = [];
+        let currentParent = node.parent;
+        while (currentParent) {
+          lineage.unshift(currentParent); // Push to start of array to get Root -> Target order
+          currentParent = currentParent.parent;
+        }
+
+        // 2. Iterate top-down through the lineage
+        lineage.forEach((parentNode, index) => {
+          const parentLi = _this.liElementsById[parentNode.id];
+          if (parentLi && parentLi.classList.contains('treejs-node__close')) {
+            const switcher = parentLi.querySelector('.treejs-switcher');
+            if (switcher) {
+              // Stagger the clicks slightly if you want a cascading animation effect
+              setTimeout(() => {
+                _this.onSwitcherClick(switcher);
+              }, index * 50);
+            }
+          }
+        });
+
+        // 3. Handle the final target and scrolling
+        const targetLi = _this.liElementsById[targetId];
+        if (targetLi) {
+          // Open the target itself if it's a folder
+          if (targetLi.classList.contains('treejs-node__close')) {
+            const targetSwitcher = targetLi.querySelector('.treejs-switcher');
+            if (targetSwitcher) _this.onSwitcherClick(targetSwitcher);
+          }
+
+          // Use a single timeout based on the depth of the lineage for the scroll
+          setTimeout(() => {
+            targetLi.scrollIntoView({
+              behavior: 'smooth',
+              block: 'nearest',
+              inline: 'nearest'
+            });
+          }, (lineage.length + 1) * 100);
+        }
       };
 
       Tree.prototype.onSwitcherClick = function (target) {
@@ -748,8 +848,8 @@
           li.classList.add('treejs-node__open');
         }
 
-        var hasChildren = node.children && node.children.length;
-        if (node.children && node.children.length) {
+        var hasChildren = node.children && (node.children instanceof Array || node.children.length);
+        if (hasChildren) {
           var switcher = document.createElement('span');
           switcher.classList.add('treejs-switcher');
           li.appendChild(switcher);

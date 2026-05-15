@@ -113,7 +113,7 @@ function triggerFind(e) {
                 } else {
                     // Find result nearest to current scroll view
                     const currentScroll = searchIndex > -1
-                        && searchResults[searchIndex] 
+                        && searchResults[searchIndex]
                         ? searchResults[searchIndex].line
                         : term.buffer.active.baseY;
 
@@ -803,7 +803,7 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
 
     currentOpenFileId = dbFile.sha
     await openFile(owner.value, repo.value, filePath, dbFile.sha, true /* record history */, false /* show file list */)
-    if(lineNumber)
+    if (lineNumber)
         editor.gotoLine(lineNumber, 0, true);
     editor.focus();
 

@@ -318,7 +318,7 @@ async function readPreFS() {
         path: '/home',
         parent: ''
     }
-    putRecord(DB_STORE_NAME, FS.virtual['/home'], owner.value + '/' + repo.value)
+    //putRecord(DB_STORE_NAME, FS.virtual['/home'], owner.value + '/' + repo.value)
 
     
     // TODO: check for cl_dlURL
