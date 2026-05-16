@@ -453,6 +453,8 @@ term.attachCustomKeyEventHandler((arg) => {
 });
 
 
+let alreadyWroteDetached = false;
+
 function specialWrite(msg) {
     if (!msg) return;
     if (msg.includes('memory access out of bounds')) {
@@ -464,13 +466,17 @@ function specialWrite(msg) {
         return
     }
 
-    if (!runningCommand & !detachedConsole) {
+    if (!runningCommand && !detachedConsole && !alreadyWroteDetached) {
         detachedConsole = true
         PREAMBLE = WARN_PREAMBLE
-        writeLog('\n\rDetached console, awaiting terminate...')
+        console.warn('\n\rDetached console, awaiting terminate...')
     }
-
-    term.write(msg)
+    let skipTerminal = false
+    if (msg.includes('Assertion failed: lookup.node')) {
+        skipTerminal = true
+    }
+    if (!skipTerminal)
+        term.write(msg)
     triggerIncrementalSave()
 }
 

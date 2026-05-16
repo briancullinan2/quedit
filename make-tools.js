@@ -376,16 +376,18 @@ const ENGINE_PREAMBLE = '\x1b[38;5;36m[QUAKE3E]\x1b[0m '
 
 let PREAMBLE = TOOLS_PREAMBLE
 function writeLog(msg, ...args) {
+    let skipTerminal = false
     if (msg.includes('Assertion failed: lookup.node')) {
         debugger
+        skipTerminal = true
     }
     if (!msg.includes) debugger
     if (msg.includes && msg.includes('TypeError:')) debugger
     let formatted = formatMessage(PREAMBLE, [msg, ...args])
-    if (typeof term !== 'undefined') term.write(formatted);
+    if (typeof term !== 'undefined' && !skipTerminal) term.write(formatted);
     else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.log(msg, ...args);
-    //else console.log(msg, ...args)
+    else console.log(msg, ...args)
     if (typeof triggerIncrementalSave !== 'undefined')
         triggerIncrementalSave()
 }

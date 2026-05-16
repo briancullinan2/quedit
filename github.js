@@ -360,31 +360,34 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
         )
             FS.virtual[filePath].timestamp = files[selected][filePath].timestamp
 
+        try {
+            if (api.memfs && FS.virtual[filePath] && !api.memfs.exists(filePath))
+                api.memfs.addFile(filePath, FS.virtual[filePath].contents)
+        } catch (e) {
+            writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
+        }
 
+        if (filePath.includes('tmp/')
+            || filePath.includes('build/release-')
+            || filePath.includes('build/debug-')) {
+            if (FS.virtual[filePath])
+                return FS.virtual[filePath].contents
+            else {
+                writeLog('Skipping output: ' + filePath)
+                return null
+            }
+        }
 
         // TODO: IF GITHUB, ALWAYS UPDATE
-        if (!forceReload
-            && files[selected]
-            && files[selected][filePath]
-            && !filePath.includes('tmp/')
-            && !filePath.includes('build/release-')
-            && !filePath.includes('build/debug-')
+        if (FS.virtual[filePath]
+            && !(forceReload
+                || files[selected]
+                || files[selected][filePath])
         ) {
 
-        }
-        else if (FS.virtual[filePath]
-            /*&& (FS.virtual[filePath].sha == sha)*/
-        ) {
-            try {
-                if (api.memfs && !api.memfs.exists(filePath))
-                    api.memfs.addFile(filePath, FS.virtual[filePath].contents)
-            } catch (e) {
-                writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
-            }
             writeLog('Already have: ' + filePath)
             return FS.virtual[filePath].contents
         }
-
 
 
         let jsonResponse = await githubRequest(repoOwner, repoName, `contents/${filePath}`)
@@ -423,12 +426,17 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
                 api.memfs.addFile(filePath, bytes)
 
         } catch (e) {
-            writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
+            writeLog(`Memfs Error: ${e.message}\n\r${e.stack || e.stacktrace}`)
         }
+
+        writeLog('Downloaded fresh: ' + filePath)
 
         return bytes
     } catch (e) {
-        writeLog(`Cache file error in ${filePath}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
+        writeLog(`Cache file error in ${filePath}`)
+        if(!e.message.includes('HTTP_ERROR:')) {
+            writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
+        }
 
         if (files[selected][filePath])
             return files[selected][filePath].contents

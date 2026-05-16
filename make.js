@@ -2,6 +2,7 @@
  * Quake3e Build Configuration Script - Browser Version
  */
 
+
 let TERMINATE = false
 
 // 1. Implementation of path.join for the browser
@@ -743,22 +744,29 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
 
 
     if (api.memfs) {
+        await api.ready
         try {
             api.memfs.mkdirp('tmp')
         } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
         try {
             api.memfs.mkdirp('home')
         } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
+
         try {
-            api.memfs.mkdirp(buildDir)
+            if (makeDirs)
+                api.memfs.mkdirp(buildDir)
         } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
         try {
-            if (outDir)
+            if (makeDirs && outDir)
                 api.memfs.mkdirp(outDir)
         } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
     }
 
-    if (!FS.virtual[file]) {
+    if (!FS.virtual[file]
+        || (FS.virtual[file] >> 12) !== ST_DIR
+        && (!FS.virtual[file].contents
+            || FS.virtual[file].contents.length === 0)
+    ) {
         if (!loadedDirectories.includes(buildDir) && makeDirs) {
             writeLog('Loading: ' + buildDir)
             loadedDirectories.push(buildDir)
@@ -775,7 +783,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
             await cacheFile(ownerName, repoName, file)
         } else if (FS.virtual[file]) {
             writeLog('Already have: ' + file)
-        } else if(makeDirs) {
+        } else if (makeDirs) {
             debugger
         }
 
@@ -784,17 +792,13 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
     }
 
     try {
-        if (api.memfs && makeDirs) {
-            if (!FS.virtual[file]) {
-                debugger
-            }
+        if (api.memfs && makeDirs && FS.virtual[file] && FS.virtual[file].contents) {
+            await api.ready
+            api.memfs.mem.check()
             if ((FS.virtual[file].mode >> 12) === ST_DIR) {
-                api.memfs.addFile(file)
+                api.memfs.addDirectory(file)
             }
             else {
-                if (!FS.virtual[file].contents) {
-                    debugger
-                }
                 api.memfs.addFile(file, FS.virtual[file].contents)
             }
         }
@@ -1162,10 +1166,11 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                         await loadGitHubTree(thisOwner, thisRepo, branch)
                     }
 
-                    if (!files[thisDatabase][header]) return
-                    // cacheFile handles the storage logic
-                    let sha = files[thisDatabase][header].sha
-                    await cacheFile(thisOwner, thisRepo, header, sha);
+                    if (files[thisDatabase][header]) {
+                        // cacheFile handles the storage logic
+                        let sha = files[thisDatabase][header].sha
+                        await cacheFile(thisOwner, thisRepo, header, sha);
+                    }
 
                 }
 

@@ -438,7 +438,10 @@ const API = (function () {
 
     memfs_log(buf, len) {
       this.mem.check();
-      api.hostWrite(formatMessage('memfs', [this.mem.readStr(buf, len)]));
+      let message = this.mem.readStr(buf, len)
+      if (typeof originalConsole !== 'undefined')
+        originalConsole.warn(message)
+      api.hostWrite(formatMessage('memfs', [message]));
     }
 
     copy_out(clang_dst, memfs_src, size) {
@@ -1529,6 +1532,9 @@ const API = (function () {
         let buildDir = filePath.substring(0, filePath.lastIndexOf('/'))
         if (alwaysMkdir)
           writeLog('Header loading: ' + filePath)
+        if (filePath.includes('build/release-') || filePath.includes('build/debug-')) {
+          //debugger
+        }
         await prepInputOutput(filePath, null, this.database, alwaysMkdir)
 
         return true
@@ -1607,7 +1613,7 @@ const API = (function () {
           if (this.database)
             await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
 
-          this.hostWrite('Succeeded: ' + obj + '\n\r')
+          writeLog('Succeeded: ' + obj + '\n\r')
         } catch (e) {
           debugger
           writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
@@ -1759,7 +1765,7 @@ const API = (function () {
       }
 
       if (FS.virtual[wasm].contents.length > 1024)
-        this.hostWrite('Succeeded: ' + wasm + '\n\r')
+        writeLog('Succeeded: ' + wasm + '\n\r')
 
       return FS.virtual[wasm];
     }
@@ -1865,6 +1871,7 @@ const API = (function () {
         throw new Error('Cannot load module: ' + name)
 
 
+      /*
       if (args) {
         for (var filePath of args) {
           if (!filePath) continue
@@ -1872,6 +1879,7 @@ const API = (function () {
 
         }
       }
+      */
 
       PREAMBLE = API_RUN_PREAMBLE
 
