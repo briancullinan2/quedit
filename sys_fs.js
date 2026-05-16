@@ -23,7 +23,7 @@ const F_OK = 4
 
 
 function Sys_Mkdir(filename) {
-	debugger
+
 	let fileStr = addressToString(filename)
 	let localName = fileStr
 	if (localName.startsWith('//'))
@@ -90,16 +90,12 @@ function Sys_FOpen(filename, mode) {
 	let modeStr = addressToString(mode)
 	let localName = fileStr.trim()
 
-	debugger
-	//console.log(localName)
+	//writeLog(localName)
 	if (localName.startsWith('/')) localName = localName.substring('/');
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
 
-	if (!FS.virtual[localName]) {
-		debugger
-	}
 
 	let createFP = function () {
 		FS.filePointer++
@@ -129,7 +125,6 @@ function Sys_FOpen(filename, mode) {
 				|| parentDirectory.length == 0)
 		) {
 			// create the file for write because the parent directory exists
-			debugger
 			FS.virtual[localName] = {
 				timestamp: new Date(),
 				mode: FS_FILE,
@@ -216,7 +211,7 @@ function fd_seek(fd, offset, whence, newOffsetPtr) {
 	if (stream[2].rewrite) {
 		stream = FS.pointers[stream[2].rewrite]
 	}
-	//console.log(stream[3])
+	//writeLog(stream[3])
 
 	// 1. Force everything to BigInt for consistent 64-bit math
 	let bigOffset = BigInt(offset);
@@ -769,7 +764,7 @@ function fd_filestat_get(fd, bufPtr) {
 		stream = FS.pointers[stream[2].rewrite]
 	}
 
-	//console.log(stream[3])
+	//writeLog(stream[3])
 
 	const view = new DataView(Module.memory.buffer);
 
@@ -913,8 +908,8 @@ function debug_print_mem(view, ptr, length) {
 		hex += view[i].toString(16).padStart(2, '0') + " ";
 		if ((i + 1) % 8 === 0) hex += " | ";
 	}
-	console.log(`Memory at 0x${ptr.toString(16)} (${length} bytes):`);
-	console.log(hex);
+	writeLog(`Memory at 0x${ptr.toString(16)} (${length} bytes):`);
+	writeLog(hex);
 }
 
 
@@ -929,7 +924,7 @@ function fd_fdstat_get(fd, bufPtr) {
 		stream = FS.pointers[stream[2].rewrite]
 	}
 
-	//console.log(stream[3])
+	//writeLog(stream[3])
 
 	const view = new DataView(Module.memory.buffer);
 
@@ -1125,7 +1120,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 
 	// 2. Resolve Full Path relative to dirfd
 	let localName = path.trim();
-	//console.log(localName)
+	//writeLog(localName)
 	if (localName.startsWith('/')) localName = localName.substring('/');
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
@@ -1254,7 +1249,7 @@ function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 
 	// 1. Normalize Path - MUST MATCH YOUR path_open LOGIC EXACTLY
 	let localName = path;
-	//console.log(localName)
+	//writeLog(localName)
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
@@ -1828,11 +1823,11 @@ function callsys(argvPtr) {
 
 		// Await the execution of the WASM tool
 		let result = api.runSync(targetKey, ...cmdArgs);
-		log('Process resulted in: ' + result);
+		writeLog('Process resulted in: ' + result);
 
 		return result;
 	} catch (e) {
-		log(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack||e.stacktrace}`);
+		writeLog(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack||e.stacktrace}`);
 		return 100; // Standard error exit for LCC
 	}
 }
@@ -1847,7 +1842,7 @@ function _spawnvp(mode, cmdnamePtr, argvPtr) {
 
 		// Await the execution of the WASM tool
 		let result = api.runSync(targetKey, ...cmdArgs);
-		log('Process resulted in: ' + result);
+		writeLog('Process resulted in: ' + result);
 
 		return result;
 	} catch (e) {
@@ -1887,7 +1882,7 @@ function execv(pathPtr, argvPtr) {
 	if (api && api.moduleCache[targetKey]) {
 		// 1. Run the target compiler module synchronously RIGHT NOW
 		let result = api.runSync(targetKey, ...cmdArgs);
-		log('Process resulted in: ' + result);
+		writeLog('Process resulted in: ' + result);
 
 		// 2. Save the real exit code in our global virtual tracking state
 		virtualChildExitCode = result;
@@ -1900,7 +1895,7 @@ function execv(pathPtr, argvPtr) {
 		return 0;
 	}
 	else {
-		log('Would have run: ' + [path, ...cmdArgs].join(' '));
+		writeLog('Would have run: ' + [path, ...cmdArgs].join(' '));
 		Module.errno = 1; // EPERM / EINVAL
 		return -1;
 	}
@@ -2070,7 +2065,7 @@ function path_create_directory(fd, pathPtr, pathLen) {
 		timestamp: new Date()
 	};
 
-	console.log(`WASI VFS: Created directory via fd(${fd}) -> "${normalizedPath}"`);
+	writeLog(`WASI VFS: Created directory via fd(${fd}) -> "${normalizedPath}"`);
 	return 0; // WASI_ESUCCESS
 }
 
@@ -2110,7 +2105,7 @@ function path_remove_directory(fd, pathPtr, pathLen) {
 	}
 
 	delete FS.virtual[normalizedPath];
-	console.log(`WASI VFS: Removed directory via fd(${fd}) -> "${normalizedPath}"`);
+	writeLog(`WASI VFS: Removed directory via fd(${fd}) -> "${normalizedPath}"`);
 	return 0; // WASI_ESUCCESS
 }
 

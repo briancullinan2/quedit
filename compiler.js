@@ -172,9 +172,9 @@ window.api = api;
 if (navigator.serviceWorker) {
   navigator.serviceWorker.register('./service_worker.js')
   .then(reg => {
-    console.log('Registration succeeded. Scope is ' + reg.scope);
+    writeLog('Registration succeeded. Scope is ' + reg.scope);
   }).catch(error => {
-    console.log('Registration failed with ' + error);
+    writeLog('Registration failed with ' + error);
   });
 }
 */

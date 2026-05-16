@@ -434,7 +434,7 @@ function _emscripten_resize_heap(requestedSize) {
     var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
     var replacement = emscripten_realloc_buffer(newSize);
     var t1 = Date.now();
-    console.log('Heap resize call from ' + oldSize + ' to ' + newSize
+    writeLog('Heap resize call from ' + oldSize + ' to ' + newSize
       + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
     if (replacement) {
       return true

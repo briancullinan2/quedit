@@ -12,7 +12,7 @@ async function unzipToVirtualFS(buffer, rootPath = 'baseq3', database = null) {
     
     PREAMBLE = UNZIP_PREAMBLE
 
-    log(`Extracting files to ${rootPath}...`);
+    writeLog(`Extracting files to ${rootPath}...`);
 
     const promises = [];
 
@@ -32,7 +32,7 @@ async function unzipToVirtualFS(buffer, rootPath = 'baseq3', database = null) {
                 parent: fullPath.substring(0, fullPath.lastIndexOf('/'))
             };
             getGitShaBrowser(data).then(sha => FS.virtual[fullPath].sha = sha)
-            log(`Extracted: ${relativePath}`);
+            writeLog(`Extracted: ${relativePath}`);
             putRecord(DB_STORE_NAME, FS.virtual[fullPath], database)
         });
         
@@ -40,6 +40,6 @@ async function unzipToVirtualFS(buffer, rootPath = 'baseq3', database = null) {
     });
 
     await Promise.all(promises);
-    log("Unzip complete.");
+    writeLog("Unzip complete.");
 }
 

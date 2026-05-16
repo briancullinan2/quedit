@@ -150,7 +150,7 @@ async function untarFrontent() {
     });
     const tar = new API.Tar(await response.arrayBuffer(), log);
     const count = await tar.untar(this.memfs);
-    log(`${count} files read.`);
+    writeLog(`${count} files read.`);
     hasUntared = true
 
 }

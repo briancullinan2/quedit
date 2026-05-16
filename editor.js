@@ -160,7 +160,7 @@ ace.config.loadModule("ace/keybinding/vim", function(m) {
     var Vim = m.CodeMirror.Vim;
     Vim.defineEx("quit", "q", function(cm) {
         // Your logic to close the editor, tab, or window
-        console.log("User requested quit");
+        writeLog("User requested quit");
     });
 });
 

@@ -593,7 +593,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
         && FS.virtual[stringify]?.timestamp < FS.virtual[obj]?.timestamp
         && !forceChanged
     ) {
-        log(`${obj} already up to date...`)
+        writeLog(`${obj} already up to date...`)
 
         return
     }
@@ -622,7 +622,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
             obj: obj
         })
     } catch (e) {
-        log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+        writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
     }
 
     if (!noLinking) {
@@ -657,11 +657,11 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
         // TODO: compare LATEST input and output mtime
         && !forceChanged
     ) {
-        log(stringifyExe + " already up to date...");
+        writeLog(stringifyExe + " already up to date...");
         return
     }
 
-    log(`LD: ${stringifyExe}`);
+    writeLog(`LD: ${stringifyExe}`);
 
     try {
         await api.link({
@@ -677,7 +677,7 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
         })
     } catch (e) {
         PREAMBLE = ERROR_PREAMBLE
-        log(`Link error in stringify\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
+        writeLog(`Link error in stringify\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
     }
 
 
@@ -745,22 +745,22 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
     if (api.memfs) {
         try {
             api.memfs.mkdirp('tmp')
-        } catch (e) { log(`${e.message}\n\r${e.stack || e.stacktrace}`) }
+        } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
         try {
             api.memfs.mkdirp('home')
-        } catch (e) { log(`${e.message}\n\r${e.stack || e.stacktrace}`) }
+        } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
         try {
             api.memfs.mkdirp(buildDir)
-        } catch (e) { log(`${e.message}\n\r${e.stack || e.stacktrace}`) }
+        } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
         try {
             if (outDir)
                 api.memfs.mkdirp(outDir)
-        } catch (e) { log(`${e.message}\n\r${e.stack || e.stacktrace}`) }
+        } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
     }
 
     if (!FS.virtual[file]) {
         if (!loadedDirectories.includes(buildDir) && makeDirs) {
-            log('Loading: ' + buildDir)
+            writeLog('Loading: ' + buildDir)
             loadedDirectories.push(buildDir)
             if (makeDirs)
                 mkdirp(buildDir, database)
@@ -771,16 +771,16 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
 
         // TODO!!!!! check if commit has changed or file has changed on disk
         if (!FS.virtual[file] && makeDirs /* only load github if its a controlled file */) {
-            log('Loading: ' + file)
+            writeLog('Loading: ' + file)
             await cacheFile(ownerName, repoName, file)
         } else if (FS.virtual[file]) {
-            log('Already have: ' + file)
+            writeLog('Already have: ' + file)
         } else if(makeDirs) {
             debugger
         }
 
     } else {
-        log('Already have: ' + file)
+        writeLog('Already have: ' + file)
     }
 
     try {
@@ -799,14 +799,14 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
             }
         }
     } catch (e) {
-        log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+        writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
     }
 
     if (!obj) return
 
     if (!FS.virtual[obj]) {
         if (!loadedDirectories.includes(outDir) && makeDirs) {
-            log('Loading: ' + outDir)
+            writeLog('Loading: ' + outDir)
             if (makeDirs)
                 mkdirp(outDir, database)
             let currentDir = await queryIndex(DB_STORE_NAME, 'parent', outDir, null, null, database)
@@ -817,10 +817,10 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
 
         // don't load object files from github
         if (!FS.virtual[obj]) {
-            log('Loading: ' + obj)
+            writeLog('Loading: ' + obj)
             FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
         } else {
-            log('Already have: ' + file)
+            writeLog('Already have: ' + file)
         }
         //if (api.memfs && !api.memfs.exists(obj) && FS.virtual[file])
         //    api.memfs.addFile(obj, FS.virtual[obj].contents)
@@ -865,7 +865,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
         ];
 
         output.forEach(line => {
-            log(line)
+            writeLog(line)
         });
 
 
@@ -918,14 +918,14 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
                     && FS.virtual[file]?.timestamp < FS.virtual[obj]?.timestamp
                     && !forceChanged
                 ) {
-                    log(`${obj} already up to date...`)
+                    writeLog(`${obj} already up to date...`)
 
                     continue
                 }
 
                 hasChanged = true
 
-                log(`CC: ${obj}`)
+                writeLog(`CC: ${obj}`)
 
                 let CCFLAGS = [
                     ...CFLAGS,
@@ -950,7 +950,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
             } catch (e) {
                 PREAMBLE = ERROR_PREAMBLE
-                log(`Build error in client: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
+                writeLog(`Build error in client: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
             }
 
         }
@@ -1005,11 +1005,11 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
         // TODO: compare LATEST input and output mtime
         && !forceChanged
     ) {
-        log(engineExe + " already up to date...");
+        writeLog(engineExe + " already up to date...");
         return
     }
 
-    log(`LD: ${engineExe}`);
+    writeLog(`LD: ${engineExe}`);
 
 
     try {
@@ -1029,7 +1029,7 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
             wasm: engineExe
         })
     } catch (e) {
-        log(`Link error in client\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
+        writeLog(`Link error in client\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
     }
 
 
@@ -1078,18 +1078,18 @@ async function buildShaders(database = null, forceChanged = false) {
                 && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
                 && !forceChanged
             ) {
-                log(`${obj} already up to date...`)
+                writeLog(`${obj} already up to date...`)
 
                 continue
             }
 
-            log(`GLSL: ${obj}`)
+            writeLog(`GLSL: ${obj}`)
 
             const cCode = generateFallbackC(shader, FS.virtual[shader]);
 
             let hasChanged = true
 
-            log(`CC: ${shader}`);
+            writeLog(`CC: ${shader}`);
 
             await api.compile({
                 CFLAGS: [
@@ -1105,7 +1105,7 @@ async function buildShaders(database = null, forceChanged = false) {
             })
 
         } catch (e) {
-            log(`Build error in shaders: ${shader}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
+            writeLog(`Build error in shaders: ${shader}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
         }
     }
 
@@ -1175,7 +1175,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
             } catch (e) {
                 PREAMBLE = ERROR_PREAMBLE
 
-                log(`Failed to download header ${header}: ` + e + '\n\r' + (e.stack || e.stacktrace));
+                writeLog(`Failed to download header ${header}: ` + e + '\n\r' + (e.stack || e.stacktrace));
             }
         }
 
@@ -1183,7 +1183,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
 
         PREAMBLE = BUILD_PREAMBLE
 
-        log(`Finished batch ${Math.ceil((i + batchSize) / batchSize)}`);
+        writeLog(`Finished batch ${Math.ceil((i + batchSize) / batchSize)}`);
     }
 
 
@@ -1220,7 +1220,7 @@ function loadEntry(cursor) {
     }
     PREAMBLE = BUILD_PREAMBLE
 
-    log('Loading: ' + cursor.path);
+    writeLog('Loading: ' + cursor.path);
 
     FS.virtual[cursor.path] = {
         timestamp: cursor.timestamp,

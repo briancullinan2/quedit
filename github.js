@@ -34,7 +34,7 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
             return await githubRequest(ownerName, repoName, url, false, buffer)
         }
         PREAMBLE = ERROR_PREAMBLE
-        log("Failed to github: " + fullUrl, up);
+        writeLog("Failed to github: " + fullUrl, up);
         throw up
     }
 
@@ -304,25 +304,27 @@ async function loadFileTree(repoOwner, repoName, branch, selector) {
         console.error('Failed to load file list tree:', error);
     }
 }
-
 async function getGitShaBrowser(content) {
     const encoder = new TextEncoder();
-    let contentBytes
-    if (content instanceof Uint8Array || content instanceof ArrayBuffer) {
-        contentBytes = content
-    }
-    else {
+    let contentBytes;
+
+    if (content instanceof Uint8Array) {
+        contentBytes = content;
+    } else if (content instanceof ArrayBuffer) {
+        // Wrap the raw ArrayBuffer in a Uint8Array view so it has a .length property
+        contentBytes = new Uint8Array(content);
+    } else {
         contentBytes = encoder.encode(content);
     }
 
-    // Create header and convert to bytes
+    // Create Git blob header using .byteLength for accuracy
     const header = `blob ${contentBytes.byteLength}\0`;
     const headerBytes = encoder.encode(header);
 
-    // Combine into a single Uint8Array
-    const finalBytes = new Uint8Array(headerBytes.length + contentBytes.length);
+    // Combine using .byteLength to support all binary types safely
+    const finalBytes = new Uint8Array(headerBytes.byteLength + contentBytes.byteLength);
     finalBytes.set(headerBytes);
-    finalBytes.set(contentBytes, headerBytes.length);
+    finalBytes.set(contentBytes, headerBytes.byteLength);
 
     // Generate SHA-1 hash
     const hashBuffer = await crypto.subtle.digest('SHA-1', finalBytes);
@@ -332,7 +334,6 @@ async function getGitShaBrowser(content) {
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 }
-
 
 async function cacheFile(repoOwner, repoName, filePath, sha, forceReload = false) {
     return await debounceRecords(DB_STORE_NAME, 'path', filePath, sha, forceReload, repoOwner + '/' + repoName, 'cache')
@@ -378,9 +379,9 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
                 if (api.memfs && !api.memfs.exists(filePath))
                     api.memfs.addFile(filePath, FS.virtual[filePath].contents)
             } catch (e) {
-                log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+                writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
             }
-            log('Already have: ' + file)
+            writeLog('Already have: ' + file)
             return FS.virtual[filePath].contents
         }
 
@@ -422,12 +423,12 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
                 api.memfs.addFile(filePath, bytes)
 
         } catch (e) {
-            log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+            writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
         }
 
         return bytes
     } catch (e) {
-        log(`Cache file error in ${filePath}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
+        writeLog(`Cache file error in ${filePath}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
 
         if (files[selected][filePath])
             return files[selected][filePath].contents
@@ -446,7 +447,7 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
     PREAMBLE = FETCH_PREAMBLE
 
     try {
-        log(`Requesting archive from ${owner}/${repo}...`);
+        writeLog(`Requesting archive from ${owner}/${repo}...`);
 
         const buffer = await githubRequest(owner, repo, `zipball/${branch}`, true, true);
         const zipPath = path.join(config.MOUNT_DIR, 'branch.zip');
@@ -459,7 +460,7 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
             parent: zipPath.substring(0, zipPath.lastIndexOf('/'))
         };
         putRecord(DB_STORE_NAME, FS.virtual[zipPath], database)
-        log(`Downloaded ${buffer.byteLength} bytes. Processing...`);
+        writeLog(`Downloaded ${buffer.byteLength} bytes. Processing...`);
 
         // Use JSZip to hydrate FS.virtual
         const zip = new JSZip();
@@ -489,11 +490,11 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
         });
 
         await Promise.all(unzipPromises);
-        log("Repository successfully mounted to virtual FS.");
+        writeLog("Repository successfully mounted to virtual FS.");
 
     } catch (err) {
         PREAMBLE = ERROR_PREAMBLE
-        log(`Failed to download repo: ${err.message}`);
+        writeLog(`Failed to download repo: ${err.message}`);
     }
 }
 
@@ -504,18 +505,18 @@ async function listReleases(owner, repo) {
 
 
         releases.forEach(release => {
-            log(`Release: ${release.name} (${release.tag_name})`);
+            writeLog(`Release: ${release.name} (${release.tag_name})`);
 
             // If you want the assets (like your compiled zip)
             release.assets.forEach(asset => {
-                log(` - Asset: ${asset.name} | URL: ${asset.browser_download_url}`);
+                writeLog(` - Asset: ${asset.name} | URL: ${asset.browser_download_url}`);
             });
         });
 
         return releases;
     } catch (err) {
         PREAMBLE = ERROR_PREAMBLE
-        log("Failed to list releases: " + err);
+        writeLog("Failed to list releases: " + err);
     }
 }
 
@@ -541,13 +542,13 @@ async function getAuthenticatedUser() {
         }
 
         const userData = await response.json();
-        log(`Authenticated as: ${userData.login}`);
+        writeLog(`Authenticated as: ${userData.login}`);
 
         // You can now use userData.avatar_url, userData.name, etc.
         return userData;
     } catch (err) {
         PREAMBLE = ERROR_PREAMBLE
-        log("Failed to fetch user data: " + err);
+        writeLog("Failed to fetch user data: " + err);
     }
 }
 

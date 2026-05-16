@@ -21,7 +21,7 @@ async function getDB(dbName = null, dbVersion = null) {
         const req = indexedDB.open(dbName || LOCAL_DB_NAME, dbVersion || DB_VERSION)
         req.onsuccess = () => rs(req.result)
         req.onerror = () => {
-            console.log(req.error)
+            writeLog(req.error)
             return rj(req.error)
         }
         // Note: setupStore handles the onupgradeneeded logic
@@ -75,7 +75,7 @@ async function needsInstall(dbName, expectedStores) {
 
         request.onerror = () => {
             // If we can't even open it, mark as corrupted
-            console.log(request.error)
+            writeLog(request.error)
             return resolve({ item1: dbName || LOCAL_DB_NAME, item2: DB_VERSION, item3: true, item4: expectedStores.map(s => s.key) })
         }
     })
@@ -124,13 +124,13 @@ async function setupDatabase(dbName, stores) {
 
             } catch (ex) {
                 debugger
-                error = ('' + ex) + ' on ' + JSON.stringify(stores) 
+                error = ('' + ex) + ' on ' + JSON.stringify(stores)
                 throw ex
             }
         }
         request.onsuccess = () => rs({ item1: created, item2: error ? ('' + error) : (created ? "upgraded" : "finished") })
         request.onerror = () => {
-            console.log(request.error)
+            writeLog(request.error)
             return rj(request.error)
         }
         request.onblocked = () => rj("Database upgrade blocked. Close other tabs.")
@@ -165,7 +165,7 @@ async function putRecordInternal(storeName, record, dbName = null) {
         const req = store.put(newRecord)
         tx.oncomplete = function () { rs(req.result) }
         req.onerror = () => {
-            console.log(req.error)
+            writeLog(req.error)
             return rj(req.error)
         }
         tx.commit();
@@ -250,9 +250,15 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
         // Grab a snapshot of the current state reference registry handle
         const currentExecutionState = getBounceRegistry[MODE][path];
 
+        // FIXED: If an immediate write pass cleared or replaced this tracking slot
+        // while this callback was queued in the event loop, exit immediately.
+        if (!currentExecutionState) {
+            writeLog(`Callback for ${path} was superseded or cleared before execution.`);
+            return;
+        }
+
         try {
-            // Unpack layout buffer snapshots cleanly into the database worker transaction context
-            let result
+            let result;
             if (MODE === 'get')
                 result = await getRecordInternal(storeName, record, dbName);
             else if (MODE === 'put')
@@ -264,13 +270,16 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
             else
                 throw new Error('MODE not recognized in debounceRecords: ' + MODE)
 
-            // Resolve the long-running promise pipeline for this path token
+            // Resolve the long-running promise pipeline safely
             currentExecutionState.resolve(result);
         } catch (err) {
-            currentExecutionState.reject(err);
+            // Check if it hasn't been rejected already by a superseded execution frame
+            if (currentExecutionState && typeof currentExecutionState.reject === 'function') {
+                currentExecutionState.reject(err);
+            }
         } finally {
             // Garbage collect tracking tokens smoothly if no active overwrites clobbered this block
-            if (getBounceRegistry[MODE][path] === currentExecutionState) {
+            if (getBounceRegistry[MODE] && getBounceRegistry[MODE][path] === currentExecutionState) {
                 delete getBounceRegistry[MODE][path];
             }
         }
@@ -363,11 +372,11 @@ async function queryIndexInternal(storeName, indexName, exactIndex = null, lower
             req = store.getAll(range)
         }
         req.onsuccess = () => {
-            //console.log(req.result)
+            //writeLog(req.result)
             return rs(req.result)
         }
         req.onerror = () => {
-            console.log(req.error)
+            writeLog(req.error)
             return rj(req.error)
         }
     })
@@ -383,7 +392,7 @@ async function deleteRecord(storeName, key, dbName = null) {
         const req = store.delete(key)
         tx.oncomplete = function () { rs(true) }
         req.onerror = () => {
-            console.log(req.error)
+            writeLog(req.error)
             return rj(req.error)
         }
         tx.commit()

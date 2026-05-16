@@ -502,7 +502,7 @@ const CV_INTEGER = 2
 
 function IN_Init() {
 
-  console.log('\n------- Input Initialization -------\n')
+  writeLog('\n------- Input Initialization -------\n')
 
   CopyBiases()
 
@@ -582,7 +582,7 @@ function IN_Init() {
   }, 2000)
   */
 
-  console.log('------------------------------------\n')
+  writeLog('------------------------------------\n')
 }
 
 function InputPushTouchEvent(id, evt, data) {

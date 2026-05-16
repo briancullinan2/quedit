@@ -43,7 +43,7 @@ function S_CodecLoad (name, info) {
     let utfEncoded = audioView.map(function (c) { return String.fromCharCode(c) }).join('')
     thisAudio.src = 'data:audio/ogg;base64,' + btoa(utfEncoded)
     thisAudio.name = filenameStr
-    console.log('loading audio:' + filenameStr)
+    writeLog('loading audio:' + filenameStr)
     //thisAudio.address = name - 28
     soundEffects[filenameStr] = [thisAudio]
     if(info) {
@@ -242,7 +242,7 @@ function FindTrack(name) {
   }
 
   if(i >= 4) { 
-    console.log('Warning adding too many tracks: ' + addressToString(name))
+    writeLog('Warning adding too many tracks: ' + addressToString(name))
     return
   }
 
@@ -429,7 +429,7 @@ function FindSound(name) {
   }
   // make sure there aren't too many sounds
   if(soundEffects[name].length > 8) {
-    console.log('Warning adding too many sounds: ' + addressToString(name))
+    writeLog('Warning adding too many sounds: ' + addressToString(name))
     return
   }
   let newInstance = soundEffects[name][0].cloneNode()

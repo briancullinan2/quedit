@@ -349,7 +349,7 @@ const onAnyMessage = async event => {
                   await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
               }
             } catch (e) {
-              log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+              writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
             }
           }
         }
@@ -369,12 +369,12 @@ const onAnyMessage = async event => {
 
     case 'compileLinkRun':
       if (currentApp) {
-        console.log('First, disallowing rAF from previous app.');
+        writeLog('First, disallowing rAF from previous app.');
         // Stop running rAF on the previous app, if any.
         currentApp.allowRequestAnimationFrame = false;
       }
       currentApp = await api.compileLinkRun(event.data.data);
-      console.log(`finished compileLinkRun. currentApp = ${currentApp}.`);
+      writeLog(`finished compileLinkRun. currentApp = ${currentApp}.`);
       break;
 
     case 'postCanvas':

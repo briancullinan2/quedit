@@ -161,7 +161,7 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
 
     let hasChanged = false
 
-    log("Building LBURG...");
+    writeLog("Building LBURG...");
     for (const file of lburgFiles) {
         if (TERMINATE) return
 
@@ -174,17 +174,17 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
                 && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
                 && !forceChanged
             ) {
-                log(`${obj} already up to date...`)
+                writeLog(`${obj} already up to date...`)
                 return obj
             }
 
             hasChanged = true
 
-            log(`CC: ${src}`);
+            writeLog(`CC: ${src}`);
             await compileToolFile(src, obj, "lburg", database, [], forceChanged);
         } catch (e) {
             PREAMBLE = TOOLERR_PREAMBLE
-            log(`Build error in lburg: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
+            writeLog(`Build error in lburg: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
         }
 
     }
@@ -231,11 +231,11 @@ async function linkLburg(database, forceChanged = false, noBuild = false) {
     if (FS.virtual[lburgExe]
         && !forceChanged
     ) {
-        log(lburgExe + " already up to date...");
+        writeLog(lburgExe + " already up to date...");
         return
     }
 
-    log(`LD: ${lburgExe}`);
+    writeLog(`LD: ${lburgExe}`);
 
 
     await api.link({
@@ -287,7 +287,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
 
         if (needsHeaders) {
 
-            log("Syncing TOOL headers...");
+            writeLog("Syncing TOOL headers...");
 
             await downloadHeaders(lccToolHeaders, 10, database)
 
@@ -302,7 +302,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
             && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
             && !forceChanged
         ) {
-            log(`${obj} already up to date...`)
+            writeLog(`${obj} already up to date...`)
             return obj
         }
 
@@ -320,7 +320,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
         return obj;
     } catch (e) {
         PREAMBLE = TOOLERR_PREAMBLE
-        log(`Error compiling: ${src}: ${e}\n\r${e.stack || e.stacktrace}`);
+        writeLog(`Error compiling: ${src}: ${e}\n\r${e.stack || e.stacktrace}`);
         let newError = new Error(e.message)
         newError.stack = newError.stacktrace = e.stack || e.stacktrace
         throw newError;
@@ -370,11 +370,12 @@ const UNZIP_PREAMBLE = '\x1b[38;5;134m[UNZIP]\x1b[0m ';      // Orchid Purple
 
 const TOOLS_PREAMBLE = '\x1b[38;5;121m[TOOLS-BUILD]\x1b[0m '
 //const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m '
+const ENGINE_PREAMBLE = '\x1b[38;5;36m[QUAKE3E]\x1b[0m '
 
 
 
 let PREAMBLE = TOOLS_PREAMBLE
-function log(msg, ...args) {
+function writeLog(msg, ...args) {
 
     if (!msg.includes) debugger
     if (msg.includes && msg.includes('TypeError:')) debugger
@@ -387,7 +388,32 @@ function log(msg, ...args) {
         triggerIncrementalSave()
 }
 
+function formatMessageItem(cache, arg) {
+    if (cache.has(arg)) return '[Circular]';
+    cache.add(arg);
+    // 1. Handle Errors (JSON.stringify ignores message/stack by default)
+    if (arg instanceof Error) {
+        return `${arg.name}: ${arg.message}\n\r${arg.stack || arg.stacktrace}\n\r${formatMessageItem(cache, { ...arg })}`;
+    }
 
+
+    if (typeof arg === 'string') {
+        return arg.trim()
+    }
+    if(typeof arg === 'object' && Object.keys(arg).length === 0) {
+        return (arg.name || arg.constructor.name || typeof arg ) + ' ' + '{empty}'
+    }
+
+
+    return (arg.name || arg.constructor.name || typeof arg ) + ' ' + JSON.stringify(arg, (key, value) => {
+        // 2. Prevent "Circular reference" crashes
+        if (typeof value === 'object' && value !== null) {
+            if (cache.has(value)) return '[Circular]';
+            cache.add(value);
+        }
+        return value;
+    }, 4);
+}
 // ANSI Escape Code Definitions
 
 const formatMessage = (level, args) => {
@@ -397,35 +423,7 @@ const formatMessage = (level, args) => {
 
     const cache = new Set(); // To handle circular references
 
-    const processed = args.map(arg => {
-        // 1. Handle Errors (JSON.stringify ignores message/stack by default)
-        if (arg instanceof Error) {
-            return JSON.stringify({
-                name: arg.name,
-                message: arg.message,
-                stack: arg.stack,
-                ...arg // Get any custom properties you added
-            }, (key, value) => {
-                // 2. Prevent "Circular reference" crashes
-                if (typeof value === 'object' && value !== null) {
-                    if (cache.has(value)) return '[Circular]';
-                    cache.add(value);
-                }
-                return value;
-            }, 4);
-        }
-        if (typeof arg === 'string') {
-            return arg
-        }
-        return JSON.stringify(arg, (key, value) => {
-            // 2. Prevent "Circular reference" crashes
-            if (typeof value === 'object' && value !== null) {
-                if (cache.has(value)) return '[Circular]';
-                cache.add(value);
-            }
-            return value;
-        }, 4);
-    });
+    const processed = args.map(formatMessageItem.bind(null, cache));
 
 
     return `${prefix}${processed.join('\n\r')}\r\n`;
@@ -504,7 +502,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
 
     }
 
-    log("Building RCC...");
+    writeLog("Building RCC...");
 
     let hasChanged = false
 
@@ -517,7 +515,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
             const obj = path.join(CONFIGURATION + '/' + toolDirs.RCC, file);
             if (file === 'dagcheck.o') {
                 // Special case: Generate dagcheck.c using lburg
-                log("Generating dagcheck.c via lburg...");
+                writeLog("Generating dagcheck.c via lburg...");
                 const dagMd = "src/dagcheck.md";
                 const dagC = path.join(CONFIGURATION, "src/dagcheck.c");
 
@@ -531,7 +529,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
                     && FS.virtual[dagMd]?.timestamp < FS.virtual[obj]?.timestamp
                     && !forceChanged
                 ) {
-                    log(obj + " already up to date...");
+                    writeLog(obj + " already up to date...");
                     return
                 }
 
@@ -541,7 +539,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
                 // Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
                 PREAMBLE = TOOLS_PREAMBLE
 
-                log(`BURG: ${dagMd}`);
+                writeLog(`BURG: ${dagMd}`);
                 await api.run({
                     tool: lburgExe,
                     args: [lburgExe, dagMd, dagC],
@@ -549,7 +547,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
                     paths: [dagMd, dagC]
                 });
 
-                log(`CC: ${dagC}`);
+                writeLog(`CC: ${dagC}`);
                 await compileToolFile(dagC, obj, "src", database, ["-Wno-unused"], forceChanged);
             } else {
                 const src = path.join("src", file.replace('.o', '.c'));
@@ -561,20 +559,20 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
                     && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
                     && !forceChanged
                 ) {
-                    log(obj + " already up to date...");
+                    writeLog(obj + " already up to date...");
                     return
                 }
 
                 hasChanged = true
 
-                log(`CC: ${src}`);
+                writeLog(`CC: ${src}`);
                 await compileToolFile(src, obj, "src", database, [], forceChanged);
             }
         } catch (e) {
             PREAMBLE = TOOLERR_PREAMBLE
             // ALREADY LOGGED BY 
             if (!e.message.includes('Error compiling:'))
-                log(`Error compiling: ${file}: ${e}\n\r${e.stack || e.stacktrace}`)
+                writeLog(`Error compiling: ${file}: ${e}\n\r${e.stack || e.stacktrace}`)
         }
     }
 
@@ -610,11 +608,11 @@ async function linkRCC(database = null, forceChanged = false, noBuild = false) {
     if (FS.virtual[rccExe]
         && !forceChanged
     ) {
-        log(rccExe + " already up to date...");
+        writeLog(rccExe + " already up to date...");
         return
     }
 
-    log(`LD: ${rccExe}`);
+    writeLog(`LD: ${rccExe}`);
 
     await api.link({
         LDFLAGS: [
@@ -643,7 +641,7 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
 
     PREAMBLE = TOOLS_PREAMBLE
 
-    log("Building CPP...");
+    writeLog("Building CPP...");
 
     let hasChanged = false
 
@@ -661,16 +659,16 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
                 && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
                 && !forceChanged
             ) {
-                log(obj + " already up to date...");
+                writeLog(obj + " already up to date...");
                 return
             }
 
             hasChanged = true
 
-            log(`CC: ${src}`);
+            writeLog(`CC: ${src}`);
             await compileToolFile(src, obj, "cpp", database, [], forceChanged);
         } catch (e) {
-            log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+            writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
         }
     }
 
@@ -705,11 +703,11 @@ async function linkCPP(database = null, forceChanged = false, noBuild = false) {
     if (FS.virtual[cppExe]
         && !forceChanged
     ) {
-        log(cppExe + " already up to date...");
+        writeLog(cppExe + " already up to date...");
         return
     }
 
-    log(`LD: ${cppExe}`);
+    writeLog(`LD: ${cppExe}`);
 
 
 
@@ -742,7 +740,7 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
 
     PREAMBLE = TOOLS_PREAMBLE
 
-    log("Building LCC...");
+    writeLog("Building LCC...");
 
     let hasChanged = false
 
@@ -762,17 +760,17 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
                 && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
                 && !forceChanged
             ) {
-                log(obj + " already up to date...");
+                writeLog(obj + " already up to date...");
                 return
             }
 
             hasChanged = true
 
-            log(`CC: ${src}`);
+            writeLog(`CC: ${src}`);
             await compileToolFile(src, obj, "src", database, lccFlags, forceChanged);
         } catch (e) {
             PREAMBLE = TOOLERR_PREAMBLE
-            log(`Build error in q3lcc: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
+            writeLog(`Build error in q3lcc: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
         }
     }
 
@@ -813,11 +811,11 @@ async function linkLCC(database = null, forceChanged = false, noBuild = false) {
         // TODO: compare LATEST input and output mtime
         && !forceChanged
     ) {
-        log(lccExe + " already up to date...");
+        writeLog(lccExe + " already up to date...");
         return
     }
 
-    log(`LD: ${lccExe}`);
+    writeLog(`LD: ${lccExe}`);
 
 
     await api.link({
@@ -864,7 +862,7 @@ async function buildTools(database = null, toolName = 'all', forceChanged = fals
 
         // Helper to compile a single tool component
 
-        log(`Starting Toolchain Build ${toolName}...`);
+        writeLog(`Starting Toolchain Build ${toolName}...`);
 
         // TODO: check if tool final output exists just like obj check
 
@@ -902,7 +900,7 @@ async function buildTools(database = null, toolName = 'all', forceChanged = fals
         if (TERMINATE) return
 
 
-        log(`Toolchain build ${toolName} complete.`);
+        writeLog(`Toolchain build ${toolName} complete.`);
 
     }
     finally {
@@ -950,7 +948,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
     PREAMBLE = TOOLS_PREAMBLE
 
 
-    log("Building q3asm...");
+    writeLog("Building q3asm...");
 
     let hasChanged = false
 
@@ -961,7 +959,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 
         if (needsHeaders) {
 
-            log("Syncing ASM headers...");
+            writeLog("Syncing ASM headers...");
             await downloadHeaders(asmToolHeaders, 10, database)
 
         }
@@ -985,11 +983,11 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
                 && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
                 && !forceChanged
             ) {
-                log(obj + " already up to date...");
+                writeLog(obj + " already up to date...");
                 return
             }
 
-            log(`CC: ${file}`);
+            writeLog(`CC: ${file}`);
             await api.compile({
                 CFLAGS: [
                     ...LCC_CFLAGS,
@@ -1003,7 +1001,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 
         } catch (e) {
             PREAMBLE = TOOLERR_PREAMBLE
-            log(`Error compiling q3asm component: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+            writeLog(`Error compiling q3asm component: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
         }
     }
 
@@ -1041,15 +1039,15 @@ async function linkAsm(database = null, forceChanged = false, noBuild = false) {
         // TODO: compare LATEST input and output mtime
         && !forceChanged
     ) {
-        log(q3asmExe + " already up to date...");
+        writeLog(q3asmExe + " already up to date...");
         return
     }
 
-    log(`LD: ${q3asmExe}`);
+    writeLog(`LD: ${q3asmExe}`);
 
 
     try {
-        log("Linking q3asm...");
+        writeLog("Linking q3asm...");
         await api.link({
             LDFLAGS: [
                 ...toolLdFlags,
@@ -1062,10 +1060,10 @@ async function linkAsm(database = null, forceChanged = false, noBuild = false) {
             wasm: q3asmExe,
 
         });
-        log("q3asm build complete.");
+        writeLog("q3asm build complete.");
     } catch (e) {
         PREAMBLE = TOOLERR_PREAMBLE
-        log(`Linker Error for q3asm: ${q3asmExe}: ${e}\n\r${e.stack || e.stacktrace}`);
+        writeLog(`Linker Error for q3asm: ${q3asmExe}: ${e}\n\r${e.stack || e.stacktrace}`);
         throw e
     }
 }

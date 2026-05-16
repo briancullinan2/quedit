@@ -144,6 +144,8 @@ async function initEngine(program) {
         USER: 'brian'
     }
 
+    PREAMBLE = ENGINE_PREAMBLE
+
     await readPreFS()
     if (!program) {
         throw new Error("no program!")
@@ -159,7 +161,7 @@ async function initEngine(program) {
         // this might help prevent this thing that krunker.io does where it lags when it first starts up
         Com_MaxFPSChanged()
     } catch (e) {
-        log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+        writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
         Sys_Exit(1)
         throw e
     }
@@ -198,27 +200,34 @@ async function run(database = null, noBounce = false) {
 
     try {
         let enginePath = CONFIGURATION + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
-        let record = await getRecord(DB_STORE_NAME, enginePath, database)
-        if (!record) {
-
-            if (!files['briancullinan2/quedit']) {
-                await loadGitHubTree('briancullinan2', 'quedit', 'main')
-            }
-            await cacheFile('briancullinan2', 'quedit', 'quake3e.wasm');
+        FS.virtual[enginePath] = await getRecord(DB_STORE_NAME, enginePath, database)
+        if (!FS.virtual[enginePath] || FS.virtual[enginePath].contents.length === 0) {
+            const response = await fetch('quake3e.wasm', {
+                mode: 'cors',
+                credentials: 'omit'
+            });
+            const contents = await response.arrayBuffer()
+            const sha = await getGitShaBrowser(contents)
+            //const response = await fetch("https://raw.githubusercontent.com/briancullinan2/quedit/main/quake3e.wasm");
+            //const contents = await response.arrayBuffer();
+            //if (!files['briancullinan2/quedit']) {
+            //    await loadGitHubTree('briancullinan2', 'quedit', 'main')
+            //}
+            //await cacheFile('briancullinan2', 'quedit', 'quake3e.wasm');
             FS.virtual[enginePath] =
             {
                 timestamp: new Date(),
                 mode: FS_FILE,
-                contents: FS.virtual['quake3e.wasm'].contents,
+                contents: contents,
                 path: enginePath,
-                sha: FS.virtual['quake3e.wasm'].sha,
+                sha: sha,
                 parent: enginePath.substring(0, enginePath.lastIndexOf('/'))
 
             }
-            await putRecord(DB_STORE_NAME, FS.virtual[enginePath], thisDatabase)
+            await putRecord(DB_STORE_NAME, FS.virtual[enginePath], database)
         }
 
-        if (!record)
+        if (!FS.virtual[enginePath])
             return alert("Compile the engine first.")
 
         Object.assign(ENV, {
@@ -257,7 +266,7 @@ async function run(database = null, noBounce = false) {
 
         isStreaming = false
 
-        let program = await initWasm(record.contents, ENGINE)
+        let program = await initWasm(FS.virtual[enginePath].contents, ENGINE)
         await updateEnvironment(program, ENGINE)
         await initEngine(program)
     } catch (e) {

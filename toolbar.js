@@ -351,7 +351,7 @@ function saveSettings(content) {
     }
     catch (e) {
         PREAMBLE = EDITOR_PREAMBLE
-        log(`${e.message}\n\r${e.stack||e.stacktrace}`)
+        writeLog(`${e.message}\n\r${e.stack||e.stacktrace}`)
     }
 
 }

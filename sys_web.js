@@ -158,6 +158,7 @@ function Sys_Print(message) {
 		messageTime = Date.now()
 	}
 	let stateMatch
+
 	if (Date.now() - messageTime < 100 && (stateMatch = (/state:\s*([0-9]+)/g).exec(messageStr))) {
 		SYS.state = parseInt(stateMatch[1])
 	}
@@ -167,7 +168,7 @@ function Sys_Print(message) {
 		|| messageStr.includes('ERROR:')) {
 		console.error(messageStr)
 	} else {
-		console.log(messageStr)
+		writeLog(messageStr)
 	}
 }
 
@@ -269,7 +270,7 @@ function Sys_Error(fmt, args) {
 
 function Sys_SetStatus(status, replacementStr) {
 	// TODO: something like  window.title = , then setTimeout( window.title = 'Quake3e' again)
-	console.log(addressToString(status), replacementStr)
+	writeLog(addressToString(status), replacementStr)
 
 }
 
@@ -874,7 +875,7 @@ const SYS = {
 	evaledFuncs: {},
 	evaledCount: 0,
 	DebugBreak: function () { debugger },
-	DebugTrace: function () { console.log(new Error()) },
+	DebugTrace: function () { writeLog(new Error()) },
 	Sys_RandomBytes: Sys_RandomBytes,
 	Sys_Exit: Sys_Exit,
 	Sys_Edit: Sys_Edit,

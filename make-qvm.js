@@ -177,7 +177,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
     building = true
 
     try {
-        log(`Compiling ${name} module...`);
+        writeLog(`Compiling ${name} module...`);
 
 
         if (!database) database = gameRepo || api.database;
@@ -187,7 +187,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
         if (needsHeaders) {
-            log("Syncing QVM Headers...");
+            writeLog("Syncing QVM Headers...");
             await downloadHeaders(qvmHeaders, 10, database);
         }
 
@@ -197,7 +197,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
             ? dirs.ENGINE_RELEASE
             : dirs.ENGINE_DEBUG
 
-        log(`Building ${name}.qvm...`);
+        writeLog(`Building ${name}.qvm...`);
 
         if (!files[database]) {
             let branch = await getDefaultBranch(ownerName, repoName)
@@ -260,14 +260,14 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                     && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
                     && !forceChanged
                 ) {
-                    log(`${obj} already up to date...`)
+                    writeLog(`${obj} already up to date...`)
                     continue
                 }
 
 
                 hasChanged = true
 
-                log(`QVMCC: ${src}`);
+                writeLog(`QVMCC: ${src}`);
 
                 let CCFLAGS = [
                     ...(QVM_MODE ? [] : QVMLIB_CFLAGS),
@@ -341,7 +341,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
             } catch (e) {
                 PREAMBLE = QVMERR_PREAMBLE
-                log(`CC: ${src}: ${e.message}\n\r${e.stack || e.stacktrace}`);
+                writeLog(`CC: ${src}: ${e.message}\n\r${e.stack || e.stacktrace}`);
             }
         }
 
@@ -482,16 +482,16 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
         let exeRecord = await getRecord(DB_STORE_NAME, qvmOutput, database)
         FS.virtual[qvmOutput] = exeRecord
 
-        log(`Assembling ${qvmOutput}...`);
+        writeLog(`Assembling ${qvmOutput}...`);
 
         if (FS.virtual[qvmOutput]
             && !forceChanged
         ) {
-            log(qvmOutput + " already up to date...");
+            writeLog(qvmOutput + " already up to date...");
             return
         }
 
-        log(`LD: ${qvmOutput}`);
+        writeLog(`LD: ${qvmOutput}`);
 
 
         let LDFLAGS = [
@@ -526,10 +526,10 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
             });
         }
 
-        log(`Success: ${qvmOutput}`);
+        writeLog(`Success: ${qvmOutput}`);
     } catch (e) {
         PREAMBLE = QVMERR_PREAMBLE
-        log(`Linker Error in ${name}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+        writeLog(`Linker Error in ${name}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
         throw e
     }
     finally {
@@ -624,7 +624,7 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
 
     try {
         // 3. Start building modules
-        log("Starting QVM compilation...");
+        writeLog("Starting QVM compilation...");
 
         
         // CGAME
@@ -654,7 +654,7 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
 
 
 
-        log("QVM Build Process Finished.");
+        writeLog("QVM Build Process Finished.");
     }
     finally {
         building = false

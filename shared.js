@@ -359,7 +359,7 @@ const API = (function () {
             this.exports.fd_close(subDirFd);
           }
         } else {
-          console.log(`resursiveDir: ${fullPath}`);
+          writeLog(`resursiveDir: ${fullPath}`);
         }
       }
     }
@@ -383,7 +383,7 @@ const API = (function () {
       const addr = this.exports.GetFileNodeAddress(inode);
       const size = this.exports.GetFileNodeSize(inode);
 
-      console.log(`Node found: Inode=${inode}, Addr=${addr}, Size=${size}`);
+      writeLog(`Node found: Inode=${inode}, Addr=${addr}, Size=${size}`);
 
       // 3. Slice the buffer to get a clean copy, or use subarray to stay linked
       return new Uint8Array(this.mem.buffer, addr, size);
@@ -438,7 +438,7 @@ const API = (function () {
 
     memfs_log(buf, len) {
       this.mem.check();
-      console.log(this.mem.readStr(buf, len));
+      writeLog(this.mem.readStr(buf, len));
     }
 
     copy_out(clang_dst, memfs_src, size) {
@@ -446,7 +446,7 @@ const API = (function () {
       const dst = new Uint8Array(this.hostMem_.buffer, clang_dst, size);
       this.mem.check();
       const src = new Uint8Array(this.mem.buffer, memfs_src, size);
-      // console.log(`copy_out(${clang_dst.toString(16)}, ${memfs_src.toString(16)}, ${size})`);
+      // writeLog(`copy_out(${clang_dst.toString(16)}, ${memfs_src.toString(16)}, ${size})`);
       dst.set(src);
     }
 
@@ -455,7 +455,7 @@ const API = (function () {
       const dst = new Uint8Array(this.mem.buffer, memfs_dst, size);
       this.hostMem_.check();
       const src = new Uint8Array(this.hostMem_.buffer, clang_src, size);
-      // console.log(`copy_in(${memfs_dst.toString(16)}, ${clang_src.toString(16)}, ${size})`);
+      // writeLog(`copy_in(${memfs_dst.toString(16)}, ${clang_src.toString(16)}, ${size})`);
       dst.set(src);
     }
   }
@@ -677,11 +677,11 @@ const API = (function () {
           if (exn.code === RAF_PROC_EXIT_CODE
             || exn.code === 0
           ) {
-            console.log('Allowing rAF after exit.');
+            writeLog('Allowing rAF after exit.');
             return true;
           }
           // Don't allow rAF unless you return the right code.
-          console.log(`Disallowing rAF since exit code is ${exn.code}.`);
+          writeLog(`Disallowing rAF since exit code is ${exn.code}.`);
           this.allowRequestAnimationFrame = false;
           if (exn.code == 0) {
             return false;
@@ -798,7 +798,7 @@ const API = (function () {
         return result
       }
       else {
-        log('Would have run: ' + [path, ...cmdArgs].join(' '))
+        writeLog('Would have run: ' + [path, ...cmdArgs].join(' '))
         Module.errno = WASI_ENOSYS;
         return -1;
       }
@@ -1171,7 +1171,7 @@ const API = (function () {
         this.offset += entry.size;
         this.alignUp();
       } else if (entry.type !== '5') { // Directory.
-        console.log('type', entry.type);
+        writeLog('type', entry.type);
         assert(false);
       }
       return entry;
@@ -1372,7 +1372,7 @@ const API = (function () {
                 break
               }
             } catch (e) {
-              console.log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+              writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
             }
           }
 
@@ -1517,12 +1517,12 @@ const API = (function () {
 
         let buildDir = filePath.substring(0, filePath.lastIndexOf('/'))
         if (alwaysMkdir)
-          log('Header loading: ' + filePath)
+          writeLog('Header loading: ' + filePath)
         await prepInputOutput(filePath, null, this.database, alwaysMkdir)
 
         return true
       } catch (e) {
-        log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+        writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
         return false
       }
     }
@@ -1595,7 +1595,7 @@ const API = (function () {
           this.hostWrite('Succeeded: ' + obj + '\n\r')
         } catch (e) {
           debugger
-          log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+          writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
         }
       }
       else if (this.database && FS.virtual[obj]) {
@@ -1603,7 +1603,7 @@ const API = (function () {
           await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
         } catch (e) {
           debugger
-          log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+          writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
         }
       }
 
@@ -1737,7 +1737,7 @@ const API = (function () {
           await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database)
 
       } catch (e) {
-        log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+        writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
       }
 
       if (FS.virtual[wasm].contents.length > 1024)
@@ -1814,7 +1814,7 @@ const API = (function () {
       if (args.length == 0)
         args[0] = module.name
 
-      this.hostLog(`${args.join(' ')}\n`);
+      writeLog(`${args.join(' ')}\n`);
 
       const start = +new Date();
       const instantiate = +new Date();
@@ -1863,7 +1863,7 @@ const API = (function () {
       if (args.length == 0)
         args[0] = module.name
 
-      this.hostLog(`${args.join(' ')}\n`);
+      writeLog(`${args.join(' ')}\n`);
 
       const start = +new Date();
       const instantiate = +new Date();

@@ -463,7 +463,7 @@ function specialWrite(msg) {
     if(!runningCommand &!detachedConsole) {
         detachedConsole = true
         PREAMBLE = WARN_PREAMBLE
-        log('\n\rDetached console, awaiting terminate...')
+        writeLog('\n\rDetached console, awaiting terminate...')
     }
     
     term.write(msg)
@@ -798,7 +798,7 @@ terminalContainer.addEventListener('mousedown', async (event) => {
     const lineNumber = files[0].line
 
     if (files[0].path) {
-        console.log(`File: ${files[0].path}, Line: ${files[0].line}`);
+        writeLog(`File: ${files[0].path}, Line: ${files[0].line}`);
     }
 
     let history
