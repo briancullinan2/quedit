@@ -159,9 +159,6 @@ const QVM_CFLAGS = [
 let QVM_MODE = true;
 
 
-const QVM_PREAMBLE = '\x1b[38;5;135m[QVM]\x1b[0m '
-const QVMERR_PREAMBLE = '\x1b[38;5;161m[QVM ERROR]\x1b[0m '
-
 
 async function buildModule(name, sourceDir, filesList, database, extraDefines = [], forceChanged = false, noLinking = false /* called from linkModule */, noBounce = false) {
 

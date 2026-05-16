@@ -220,8 +220,8 @@ const API = (function () {
         try {
           this.mem.check();
 
-          // Existence check using your internal helper
           if (!this.exists(accumulated)) {
+            // Existence check using your internal helper
             // Write the segment to the WASM buffer
             // TRICK: Ensure you don't have a leading slash here
             this.mem.write(this.exports.GetPathBuf(), accumulated);
@@ -599,7 +599,6 @@ const API = (function () {
       Object.assign(env, wasi_unstable)
       const imports = WebAssembly.Module.imports(module);
 
-      debugger
       if (module.sync) {
         this.instance = getInstanceSync(module, { wasi_unstable, env })
         this.exports = this.instance.exports;
@@ -1181,13 +1180,16 @@ const API = (function () {
     async untar(memfs) {
       let entry;
       let count = 0
-      while (this.offset + 512 <= this.u8.length) {
+      while (entry = this.readEntry()) {
+        //while (this.offset + 512 <= this.u8.length) {
         // 1. Peek at the filename and size without consuming the whole entry yet
         // The filename is the first 100 bytes of the current 512-byte block
+        /*
         const filename = readStr(this.u8, this.offset, 100).replace(/\0+$/, '');
 
         // 2. Check existence in your Virtual FS
         if (FS.virtual[filename]) {
+          debugger
           // SKIP LOGIC:
           // Grab the size to know how far to jump (at offset 124, length 12)
           const sizeStr = readStr(this.u8, this.offset + 124, 12);
@@ -1197,14 +1199,27 @@ const API = (function () {
           this.offset += 512;
           this.offset += (size + 511) & ~511;
 
-          if (memfs && !memfs.exists(entry.filename))
-            memfs.addFile(entry.filename, FS.virtual[filename].contents);
+          try {
+            if (memfs)
+              memfs.mkdirp(entry.filename.substring(0, entry.filename.lastIndexOf('/')));
+          } catch (e) {
+            debugger
+          }
+          try {
+
+            if (memfs && !memfs.exists(entry.filename))
+              memfs.addFile(entry.filename, FS.virtual[filename].contents);
+          } catch (e) {
+            debugger
+          }
 
           continue;
         }
 
         // 3. If it doesn't exist, proceed with full readEntry
         entry = this.readEntry();
+        */
+
         if (!entry) break;
 
         count++
@@ -1219,8 +1234,11 @@ const API = (function () {
               sha: null,
               parent: entry.filename.substring(0, entry.filename.lastIndexOf('/'))
             }
-            if (memfs && !memfs.exists(entry.filename))
+            try {
               memfs.addFile(entry.filename, entry.contents);
+            } catch (e) {
+              debugger
+            }
             //putRecord(DB_STORE_NAME, FS.virtual[entry.filename], )
             break;
           case '5':
@@ -1233,8 +1251,13 @@ const API = (function () {
               path: entry.filename,
               parent: entry.filename.substring(0, entry.filename.lastIndexOf('/'))
             }
-            if (memfs)
+            try {
               memfs.addDirectory(entry.filename);
+              //if (memfs)
+              //memfs.mkdirp(entry.filename);
+            } catch (e) {
+              debugger
+            }
             break;
         }
       }
@@ -1275,16 +1298,15 @@ const API = (function () {
       });
 
       this.ready = this.memfs.ready.then(
-        () => {
-          return this.untar(this.memfs, this.sysrootFilename);
-        });
+        () => { return this.untar(this.memfs, this.sysrootFilename); });
 
     }
 
 
     hostLog(message) {
+      const timestamp = new Date().toLocaleTimeString();
       const yellowArrow = '\x1b[1;93m>\x1b[0m ';
-      this.hostWrite(`${yellowArrow}${message}`);
+      this.hostWrite(`${colors.gray}[${timestamp}]${PREAMBLE}${yellowArrow}${colors.reset} ${message}`);
     }
 
     async hostLogAsync(message, promise) {
@@ -1292,13 +1314,13 @@ const API = (function () {
       try {
         this.hostLog(`${message}...`);
         const result = await promise;
-        this.hostWrite(' done.\n\r');
+        this.hostWrite(' done.');
         return result;
       } catch (e) {
-        this.hostWrite(' failed.\n\r');
+        this.hostWrite(` failed.\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
         throw e
       } finally {
-        if (this.showTiming) {
+        if (true || this.showTiming) {
           const end = +new Date();
           const green = '\x1b[92m';
           const normal = '\x1b[0m';
@@ -1327,52 +1349,31 @@ const API = (function () {
 
       try {
         let module
+        const tryDatabases = [database, this.engineRepo, this.assetRepo, this.gameRepo, this.toolsRepo, this.toolsRepo2, this.database]
 
         for (let filePath of this.commonPaths(name)) {
           if (!filePath) continue
           let contents
-          try {
-            if (database) {
-              let record = await getRecord(DB_STORE_NAME, filePath, database)
-              if (record) {
-                contents = record.contents
-              }
-            }
-          } catch (e) {
-            console.log(`${e.message}\n\r${e.stack||e.stacktrace}`)
-          }
 
-          try {
-            if (!contents && this.toolsRepo) {
-              let record = await getRecord(DB_STORE_NAME, filePath, this.toolsRepo)
+          for (let selected of tryDatabases) {
+            if (!selected) continue
+            try {
+              let parts = selected.split('/')
+              let ownerName = parts.length == 2 ? parts[0] : owner.value
+              let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+              // because this also creates the database with setupDatabase
+              if (!files[selected]) {
+                let branch = await getDefaultBranch(ownerName, repoName)
+                await loadGitHubTree(ownerName, repoName, branch)
+              }
+              let record = await getRecord(DB_STORE_NAME, filePath, selected)
               if (record) {
                 contents = record.contents
+                break
               }
+            } catch (e) {
+              console.log(`${e.message}\n\r${e.stack || e.stacktrace}`)
             }
-          } catch (e) {
-            console.log(`${e.message}\n\r${e.stack||e.stacktrace}`)
-          }
-
-          try {
-            if (!contents && this.database) {
-              let record = await getRecord(DB_STORE_NAME, filePath, this.database)
-              if (record) {
-                contents = record.contents
-              }
-            }
-          } catch (e) {
-            console.log(`${e.message}\n\r${e.stack||e.stacktrace}`)
-          }
-
-          try {
-            if (!contents && this.database) {
-              let record = await getRecord(DB_STORE_NAME, filePath, this.toolsRepo2)
-              if (record) {
-                contents = record.contents
-              }
-            }
-          } catch (e) {
-            console.log(`${e.message}\n\r${e.stack||e.stacktrace}`)
           }
 
           if (this.memfs && this.memfs.exists(filePath)) {
@@ -1461,14 +1462,15 @@ const API = (function () {
 
 
     async untar(memfs, filename) {
+      PREAMBLE = TAR_PREAMBLE
       if (this.memfs)
         await this.memfs.ready;
       const promise = (async () => {
         const tar = new Tar(await this.readBuffer(filename), this.hostWrite);
         const count = await tar.untar(this.memfs);
-        this.hostWrite(`\n\r[TAR]: ${count} files read.`);
+        this.hostWrite(`${count} files read.`);
       })();
-      await this.hostLogAsync(`\n\rUntaring ${filename}`, promise);
+      await this.hostLogAsync(`Untaring ${filename}`, promise);
     }
 
     async loadEntry(cursor) {
@@ -1503,7 +1505,7 @@ const API = (function () {
 
     async header(filePath, alwaysMkdir = false) {
       try {
-
+        PREAMBLE = API_HEADER_PREAMBLE
         await this.ready;
 
         if (!this.database)
@@ -1514,12 +1516,13 @@ const API = (function () {
         }
 
         let buildDir = filePath.substring(0, filePath.lastIndexOf('/'))
-
+        if (alwaysMkdir)
+          log('Header loading: ' + filePath)
         await prepInputOutput(filePath, null, this.database, alwaysMkdir)
 
         return true
       } catch (e) {
-        log(`${e.message}\n\r${e.stack||e.stacktrace}`)
+        log(`${e.message}\n\r${e.stack || e.stacktrace}`)
         return false
       }
     }
@@ -1536,6 +1539,7 @@ const API = (function () {
 
 
     async compile(options) {
+      PREAMBLE = API_COMPILE_PREAMBLE
       await this.ready
       this.extract(options)
       const input = options.input;
@@ -1591,7 +1595,7 @@ const API = (function () {
           this.hostWrite('Succeeded: ' + obj + '\n\r')
         } catch (e) {
           debugger
-          log(`${e.message}\n\r${e.stack||e.stacktrace}`)
+          log(`${e.message}\n\r${e.stack || e.stacktrace}`)
         }
       }
       else if (this.database && FS.virtual[obj]) {
@@ -1599,7 +1603,7 @@ const API = (function () {
           await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
         } catch (e) {
           debugger
-          log(`${e.message}\n\r${e.stack||e.stacktrace}`)
+          log(`${e.message}\n\r${e.stack || e.stacktrace}`)
         }
       }
 
@@ -1608,6 +1612,7 @@ const API = (function () {
     }
 
     async compileToAssembly(options) {
+      PREAMBLE = API_COMPILE_PREAMBLE
       const input = options.input;
       const output = options.output;
       const contents = options.contents;
@@ -1641,6 +1646,7 @@ const API = (function () {
     }
 
     async compileTo6502(options) {
+      PREAMBLE = API_COMPILE_PREAMBLE
       const input = options.input;
       const output = options.output;
       const contents = options.contents;
@@ -1663,7 +1669,7 @@ const API = (function () {
     }
 
     async link(options) {
-
+      PREAMBLE = API_LINK_PREAMBLE
       await this.ready;
       this.extract(options)
 
@@ -1731,7 +1737,7 @@ const API = (function () {
           await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database)
 
       } catch (e) {
-        log(`${e.message}\n\r${e.stack||e.stacktrace}`)
+        log(`${e.message}\n\r${e.stack || e.stacktrace}`)
       }
 
       if (FS.virtual[wasm].contents.length > 1024)
@@ -1743,6 +1749,8 @@ const API = (function () {
 
     async build(selected, mode = 'all') {
 
+      PREAMBLE = API_BUILD_PREAMBLE
+      needsHeaders = true
 
       if (mode === 'stringify' || mode === 'engine'
         || mode === 'release' || mode === 'debug' || mode === 'all')
@@ -1780,6 +1788,8 @@ const API = (function () {
 
 
     runSync(module, ...args) {
+
+      PREAMBLE = API_RUN_PREAMBLE
 
       if (typeof module == 'string' || !module)
         module = this.moduleCache[module];
@@ -1828,7 +1838,7 @@ const API = (function () {
 
     async run(module, ...args) {
       await this.ready
-
+      PREAMBLE = API_RUN_PREAMBLE
 
       if (typeof module == 'string' || !module)
         module = await this.getModule(module);
@@ -1875,6 +1885,7 @@ const API = (function () {
     }
 
     async compileLinkRun(options) {
+      PREAMBLE = API_COMPILE_PREAMBLE
       const input = `test.cc`;
       const obj = `test.o`;
       const wasm = `test.wasm`;

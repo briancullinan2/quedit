@@ -141,8 +141,6 @@ async function initializeFiletrees() {
 
 let hasUntared = false
 
-const TAR_PREAMBLE = '\x1b[38;5;202m[TAR]\x1b[0m '
-
 async function untarFrontent() {
 
     PREAMBLE = TAR_PREAMBLE
@@ -181,7 +179,7 @@ async function expandDatabaseTree(target, folderId) {
 
 
         if (!hasUntared) {
-            await untarFrontent()
+            //await untarFrontent()
         }
 
         let resultSet = {}
@@ -296,8 +294,10 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     setTimeout(() => {
         forceFit(term, container)
         term.write(loadedLog.join('\n\r'))
+        term.write(preterm.join(''))
         term.write('\n\r')
         term.write('> ');
+        terminalLoaded = true
     }, 200);
 });
 

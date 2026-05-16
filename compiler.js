@@ -157,8 +157,6 @@ class WorkerAPI {
     }
 }
 
-const API_PREAMBLE = '\x1b[38;5;214m[COMPILER]\x1b[0m '
-
 
 const api = new WorkerAPI({
     hostWrite: specialWrite

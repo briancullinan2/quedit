@@ -156,7 +156,7 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-        
+
     PREAMBLE = TOOLS_PREAMBLE
 
     let hasChanged = false
@@ -286,7 +286,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
 
 
         if (needsHeaders) {
-            
+
             log("Syncing TOOL headers...");
 
             await downloadHeaders(lccToolHeaders, 10, database)
@@ -325,23 +325,149 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
     }
 }
 
+const colors = {
+    reset: "\x1b[0m",
+    log: "\x1b[32m", // Green
+    warn: "\x1b[33m", // Yellow
+    error: "\x1b[31m", // Red
+    info: "\x1b[36m", // Cyan
+    gray: "\x1b[90m"  // Gray for timestamps/meta
+};
+
+
+
+const API_PREAMBLE = '\x1b[38;5;214m[COMPILER]\x1b[0m ';      // Gold/Orange
+
+const TAR_PREAMBLE = '\x1b[38;5;179m[TAR]\x1b[0m ';           // Warm Tan
+
+const GITHUB_PREAMBLE = '\x1b[38;5;27m[GITHUB]\x1b[0m ';      // Deep Brand Blue
+const FETCH_PREAMBLE = '\x1b[38;5;39m[FETCH]\x1b[0m ';        // Vivid Cyan
+const ERROR_PREAMBLE = '\x1b[38;5;196m[ERROR]\x1b[0m ';       // Intense Crimson Red
+
+const QVM_PREAMBLE = '\x1b[38;5;165m[QVM]\x1b[0m ';           // Electric Magenta
+const QVMERR_PREAMBLE = '\x1b[38;5;202m[QVM ERROR]\x1b[0m ';  // Deep Coral Orange
+
+//const BUILD_PREAMBLE = '\x1b[38;5;99m[TOOLS-BUILD]\x1b[0m '; // Soft Lavender
+const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m ';      // Bright Coral Red
+
+const API_HEADER_PREAMBLE = '\x1b[38;5;221m[HEADER]\x1b[0m ';    // Amber Yellow (Parsing)
+const API_COMPILE_PREAMBLE = '\x1b[38;5;208m[COMPILE]\x1b[0m ';  // Safety Orange (Compiling)
+const API_LINK_PREAMBLE = '\x1b[38;5;118m[LINK]\x1b[0m ';        // Neon Lime Green (Success)
+const API_RUN_PREAMBLE = '\x1b[38;5;45m[RUN]\x1b[0m ';           // Turquoise (Execution)
+const API_BUILD_PREAMBLE = '\x1b[38;5;76m[BUILD]\x1b[0m ';         // Forest Green mix
+const API_REMOVE_PREAMBLE = '\x1b[38;5;244m[REMOVE]\x1b[0m ';    // Muted Slate Gray
+
+const BUILD_PREAMBLE = '\x1b[38;5;118m[BUILD]\x1b[0m '; // Matches successful link color
+
+const EDITOR_PREAMBLE = '\x1b[38;5;201m[EDITOR]\x1b[0m ';    // Hot Pink
+
+const UNZIP_PREAMBLE = '\x1b[38;5;134m[UNZIP]\x1b[0m ';      // Orchid Purple
 
 const TOOLS_PREAMBLE = '\x1b[38;5;121m[TOOLS-BUILD]\x1b[0m '
-const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m '
+//const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m '
+
 
 
 let PREAMBLE = TOOLS_PREAMBLE
 function log(msg, ...args) {
 
-    if(!msg.includes) debugger
+    if (!msg.includes) debugger
     if (msg.includes && msg.includes('TypeError:')) debugger
-    if (typeof term !== 'undefined') term.write(`${PREAMBLE}${msg}${msg.stack || msg.stacktrace || ''}\r\n`);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(`${PREAMBLE}${msg}\r\n`);
-    else console.log(msg);
+    let formatted = formatMessage(PREAMBLE, [msg, ...args])
+    if (typeof term !== 'undefined') term.write(formatted);
+    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
+    if (typeof originalConsole != 'undefined') originalConsole.log(msg, ...args);
+    //else console.log(msg, ...args)
     if (typeof triggerIncrementalSave !== 'undefined')
         triggerIncrementalSave()
 }
 
+
+// ANSI Escape Code Definitions
+
+const formatMessage = (level, args) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const LOCAL_PREAMBLE = level.includes('\x1b') ? level : `${colors[level]}[${level.toUpperCase()}]${colors.reset} `
+    const prefix = `${colors.gray}[${timestamp}]${LOCAL_PREAMBLE}${colors.reset} `;
+
+    const cache = new Set(); // To handle circular references
+
+    const processed = args.map(arg => {
+        // 1. Handle Errors (JSON.stringify ignores message/stack by default)
+        if (arg instanceof Error) {
+            return JSON.stringify({
+                name: arg.name,
+                message: arg.message,
+                stack: arg.stack,
+                ...arg // Get any custom properties you added
+            }, (key, value) => {
+                // 2. Prevent "Circular reference" crashes
+                if (typeof value === 'object' && value !== null) {
+                    if (cache.has(value)) return '[Circular]';
+                    cache.add(value);
+                }
+                return value;
+            }, 4);
+        }
+        if (typeof arg === 'string') {
+            return arg
+        }
+        return JSON.stringify(arg, (key, value) => {
+            // 2. Prevent "Circular reference" crashes
+            if (typeof value === 'object' && value !== null) {
+                if (cache.has(value)) return '[Circular]';
+                cache.add(value);
+            }
+            return value;
+        }, 4);
+    });
+
+
+    return `${prefix}${processed.join('\n\r')}\r\n`;
+};
+
+const originalConsole = {
+    log: console.log,
+    warn: console.warn,
+    error: console.error,
+    info: console.info
+};
+
+self.console.log = (...args) => {
+    const formatted = formatMessage('log', args);
+    if (typeof term !== 'undefined') term.write(formatted);
+    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
+    if (typeof originalConsole != 'undefined') originalConsole.log(...args);
+    if (typeof triggerIncrementalSave !== 'undefined')
+        triggerIncrementalSave()
+};
+
+self.console.warn = (...args) => {
+    const formatted = formatMessage('warn', args);
+    if (typeof term !== 'undefined') term.write(formatted);
+    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
+    if (typeof originalConsole != 'undefined') originalConsole.log(...args);
+    if (typeof triggerIncrementalSave !== 'undefined')
+        triggerIncrementalSave()
+};
+
+self.console.error = (...args) => {
+    const formatted = formatMessage('error', args);
+    if (typeof term !== 'undefined') term.write(formatted);
+    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
+    if (typeof originalConsole != 'undefined') originalConsole.log(...args);
+    if (typeof triggerIncrementalSave !== 'undefined')
+        triggerIncrementalSave()
+};
+
+self.console.info = (...args) => {
+    const formatted = formatMessage('info', args);
+    if (typeof term !== 'undefined') term.write(formatted);
+    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
+    if (typeof originalConsole != 'undefined') originalConsole.log(...args);
+    if (typeof triggerIncrementalSave !== 'undefined')
+        triggerIncrementalSave()
+};
 
 let needsHeaders = true
 
@@ -357,7 +483,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-        
+
     PREAMBLE = TOOLS_PREAMBLE
 
     const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
@@ -538,7 +664,7 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
             log(`CC: ${src}\n\r`);
             await compileToolFile(src, obj, "cpp", database, [], forceChanged);
         } catch (e) {
-            log(`${e.message}\n\r${e.stack||e.stacktrace}`)
+            log(`${e.message}\n\r${e.stack || e.stacktrace}`)
         }
     }
 
@@ -607,7 +733,7 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-        
+
     PREAMBLE = TOOLS_PREAMBLE
 
     log("Building LCC...");
@@ -721,18 +847,18 @@ async function buildTools(database = null, toolName = 'all', forceChanged = fals
     building = true
 
 
-    
+
     PREAMBLE = TOOLS_PREAMBLE
 
     try {
 
         if (!database) database = toolsRepo || api.database;
 
-        
+
 
         // Helper to compile a single tool component
 
-        log("Starting Toolchain Build...");
+        log(`Starting Toolchain Build ${toolName}...`);
 
         // TODO: check if tool final output exists just like obj check
 
@@ -770,7 +896,7 @@ async function buildTools(database = null, toolName = 'all', forceChanged = fals
         if (TERMINATE) return
 
 
-        log("Toolchain build complete.");
+        log(`Toolchain build ${toolName} complete.`);
 
     }
     finally {
@@ -813,8 +939,8 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-       
-        
+
+
     PREAMBLE = TOOLS_PREAMBLE
 
 
@@ -828,7 +954,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 
 
         if (needsHeaders) {
-            
+
             log("Syncing ASM headers...");
             await downloadHeaders(asmToolHeaders, 10, database)
 

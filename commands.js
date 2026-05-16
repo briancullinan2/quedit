@@ -260,6 +260,9 @@ async function buildCommand(argv, database) {
         await downloadHeaders(asmToolHeaders, 10, selected)
     }
 
+    needsHeaders = false
+
+
     if (TERMINATE) return
 
     if (mode === 'stringify' || mode === 'all')

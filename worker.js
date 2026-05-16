@@ -295,14 +295,14 @@ const onAnyMessage = async event => {
         if (paths && api.database) {
           for (filePath of paths) {
             if (!filePath) continue
-            api.header(filePath)
+            await api.header(filePath)
           }
         }
 
         if (event.data.data.args) {
           for (filePath of event.data.data.args) {
             if (!filePath) continue
-            await this.header(filePath)
+            await api.header(filePath)
           }
         }
 

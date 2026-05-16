@@ -8,7 +8,7 @@ const DB_SCHEME = [
     {
         key: DB_STORE_NAME, value: {
             item1: 'path', item2: [{
-                key: 'timestamp', value: ['path', 'mode']
+                key: 'timestamp', value: 'timestamp'
             }, {
                 key: 'parent', value: 'parent'
             }]
@@ -122,7 +122,11 @@ async function setupDatabase(dbName, stores) {
 
                 created = true
 
-            } catch (ex) { error = ('' + ex) + ' on ' + JSON.stringify(stores) }
+            } catch (ex) {
+                debugger
+                error = ('' + ex) + ' on ' + JSON.stringify(stores) 
+                throw ex
+            }
         }
         request.onsuccess = () => rs({ item1: created, item2: error ? ('' + error) : (created ? "upgraded" : "finished") })
         request.onerror = () => {

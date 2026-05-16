@@ -1,6 +1,3 @@
-const GITHUB_PREAMBLE = '\x1b[38;5;33m[GITHUB]\x1b[0m '
-const FETCH_PREAMBLE = '\x1b[38;5;81m[FETCH]\x1b[0m '
-const ERROR_PREAMBLE = '\x1b[38;5;202m[ERROR]\x1b[0m '
 
 
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false) {
@@ -347,13 +344,6 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
     const selected = repoOwner + '/' + repoName
     try {
 
-        if(filePath === 'wasm.syms')
-            debugger
-        //if (files[selected][filePath])
-        //    FS.virtual[filePath] = files[selected][filePath]
-
-        if (!forceReload && FS.virtual[filePath])
-            return FS.virtual[filePath].contents
 
         // TODO: this once from front end or backend, but not both
         if (!files[selected]) {
@@ -361,8 +351,9 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
             await loadGitHubTree(repoOwner, repoName, branch)
         }
 
-        let record = await getRecord(DB_STORE_NAME, filePath, selected)
-        FS.virtual[filePath] = record
+        if (!FS.virtual[filePath]) {
+            FS.virtual[filePath] = await getRecord(DB_STORE_NAME, filePath, selected)
+        }
         if (files[selected][filePath]
             && FS.virtual[filePath]
         )
@@ -371,21 +362,29 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
 
         // TODO: IF GITHUB, ALWAYS UPDATE
-        if (files[selected][filePath]
+        if (!forceReload
+            && files[selected]
+            && files[selected][filePath]
             && !filePath.includes('tmp/')
             && !filePath.includes('build/release-')
             && !filePath.includes('build/debug-')
         ) {
 
         }
-        else if (record /*&& (record.sha == sha)*/) {
-            if (api.memfs && !api.memfs.exists(filePath))
-                api.memfs.addFile(filePath, record.contents)
-            return record.contents
+        else if (FS.virtual[filePath]
+            /*&& (FS.virtual[filePath].sha == sha)*/
+        ) {
+            try {
+                if (api.memfs && !api.memfs.exists(filePath))
+                    api.memfs.addFile(filePath, FS.virtual[filePath].contents)
+            } catch (e) {
+                log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+            }
+            log('Already have: ' + file)
+            return FS.virtual[filePath].contents
         }
 
-        if (!forceReload && record)
-            return record.contents
+
 
         let jsonResponse = await githubRequest(repoOwner, repoName, `contents/${filePath}`)
 
@@ -402,6 +401,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
             bytes = new TextEncoder().encode(jsonResponse.content || "");
         }
 
+
         FS.virtual[filePath] = {
             timestamp: files[selected][filePath].timestamp,
             mode: FS_FILE,
@@ -411,12 +411,19 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
             parent: filePath.substring(0, filePath.lastIndexOf('/'))
         }
 
+
         // async to filesystem
         // does it REALLY matter if it makes it? wont it just redownload?
         await putRecord(DB_STORE_NAME, FS.virtual[filePath], selected)
 
-        if (api.memfs && !api.memfs.exists(filePath))
-            api.memfs.addFile(filePath, bytes)
+        try {
+
+            if (api.memfs && !api.memfs.exists(filePath))
+                api.memfs.addFile(filePath, bytes)
+
+        } catch (e) {
+            log(`${e.message}\n\r${e.stack || e.stacktrace}`)
+        }
 
         return bytes
     } catch (e) {

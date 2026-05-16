@@ -1,7 +1,8 @@
 const LINES_TO_SAVE = 1000
 const LINES_TO_SCROLLBACK = 5000
 const MAX_HISTORY_LENGTH = 20
-
+const preterm = []
+let terminalLoaded = false
 var term = new Terminal({
     allowProposedApi: true,
     convertEol: true,
@@ -9,6 +10,7 @@ var term = new Terminal({
     cursorBlink: true,
 });
 term.open(document.getElementById('terminal'));
+term.write('\n\r')
 
 const container = document.getElementById('terminal');
 
@@ -391,6 +393,11 @@ function specialWrite(msg) {
         needsHeaders = true
     }
 
+    if(!terminalLoaded) {
+        preterm.push(msg)
+        return
+    }
+
     // 1. Hide Cursor & Move to Start of Prompt Block
     const promptWithCommand = '> ' + currentLine;
     const numLines = Math.ceil(promptWithCommand.length / term.cols) || 1;
@@ -623,84 +630,6 @@ term.onRender(() => {
     // Now the core services are guaranteed to exist
     //setTimeout(() => forceFit(term, container), 200);
 });
-
-const originalConsole = {
-    log: console.log,
-    warn: console.warn,
-    error: console.error,
-    info: console.info
-};
-
-// ANSI Escape Code Definitions
-const colors = {
-    reset: "\x1b[0m",
-    log: "\x1b[32m", // Green
-    warn: "\x1b[33m", // Yellow
-    error: "\x1b[31m", // Red
-    info: "\x1b[36m", // Cyan
-    gray: "\x1b[90m"  // Gray for timestamps/meta
-};
-
-const formatMessage = (level, args) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const prefix = `${colors.gray}[${timestamp}]${colors.reset} ${colors[level]}[${level.toUpperCase()}]${colors.reset} `;
-
-    const cache = new Set(); // To handle circular references
-
-    const processed = args.map(arg => {
-        // 1. Handle Errors (JSON.stringify ignores message/stack by default)
-        if (arg instanceof Error) {
-            return JSON.stringify({
-                name: arg.name,
-                message: arg.message,
-                stack: arg.stack,
-                ...arg // Get any custom properties you added
-            }, (key, value) => {
-                // 2. Prevent "Circular reference" crashes
-                if (typeof value === 'object' && value !== null) {
-                    if (cache.has(value)) return '[Circular]';
-                    cache.add(value);
-                }
-                return value;
-            }, 4);
-        }
-        return JSON.stringify(arg, (key, value) => {
-            // 2. Prevent "Circular reference" crashes
-            if (typeof value === 'object' && value !== null) {
-                if (cache.has(value)) return '[Circular]';
-                cache.add(value);
-            }
-            return value;
-        }, 4);
-    });
-
-
-    return `${prefix}${processed.join('\n\r')}\r\n`;
-};
-
-window.console.log = (...args) => {
-    term.write(formatMessage('log', args));
-    originalConsole.log.apply(console, args);
-    triggerIncrementalSave()
-};
-
-window.console.warn = (...args) => {
-    term.write(formatMessage('warn', args));
-    originalConsole.warn.apply(console, args);
-    triggerIncrementalSave()
-};
-
-window.console.error = (...args) => {
-    term.write(formatMessage('error', args));
-    originalConsole.error.apply(console, args);
-    triggerIncrementalSave()
-};
-
-window.console.info = (...args) => {
-    term.write(formatMessage('info', args));
-    originalConsole.info.apply(console, args);
-    triggerIncrementalSave()
-};
 
 
 

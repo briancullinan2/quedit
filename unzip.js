@@ -3,7 +3,6 @@
  * @param {ArrayBuffer} buffer - The zip/pk3 file data
  * @param {string} rootPath - Where to mount in the virtual FS (e.g., 'baseq3')
  */
-const UNZIP_PREAMBLE = '\x1b[38;5;198m[UNZIP]\x1b[0m '
 
 async function unzipToVirtualFS(buffer, rootPath = 'baseq3', database = null) {
     if(!database)
