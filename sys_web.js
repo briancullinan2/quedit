@@ -162,9 +162,11 @@ function Sys_Print(message) {
 	if (Date.now() - messageTime < 100 && (stateMatch = (/state:\s*([0-9]+)/g).exec(messageStr))) {
 		SYS.state = parseInt(stateMatch[1])
 	}
-	if (messageStr.includes('error')
+	if (messageStr.includes('Hunk_Clear'))
+		console.warn(messageStr)
+	else if (messageStr.includes('error')
 		|| messageStr.includes('RE_Shutdown')
-		|| messageStr.includes('Hunk_Clear')
+
 		|| messageStr.includes('ERROR:')) {
 		console.error(messageStr)
 	} else {

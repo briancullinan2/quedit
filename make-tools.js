@@ -419,7 +419,7 @@ function formatMessageItem(cache, arg) {
 const formatMessage = (level, args) => {
     const timestamp = new Date().toLocaleTimeString();
     const LOCAL_PREAMBLE = level.includes('\x1b') ? level : `${colors[level]}[${level.toUpperCase()}]${colors.reset} `
-    const prefix = `${colors.gray}[${timestamp}]${LOCAL_PREAMBLE}${colors.reset} `;
+    const prefix = `${colors.gray}[${timestamp}]${LOCAL_PREAMBLE}${colors.reset}`;
 
     const cache = new Set(); // To handle circular references
 
@@ -518,6 +518,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
                 writeLog("Generating dagcheck.c via lburg...");
                 const dagMd = "src/dagcheck.md";
                 const dagC = path.join(CONFIGURATION, "src/dagcheck.c");
+                debugger
 
                 if (!FS.virtual[obj] && !forceChanged)
                     FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)

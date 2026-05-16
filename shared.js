@@ -1547,6 +1547,9 @@ const API = (function () {
       const obj = options.obj;
       const opt = options.opt || '2';
 
+      if (!contents) {
+        debugger
+      }
       if (input) {
         if (this.memfs) {
           this.memfs.mkdirp(input.substring(0, input.lastIndexOf('/')))
@@ -1620,6 +1623,9 @@ const API = (function () {
       const triple = options.triple || 'x86_64';
       const opt = options.opt || '2';
 
+      if (!contents) {
+        debugger
+      }
       await this.ready;
       if (input && contents) {
 

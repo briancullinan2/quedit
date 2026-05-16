@@ -378,11 +378,15 @@ term.attachCustomKeyEventHandler((arg) => {
                 return false;
             }
             triggerIncrementalSave()
-            TERMINATE = true
-            term.write('\n\rCTRL+C\n\r> ')
+            term.write('\n\rCTRL+C\n\r')
+            if (building) {
+
+                TERMINATE = true
+                term.write('Stopping build...\n\r')
+            }
+            term.write('> ')
             cursorPosition = 0
             currentLine = ''
-            debugger
         }
 
 
@@ -455,17 +459,17 @@ function specialWrite(msg) {
         needsHeaders = true
     }
 
-    if(!terminalLoaded) {
+    if (!terminalLoaded) {
         preterm.push(msg)
         return
     }
 
-    if(!runningCommand &!detachedConsole) {
+    if (!runningCommand & !detachedConsole) {
         detachedConsole = true
         PREAMBLE = WARN_PREAMBLE
         writeLog('\n\rDetached console, awaiting terminate...')
     }
-    
+
     term.write(msg)
     triggerIncrementalSave()
 }

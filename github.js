@@ -381,7 +381,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
             } catch (e) {
                 writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
             }
-            writeLog('Already have: ' + file)
+            writeLog('Already have: ' + filePath)
             return FS.virtual[filePath].contents
         }
 
