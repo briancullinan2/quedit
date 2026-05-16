@@ -379,9 +379,9 @@ term.attachCustomKeyEventHandler((arg) => {
             }
             triggerIncrementalSave()
             term.write('\n\rCTRL+C\n\r')
-            if (building) {
 
-                TERMINATE = true
+            TERMINATE = true
+            if (building) {
                 term.write('Stopping build...\n\r')
             }
             term.write('> ')

@@ -438,7 +438,7 @@ const API = (function () {
 
     memfs_log(buf, len) {
       this.mem.check();
-      writeLog(this.mem.readStr(buf, len));
+      api.hostWrite(formatMessage('memfs', [this.mem.readStr(buf, len)]));
     }
 
     copy_out(clang_dst, memfs_src, size) {
@@ -539,10 +539,13 @@ const API = (function () {
       let needMemfs = module.name.includes('lld')
         || module.name.includes('clang')
 
-      //this.previousExports = Module.exports
-      //this.previousErrno = Module.errno.value
-      //this.previousMemory = ENV.memory || Module.memory
-      //this.previousHeap = window.STD.sharedMemory || Module.__heap_base
+      this.previousExports = Module.exports
+      this.previousErrno = Module.errno.value
+      this.previousMemory = ENV.memory || Module.memory
+      this.previousHeap = window.STD.sharedMemory || Module.__heap_base
+      if (this.api.memfs) {
+        this.previousHostMem = this.api.memfs.hostMem
+      }
 
       if (!needMemfs) {
 
@@ -652,6 +655,10 @@ const API = (function () {
           window.STD.sharedMemory = Module.__heap_base = this.previousHeap
           ENV.memory = Module.memory = this.previousMemory
           Module.errno.value = this.previousErrno
+          if (this.api.memfs) {
+            this.api.memfs.hostMem = this.previousHostMem;
+          }
+
           updateGlobalBufferAndViews()
         }
       }
@@ -776,8 +783,10 @@ const API = (function () {
       FS.virtual['/dev/stdin'].rewrite = 0
       FS.virtual['/dev/stdout'].rewrite = 0
       FS.virtual['/dev/stderr'].rewrite = 0
-      let previousMemory = ENV.memory || Module.memory
-      let previousHeap = window.STD.sharedMemory || Module.__heap_base
+      Module.exports = this.exports || this.instance.exports;
+      Module.errno.value = (this.exports['___errno_location'])
+        ? this.exports['___errno_location']()
+        : 0 || this.exports['errno'];
       window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
       if (this.exports.memory)
         ENV.memory = Module.memory = this.exports.memory
@@ -785,6 +794,8 @@ const API = (function () {
       let result = this.runInternal()
 
       return this.output || result
+
+      // TODO: don't swap global back
     }
 
     /*
@@ -1547,16 +1558,8 @@ const API = (function () {
       const obj = options.obj;
       const opt = options.opt || '2';
 
-      if (!contents) {
-        debugger
-      }
-      if (input) {
-        if (this.memfs) {
-          this.memfs.mkdirp(input.substring(0, input.lastIndexOf('/')))
-          this.memfs.mkdirp(obj.substring(0, obj.lastIndexOf('/')))
-          this.memfs.addFile(input, contents);
-        }
 
+      if (input && contents)
         FS.virtual[input] = {
           timestamp: new Date(),
           mode: FS_FILE,
@@ -1564,9 +1567,18 @@ const API = (function () {
           path: input,
           parent: input.substring(0, input.lastIndexOf('/'))
         }
-      }
 
       await prepInputOutput(input, obj, this.database, true)
+
+      if (!FS.virtual[input].contents) {
+        debugger
+        console.error('Input file empty: ' + input)
+      }
+      if (input && this.memfs) {
+        this.memfs.mkdirp(input.substring(0, input.lastIndexOf('/')))
+        this.memfs.mkdirp(obj.substring(0, obj.lastIndexOf('/')))
+        this.memfs.addFile(input, FS.virtual[input].contents);
+      }
 
 
       if (options.CFLAGS && this.database) {
@@ -1844,7 +1856,6 @@ const API = (function () {
 
     async run(module, ...args) {
       await this.ready
-      PREAMBLE = API_RUN_PREAMBLE
 
       if (typeof module == 'string' || !module)
         module = await this.getModule(module);
@@ -1862,6 +1873,7 @@ const API = (function () {
         }
       }
 
+      PREAMBLE = API_RUN_PREAMBLE
 
       if (!args)
         args = []

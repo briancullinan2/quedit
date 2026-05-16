@@ -21,6 +21,15 @@ for S_Spatialize
 
 ## So far
 
+#### 5/16/2026
+
+Still fine tuning javascript build process and almost got to compiling QVMs but something is severely 
+broken in final output of the qvm file. it's not a stopping point, i can still try "native"-wasm in
+the browser, and i can still fallback to github CI like i had planned originally.
+
+![BOTH](./Screenshot%202026-05-16%20140752.png)
+
+
 ####  5/14/2026
 
 More build tools. QVMs nearly linking in the browser from wasms built with clang in the browser. 

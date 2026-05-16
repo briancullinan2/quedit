@@ -376,7 +376,9 @@ const ENGINE_PREAMBLE = '\x1b[38;5;36m[QUAKE3E]\x1b[0m '
 
 let PREAMBLE = TOOLS_PREAMBLE
 function writeLog(msg, ...args) {
-
+    if (msg.includes('Assertion failed: lookup.node')) {
+        debugger
+    }
     if (!msg.includes) debugger
     if (msg.includes && msg.includes('TypeError:')) debugger
     let formatted = formatMessage(PREAMBLE, [msg, ...args])
@@ -400,12 +402,12 @@ function formatMessageItem(cache, arg) {
     if (typeof arg === 'string') {
         return arg.trim()
     }
-    if(typeof arg === 'object' && Object.keys(arg).length === 0) {
-        return (arg.name || arg.constructor.name || typeof arg ) + ' ' + '{empty}'
+    if (typeof arg === 'object' && Object.keys(arg).length === 0) {
+        return (arg.name || arg.constructor.name || typeof arg) + ' ' + '{empty}'
     }
 
 
-    return (arg.name || arg.constructor.name || typeof arg ) + ' ' + JSON.stringify(arg, (key, value) => {
+    return (arg.name || arg.constructor.name || typeof arg) + ' ' + JSON.stringify(arg, (key, value) => {
         // 2. Prevent "Circular reference" crashes
         if (typeof value === 'object' && value !== null) {
             if (cache.has(value)) return '[Circular]';
@@ -418,7 +420,7 @@ function formatMessageItem(cache, arg) {
 
 const formatMessage = (level, args) => {
     const timestamp = new Date().toLocaleTimeString();
-    const LOCAL_PREAMBLE = level.includes('\x1b') ? level : `${colors[level]}[${level.toUpperCase()}]${colors.reset} `
+    const LOCAL_PREAMBLE = level.includes('\x1b') ? level : `${colors[level] || colors.gray}[${level.toUpperCase()}]${colors.reset} `
     const prefix = `${colors.gray}[${timestamp}]${LOCAL_PREAMBLE}${colors.reset}`;
 
     const cache = new Set(); // To handle circular references
@@ -851,6 +853,8 @@ async function buildTools(database = null, toolName = 'all', forceChanged = fals
     if (building) return
     building = true
 
+
+    if (TERMINATE) return
 
 
     PREAMBLE = TOOLS_PREAMBLE
