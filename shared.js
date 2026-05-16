@@ -1514,9 +1514,6 @@ const API = (function () {
         }
 
         let buildDir = filePath.substring(0, filePath.lastIndexOf('/'))
-        if (!this.alreadTested) this.alreadTested = []
-        if (this.alreadTested.includes(buildDir)) return
-        this.alreadTested.push(buildDir)
 
         await prepInputOutput(filePath, null, this.database, alwaysMkdir)
 

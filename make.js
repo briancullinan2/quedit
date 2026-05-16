@@ -622,7 +622,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
             obj: obj
         })
     } catch (e) {
-        log(`${e.message}\n\r${e.stack||e.stacktrace}`)
+        log(`${e.message}\n\r${e.stack || e.stacktrace}`)
     }
 
     if (!noLinking) {
@@ -731,13 +731,27 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
+    let buildDir = file.substring(0, file.lastIndexOf('/'))
+    let outDir
+    if (obj)
+        outDir = obj.substring(0, obj.lastIndexOf('/'))
+
+
     if (makeDirs && !FS.virtual['/tmp'])
         mkdirp('tmp')
     if (makeDirs && !FS.virtual['/home'])
         mkdirp('home')
 
+
+    if (api.memfs) {
+        api.memfs.mkdirp('tmp')
+        api.memfs.mkdirp('home')
+        api.memfs.mkdirp(buildDir)
+        if (outDir)
+            api.memfs.mkdirp(outDir)
+    }
+
     if (!FS.virtual[file]) {
-        let buildDir = file.substring(0, file.lastIndexOf('/'))
         if (!loadedDirectories.includes(buildDir) && makeDirs) {
             log('Loading: ' + buildDir)
             if (makeDirs)
@@ -753,20 +767,23 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
             log('Loading: ' + file)
             await cacheFile(ownerName, repoName, file)
         }
+
     }
+
+    if (api.memfs && !api.memfs.exists(file) && FS.virtual[file])
+        api.memfs.addFile(file, FS.virtual[file].contents)
 
     if (!obj) return
 
     if (!FS.virtual[obj]) {
-        let buildDir = obj.substring(0, obj.lastIndexOf('/'))
-        if (!loadedDirectories.includes(buildDir) && makeDirs) {
-            log('Loading: ' + buildDir)
+        if (!loadedDirectories.includes(outDir) && makeDirs) {
+            log('Loading: ' + outDir)
             if (makeDirs)
-                mkdirp(buildDir, database)
-            let currentDir = await queryIndex(DB_STORE_NAME, 'parent', buildDir, null, null, database)
+                mkdirp(outDir, database)
+            let currentDir = await queryIndex(DB_STORE_NAME, 'parent', outDir, null, null, database)
             for (let r of currentDir)
                 FS.virtual[r.path] = r
-            loadedDirectories.push(buildDir)
+            loadedDirectories.push(outDir)
         }
 
         // don't load object files from github
@@ -774,6 +791,8 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
             log('Loading: ' + obj)
             FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
         }
+        //if (api.memfs && !api.memfs.exists(obj) && FS.virtual[file])
+        //    api.memfs.addFile(obj, FS.virtual[obj].contents)
     }
 
 }

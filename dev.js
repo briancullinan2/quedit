@@ -29,7 +29,8 @@ function middleware(req, res, next) {
 
 const params = {
     port: 8080,
-    host: "localhost",
+    host: "0.0.0.0",
+    open: "http://localhost",
     root: "./",
     open: true,
     logLevel: 2,

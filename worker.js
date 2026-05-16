@@ -46,33 +46,36 @@ const apiOptions = {
     const response = await fetch(filename);
     return response.arrayBuffer();
   },
-
   async compileStreaming(filename) {
     try {
-
-      // TODO: make compileStreaming work. It needs the server to use the
-      // application/wasm mimetype.
       if (filename instanceof Uint8Array || filename instanceof ArrayBuffer) {
         return await WebAssembly.compile(filename);
       }
 
-      //if (WebAssembly.compileStreaming) {
-      //  return WebAssembly.compileStreaming(fetch(filename));
-      //} else {
-        const response = await fetch(filename.startsWith('/') ? filename : ('/' + filename), {
-          mode: 'cors', // or 'same-origin'
-          credentials: 'omit'
-        });
-        if (!response.ok) throw new Error('Response code: ' + response.status)
-        const result = await response.arrayBuffer()
-        return WebAssembly.compile(result);
-      //}
+      const targetUrl = filename.startsWith('/') ? filename : ('/' + filename);
+      const response = await fetch(targetUrl, {
+        mode: 'cors',
+        credentials: 'omit'
+      });
+
+      if (!response.ok) throw new Error('Response code: ' + response.status);
+
+      // Verify the MIME type matches the spec requirement for streaming
+      const contentType = response.headers.get('Content-Type');
+      if (WebAssembly.compileStreaming && contentType === 'application/wasm') {
+        return await WebAssembly.compileStreaming(response);
+      } else {
+        // Safe fallback if server sent wrong headers or if the connection was flaky
+        const result = await response.arrayBuffer();
+        return await WebAssembly.compile(result);
+      }
     }
     catch (e) {
-      debugger
-      throw e
+      debugger;
+      throw e;
     }
   },
+
 
   hostWrite(s) {
     port.postMessage({ id: 'write', data: s });
@@ -346,7 +349,7 @@ const onAnyMessage = async event => {
                   await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
               }
             } catch (e) {
-              log(`${e.message}\n\r${e.stack||e.stacktrace}`)
+              log(`${e.message}\n\r${e.stack || e.stacktrace}`)
             }
           }
         }

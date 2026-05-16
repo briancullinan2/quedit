@@ -1323,6 +1323,7 @@ function writeU32(ptr, value) {
 }
 
 function fd_read(fd, iovs, iovsLen, nreadPtr) {
+	debugger
 	let stream = FS.pointers[fd];
 	if (!stream) return 8; // WASI_EBADF
 	if (stream[2].rewrite) {
@@ -1371,6 +1372,7 @@ function fd_read(fd, iovs, iovsLen, nreadPtr) {
  * Handles the 64-bit BigInt offset parameter positioning.
  */
 function fd_pread(fd, iovs, iovsLen, offsetBigInt, nreadPtr) {
+	debugger
 	let stream = FS.pointers[Number(fd)];
 	if (!stream) return 8; // WASI_EBADF
 	if (stream[2].rewrite) {
