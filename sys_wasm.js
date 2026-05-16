@@ -143,7 +143,7 @@ async function initEngine(program) {
     Module.environment = {
         USER: 'brian'
     }
-    
+
     await readPreFS()
     if (!program) {
         throw new Error("no program!")
@@ -159,7 +159,7 @@ async function initEngine(program) {
         // this might help prevent this thing that krunker.io does where it lags when it first starts up
         Com_MaxFPSChanged()
     } catch (e) {
-        log(`${e.message}\n\r${e.stack||e.stacktrace}`)
+        log(`${e.message}\n\r${e.stack || e.stacktrace}`)
         Sys_Exit(1)
         throw e
     }
@@ -175,21 +175,19 @@ ENV.ENV = ENV
 
 let runDebounce = null
 async function run(database = null, noBounce = false) {
-    if(runDebounce)
-    {
+    if (runDebounce) {
         clearTimeout(runDebounce)
     }
 
-    if(!noBounce)
-    {
+    if (!noBounce) {
         runDebounce = setTimeout(() => run(database, true), 500)
         return
     }
 
-    if(GL.canvas != null)
+    if (GL.canvas != null)
         return
 
-    if(!database)
+    if (!database)
         database = owner.value + '/' + repo.value
 
     api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
@@ -201,6 +199,24 @@ async function run(database = null, noBounce = false) {
     try {
         let enginePath = CONFIGURATION + '/' + config.CNAME + '.' + COMPILE_ARCH + '.' + COMPILE_PLATFORM
         let record = await getRecord(DB_STORE_NAME, enginePath, database)
+        if (!record) {
+
+            if (!files['briancullinan2/quedit']) {
+                await loadGitHubTree('briancullinan2', 'quedit', 'main')
+            }
+            await cacheFile('briancullinan2', 'quedit', 'quake3e.wasm');
+            FS.virtual[enginePath] =
+            {
+                timestamp: new Date(),
+                mode: FS_FILE,
+                contents: FS.virtual['quake3e.wasm'].contents,
+                path: enginePath,
+                sha: FS.virtual['quake3e.wasm'].sha,
+                parent: enginePath.substring(0, enginePath.lastIndexOf('/'))
+
+            }
+            await putRecord(DB_STORE_NAME, FS.virtual[enginePath], thisDatabase)
+        }
 
         if (!record)
             return alert("Compile the engine first.")
@@ -320,7 +336,7 @@ async function readPreFS() {
     }
     //putRecord(DB_STORE_NAME, FS.virtual['/home'], owner.value + '/' + repo.value)
 
-    
+
     // TODO: check for cl_dlURL
     // TODO: CL_Download(, 'pak0', )
     let responseData = await Com_DL_Begin(basegame + '/pak0.pk3',

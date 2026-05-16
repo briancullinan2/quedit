@@ -1,3 +1,4 @@
+const DIFFERENTIATE_SAVED = false
 const LINES_TO_SAVE = 1000
 const LINES_TO_SCROLLBACK = 5000
 const MAX_HISTORY_LENGTH = 20
@@ -71,6 +72,70 @@ function getInternalTerminalLog() {
     return lines;
 }
 
+function getInternalTerminalLogColored() {
+    const lines = [];
+    const buffer = term.buffer.active;
+
+    const endRow = buffer.baseY + buffer.cursorY;
+    const startRow = Math.max(0, endRow - LINES_TO_SAVE);
+
+    for (let i = startRow; i <= endRow; i++) {
+        const line = buffer.getLine(i);
+        if (line) {
+            let lineString = '';
+            let currentFg = -1; // Track active ANSI state to optimize string size
+            let currentBg = -1;
+
+            // Iterate through every horizontal character slot in the terminal row
+            for (let x = 0; x < line.length; x++) {
+                const cell = line.getCell(x);
+                if (!cell) continue;
+
+                const char = cell.getChars();
+                const fg = cell.getFgColor();
+                const bg = cell.getBgColor();
+
+                // If colors changed, inject the correct ANSI control sequence
+                if (fg !== currentFg || bg !== currentBg) {
+                    let ansiSequence = '\x1b[0m'; // Start with a clear reset
+
+                    // Reconstruct 256-color or standard foreground if explicit
+                    if (cell.isFgPalette() || cell.isFgRGB()) {
+                        ansiSequence += `\x1b[38;5;${fg}m`;
+                    } else if (fg >= 0 && fg < 16) {
+                        // Standard 16 terminal colors fallback
+                        ansiSequence += `\x1b[${fg < 8 ? fg + 30 : fg + 82}m`;
+                    }
+
+                    // Reconstruct background colors
+                    if (cell.isBgPalette() || cell.isBgRGB()) {
+                        ansiSequence += `\x1b[48;5;${bg}m`;
+                    } else if (bg >= 0 && bg < 16) {
+                        ansiSequence += `\x1b[${bg < 8 ? bg + 40 : bg + 92}m`;
+                    }
+
+                    lineString += ansiSequence;
+                    currentFg = fg;
+                    currentBg = bg;
+                }
+
+                lineString += char;
+            }
+
+            // Always add a final reset tag to the end of a row line so styles don't bleed
+            if (currentFg !== -1 || currentBg !== -1) {
+                lineString += '\x1b[0m';
+            }
+
+            // Trim trailing empty spaces matching translateToString(true)'s behavior
+            // while making sure we don't accidentally cut our trailing ANSI reset tag
+            const cleanLine = lineString.replace(/\s+(\x1b\[0m)?$/, '$1');
+            lines.push(cleanLine);
+        }
+    }
+    return lines;
+}
+
 
 let incrementalDebouncer = null
 async function triggerIncrementalSave() {
@@ -78,7 +143,7 @@ async function triggerIncrementalSave() {
         return
     }
     incrementalDebouncer = setTimeout(() => {
-        const last1000 = getInternalTerminalLog();
+        const last1000 = DIFFERENTIATE_SAVED ? getInternalTerminalLog() : getInternalTerminalLogColored();
         localStorage.setItem('terminal_log', JSON.stringify(last1000));
         incrementalDebouncer = null
     }, 1000)
@@ -182,7 +247,7 @@ function performSearch(termToSearch, caseSensitive = false) {
         const line = buffer.getLine(i);
         if (!line) continue;
 
-        const lineText = line.translateToString();
+        const lineText = line.translateToString(true);
         let match;
 
         while ((match = regex.exec(lineText)) !== null) {
@@ -383,9 +448,6 @@ term.attachCustomKeyEventHandler((arg) => {
     return true;
 });
 
-let shadowLogBuffer = ""; // Stores the current partial line from background
-let lastNewLine = true;   // Tracks if the last write finished a line
-
 
 function specialWrite(msg) {
     if (!msg) return;
@@ -398,25 +460,14 @@ function specialWrite(msg) {
         return
     }
 
-    // 1. Hide Cursor & Move to Start of Prompt Block
-    const promptWithCommand = '> ' + currentLine;
-    const numLines = Math.ceil(promptWithCommand.length / term.cols) || 1;
-    //term.write('\r\x1b[A');
-    //term.write(shadowLogBuffer);
+    if(!runningCommand &!detachedConsole) {
+        detachedConsole = true
+        PREAMBLE = WARN_PREAMBLE
+        log('\n\rDetached console, awaiting terminate...')
+    }
+    
     term.write(msg)
-    shadowLogBuffer = msg.split('\n').pop()
-    // 6. Redraw the Prompt
-    //term.write('\n\r')
-    //term.write(promptWithCommand);
-
-    // 7. Restore Cursor Position
-    const totalOffset = 2 + cursorPosition;
-    const targetLineFromTop = Math.floor(totalOffset / term.cols);
-    const targetCol = totalOffset % term.cols;
-    const moveUp = (numLines - 1) - targetLineFromTop;
-
-    //if (moveUp > 0) term.write(`\x1b[${moveUp}A`);
-    //term.write(`\r\x1b[${targetCol + 1}G\x1b[?25h`);
+    triggerIncrementalSave()
 }
 
 

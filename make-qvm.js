@@ -260,7 +260,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                     && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
                     && !forceChanged
                 ) {
-                    log(`${obj} already up to date...\n\r`)
+                    log(`${obj} already up to date...`)
                     continue
                 }
 
@@ -491,7 +491,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
             return
         }
 
-        log(`LD: ${qvmOutput}\n\r`);
+        log(`LD: ${qvmOutput}`);
 
 
         let LDFLAGS = [

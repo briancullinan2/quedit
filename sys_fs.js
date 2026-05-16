@@ -105,12 +105,11 @@ function Sys_FOpen(filename, mode) {
 		FS.filePointer++
 		FS.pointers[FS.filePointer] = [
 			0, // seek/tell
-			modeStr,
-			FS.virtual[localName],
-			localName,
-			FS.filePointer
+			modeStr, // r/w/rw string
+			FS.virtual[localName], // internal virtual filesystem, path, contents, timestamp, mode === FS_DIR/FS_FILE, 
+			localName, // file name
+			FS.filePointer // self index reference
 		]
-		// DO THIS ON OPEN SO WE CAN CHANGE ICONS
 		Sys_notify(FS.virtual[localName], localName)
 		return FS.filePointer // not zero
 	}
@@ -1323,49 +1322,103 @@ function writeU32(ptr, value) {
 }
 
 function fd_read(fd, iovs, iovsLen, nreadPtr) {
-	debugger
-	let stream = FS.pointers[fd];
-	if (!stream) return 8; // WASI_EBADF
-	if (stream[2].rewrite) {
-		stream = FS.pointers[stream[2].rewrite];
-	}
+    let stream = FS.pointers[fd];
+    if (!stream) return 8; // WASI_EBADF
+    
+    if (stream[2] && stream[2].rewrite) {
+        stream = FS.pointers[stream[2].rewrite];
+    }
 
-	// CRITICAL FIX: Ensure global memory views are freshly updated
-	if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
-		updateGlobalBufferAndViews();
-	}
+    if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
+        updateGlobalBufferAndViews();
+    }
 
-	const view = new DataView(Module.memory.buffer);
-	const contents = stream[2].contents; // Uint8Array of file data
-	let offset = stream[0]; // Current seek position
-	let totalRead = 0;
+    const view = new DataView(Module.memory.buffer);
+    const contents = stream[2].contents; // Uint8Array of file data
+    
+    if (!contents) return 22; // WASI_EINVAL (File has no content payload)
 
-	for (let i = 0; i < iovsLen; i++) {
-		const iovPtr = iovs + (i * 8);
-		const bufOffset = view.getUint32(iovPtr, true);
-		const bufLen = view.getUint32(iovPtr + 4, true);
+    let totalRead = 0;
 
-		const available = contents.length - offset;
-		const toRead = Math.min(bufLen, available);
+    for (let i = 0; i < iovsLen; i++) {
+        const iovPtr = iovs + (i * 8);
+        const bufOffset = view.getUint32(iovPtr, true);
+        const bufLen = view.getUint32(iovPtr + 4, true);
 
-		if (toRead > 0) {
-			// Fresh target slice allocation to bypass detachment traps
-			const heap = new Uint8Array(Module.memory.buffer);
-			heap.set(contents.subarray(offset, offset + toRead), bufOffset);
-			offset += toRead;
-			totalRead += toRead;
-		}
+        // ALWAYS read current offset directly from the source array reference
+        let currentOffset = stream[0]; 
+        const available = contents.length - currentOffset;
+        const toRead = Math.min(bufLen, available);
 
-		if (toRead < bufLen) break;
-	}
+        if (toRead > 0) {
+            const heap = new Uint8Array(Module.memory.buffer);
+            heap.set(contents.subarray(currentOffset, currentOffset + toRead), bufOffset);
+            
+            // Mutate the reference element immediately so the next loop index gets it
+            stream[0] += toRead; 
+            totalRead += toRead;
+        }
 
-	stream[0] = offset; // Update seek position
+        // If this vector consumed the rest of the file, we can exit cleanly
+        if (stream[0] >= contents.length) {
+            break;
+        }
+    }
 
-	// Refresh view write destination point to ensure success
-	const finalView = new DataView(Module.memory.buffer);
-	finalView.setUint32(nreadPtr, totalRead, true);
-	return 0; // WASI_ESUCCESS
+    const finalView = new DataView(Module.memory.buffer);
+    finalView.setUint32(nreadPtr, totalRead, true);
+    return 0; // WASI_ESUCCESS
 }
+
+function fd_read(fd, iovs, iovsLen, nreadPtr) {
+    let stream = FS.pointers[fd];
+    if (!stream) return 8; // WASI_EBADF
+    
+    if (stream[2] && stream[2].rewrite) {
+        stream = FS.pointers[stream[2].rewrite];
+    }
+
+    if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
+        updateGlobalBufferAndViews();
+    }
+
+    const view = new DataView(Module.memory.buffer);
+    const contents = stream[2].contents; // Uint8Array of file data
+    
+    if (!contents) return 22; // WASI_EINVAL (File has no content payload)
+
+    let totalRead = 0;
+
+    for (let i = 0; i < iovsLen; i++) {
+        const iovPtr = iovs + (i * 8);
+        const bufOffset = view.getUint32(iovPtr, true);
+        const bufLen = view.getUint32(iovPtr + 4, true);
+
+        // ALWAYS read current offset directly from the source array reference
+        let currentOffset = stream[0]; 
+        const available = contents.length - currentOffset;
+        const toRead = Math.min(bufLen, available);
+
+        if (toRead > 0) {
+            const heap = new Uint8Array(Module.memory.buffer);
+            heap.set(contents.subarray(currentOffset, currentOffset + toRead), bufOffset);
+            
+            // Mutate the reference element immediately so the next loop index gets it
+            stream[0] += toRead; 
+            totalRead += toRead;
+        }
+
+        // If this vector consumed the rest of the file, we can exit cleanly
+        if (stream[0] >= contents.length) {
+            break;
+        }
+    }
+
+    const finalView = new DataView(Module.memory.buffer);
+    finalView.setUint32(nreadPtr, totalRead, true);
+    return 0; // WASI_ESUCCESS
+}
+
 
 /**
  * WASI fd_pread Implementation
@@ -1413,6 +1466,7 @@ function fd_pread(fd, iovs, iovsLen, offsetBigInt, nreadPtr) {
 	finalView.setUint32(nreadPtr, totalRead, true);
 	return 0; // WASI_ESUCCESS
 }
+
 
 function fd_readdir(fd, buf, buf_len, cookie, nread_ptr) {
 	debugger

@@ -3,6 +3,8 @@ const CWD = ''
 const HISTORY = []
 
 
+let runningCommand = false
+let detachedConsole = false
 
 async function handleCommand(input) {
     const database = owner.value + '/' + repo.value
@@ -19,6 +21,9 @@ async function handleCommand(input) {
     if (tokens.length === 0) return;
 
 
+    runningCommand = true
+
+
     const [command, ...args] = tokens;
 
     const commands = {
@@ -30,6 +35,7 @@ async function handleCommand(input) {
         help: help,
         hello: hello,
         build: buildCommand,
+        make: buildCommand,
         header: header,
         open: openCommand,
         edit: openCommand,
@@ -50,7 +56,11 @@ async function handleCommand(input) {
         'ldd': wasm,
         reset: reset,
         clear: clear,
-        link: link
+        link: link,
+        kill: kill,
+        terminate: kill,
+        stop: kill,
+        start: run,
     };
 
     if (commands[command]) {
@@ -59,6 +69,7 @@ async function handleCommand(input) {
         term.write(`Command not found: ${command}\n\r`);
     }
 
+    runningCommand = false
     triggerIncrementalSave()
 }
 
@@ -711,6 +722,13 @@ async function clang(argv, database) {
     })
 }
 async function runWorker(argv, database) {
+    if (!argv[0] || argv[0].trim().length === 0
+        || argv[0].includes('quake3e')
+        // TODO: remove conflict down below by running engine and dedicated in a worker
+        || argv[0].includes('engine')
+        || argv[0].includes('client')
+    )
+        return await run()
 
     let thisDatabase = database
     if (argv[0].includes('lburg')
@@ -800,8 +818,15 @@ async function wasm(argv, database = null) {
 }
 function reset() {
     term.reset()
+    triggerIncrementalSave()
 }
+
 function clear() {
     term.clear()
     triggerIncrementalSave()
+}
+
+function kill() {
+    api.terminate()
+    //api.worker.terminate()
 }

@@ -593,7 +593,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
         && FS.virtual[stringify]?.timestamp < FS.virtual[obj]?.timestamp
         && !forceChanged
     ) {
-        log(`${obj} already up to date...\n\r`)
+        log(`${obj} already up to date...`)
 
         return
     }
@@ -661,7 +661,7 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
         return
     }
 
-    log(`LD: ${stringifyExe}\n\r`);
+    log(`LD: ${stringifyExe}`);
 
     try {
         await api.link({
@@ -918,14 +918,14 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
                     && FS.virtual[file]?.timestamp < FS.virtual[obj]?.timestamp
                     && !forceChanged
                 ) {
-                    log(`${obj} already up to date...\n\r`)
+                    log(`${obj} already up to date...`)
 
                     continue
                 }
 
                 hasChanged = true
 
-                log(`CC: ${obj}\n\r`)
+                log(`CC: ${obj}`)
 
                 let CCFLAGS = [
                     ...CFLAGS,
@@ -1009,7 +1009,7 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
         return
     }
 
-    log(`LD: ${engineExe}\n\r`);
+    log(`LD: ${engineExe}`);
 
 
     try {
@@ -1078,18 +1078,18 @@ async function buildShaders(database = null, forceChanged = false) {
                 && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
                 && !forceChanged
             ) {
-                log(`${obj} already up to date...\n\r`)
+                log(`${obj} already up to date...`)
 
                 continue
             }
 
-            log(`GLSL: ${obj}\n\r`)
+            log(`GLSL: ${obj}`)
 
             const cCode = generateFallbackC(shader, FS.virtual[shader]);
 
             let hasChanged = true
 
-            log(`CC: ${shader}\n\r`);
+            log(`CC: ${shader}`);
 
             await api.compile({
                 CFLAGS: [
