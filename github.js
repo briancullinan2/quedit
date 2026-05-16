@@ -337,8 +337,8 @@ async function getGitShaBrowser(content) {
 
 async function cacheFile(repoOwner, repoName, filePath, sha) {
 
+    const selected = repoOwner + '/' + repoName
     try {
-        const selected = repoOwner + '/' + repoName
 
         //if (files[selected][filePath])
         //    FS.virtual[filePath] = files[selected][filePath]
@@ -352,12 +352,17 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
 
         if (!files[selected]) {
             let branch = getDefaultBranch(repoOwner, repoName)
+            debugger
             await loadGitHubTree(repoOwner, repoName, branch)
         }
 
 
         // TODO: IF GITHUB, ALWAYS UPDATE
-        if (files[selected][filePath]) {
+        if (files[selected][filePath]
+            && !filePath.includes('tmp/')
+            && !filePath.includes('build/release-')
+            && !filePath.includes('build/debug-')
+        ) {
 
         }
         else if (record /*&& (record.sha == sha)*/) {
@@ -400,6 +405,9 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
         return bytes
     } catch (e) {
         log(`Cache file error in ${filePath}\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
+
+        if (files[selected][filePath])
+            return files[selected][filePath].contents
         throw e
     }
 

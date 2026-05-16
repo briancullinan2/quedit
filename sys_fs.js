@@ -48,6 +48,7 @@ function Sys_Mkdir(filename) {
 	// async to filesystem
 	// does it REALLY matter if it makes it? wont it just redownload?
 	Sys_notify(FS.virtual[localName], localName)
+	return 0
 }
 
 function Sys_GetFileStats(filename, size, mtime, ctime) {
@@ -91,7 +92,7 @@ function Sys_FOpen(filename, mode) {
 
 	debugger
 	//console.log(localName)
-	if (localName.startsWith('/')) localName = localName;
+	if (localName.startsWith('/')) localName = localName.substring('/');
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
@@ -267,6 +268,7 @@ function Sys_FFlush(pointer) {
 		throw new Error('File IO Error') // TODO: POSIX
 	}
 	Sys_notify(FS.pointers[pointer][2], FS.pointers[pointer][3], FS.pointers[pointer][4])
+	return 0
 }
 
 function Sys_Remove(file) {
@@ -284,6 +286,7 @@ function Sys_Remove(file) {
 		// remove from IDB
 		Sys_notify(false, localName)
 	}
+	return 0
 }
 
 function Sys_Rename(src, dest) {
@@ -309,6 +312,7 @@ function Sys_Rename(src, dest) {
 		Sys_notify(FS.virtual[srcName], srcName)
 		Sys_notify(FS.virtual[destName], destName)
 	}
+	return 0
 }
 
 
@@ -412,7 +416,7 @@ function Sys_Mkdirp(pathname) {
 			}
 			Sys_Mkdirp(stringToAddress(parentDirectory));
 			Sys_Mkdir(pathname);
-			return;
+			return 0;
 		}
 
 		// if we got any other error, let's see if the directory already exists
@@ -420,6 +424,7 @@ function Sys_Mkdirp(pathname) {
 			throw e
 		}
 	}
+	return 0
 }
 
 function Sys_FRead(bufferAddress, byteSize, count, pointer) {
@@ -861,48 +866,43 @@ function environ_get(environ_ptrs, environ_buf) {
 	return WASI_ESUCCESS;
 }
 
-
 function args_sizes_get(argcPtr, argvBufSizePtr) {
-	var args = SYS.startArgs || [];
-	var view = new DataView(Module.memory.buffer);
+    const args = SYS.startArgs || [];
+    const view = new DataView(Module.memory.buffer);
 
-	// Number of arguments
-	view.setUint32(argcPtr, args.length, true);
+    view.setUint32(argcPtr, args.length, true);
 
-	// Total length of all strings + null terminators
-	var totalLength = args.reduce((acc, str) => acc + str.length + 1, 0);
-	view.setUint32(argvBufSizePtr, totalLength, true);
+    const encoder = new TextEncoder();
+    const totalLength = args.reduce((acc, str) => acc + encoder.encode(str).length + 1, 0);
+    view.setUint32(argvBufSizePtr, totalLength, true);
 
-	return 0; // WASI_ESUCCESS
+    return 0; // WASI_ESUCCESS
 }
+
 function args_get(argvPtr, argvBufPtr) {
-	const args = SYS.startArgs || [];
-	let currentBufPtr = argvBufPtr;
-	const encoder = new TextEncoder();
+    const args = SYS.startArgs || [];
+    let currentBufPtr = argvBufPtr;
+    const encoder = new TextEncoder();
 
-	// Use the latest buffer from the module
-	const buffer = Module.memory.buffer;
-	const view = new DataView(buffer);
-	const heap = new Int8Array(buffer); // Create a fresh view here
+    const buffer = Module.memory.buffer;
+    const view = new DataView(buffer);
+    const heap = new Uint8Array(buffer); // FIXED: Uint8Array prevents sign-extension bugs
 
-	args.forEach((arg, i) => {
-		// 1. Write the pointer
-		view.setUint32(argvPtr + (i * 4), currentBufPtr, true);
+    args.forEach((arg, i) => {
+        // 1. Write the pointer to the array offset
+        view.setUint32(argvPtr + (i * 4), currentBufPtr, true);
 
-		// 2. Encode and set
-		const bytes = encoder.encode(arg);
+        // 2. Encode and safely copy unsigned bytes
+        const bytes = encoder.encode(arg);
+        heap.set(bytes, currentBufPtr);
 
-		// This is where the crash was happening; 
-		// using 'heap' (the fresh view) prevents the detached error.
-		heap.set(bytes, currentBufPtr);
+        // 3. Write clean explicit null terminator
+        heap[currentBufPtr + bytes.length] = 0;
 
-		// 3. Null terminator
-		heap[currentBufPtr + bytes.length] = 0;
+        currentBufPtr += bytes.length + 1;
+    });
 
-		currentBufPtr += bytes.length + 1;
-	});
-
-	return 0;
+    return 0; // WASI_ESUCCESS
 }
 
 function debug_print_mem(view, ptr, length) {
@@ -1127,7 +1127,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	// 2. Resolve Full Path relative to dirfd
 	let localName = path.trim();
 	//console.log(localName)
-	if (localName.startsWith('/')) localName = localName;
+	if (localName.startsWith('/')) localName = localName.substring('/');
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
@@ -1319,6 +1319,7 @@ function writeU32(ptr, value) {
 	const addr = Number(ptr); // Force BigInt pointer to Number
 	const view = new DataView(Module.memory.buffer);
 	view.setUint32(addr, value, true);
+	return 0
 }
 
 function fd_read(fd, iovs, iovsLen, nreadPtr) {
@@ -1413,33 +1414,88 @@ function fd_pread(fd, iovs, iovsLen, offsetBigInt, nreadPtr) {
 
 function fd_readdir(fd, buf, buf_len, cookie, nread_ptr) {
 	debugger
-	// ... logic to get files in directory ...
-	const view = new DataView(Module.memory.buffer);
-	let offset = 0;
+    const view = new DataView(Module.memory.buffer);
+    const heap = new Uint8Array(Module.memory.buffer);
 
-	// For each file:
-	view.setBigUint64(offset, next_cookie, true); // d_next
-	view.setBigUint64(offset + 8, inode, true);    // d_ino
-	view.setUint32(offset + 16, name_bytes.length, true); // d_namlen
-	view.setUint8(offset + 20, type); // d_type
-	// offset + 21, 22, 23 is padding
+    // 1. Validate descriptor stream existence
+    let stream = FS.pointers[fd];
+    if (!stream) return 8; // WASI_EBADF
+    if (stream[2].rewrite) {
+        stream = FS.pointers[stream[2].rewrite];
+    }
 
-	// Copy name string immediately after the 24-byte header
-	const heap = new Uint8Array(Module.memory.buffer);
-	heap.set(name_bytes, offset + 24);
+    const dirNode = stream[2];
+    const dirPath = stream[3]; // e.g. "code/game" or "" for root
 
-	offset += 24 + name_bytes.length;
-	view.setUint32(nread_ptr, offset, true);
-	return 0;
+    // 2. Filter FS.virtual keys to find immediate children matching this directory
+    const prefix = dirPath === "" || dirPath === "/" ? "" : (dirPath.endsWith('/') ? dirPath : dirPath + '/');
+    const entries = Object.keys(FS.virtual).filter(key => {
+        if (prefix === "") {
+            // Root items shouldn't contain forward slashes unless it's deep nesting
+            return !key.includes('/');
+        }
+        if (!key.startsWith(prefix) || key === prefix) return false;
+        
+        // Ensure we are only pulling immediate children (no deep recursion)
+        const relativePart = key.substring(prefix.length);
+        return !relativePart.includes('/');
+    });
+
+    let currentCookie = Number(cookie);
+    let bytesWritten = 0;
+
+    // 3. Serialize entries starting from the requested cookie index
+    while (currentCookie < entries.length) {
+        const name = entries[currentCookie];
+        const node = FS.virtual[name];
+        
+        // Encode entry name string to UTF-8 array
+        const encoder = new TextEncoder();
+        const nameBytes = encoder.encode(name);
+        
+        // WASI dirent size = 24 bytes header + name length
+        const entrySize = 24 + nameBytes.length;
+
+        // Stop if adding this directory entry would overflow the guest target memory buffer
+        if (bytesWritten + entrySize > buf_len) {
+            break;
+        }
+
+        const currentBufPtr = buf + bytesWritten;
+        const nextCookieValue = BigInt(currentCookie + 1);
+        const inodeValue = BigInt(fd); // Fallback stable pointer indicator
+        
+        // Determine WASI file type (4 = directory, 8 = regular file)
+        const type = ((node.mode >> 12) === 4) ? 4 : 8;
+
+        // Write 24-byte WASI dirent layout header structure
+        view.setBigUint64(currentBufPtr + 0, nextCookieValue, true);          // d_next (cookie for NEXT element)
+        view.setBigUint64(currentBufPtr + 8, inodeValue, true);               // d_ino
+        view.setUint32(currentBufPtr + 16, nameBytes.length, true);           // d_namlen
+        view.setUint8(currentBufPtr + 20, type);                              // d_type
+        
+        // Clear 3 padding bytes (offsets 21, 22, 23)
+        view.setUint16(currentBufPtr + 21, 0, true);
+        view.setUint8(currentBufPtr + 23, 0);
+
+        // Copy raw name token bytes directly behind header block layout
+        heap.set(nameBytes, currentBufPtr + 24);
+
+        bytesWritten += entrySize;
+        currentCookie++;
+    }
+
+    // Write final output metrics back to the requested registration pointer
+    view.setUint32(nread_ptr, bytesWritten, true);
+    return 0; // WASI_ESUCCESS
 }
 
-
-
 function random_get(buf, buf_len) {
-	const data = new Uint8Array(Module.memory.buffer, buf, buf_len);
-	for (let i = 0; i < buf_len; ++i) {
-		data[i] = (Math.random() * 256) | 0;
-	}
+    const data = new Uint8Array(Module.memory.buffer, buf, buf_len);
+    for (let i = 0; i < buf_len; ++i) {
+        data[i] = (Math.random() * 256) | 0;
+    }
+    return 0; // WASI_ESUCCESS (Explicitly notify the guest stack environment of success)
 }
 
 function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
@@ -1593,6 +1649,7 @@ const FILED = {
 	wait: wait,
 	execv: execv,
 	_spawnvp: _spawnvp,
+	callsys: callsys,
 	//getStringsFromArgv: getStringsFromArgv
 }
 
@@ -1707,6 +1764,23 @@ function getStringsFromArgv(argv) {
 	return args;
 }
 
+function callsys(argvPtr) {
+	const u8 = new Uint8Array(Module.memory.buffer);
+	const cmdArgs = getStringsFromArgv(argvPtr)
+	const targetKey = cmdArgs[0];
+	try {
+
+		// Await the execution of the WASM tool
+		let result = api.runSync(targetKey, ...cmdArgs);
+		log('Process resulted in: ' + result);
+
+		return result;
+	} catch (e) {
+		log(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack||e.stacktrace}`);
+		return 100; // Standard error exit for LCC
+	}
+}
+
 
 function _spawnvp(mode, cmdnamePtr, argvPtr) {
 	const u8 = new Uint8Array(Module.memory.buffer);
@@ -1717,6 +1791,7 @@ function _spawnvp(mode, cmdnamePtr, argvPtr) {
 
 		// Await the execution of the WASM tool
 		let result = api.runSync(targetKey, ...cmdArgs);
+		log('Process resulted in: ' + result);
 
 		return result;
 	} catch (e) {

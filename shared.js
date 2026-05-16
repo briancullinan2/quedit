@@ -538,7 +538,13 @@ const API = (function () {
       let needMemfs = module.name.includes('lld')
         || module.name.includes('clang')
 
+      this.previousExports = Module.exports
+      this.previousErrno = Module.errno.value
+      this.previousMemory = ENV.memory || Module.memory
+      this.previousHeap = window.STD.sharedMemory || Module.__heap_base
+
       if (!needMemfs) {
+
 
         if (!wasi_unstable.table) {
           const importTable = new WebAssembly.Table({
@@ -561,7 +567,23 @@ const API = (function () {
 
         wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
         wasi_unstable.imports = wasi_unstable
-        Object.assign(wasi_unstable, this.api.memfs.exports);
+        
+        /*
+        wasi_unstable.fd_prestat_get = FS.fd_prestat_get
+        wasi_unstable.fd_prestat_dir_name = FS.fd_prestat_dir_name
+        wasi_unstable.fd_fdstat_get = FS.fd_fdstat_get
+        wasi_unstable.path_open = FS.path_open
+        wasi_unstable.path_unlink_file = FS.path_unlink_file
+        wasi_unstable.path_remove_directory = FS.path_remove_directory
+        wasi_unstable.path_create_directory = FS.path_create_directory
+        wasi_unstable.fd_close = FS.fd_close
+        wasi_unstable.fd_fdstat_set_flags = FS.fd_fdstat_set_flags
+        wasi_unstable.fd_seek = FS.fd_seek
+        wasi_unstable.fd_read = FS.fd_read
+        wasi_unstable.fd_write = FS.fd_write
+        */
+
+        //Object.assign(wasi_unstable, this.api.memfs.exports);
         Object.assign(wasi_unstable, FS);
       }
       else {
@@ -578,8 +600,9 @@ const API = (function () {
 
 
       if (module.sync) {
-        let instance = getInstanceSync(module, { wasi_unstable, env })
-        this.assignExports(instance)
+        this.instance = getInstanceSync(module, { wasi_unstable, env })
+        this.exports = this.instance.exports;
+        this.assignExports(this.instance)
         this.ready = Promise.resolve();
       }
       else
@@ -588,21 +611,15 @@ const API = (function () {
 
 
     assignExports(instance) {
-      if (this.instance) return;
+
       this.instance = instance;
 
 
-      this.previousExports = Module.exports
-      this.previousErrno = Module.errno.value
-      this.previousMemory = ENV.memory || Module.memory
-      this.previousHeap = window.STD.sharedMemory || Module.__heap_base
 
-
-
-      Module.exports = this.exports = this.instance.exports;
+      this.exports = this.instance.exports;
       if (this.exports.memory) {
         this.mem = new Memory(this.exports.memory);
-        ENV.memory = Module.memory = this.exports.memory
+        ENV.memory = this.exports.memory
       }
       if (this.api.memfs) {
         this.api.memfs.hostMem = this.mem;
@@ -610,11 +627,7 @@ const API = (function () {
       if (this.exports.__indirect_function_table) {
         this.table = this.exports.__indirect_function_table;
       }
-      window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
-      Module.errno.value = (this.exports['___errno_location'])
-        ? this.exports['___errno_location']()
-        : 0 || this.exports['errno'];
-      updateGlobalBufferAndViews()
+      this.exports.__heap_base.value
     }
 
     runSync() {
@@ -622,6 +635,10 @@ const API = (function () {
         FS.virtual['/dev/stdin'].rewrite = 0
         FS.virtual['/dev/stdout'].rewrite = 0
         FS.virtual['/dev/stderr'].rewrite = 0
+        Module.exports = this.exports || this.instance.exports;
+        Module.errno.value = (this.exports['___errno_location'])
+          ? this.exports['___errno_location']()
+          : 0 || this.exports['errno'];
         window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
         if (this.exports.memory)
           ENV.memory = Module.memory = this.exports.memory
@@ -644,7 +661,7 @@ const API = (function () {
     runInternal() {
       try {
         this.output = this.exports._start();
-        return this.output
+        return this.output || 0
       } catch (exn) {
         let writeStack = true;
 
@@ -1397,7 +1414,7 @@ const API = (function () {
           let q3cpp = await this.getModule('q3cpp', database || this.toolsRepo, true)
           q3cpp.sync = true
           let q3rcc = await this.getModule('q3rcc', database || this.toolsRepo, true)
-          q3cpp.sync = true
+          q3rcc.sync = true
           let q3asm = await this.getModule('q3asm', database || this.toolsRepo2, true)
           q3asm.sync = true
         }
@@ -1902,6 +1919,7 @@ const API = (function () {
         module = new App(this, this.hostWrite, module, this.sysrootFilename, ...args || []);
       }
       const stillRunning = module.runSync();
+
       const end = +new Date();
 
       if (this.showTiming) {
@@ -1912,7 +1930,7 @@ const API = (function () {
         this.hostWrite(msg);
       }
 
-      return module.output;
+      return module.output || stillRunning === 0 || stillRunning === true ? 0 : stillRunning;
     }
 
     async run(module, ...args) {

@@ -143,13 +143,13 @@ const QVMLIB_CFLAGS = [
 
 
 const QVM_CFLAGS = [
-    '-D__STDC__=1',
-    '-D__STRICT_ANSI__',
-    '-D__signed__=signed',
-    '-DQ3_VM',
-    '-D__LCC__',
-    '-D__CHAR_UNSIGNED__',
-    '-U_CHAR_IS_SIGNED',
+    //'-D__STDC__=1',
+    //'-D__STRICT_ANSI__',
+    //'-D__signed__=signed',
+    //'-DQ3_VM',
+    //'-D__LCC__',
+    //'-D__CHAR_UNSIGNED__',
+    //'-U_CHAR_IS_SIGNED',
     "-Icode/game",
     "-Icode/cgame",
     "-Icode/q3_ui"
@@ -282,6 +282,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
                 if (QVM_MODE) {
 
+                    /*
                     await api.run({
                         tool: 'q3cpp.js.wasm',
                         args: [
@@ -312,6 +313,25 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                         database: database,
                         paths: [obj, tempPath],
                     })
+
+                    */
+
+
+                    await api.run({
+                        tool: 'q3lcc.js.wasm',
+                        args: [
+                            'q3lcc', '-S', '-Wf-g',
+                            '-v',
+                            ...QVM_CFLAGS,
+                            ...extraDefines.map(d => `-D${d}`),
+                            src,
+                            '-o', obj,
+                        ],
+                        database: database,
+                        toolsRepo: toolsRepo,
+                        paths: [obj, src],
+                    })
+
                 }
                 else {
                     await api.compile({
@@ -480,8 +500,8 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
         let LDFLAGS = [
             ...(QVM_MODE ? ['-vq3', '-r', '-m', '-v'] : ["--no-entry"]),
-            "-o", (QVM_MODE ? name : qvmOutput),
-            ...(QVM_MODE ? ['-f', path.join(config.BUILD_DIR, 'win32-qvm', name)] : qvmObjs),
+            "-o", qvmOutput, // (QVM_MODE ? name : qvmOutput),
+            //...(QVM_MODE ? ['-f', path.join(config.BUILD_DIR, 'win32-qvm', name)] : qvmObjs),
         ]
 
         if (QVM_MODE) {
@@ -490,7 +510,8 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
                 tool: 'q3asm.js.wasm',
                 args: [
                     'q3asm.js.wasm',
-                    ...LDFLAGS
+                    ...LDFLAGS,
+                    ...qvmObjs
                 ],
                 database: database,
                 paths: [...qvmObjs, syscalls, q3asm, qvmOutput]
@@ -499,7 +520,10 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
         else {
 
             await api.link({
-                LDFLAGS: LDFLAGS,
+                LDFLAGS: [
+                    ...LDFLAGS,
+                    ...qvmObjs
+                ],
                 obj: qvmObjs,
                 database,
                 wasm: qvmOutput // Overloading 'wasm' key for the binary output
