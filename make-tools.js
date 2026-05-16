@@ -156,7 +156,7 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-    TERMINATE = false
+        
     PREAMBLE = TOOLS_PREAMBLE
 
     let hasChanged = false
@@ -286,8 +286,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
 
 
         if (needsHeaders) {
-            needsHeaders = false;
-
+            
             log("Syncing TOOL headers...");
 
             await downloadHeaders(lccToolHeaders, 10, database)
@@ -334,7 +333,8 @@ const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m '
 let PREAMBLE = TOOLS_PREAMBLE
 function log(msg, ...args) {
 
-    if (msg.includes('TypeError:')) debugger
+    if(!msg.includes) debugger
+    if (msg.includes && msg.includes('TypeError:')) debugger
     if (typeof term !== 'undefined') term.write(`${PREAMBLE}${msg}${msg.stack || msg.stacktrace || ''}\r\n`);
     else if (typeof api.hostWrite != 'undefined') api.hostWrite(`${PREAMBLE}${msg}\r\n`);
     else console.log(msg);
@@ -352,13 +352,12 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
 
-    needsHeaders = true
 
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-    TERMINATE = false
+        
     PREAMBLE = TOOLS_PREAMBLE
 
     const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
@@ -506,8 +505,6 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
 
-    needsHeaders = true
-
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
@@ -541,7 +538,7 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
             log(`CC: ${src}\n\r`);
             await compileToolFile(src, obj, "cpp", database, [], forceChanged);
         } catch (e) {
-            log(e)
+            log(`${e.message}\n\r${e.stack||e.stacktrace}`)
         }
     }
 
@@ -605,13 +602,12 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
 
-    needsHeaders = true
 
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-    TERMINATE = false
+        
     PREAMBLE = TOOLS_PREAMBLE
 
     log("Building LCC...");
@@ -725,14 +721,14 @@ async function buildTools(database = null, toolName = 'all', forceChanged = fals
     building = true
 
 
-    TERMINATE = false
+    
     PREAMBLE = TOOLS_PREAMBLE
 
     try {
 
         if (!database) database = toolsRepo || api.database;
 
-        needsHeaders = true
+        
 
         // Helper to compile a single tool component
 
@@ -742,7 +738,7 @@ async function buildTools(database = null, toolName = 'all', forceChanged = fals
 
         if (toolName === 'lburg' || toolName === 'all')
             // 1. Build LBURG (Needed to generate dagcheck.c for RCC)
-            await buildLBurg(database, forceChanged)
+            await buildLBurg(database, forceChanged, false /* don't exclude link step */)
 
         if (TERMINATE) return
 
@@ -817,9 +813,8 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
-    needsHeaders = true
-
-    TERMINATE = false
+       
+        
     PREAMBLE = TOOLS_PREAMBLE
 
 
@@ -833,8 +828,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 
 
         if (needsHeaders) {
-            needsHeaders = false;
-
+            
             log("Syncing ASM headers...");
             await downloadHeaders(asmToolHeaders, 10, database)
 

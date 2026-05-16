@@ -240,6 +240,7 @@ const API = (function () {
 
     addFile(path, contents) {
       try {
+        // TODO: remove memfs after read input bug is figured out
         const dirPath = path.substring(0, path.lastIndexOf('/'));
         if (dirPath) {
           this.mkdirp(dirPath);
@@ -538,10 +539,10 @@ const API = (function () {
       let needMemfs = module.name.includes('lld')
         || module.name.includes('clang')
 
-      this.previousExports = Module.exports
-      this.previousErrno = Module.errno.value
-      this.previousMemory = ENV.memory || Module.memory
-      this.previousHeap = window.STD.sharedMemory || Module.__heap_base
+      //this.previousExports = Module.exports
+      //this.previousErrno = Module.errno.value
+      //this.previousMemory = ENV.memory || Module.memory
+      //this.previousHeap = window.STD.sharedMemory || Module.__heap_base
 
       if (!needMemfs) {
 
@@ -567,7 +568,7 @@ const API = (function () {
 
         wasi_unstable.env = ENV.wasi_snapshot_preview1 = wasi_unstable
         wasi_unstable.imports = wasi_unstable
-        
+
         /*
         wasi_unstable.fd_prestat_get = FS.fd_prestat_get
         wasi_unstable.fd_prestat_dir_name = FS.fd_prestat_dir_name
@@ -598,7 +599,7 @@ const API = (function () {
       Object.assign(env, wasi_unstable)
       const imports = WebAssembly.Module.imports(module);
 
-
+      debugger
       if (module.sync) {
         this.instance = getInstanceSync(module, { wasi_unstable, env })
         this.exports = this.instance.exports;
@@ -710,7 +711,6 @@ const API = (function () {
         }
 
         // Propagate error.
-        debugger
         throw exn;
       }
     }
@@ -1276,8 +1276,6 @@ const API = (function () {
 
       this.ready = this.memfs.ready.then(
         () => {
-          this.mkdirp('/home')
-          this.mkdirp('/tmp')
           return this.untar(this.memfs, this.sysrootFilename);
         });
 
@@ -1341,7 +1339,7 @@ const API = (function () {
               }
             }
           } catch (e) {
-            console.log(e)
+            console.log(`${e.message}\n\r${e.stack||e.stacktrace}`)
           }
 
           try {
@@ -1352,7 +1350,7 @@ const API = (function () {
               }
             }
           } catch (e) {
-            console.log(e)
+            console.log(`${e.message}\n\r${e.stack||e.stacktrace}`)
           }
 
           try {
@@ -1363,7 +1361,7 @@ const API = (function () {
               }
             }
           } catch (e) {
-            console.log(e)
+            console.log(`${e.message}\n\r${e.stack||e.stacktrace}`)
           }
 
           try {
@@ -1374,7 +1372,7 @@ const API = (function () {
               }
             }
           } catch (e) {
-            console.log(e)
+            console.log(`${e.message}\n\r${e.stack||e.stacktrace}`)
           }
 
           if (this.memfs && this.memfs.exists(filePath)) {
@@ -1448,7 +1446,7 @@ const API = (function () {
             await buildAsmTool(this.toolsRepo2 || database || this.database, false)
           }
           if (name.includes('quake3e'))
-            await buildClient(this.toolsRepo || database || this.database, false)
+            await buildClient(this.toolsRepo || database || this.database, false, false, true /* no bounce */)
           if (name.includes('quake3e.ded'))
             await buildDedicated(this.toolsRepo || database || this.database, false)
           if (name.includes('stringify'))
@@ -1481,42 +1479,6 @@ const API = (function () {
     }
 
 
-    mkdirp(path) {
-      if (this.memfs)
-        this.memfs.mkdirp(path)
-      // Ensure we have a clean array of directory segments
-      // Filter(Boolean) removes empty strings from leading/double slashes
-      const parts = path.split('/').filter(Boolean);
-
-      // Track where we are in the tree
-      // Start with an empty string or '.' to signify relative to root
-      let accumulated = "";
-      let previousPath = "";
-
-      for (const part of parts) {
-        accumulated = accumulated === "" ? part : `${accumulated}/${part}`;
-
-        try {
-          FS.virtual[accumulated] = {
-            timestamp: new Date(),
-            mode: FS_DIR,
-            size: 4096,
-            path: accumulated,
-            parent: accumulated.substring(0, accumulated.lastIndexOf('/'))
-          }
-          FS.virtual[accumulated + '/.'] = FS.virtual[accumulated]
-          if (previousPath)
-            FS.virtual[accumulated + '/..'] = FS.virtual[previousPath]
-          if (this.database)
-            putRecord(DB_STORE_NAME, FS.virtual[accumulated], this.database)
-        } catch (e) {
-          // Log only if it's a real crash, not just an "already exists" error
-          if (!e.message.includes("exists")) {
-            console.warn(`mkdirp segment failed: ${accumulated}`, e);
-          }
-        }
-      }
-    }
 
 
     extract(options, database) {
@@ -1539,26 +1501,30 @@ const API = (function () {
     }
 
 
-    async header(filePath) {
-      await this.ready;
+    async header(filePath, alwaysMkdir = false) {
+      try {
 
-      if (!this.database)
-        return
+        await this.ready;
 
-      let record = await getRecord(DB_STORE_NAME, filePath, this.database)
-      if (!record) return
-      FS.virtual[record.path] = record
+        if (!this.database)
+          return
 
-      const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
-      if (fileDir.trim().length > 0)
-        this.mkdirp(fileDir)
+        if (filePath.startsWith('--allow-undefined-file=')) {
+          filePath = filePath.substring('--allow-undefined-file='.length)
+        }
 
-      if (this.memfs)
-        this.memfs.addFile(record.path, record.contents);
+        let buildDir = filePath.substring(0, filePath.lastIndexOf('/'))
+        if (!this.alreadTested) this.alreadTested = []
+        if (this.alreadTested.includes(buildDir)) return
+        this.alreadTested.push(buildDir)
 
-      this.hostWrite('Loading: ' + record.path + '\n\r')
+        await prepInputOutput(filePath, null, this.database, alwaysMkdir)
 
-      return true
+        return true
+      } catch (e) {
+        log(`${e.message}\n\r${e.stack||e.stacktrace}`)
+        return false
+      }
     }
 
     async upload(database = null) {
@@ -1579,13 +1545,13 @@ const API = (function () {
       const contents = options.contents;
       const obj = options.obj;
       const opt = options.opt || '2';
-      if (input) {
-        const inDir = input.substring(0, input.lastIndexOf('/'));
-        if (inDir.trim().length > 0)
-          this.mkdirp(inDir)
 
-        if (this.memfs && input && contents)
+      if (input) {
+        if (this.memfs) {
+          this.memfs.mkdirp(input.substring(0, input.lastIndexOf('/')))
+          this.memfs.mkdirp(obj.substring(0, obj.lastIndexOf('/')))
           this.memfs.addFile(input, contents);
+        }
 
         FS.virtual[input] = {
           timestamp: new Date(),
@@ -1595,39 +1561,15 @@ const API = (function () {
           parent: input.substring(0, input.lastIndexOf('/'))
         }
       }
-      if (obj) {
-        const dirPath = obj.substring(0, obj.lastIndexOf('/'));
-        if (dirPath.trim().length > 0)
-          this.mkdirp(dirPath)
-      }
 
-      await this.ready;
-
-      if (!FS.virtual['/tmp'])
-        this.mkdirp('tmp')
+      await prepInputOutput(input, obj, this.database, true)
 
 
       if (options.CFLAGS && this.database) {
 
         for (var filePath of options.CFLAGS) {
           if (!filePath) continue
-          //if (FS.virtual[filePath]) continue
-          try {
-            if (filePath.startsWith('--allow-undefined-file=')) {
-              filePath = syms[0].substring('--allow-undefined-file='.length)
-            }
-            var record = await getRecord(DB_STORE_NAME, filePath, this.database)
-            if (!record) continue
-            FS.virtual[record.path] = record
-
-            const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
-            if (fileDir.trim().length > 0)
-              this.mkdirp(fileDir)
-
-
-          } catch (e) {
-            console.log(e)
-          }
+          await this.header(filePath)
         }
       }
 
@@ -1652,7 +1594,7 @@ const API = (function () {
           this.hostWrite('Succeeded: ' + obj + '\n\r')
         } catch (e) {
           debugger
-          log(e)
+          log(`${e.message}\n\r${e.stack||e.stacktrace}`)
         }
       }
       else if (this.database && FS.virtual[obj]) {
@@ -1660,7 +1602,7 @@ const API = (function () {
           await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
         } catch (e) {
           debugger
-          log(e)
+          log(`${e.message}\n\r${e.stack||e.stacktrace}`)
         }
       }
 
@@ -1728,7 +1670,6 @@ const API = (function () {
       await this.ready;
       this.extract(options)
 
-      const stackSize = 1024 * 1024;
       const obj = options.obj;
       const wasm = options.wasm;
 
@@ -1736,60 +1677,29 @@ const API = (function () {
       if (wasm) {
         const dirPath = wasm.substring(0, wasm.lastIndexOf('/'));
         if (dirPath.trim().length > 0)
-          this.mkdirp(dirPath)
+          mkdirp(dirPath)
       }
 
 
-
+      const loadedObjs = []
       const lld = await this.getModule(this.lldFilename);
 
       if (this.database) {
 
         for (var filePath of obj instanceof Array ? obj : [obj]) {
           if (!filePath) continue
-          try {
-            var record = await getRecord(DB_STORE_NAME, filePath, this.database)
-            if (!record) continue
-            FS.virtual[record.path] = record
+          await this.header(filePath, true)
+          loadedObjs.push(filePath)
 
-            const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
-            if (fileDir.trim().length > 0)
-              this.mkdirp(fileDir)
-
-            if (this.memfs)
-              this.memfs.addFile(record.path, record.contents);
-
-            this.hostWrite('Loading: ' + record.path + '\n\r')
-          } catch (e) {
-            console.log(e)
-          }
         }
       }
 
       if (options.LDFLAGS && this.database) {
         for (var filePath of options.LDFLAGS) {
           if (!filePath) continue
-          //if (FS.virtual[filePath]) continue
-          try {
-            if (filePath.startsWith('--allow-undefined-file=')) {
-              filePath = filePath.substring('--allow-undefined-file='.length)
-            }
-            var record = await getRecord(DB_STORE_NAME, filePath, this.database)
-            if (!record) continue
-            FS.virtual[record.path] = record
+          if (loadedObjs.includes(filePath)) continue
+          await this.header(filePath)
 
-            const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
-            if (fileDir.trim().length > 0)
-              this.mkdirp(fileDir)
-
-            if (this.memfs) {
-              this.memfs.addFile(record.path, record.contents);
-            }
-
-            this.hostWrite('Loading: ' + record.path + '\n\r')
-          } catch (e) {
-            console.log(e)
-          }
         }
       }
 
@@ -1824,7 +1734,7 @@ const API = (function () {
           await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database)
 
       } catch (e) {
-        console.log(e)
+        log(`${e.message}\n\r${e.stack||e.stacktrace}`)
       }
 
       if (FS.virtual[wasm].contents.length > 1024)
@@ -1839,34 +1749,34 @@ const API = (function () {
 
       if (mode === 'stringify' || mode === 'engine'
         || mode === 'release' || mode === 'debug' || mode === 'all')
-        await buildStringify(selected)
+        await buildStringify(selected, mode === 'stringify')
       if (mode === 'shaders' || mode === 'engine'
         || mode === 'release' || mode === 'debug' || mode === 'all')
-        await buildShaders(selected)
+        await buildShaders(selected, mode === 'shaders')
       if (mode === 'client' || mode === 'engine'
         || mode === 'release' || mode === 'debug' || mode === 'all')
-        await buildClient(selected)
+        await buildClient(selected, mode === 'client' || mode === 'engine', false, true)
 
 
       if (!selected)
         selected = this.database;
       if (mode === 'lburg' || mode === 'tools' || mode === 'all')
-        await buildLBurg(selected)
+        await buildTools(selected, 'lburg', mode === 'lburg', true) // shared debouncer
       if (mode === 'q3rcc' || mode === 'tools' || mode === 'all')
-        await buildRCC(selected)
+        await buildTools(selected, 'q3rcc', mode === 'q3rcc', true) // implicit forceChanged = true
       if (mode === 'q3cpp' || mode === 'tools' || mode === 'all')
-        await buildCPP(selected)
+        await buildTools(selected, 'q3cpp', mode === 'q3cpp', true)
       if (mode === 'q3lcc' || mode === 'tools' || mode === 'all')
-        await buildLCC(selected)
+        await buildTools(selected, 'q3lcc', mode === 'q3lcc', true)
       if (mode == 'q3asm' || mode === 'tools' || mode === 'all')
-        await buildAsmTool(selected)
+        await buildTools(selected, 'q3asm', mode === 'q3asm', true)
 
       if (mode == 'game' || mode === 'qvms' || mode === 'all')
-        await buildGame(selected)
+        await buildModule('game', dirs.QADIR, gameFiles, selected, ['QAGAME'], mode === 'game', false, true);
       if (mode == 'cgame' || mode === 'qvms' || mode === 'all')
-        await buildCGame(selected)
+        await buildModule('cgame', dirs.CGDIR, cgameFiles, selected, ['CGAME'], mode === 'cgame', false, true);
       if (mode == 'ui' || mode === 'qvms' || mode === 'all')
-        await buildUI(selected)
+        await buildModule('ui', dirs.UIDIR, uiFiles, selected, ['UI'], mode === 'ui' || mode === 'q3_ui', false, true);
 
 
     }
@@ -1880,30 +1790,16 @@ const API = (function () {
       if (typeof module == 'string' || !module)
         throw new Error('Cannot load module: ' + name)
 
-      this.mkdirp('/tmp')
+      mkdirp('/tmp')
 
+      /*
       if (args) {
         for (var filePath of args) {
           if (!filePath) continue
-          //if (FS.virtual[filePath]) continue
-          try {
-
-            var record = FS.virtual[filePath]
-            if (!record) continue
-
-            const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
-            if (fileDir.trim().length > 0)
-              this.mkdirp(fileDir)
-
-            if (this.memfs)
-              this.memfs.addFile(record.path, record.contents);
-
-            this.hostWrite('Loading: ' + record.path + '\n\r')
-          } catch (e) {
-            console.log(e)
-          }
+          await this.header(filePath)
         }
       }
+      */
 
       if (!args)
         args = []
@@ -1948,24 +1844,8 @@ const API = (function () {
       if (args) {
         for (var filePath of args) {
           if (!filePath) continue
-          //if (FS.virtual[filePath]) continue
-          try {
+          await this.header(filePath)
 
-            var record = await getRecord(DB_STORE_NAME, filePath, this.database)
-            if (!record) continue
-            FS.virtual[record.path] = record
-
-            const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
-            if (fileDir.trim().length > 0)
-              this.mkdirp(fileDir)
-
-            if (this.memfs)
-              this.memfs.addFile(record.path, record.contents);
-
-            this.hostWrite('Loading: ' + record.path + '\n\r')
-          } catch (e) {
-            console.log(e)
-          }
         }
       }
 

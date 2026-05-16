@@ -293,6 +293,12 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
     renderHashCommand(window.location.hash.substring(1))
 
+    setTimeout(() => {
+        forceFit(term, container)
+        term.write(loadedLog.join('\n\r'))
+        term.write('\n\r')
+        term.write('> ');
+    }, 200);
 });
 
 
@@ -402,7 +408,7 @@ function loadTree(database, cursor) {
 
 function getQVMHeader(sampleBytes, content, filePath) {
 
-    
+
 
     // 1. Read QVM Header Magic Number (0x12721444 or 'qvm\x12')
     // Standard QVM headers start with Magic (4 bytes), Instruction Count (4 bytes), 

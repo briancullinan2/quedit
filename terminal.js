@@ -14,18 +14,20 @@ const container = document.getElementById('terminal');
 
 
 
-
+let resizeDebounce = null
 window.addEventListener('resize', () => {
-    forceFit(term, container);
-
-    updateMaxLines()
+    if (resizeDebounce) return
+    resizeDebounce = setTimeout(() => {
+        forceFit(term, container);
+        updateMaxLines()
+    }, 500);
 });
+
+
 const loadedHistory = JSON.parse(localStorage.getItem('history') || '[]')
 const commandHistory = loadedHistory instanceof Array ? loadedHistory : []
 const loadedLog = JSON.parse(localStorage.getItem('terminal_log') || '[]');
-term.write(loadedLog.join('\n\r'))
-term.write('\n\r')
-term.write('> ');
+
 
 let historyIndex = -1;
 let currentLine = '';
@@ -68,9 +70,16 @@ function getInternalTerminalLog() {
 }
 
 
+let incrementalDebouncer = null
 async function triggerIncrementalSave() {
-    const last1000 = getInternalTerminalLog();
-    localStorage.setItem('terminal_log', JSON.stringify(last1000));
+    if (incrementalDebouncer) {
+        return
+    }
+    incrementalDebouncer = setTimeout(() => {
+        const last1000 = getInternalTerminalLog();
+        localStorage.setItem('terminal_log', JSON.stringify(last1000));
+        incrementalDebouncer = null
+    }, 1000)
 }
 
 let searchIndex = -1;
@@ -378,6 +387,9 @@ let lastNewLine = true;   // Tracks if the last write finished a line
 
 function specialWrite(msg) {
     if (!msg) return;
+    if (msg.includes('memory access out of bounds')) {
+        needsHeaders = true
+    }
 
     // 1. Hide Cursor & Move to Start of Prompt Block
     const promptWithCommand = '> ' + currentLine;
@@ -605,9 +617,11 @@ function forceFit(term, container) {
     term.resize(cols, rows);
 }
 
+
+
 term.onRender(() => {
     // Now the core services are guaranteed to exist
-    setTimeout(() => forceFit(term, container), 200);
+    //setTimeout(() => forceFit(term, container), 200);
 });
 
 const originalConsole = {

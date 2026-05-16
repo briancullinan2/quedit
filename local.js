@@ -85,6 +85,11 @@ async function needsInstall(dbName, expectedStores) {
 async function setupDatabase(dbName, stores) {
     var created = false
     var error = null
+    if (dbName.length < 4) {
+        debugger
+        console.error('how the fuck does this even happen?')
+        throw new Error('how the fuck does this even happen?')
+    }
     return new Promise((rs, rj) => {
         const request = indexedDB.open(dbName || LOCAL_DB_NAME, DB_VERSION)
 
@@ -129,8 +134,9 @@ async function setupDatabase(dbName, stores) {
 }
 
 
-const debouncePath = {}
-async function putRecord(storeName, record, dbName = null, noBounce = false) {
+
+
+async function putRecordInternal(storeName, record, dbName = null) {
     const newRecord = {
         timestamp: record.timestamp,
         mode: record.mode,
@@ -146,11 +152,6 @@ async function putRecord(storeName, record, dbName = null, noBounce = false) {
     ) {
         debugger
     }
-    if (typeof debouncePath[record.path] !== 'undefined') {
-        clearTimeout(debouncePath[record.path])
-    }
-    if (!noBounce)
-        return debouncePath[record.path] = setTimeout(() => putRecord(storeName, newRecord, dbName, true), 200)
 
     const db = await getDB(dbName)
     const tx = db.transaction(storeName, 'readwrite')
@@ -168,28 +169,143 @@ async function putRecord(storeName, record, dbName = null, noBounce = false) {
 }
 
 
-async function getRecord(storeName, key, dbName = null) {
+
+const getBounceRegistry = {
+    'put': {},
+    'get': {},
+    'query': {},
+    'cache': {},
+};
+
+
+
+async function putRecord(storeName, record, dbName = null, noBounce = false) {
+    return await debounceRecords(storeName, 'path', record, null, null, dbName, MODE = 'put', noBounce)
+}
+
+
+
+async function getRecord(storeName, record, dbName = null, noBounce = false) {
+    return await debounceRecords(storeName, 'path', record, null, null, dbName, MODE = 'get', noBounce)
+}
+
+
+
+async function queryIndex(storeName, indexName, exactIndex = null, lower = null, upper = null, dbName = null, noBounce = false) {
+    return await debounceRecords(storeName, indexName, exactIndex, lower, upper, dbName, MODE = 'query', noBounce)
+}
+
+
+
+function debounceRecords(storeName, indexName, record, lower, upper, dbName, MODE = 'get', noBounce = false) {
+    const path = record.path;
+    let parts = dbName.split('/')
+    let ownerName = parts.length == 2 ? parts[0] : owner.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+    // 1. If bypass flag is explicit, execute immediate persistence pass
+    if (noBounce) {
+        // Clear any existing delayed writes for this path immediately
+        if (getBounceRegistry[MODE][path]) {
+            clearTimeout(getBounceRegistry[MODE][path].timer);
+            getBounceRegistry[MODE][path].reject(new Error("Superseded by immediate write"));
+            delete getBounceRegistry[MODE][path];
+        }
+        if (MODE === 'get')
+            return getRecordInternal(storeName, record, dbName);
+        else if (MODE === 'put')
+            return putRecordInternal(storeName, record, dbName);
+        else if (MODE === 'query')
+            return queryIndexInternal(storeName, record, dbName);
+        else if (MODE === 'cache')
+            return cacheFileInternal(ownerName, repoName, record, lower, upper, dbName);
+        else
+            throw new Error('MODE not recognized in debounceRecords: ' + MODE)
+    }
+
+    // 2. If a delayed synchronization operation is already pending, reset its countdown clock
+    if (getBounceRegistry[MODE][path]) {
+        clearTimeout(getBounceRegistry[MODE][path].timer);
+    } else {
+        // Otherwise, instantiate a fresh, long-lived promise handle for the layout worker pipeline
+        getBounceRegistry[MODE][path] = {
+            promise: null,
+            resolve: null,
+            reject: null,
+            timer: null
+        };
+
+        getBounceRegistry[MODE][path].promise = new Promise((res, rej) => {
+            getBounceRegistry[MODE][path].resolve = res;
+            getBounceRegistry[MODE][path].reject = rej;
+        });
+    }
+
+    // 3. Queue up the snapshot write capture pass
+    getBounceRegistry[MODE][path].timer = setTimeout(async () => {
+        // Grab a snapshot of the current state reference registry handle
+        const currentExecutionState = getBounceRegistry[MODE][path];
+
+        try {
+            // Unpack layout buffer snapshots cleanly into the database worker transaction context
+            let result
+            if (MODE === 'get')
+                result = await getRecordInternal(storeName, record, dbName);
+            else if (MODE === 'put')
+                result = await putRecordInternal(storeName, record, dbName);
+            else if (MODE === 'query')
+                result = await queryIndexInternal(storeName, indexName, record, lower, upper, dbName);
+            else if (MODE === 'cache')
+                result = await cacheFileInternal(ownerName, repoName, record, lower, upper, dbName);
+            else
+                throw new Error('MODE not recognized in debounceRecords: ' + MODE)
+
+            // Resolve the long-running promise pipeline for this path token
+            currentExecutionState.resolve(result);
+        } catch (err) {
+            currentExecutionState.reject(err);
+        } finally {
+            // Garbage collect tracking tokens smoothly if no active overwrites clobbered this block
+            if (getBounceRegistry[MODE][path] === currentExecutionState) {
+                delete getBounceRegistry[MODE][path];
+            }
+        }
+    }, 150);
+
+    // Return the stable single tracking promise handler back up the execution chain
+    return getBounceRegistry[MODE][path].promise;
+}
+
+
+
+async function getRecordInternal(storeName, key, dbName = null) {
+
+
     const db = await getDB(dbName);
     const tx = db.transaction(storeName, 'readonly');
     const store = tx.objectStore(storeName);
 
     return new Promise((rs, rj) => {
+        let result = null;
         const req = store.get(key);
 
         req.onsuccess = () => {
-            const result = req.result;
+            // Capture the raw record out of the request immediately
+            result = req.result;
+        };
 
+        // Bind resolution to the Transaction's explicit completion event
+        tx.oncomplete = () => {
             // 1. If no record was found, exit early with null
             if (!result) {
                 return rs(null);
             }
 
-            // 2. Safely fix the "Homeless Node" issue
+            // 2. Safely fix the Symmetrical Path / "Homeless Node" issue
             if (result.parent === null || result.parent === undefined) {
                 const path = result.path || "";
                 const lastSlash = path.lastIndexOf('/');
 
-                // If no slash, parent is root '/'. If slash at 0, parent is root '/'.
                 if (lastSlash <= 0) {
                     result.parent = '/';
                 } else {
@@ -200,15 +316,20 @@ async function getRecord(storeName, key, dbName = null) {
             rs(result);
         };
 
-        req.onerror = () => {
-            console.error("IDB GetRecord Error:", req.error);
-            rj(req.error);
+        // Trap failures cleanly at both the request and transaction boundaries
+        req.onerror = () => rj(req.error);
+        tx.onerror = () => {
+            console.error("IDB Transaction Failed for getRecord:", tx.error);
+            rj(tx.error);
         };
+        tx.onabort = () => rj(new Error("Transaction aborted"));
     });
 }
 
 
-async function queryIndex(storeName, indexName, exactIndex = null, lower = null, upper = null, dbName = null) {
+
+
+async function queryIndexInternal(storeName, indexName, exactIndex = null, lower = null, upper = null, dbName = null) {
     const db = await getDB(dbName)
     const tx = db.transaction(storeName, 'readonly')
     const store = tx.objectStore(storeName)

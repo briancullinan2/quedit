@@ -165,7 +165,6 @@ const QVMERR_PREAMBLE = '\x1b[38;5;161m[QVM ERROR]\x1b[0m '
 
 async function buildModule(name, sourceDir, filesList, database, extraDefines = [], forceChanged = false, noLinking = false /* called from linkModule */, noBounce = false) {
 
-    TERMINATE = false
     PREAMBLE = QVM_PREAMBLE
 
     if (buildDebounce) {
@@ -549,9 +548,9 @@ async function buildGame(database = null, forceChanged = true) {
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
-    needsHeaders = true
+    
 
-    await buildModule('game', dirs.QADIR, gameFiles, database, ['QAGAME'], forceChanged);
+    
 
 
 }
@@ -563,8 +562,7 @@ async function buildCGame(database = null, forceChanged = true) {
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
-    needsHeaders = true
-
+    
 
     await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged);
 
@@ -579,8 +577,7 @@ async function buildUI(database = null, forceChanged = true) {
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
-    needsHeaders = true
-
+    
 
     await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI'], forceChanged);
 
@@ -593,7 +590,7 @@ async function buildUI(database = null, forceChanged = true) {
 async function buildUI(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
 
-    needsHeaders = true
+    
 
     await buildModule('ui', dirs.Q3UIDIR, uiFiles, database, ['UI'], forceChanged);
 
@@ -612,7 +609,7 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
-    TERMINATE = false
+    
     PREAMBLE = QVM_PREAMBLE
 
 
@@ -632,8 +629,7 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
         // 3. Start building modules
         log("Starting QVM compilation...");
 
-        needsHeaders = true
-
+        
         // CGAME
         await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged, false, true);
 

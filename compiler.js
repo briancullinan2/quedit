@@ -121,6 +121,14 @@ class WorkerAPI {
             [offscreenCanvas]);
     }
 
+    remove(filename) {
+        const options = {
+            filename: filename
+        }
+        this.inject(options)
+        this.port.postMessage({ id: 'remove', data: options });
+    }
+
     onmessage(event) {
         switch (event.data.id) {
             case 'write':
@@ -132,8 +140,14 @@ class WorkerAPI {
                 const promise = this.responseCBs.get(responseId);
                 if (promise) {
                     this.responseCBs.delete(responseId);
+                    
                     if(event.data.data instanceof Error)
+                    {
+                        if(event.data.data.message.includes('memory access out of bounds')) {
+                            needsHeaders = true
+                        }
                         promise.reject(event.data.data)
+                    }
                     else
                         promise.resolve(event.data.data);
                 }

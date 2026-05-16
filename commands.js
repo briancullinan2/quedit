@@ -22,6 +22,9 @@ async function handleCommand(input) {
     const [command, ...args] = tokens;
 
     const commands = {
+        remove: remove,
+        rm: remove,
+        delete: remove,
         mount: mount,
         ls: ls,
         help: help,
@@ -192,6 +195,8 @@ async function buildCommand(argv, database) {
     }
 
 
+    if (TERMINATE) return
+
     let validMode = configuration.value
 
     if (mode === 'q3lcc'
@@ -239,51 +244,94 @@ async function buildCommand(argv, database) {
         await downloadHeaders(q3eCommonHeaders, 10, selected)
     }
 
+    if (TERMINATE) return
     if (selected === gameRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
     {
         await downloadHeaders(qvmHeaders, 10, selected)
     }
 
+    if (TERMINATE) return
     if (selected === toolsRepo) {
         await downloadHeaders(lccToolHeaders, 10, selected)
     }
 
+    if (TERMINATE) return
     if (selected === toolsRepo2) {
         await downloadHeaders(asmToolHeaders, 10, selected)
     }
 
+    if (TERMINATE) return
 
     if (mode === 'stringify' || mode === 'all')
-        await buildStringify(selected, true)
+        await buildStringify(selected, false, true)
+
+    if (TERMINATE) return
     if (mode === 'shaders')
-        await buildShaders(selected, true)
+        await buildShaders(selected, false, true)
+
+    if (TERMINATE) return
     if (mode === 'client'
         || mode === 'release' || mode === 'debug'
         || mode === 'all'
     )
-        await buildClient(selected, true) // also builds shaders
+        await buildClient(selected, mode === 'client' || mode === 'engine', false, true) // also builds shaders
+
+    if (TERMINATE) return
 
 
     if (mode === 'lburg' || mode === 'all' || mode === 'tools')
         await buildTools(selected, 'lburg', mode === 'lburg', true) // shared debouncer
+
+    if (TERMINATE) return
     if (mode === 'q3rcc' || mode === 'all' || mode === 'tools')
         await buildTools(selected, 'q3rcc', mode === 'q3rcc', true) // implicit forceChanged = true
+
+    if (TERMINATE) return
     if (mode === 'q3cpp' || mode === 'all' || mode === 'tools')
         await buildTools(selected, 'q3cpp', mode === 'q3cpp', true)
+
+    if (TERMINATE) return
     if (mode === 'q3lcc' || mode === 'all' || mode === 'tools')
         await buildTools(selected, 'q3lcc', mode === 'q3lcc', true)
+
+    if (TERMINATE) return
     if (mode === 'q3asm' || mode === 'all' || mode === 'tools')
         await buildTools(selected, 'q3asm', mode === 'q3asm', true)
 
+    if (TERMINATE) return
+
     if (mode === 'game' || mode === 'all' || mode === 'qvms')
-        await buildGame(selected, true) // shared debouncer
+        await buildModule('game', dirs.QADIR, gameFiles, selected, ['QAGAME'], mode === 'game', false, true);
+
+    if (TERMINATE) return
     if (mode === 'cgame' || mode === 'all' || mode === 'qvms')
-        await buildCGame(selected, true)
+        await buildModule('cgame', dirs.CGDIR, cgameFiles, selected, ['CGAME'], mode === 'cgame', false, true);
+    if (TERMINATE) return
     if (mode === 'ui' || mode === 'all' || mode === 'qvms')
-        await buildUI(selected, true)
+        await buildModule('ui', dirs.UIDIR, uiFiles, selected, ['UI'], mode === 'ui' || mode === 'q3_ui', false, true);
+
 
 }
 
+
+async function remove(argv, database) {
+    const databases = [database, engineRepo, assetRepo, gameRepo, toolsRepo, toolsRepo2]
+    const filename = argv[0]
+    for (let db of databases) {
+        try {
+            if (!db) continue
+            await deleteRecord(DB_STORE_NAME, filename, db)
+        } catch (e) {
+
+        }
+    }
+    delete FS.virtual[filename]
+    try {
+        api.remove(filename)
+    } catch (e) {
+
+    }
+}
 
 
 
@@ -328,6 +376,7 @@ async function link(argv, database) {
         await loadGitHubTree(ownerName, repoName, branch)
     }
 
+    if (TERMINATE) return
 
     api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
 
@@ -340,49 +389,73 @@ async function link(argv, database) {
         await downloadHeaders(q3eCommonHeaders, 10, selected)
     }
 
+    if (TERMINATE) return
     if (selected === gameRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
     {
         await downloadHeaders(qvmHeaders, 10, selected)
     }
 
+    if (TERMINATE) return
     if (selected === toolsRepo) {
         await downloadHeaders(lccToolHeaders, 10, selected)
     }
 
+    if (TERMINATE) return
     if (selected === toolsRepo2) {
         await downloadHeaders(asmToolHeaders, 10, selected)
     }
 
+    if (TERMINATE) return
 
     if (mode === 'stringify' || mode === 'all')
         await linkStringify(selected, true)
 
+    if (TERMINATE) return
     if (mode === 'client' || mode === 'engine'
         || mode === 'shaders' || mode === 'release'
         || mode === 'debug' || mode === 'all'
     )
         await linkEngine(selected, true)
 
+    if (TERMINATE) return
     if (mode === 'lburg' || mode === 'tools' || mode === 'all')
         await linkLburg(selected, true)
+
+    if (TERMINATE) return
     if (mode === 'q3rcc' || mode === 'tools' || mode === 'all')
         await linkRCC(selected, true)
+
+    if (TERMINATE) return
     if (mode === 'q3cpp' || mode === 'tools' || mode === 'all')
         await linkCPP(selected, true)
+
+    if (TERMINATE) return
     if (mode === 'q3lcc' || mode === 'tools' || mode === 'all')
         await linkLCC(selected, true)
+
+    if (TERMINATE) return
     if (mode === 'q3asm' || mode === 'tools' || mode === 'all')
         await linkAsm(selected, true)
+
+    if (TERMINATE) return
 
 
     if (mode === 'game' || mode === 'qvms' || mode === 'all')
         await linkModule(selected, 'game', dirs.QADIR, gameFiles, true)
+
+    if (TERMINATE) return
     if (mode === 'cgame' || mode === 'qvms' || mode === 'all')
         await linkModule(selected, 'cgame', dirs.CGDIR, cgameFiles, true)
+
+    if (TERMINATE) return
     if (mode === 'ui' || mode === 'qvms' || mode === 'all')
         await linkModule(selected, 'ui', dirs.UIDIR, uiFiles, true)
+
+    if (TERMINATE) return
     if (mode === 'q3_ui' || mode === 'qvms' || mode === 'all')
         await linkModule(selected, 'q3_ui', dirs.Q3UIDIR, q3uiFiles, true)
+
+    if (TERMINATE) return
 
     // TODO: link dedicated server
 
@@ -550,46 +623,46 @@ q3rcc -target=bytecode -v build/debug-wasm-js/code/game/bg_lib.i bg_lib.asm
 rm /tmp/lcc420.i
 */
 
-/*
+        /*
+        
+                await api.run({
+                    tool: 'q3cpp.js.wasm',
+                    args: [
+                        'q3cpp', // '-v', '-v',
+                        ...QVM_CFLAGS,
+                        ...DEFINE,
+                        srcPath,
+                        tempPath,
+                    ],
+                    database: selected,
+                    toolsRepo: toolsRepo,
+                    paths: [file, tempPath],
+        
+                    // TODO:
+                    contents: contents,
+                    width: term.cols,
+                    input: srcPath,
+                    tempPath,
+                    github_token: api.github_token
+                })
+        
+                await api.run({
+                    tool: 'q3rcc.js.wasm',
+                    args: [
+                        'q3rcc', // '-v', '-v',
+                        '-target=bytecode',
+                        //(configuration.value === 'pre' ? '-g' : '-g2'),
+                        '-v',
+                        tempPath,
+                        outPath //.split('/').pop(),
+                    ],
+                    database: selected,
+                    toolsRepo: toolsRepo,
+                    paths: [outPath, tempPath],
+                })
+        
+                */
 
-        await api.run({
-            tool: 'q3cpp.js.wasm',
-            args: [
-                'q3cpp', // '-v', '-v',
-                ...QVM_CFLAGS,
-                ...DEFINE,
-                srcPath,
-                tempPath,
-            ],
-            database: selected,
-            toolsRepo: toolsRepo,
-            paths: [file, tempPath],
-
-            // TODO:
-            contents: contents,
-            width: term.cols,
-            input: srcPath,
-            tempPath,
-            github_token: api.github_token
-        })
-
-        await api.run({
-            tool: 'q3rcc.js.wasm',
-            args: [
-                'q3rcc', // '-v', '-v',
-                '-target=bytecode',
-                //(configuration.value === 'pre' ? '-g' : '-g2'),
-                '-v',
-                tempPath,
-                outPath //.split('/').pop(),
-            ],
-            database: selected,
-            toolsRepo: toolsRepo,
-            paths: [outPath, tempPath],
-        })
-
-        */
-       
         await api.run({
             tool: 'q3lcc.js.wasm',
             args: [

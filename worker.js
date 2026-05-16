@@ -56,9 +56,9 @@ const apiOptions = {
         return await WebAssembly.compile(filename);
       }
 
-      if (WebAssembly.compileStreaming) {
-        return WebAssembly.compileStreaming(fetch(filename));
-      } else {
+      //if (WebAssembly.compileStreaming) {
+      //  return WebAssembly.compileStreaming(fetch(filename));
+      //} else {
         const response = await fetch(filename.startsWith('/') ? filename : ('/' + filename), {
           mode: 'cors', // or 'same-origin'
           credentials: 'omit'
@@ -66,7 +66,7 @@ const apiOptions = {
         if (!response.ok) throw new Error('Response code: ' + response.status)
         const result = await response.arrayBuffer()
         return WebAssembly.compile(result);
-      }
+      //}
     }
     catch (e) {
       debugger
@@ -153,7 +153,7 @@ const onAnyMessage = async event => {
       api.extract(event.data.data)
 
       try {
-        output = await api.header(event.data.data.header);
+        output = await api.header(event.data.data.header, true);
       }
       catch (e) {
         const redArrow = '\x1b[1;33m>\x1b[0m ';
@@ -292,30 +292,14 @@ const onAnyMessage = async event => {
         if (paths && api.database) {
           for (filePath of paths) {
             if (!filePath) continue
+            api.header(filePath)
+          }
+        }
 
-            try {
-              if (filePath.startsWith('--allow-undefined-file=')) {
-                filePath = filePath.substring('--allow-undefined-file='.length)
-              }
-
-              const fileDir = filePath.substring(0, filePath.lastIndexOf('/'));
-              if (fileDir.trim().length > 0)
-                api.mkdirp(fileDir)
-
-              if (!FS.virtual[filePath]) {
-                let record = await getRecord(DB_STORE_NAME, filePath, api.database)
-                if (!record) continue
-                FS.virtual[record.path] = record
-
-                if (api.memfs)
-                  api.memfs.addFile(record.path, record.contents);
-
-              }
-              api.hostWrite('Loading: ' + filePath + '\n\r')
-
-            } catch (e) {
-              console.log(e)
-            }
+        if (event.data.data.args) {
+          for (filePath of event.data.data.args) {
+            if (!filePath) continue
+            await this.header(filePath)
           }
         }
 
@@ -362,7 +346,7 @@ const onAnyMessage = async event => {
                   await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
               }
             } catch (e) {
-              console.log(e)
+              log(`${e.message}\n\r${e.stack||e.stacktrace}`)
             }
           }
         }
@@ -393,6 +377,27 @@ const onAnyMessage = async event => {
     case 'postCanvas':
       canvas = event.data.data;
       ctx2d = canvas.getContext('2d');
+      break;
+    // 
+    case 'remove':
+      api.extract(event.data.data)
+      const databases = [this.database, this.engineRepo, this.assetRepo, this.gameRepo, this.toolsRepo, this.toolsRepo2]
+      const filename = event.data.data.filename
+      for (let db of databases) {
+        try {
+          if (!db) continue
+          await deleteRecord(DB_STORE_NAME, filename, db)
+        } catch (e) {
+          console.error(r)
+        }
+      }
+      delete FS.virtual[filename]
+      try {
+        //if(api.memfs)
+        //api.memfs.
+      } catch (e) {
+        console.error(e)
+      }
       break;
   }
 };

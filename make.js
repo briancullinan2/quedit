@@ -569,7 +569,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
     if (needsHeaders) {
-        needsHeaders = false
+
         await downloadHeaders(q3eCommonHeaders, 10, database)
     }
 
@@ -582,6 +582,9 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
     let obj = CONFIGURATION + '/stringify.o'
     let sha = files[database][stringify].sha
     let content = await cacheFile(ownerName, repoName, stringify, sha)
+
+    if (!FS.virtual[obj] && !forceChanged)
+        FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
 
     let hasChanged = false
 
@@ -619,7 +622,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
             obj: obj
         })
     } catch (e) {
-        log(e)
+        log(`${e.message}\n\r${e.stack||e.stacktrace}`)
     }
 
     if (!noLinking) {
@@ -682,6 +685,101 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 
 }
 
+function mkdirp(path, database) {
+
+    // Ensure we have a clean array of directory segments
+    // Filter(Boolean) removes empty strings from leading/double slashes
+    const parts = path.split('/').filter(Boolean);
+
+    // Track where we are in the tree
+    // Start with an empty string or '.' to signify relative to root
+    let accumulated = "";
+    let previousPath = "";
+
+    for (const part of parts) {
+        accumulated = accumulated === "" ? part : `${accumulated}/${part}`;
+
+        try {
+            let hadnt = !FS.virtual[accumulated]
+            if (!FS.virtual[accumulated])
+                FS.virtual[accumulated] = {
+                    timestamp: new Date(),
+                    mode: FS_DIR,
+                    size: 4096,
+                    path: accumulated,
+                    parent: accumulated.substring(0, accumulated.lastIndexOf('/'))
+                }
+            FS.virtual[accumulated + '/.'] = FS.virtual[accumulated]
+            if (previousPath)
+                FS.virtual[accumulated + '/..'] = FS.virtual[previousPath]
+            if (database && hadnt)
+                putRecord(DB_STORE_NAME, FS.virtual[accumulated], database)
+        } catch (e) {
+            // Log only if it's a real crash, not just an "already exists" error
+            if (!e.message.includes("exists")) {
+                console.warn(`mkdirp segment failed: ${accumulated}`, e);
+            }
+        }
+    }
+}
+
+
+const loadedDirectories = []
+
+async function prepInputOutput(file, obj, database, makeDirs = false) {
+    let parts = database.split('/')
+    let ownerName = parts.length == 2 ? parts[0] : owner.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+
+    if (makeDirs && !FS.virtual['/tmp'])
+        mkdirp('tmp')
+    if (makeDirs && !FS.virtual['/home'])
+        mkdirp('home')
+
+    if (!FS.virtual[file]) {
+        let buildDir = file.substring(0, file.lastIndexOf('/'))
+        if (!loadedDirectories.includes(buildDir) && makeDirs) {
+            log('Loading: ' + buildDir)
+            if (makeDirs)
+                mkdirp(buildDir, database)
+            let currentDir = await queryIndex(DB_STORE_NAME, 'parent', buildDir, null, null, database)
+            for (let r of currentDir)
+                FS.virtual[r.path] = r
+            loadedDirectories.push(buildDir)
+        }
+
+        // TODO!!!!! check if commit has changed or file has changed on disk
+        if (!FS.virtual[file] && makeDirs /* only load github if its a controlled file */) {
+            log('Loading: ' + file)
+            await cacheFile(ownerName, repoName, file)
+        }
+    }
+
+    if (!obj) return
+
+    if (!FS.virtual[obj]) {
+        let buildDir = obj.substring(0, obj.lastIndexOf('/'))
+        if (!loadedDirectories.includes(buildDir) && makeDirs) {
+            log('Loading: ' + buildDir)
+            if (makeDirs)
+                mkdirp(buildDir, database)
+            let currentDir = await queryIndex(DB_STORE_NAME, 'parent', buildDir, null, null, database)
+            for (let r of currentDir)
+                FS.virtual[r.path] = r
+            loadedDirectories.push(buildDir)
+        }
+
+        // don't load object files from github
+        if (!FS.virtual[obj]) {
+            log('Loading: ' + obj)
+            FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
+        }
+    }
+
+}
+
+
+
 
 let building = false
 let buildDebounce = null
@@ -734,16 +832,22 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
             : dirs.ENGINE_DEBUG
 
 
+        if (TERMINATE) return
+
         if (needsHeaders) {
-            needsHeaders = false
+
             await downloadHeaders(q3eCommonHeaders, 10, database)
         }
+
+        if (TERMINATE) return
 
         PREAMBLE = BUILD_PREAMBLE
 
         await buildStringify(database)
 
         let hasChanged = false
+
+        //let buildDirectory = []
 
         for (let file of [...allCompileObjects]) {
 
@@ -753,12 +857,11 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
             try {
                 PREAMBLE = BUILD_PREAMBLE
 
-                let sha = files[database][file].sha
-                let content = await cacheFile(ownerName, repoName, file, sha)
+
                 let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
 
-                if (FS.virtual[obj] && !forceChanged)
-                    FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
+                if (!forceChanged)
+                    await prepInputOutput(file, obj, database, true /* controlled directory */)
 
                 if (FS.virtual[obj]
                     // compare input and output mtime
@@ -789,7 +892,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
                 await api.compile({
                     CFLAGS: CCFLAGS,
-                    contents: content,
+                    contents: FS.virtual[file].contents,
                     input: file,
                     database,
                     obj
@@ -802,7 +905,8 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
         }
 
-        hasChanged = hasChanged || await buildShaders(database, forceChanged)
+        let shadersChanged = await buildShaders(database, forceChanged)
+        hasChanged = hasChanged || shadersChanged
 
         if (!noLinking) {
             await linkEngine(database, hasChanged, true)
@@ -837,7 +941,7 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
     let renderObjs = allRend2ShaderObjects.map(s => CONFIGURATION + '/' + s.replace('.glsl', '.o'))
 
     if (!noBuild) {
-        await buildClient(database, false, true)
+        await buildClient(database, false, true /* prevent recursion */, true /* no bouncing because we're waiting */)
     }
 
 
@@ -875,7 +979,7 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
             wasm: engineExe
         })
     } catch (e) {
-        log(`Link error in click\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
+        log(`Link error in client\n\r${e.message}\n\r${e.stack || e.stacktrace}`)
     }
 
 
@@ -891,7 +995,7 @@ async function buildShaders(database = null, forceChanged = false) {
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
     if (needsHeaders) {
-        needsHeaders = false
+
         await downloadHeaders(q3eCommonHeaders, 10, database)
     }
 
@@ -913,17 +1017,12 @@ async function buildShaders(database = null, forceChanged = false) {
         if (TERMINATE) return
 
         try {
-            let sha = files[database][shader].sha
-            let content = await cacheFile(ownerName, repoName, shader, sha)
-
             // TODO: run stringify?
 
             let obj = CONFIGURATION + '/' + shader.replace('.glsl', '.o')
-            log(`GLSL: ${obj}\n\r`)
-            const cCode = generateFallbackC(shader, content);
 
-            if (!FS.virtual[obj] && !forceChanged)
-                FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
+            if (!forceChanged) // because we'll create it anyways so don't load it here
+                await prepInputOutput(shader, obj, database, true /* controlled paths */)
 
             if (FS.virtual[obj]
                 && FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
@@ -933,6 +1032,10 @@ async function buildShaders(database = null, forceChanged = false) {
 
                 continue
             }
+
+            log(`GLSL: ${obj}\n\r`)
+
+            const cCode = generateFallbackC(shader, FS.virtual[shader]);
 
             let hasChanged = true
 
@@ -989,6 +1092,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
                         await loadGitHubTree('briancullinan2', 'quedit', 'main')
                     }
                     await cacheFile('briancullinan2', 'quedit', 'wasm.syms');
+                    debugger
                     FS.virtual[header] =
                     {
                         timestamp: new Date(),
@@ -1028,6 +1132,9 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
 
         log(`Finished batch ${Math.ceil((i + batchSize) / batchSize)}`);
     }
+
+
+    needsHeaders = false
 }
 
 

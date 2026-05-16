@@ -353,7 +353,7 @@ function saveSettings(content) {
     }
     catch (e) {
         PREAMBLE = EDITOR_PREAMBLE
-        console.log(e)
+        log(`${e.message}\n\r${e.stack||e.stacktrace}`)
     }
 
 }

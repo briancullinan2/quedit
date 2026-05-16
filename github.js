@@ -44,8 +44,11 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
 }
 
 
+let defaultBranches = {}
 async function getDefaultBranch(owner, repo) {
+    if (defaultBranches[owner + '/' + repo]) return defaultBranches[owner + '/' + repo]
     const data = await githubRequest(owner, repo, '');
+    defaultBranches[owner + '/' + repo] = data.default_branch
     return data.default_branch; // Usually "main" or "master"
 }
 
@@ -334,14 +337,30 @@ async function getGitShaBrowser(content) {
 }
 
 
+async function cacheFile(repoOwner, repoName, filePath, sha, forceReload = false) {
+    return await debounceRecords(DB_STORE_NAME, 'path', filePath, sha, forceReload, repoOwner + '/' + repoName, 'cache')
+}
 
-async function cacheFile(repoOwner, repoName, filePath, sha) {
+
+async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload = false) {
 
     const selected = repoOwner + '/' + repoName
     try {
 
+        if(filePath === 'wasm.syms')
+            debugger
         //if (files[selected][filePath])
         //    FS.virtual[filePath] = files[selected][filePath]
+
+        if (!forceReload && FS.virtual[filePath])
+            return FS.virtual[filePath].contents
+
+        // TODO: this once from front end or backend, but not both
+        if (!files[selected]) {
+            let branch = await getDefaultBranch(repoOwner, repoName)
+            await loadGitHubTree(repoOwner, repoName, branch)
+        }
+
         let record = await getRecord(DB_STORE_NAME, filePath, selected)
         FS.virtual[filePath] = record
         if (files[selected][filePath]
@@ -349,12 +368,6 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
         )
             FS.virtual[filePath].timestamp = files[selected][filePath].timestamp
 
-
-        if (!files[selected]) {
-            let branch = getDefaultBranch(repoOwner, repoName)
-            debugger
-            await loadGitHubTree(repoOwner, repoName, branch)
-        }
 
 
         // TODO: IF GITHUB, ALWAYS UPDATE
@@ -370,6 +383,9 @@ async function cacheFile(repoOwner, repoName, filePath, sha) {
                 api.memfs.addFile(filePath, record.contents)
             return record.contents
         }
+
+        if (!forceReload && record)
+            return record.contents
 
         let jsonResponse = await githubRequest(repoOwner, repoName, `contents/${filePath}`)
 
