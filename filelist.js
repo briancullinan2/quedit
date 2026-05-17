@@ -179,6 +179,14 @@ async function expandDatabaseTree(target, folderId) {
             //await untarFrontent()
         }
 
+        if (!files[database]) {
+            let parts = database.split('/')
+            let ownerName = parts.length == 2 ? parts[0] : owner.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+            let branch = await getDefaultBranch(ownerName, repoName)
+            await loadGitHubTree(ownerName, repoName, branch)
+        }
+
         let resultSet = {}
         let resultKeys = []
         if (database === 'Virtual Memory') {
@@ -196,10 +204,11 @@ async function expandDatabaseTree(target, folderId) {
                 files[database][r.path] = FS.virtual[r.path] = r
             }
 
-            resultSet = result.concat(result2).reduce((a, r) => {
-                a[r.path] = r
-                return a
-            }, {})
+            resultSet = Object.values(files[database])
+                .reduce((a, r) => {
+                    a[r.path] = r
+                    return a
+                }, {})
             resultKeys = Object.keys(resultSet)
         }
 
@@ -512,9 +521,13 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     api.github_token = localStorage.getItem('github_token');
 
     let content = await cacheFile(repoOwner, repoName, filePath, sha, true);
-
+    if (!content || content.length === 0) {
+        let response = await fetch(filePath)
+        content = await response.arrayBuffer()
+    }
+    const byteView = new Uint8Array(content);
     // 1. Scan just the first 1024 bytes for binary characters before decoding everything
-    const sampleBytes = content.subarray(0, 1024);
+    const sampleBytes = byteView.subarray(0, 1024);
     const decoder = new TextDecoder();
     const sampleStr = decoder.decode(sampleBytes);
 

@@ -921,10 +921,6 @@ input[type="checkbox"]:focus-visible {
     }
 
 
-    #terminal-container {
-        max-width: calc(100% - 60px);
-    }
-
     #terminal,
     #terminals {
         max-width: 100%;

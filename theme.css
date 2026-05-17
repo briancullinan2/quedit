@@ -8,6 +8,22 @@
 body {
     font-size: var(--default-size);
     line-height: var(--global-height);
+    animation: waveMovement 18s ease infinite;
+
+}
+
+@keyframes waveMovement {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
 }
 
 
@@ -44,25 +60,16 @@ body {
 
 }
 
-.theme-pastels-on-dark {
-    /* Core Backgrounds */
+.theme-pastel-on-dark {
     --ace-bg: #2C2828;
     --ace-gutter-bg: #353030;
-
-    /* Primary UI & Text */
     --ace-foreground: #8F938F;
     --ace-comment: #A6C6FF;
     --ace-selection-bg: rgba(221, 240, 255, 0.20);
-
-    /* The 4 "Action" Colors */
     --ace-pink: #757aD8;
-    /* Keywords (actually a muted Purple/Blue in this theme) */
     --ace-purple: #DE8E30;
-    /* Constants / Language */
     --ace-blue: #AEB2F8;
-    /* Functions */
     --ace-green: #66A968;
-    /* Strings / Success */
 }
 
 .theme-github {
@@ -106,22 +113,6 @@ body {
     --ace-blue: #8be9fd;
     /* Functions */
     --ace-green: #50fa7b;
-    /* Strings */
-}
-
-.theme-twilight {
-    --ace-bg: #141414;
-    --ace-gutter-bg: #232323;
-    --ace-foreground: #F8F8F8;
-    --ace-comment: #5F5A60;
-    --ace-selection-bg: rgba(221, 240, 255, 0.20);
-    --ace-pink: #CDA869;
-    /* Keywords (Gold/Tan) */
-    --ace-purple: #CF6A4C;
-    /* Constants */
-    --ace-blue: #9B703F;
-    /* Functions */
-    --ace-green: #8F9D6A;
     /* Strings */
 }
 
@@ -340,18 +331,6 @@ body {
     --ace-green: #FFFFA0;
 }
 
-.theme-chaos {
-    --ace-bg: #161616;
-    --ace-gutter-bg: #1B1B1B;
-    --ace-foreground: #FFFFFF;
-    --ace-comment: #999999;
-    --ace-selection-bg: #4d4d4d;
-    --ace-pink: #F92672;
-    --ace-purple: #AE81FF;
-    --ace-blue: #66D9EF;
-    --ace-green: #A6E22E;
-}
-
 .theme-idle-fingers {
     --ace-bg: #323232;
     --ace-gutter-bg: #323232;
@@ -364,8 +343,35 @@ body {
     --ace-green: #A5C261;
 }
 
+.theme-one-dark {
+    --ace-bg: #282c34;
+    --ace-gutter-bg: #21252b;
+    --ace-foreground: #abb2bf;
+    --ace-comment: #5c6370;
+    --ace-selection-bg: rgba(62, 68, 81, 0.50);
+    --ace-pink: #c678dd;
+    /* mapped from purple/magenta */
+    --ace-purple: #d19a66;
+    /* mapped from orange/alt-accent */
+    --ace-blue: #61afef;
+    --ace-green: #98c379;
+}
 
-.theme-cloud-editor {
+.theme-tomorrow-night {
+    --ace-bg: #1d1f21;
+    --ace-gutter-bg: #151718;
+    --ace-foreground: #c5c8c6;
+    --ace-comment: #969896;
+    --ace-selection-bg: rgba(55, 59, 65, 0.50);
+    --ace-pink: #b294bb;
+    /* mapped from purple */
+    --ace-purple: #de935f;
+    /* mapped from orange */
+    --ace-blue: #81a2be;
+    --ace-green: #b5bd68;
+}
+
+.theme-clouds {
     --ace-bg: #FFFFFF;
     --ace-gutter-bg: #F0F0F0;
     --ace-foreground: #000000;
@@ -377,7 +383,7 @@ body {
     --ace-green: #09885A;
 }
 
-.theme-cloud-editor-dark {
+.theme-clouds-midnight {
     --ace-bg: #222222;
     --ace-gutter-bg: #333333;
     --ace-foreground: #FFFFFF;
@@ -477,29 +483,6 @@ body {
     --ace-green: #009900;
 }
 
-.theme-crimson-editor {
-    --ace-bg: #FFFFFF;
-    --ace-gutter-bg: #EBEBEB;
-    --ace-foreground: #000000;
-    --ace-comment: #008000;
-    --ace-selection-bg: #3399FF;
-    --ace-pink: #0000FF;
-    --ace-purple: #FF0000;
-    --ace-blue: #0000FF;
-    --ace-green: #008000;
-}
-
-.theme-merbivore {
-    --ace-bg: #161616;
-    --ace-gutter-bg: #262626;
-    --ace-foreground: #E6E1DC;
-    --ace-comment: #AD2EA4;
-    --ace-selection-bg: #454545;
-    --ace-pink: #FC6F09;
-    --ace-purple: #B3E43B;
-    --ace-blue: #6D9CBE;
-    --ace-green: #8D9906;
-}
 
 .theme-eclipse {
     --ace-bg: #FFFFFF;
@@ -539,17 +522,6 @@ body {
     --ace-green: #A6E22E;
 }
 
-.theme-idle-fingers {
-    --ace-bg: #323232;
-    --ace-gutter-bg: #323232;
-    --ace-foreground: #FFFFFF;
-    --ace-comment: #BC9458;
-    --ace-selection-bg: rgba(73, 72, 62, 0.52);
-    --ace-pink: #CC7833;
-    --ace-purple: #6C99BB;
-    --ace-blue: #DA4939;
-    --ace-green: #A5C261;
-}
 
 .theme-merbivore {
     --ace-bg: #161616;
@@ -600,6 +572,783 @@ body {
 }
 
 
+
+/* Ivory */
+.theme-ivory {
+    --ace-bg: #fdfdf2;
+    --ace-gutter-bg: #ffffff;
+    --ace-foreground: #1e293b;
+    --ace-comment: #64748b;
+    --ace-selection-bg: rgba(100, 116, 139, 0.20);
+    --ace-pink: #10b981;
+    --ace-purple: #fbbf24;
+    --ace-blue: #06b6d4;
+    --ace-green: #3f6212;
+}
+
+/* Darkslate */
+.theme-darkslate {
+    --ace-bg: #05050a;
+    --ace-gutter-bg: #0f172a;
+    --ace-foreground: #f1f5f9;
+    --ace-comment: #94a3b8;
+    --ace-selection-bg: rgba(241, 245, 249, 0.20);
+    --ace-pink: #10b981;
+    --ace-purple: #fbbf24;
+    --ace-blue: #06b6d4;
+    --ace-green: #10b981;
+}
+
+/* Midnight Void */
+.theme-midnightvoid {
+    --ace-bg: #020617;
+    --ace-gutter-bg: #0f172a;
+    --ace-foreground: #94a3b8;
+    --ace-comment: #475569;
+    --ace-selection-bg: rgba(56, 189, 248, 0.20);
+    --ace-pink: #334155;
+    --ace-purple: #6366f1;
+    --ace-blue: #1e40af;
+    --ace-green: #334155;
+}
+
+/* Arctic Thaw */
+.theme-arcticthaw {
+    --ace-bg: #0f172a;
+    --ace-gutter-bg: #1e293b;
+    --ace-foreground: #f1f5f9;
+    --ace-comment: #94a3b8;
+    --ace-selection-bg: rgba(255, 255, 255, 0.20);
+    --ace-pink: #0ea5e9;
+    --ace-purple: #ffffff;
+    --ace-blue: #7dd3fc;
+    --ace-green: #0ea5e9;
+}
+
+/* Abyssal Trench */
+.theme-abyssaltrench {
+    --ace-bg: #000000;
+    --ace-gutter-bg: #081121;
+    --ace-foreground: #06b6d4;
+    --ace-comment: #164e63;
+    --ace-selection-bg: rgba(6, 182, 212, 0.20);
+    --ace-pink: #164e63;
+    --ace-purple: #155e75;
+    --ace-blue: #083344;
+    --ace-green: #164e63;
+}
+
+/* Oxidized Iron */
+.theme-oxidizediron {
+    --ace-bg: #1a1a1a;
+    --ace-gutter-bg: #2d2d2d;
+    --ace-foreground: #d6d3d1;
+    --ace-comment: #78716c;
+    --ace-selection-bg: rgba(120, 113, 108, 0.20);
+    --ace-pink: #78350f;
+    --ace-purple: #451a03;
+    --ace-blue: #b45309;
+    --ace-green: #78350f;
+}
+
+/* Deep Sea Kelp */
+.theme-deepseakelp {
+    --ace-bg: #052e16;
+    --ace-gutter-bg: #064e3b;
+    --ace-foreground: #d1fae5;
+    --ace-comment: #10b981;
+    --ace-selection-bg: rgba(16, 185, 129, 0.20);
+    --ace-pink: #ec4899;
+    --ace-purple: #881337;
+    --ace-blue: #f43f5e;
+    --ace-green: #10b981;
+}
+
+/* Solar Flare */
+.theme-solarflare {
+    --ace-bg: #1c1917;
+    --ace-gutter-bg: #451a03;
+    --ace-foreground: #fffbeb;
+    --ace-comment: #fcd34d;
+    --ace-selection-bg: rgba(251, 191, 36, 0.20);
+    --ace-pink: #f59e0b;
+    --ace-purple: #ffffff;
+    --ace-blue: #fbbf24;
+    --ace-green: #f59e0b;
+}
+
+/* Monochrome Matrix */
+.theme-monochromematrix {
+    --ace-bg: #020617;
+    --ace-gutter-bg: #000000;
+    --ace-foreground: #f8fafc;
+    --ace-comment: #64748b;
+    --ace-selection-bg: rgba(255, 255, 255, 0.20);
+    --ace-pink: #ffffff;
+    --ace-purple: #475569;
+    --ace-blue: #94a3b8;
+    --ace-green: #ffffff;
+}
+
+/* Lead Fortress */
+.theme-leadfortress {
+    --ace-bg: #0f172a;
+    --ace-gutter-bg: #1e293b;
+    --ace-foreground: #cbd5e1;
+    --ace-comment: #64748b;
+    --ace-selection-bg: rgba(203, 213, 225, 0.20);
+    --ace-pink: #475569;
+    --ace-purple: #000000;
+    --ace-blue: #FFFFFF;
+    --ace-green: #22ff55;
+}
+
+/* Ashen Wastes */
+.theme-ashenwastes {
+    --ace-bg: #18181b;
+    --ace-gutter-bg: #27272a;
+    --ace-foreground: #f4f4f5;
+    --ace-comment: #a1a1aa;
+    --ace-selection-bg: rgba(255, 255, 255, 0.20);
+    --ace-pink: #ef4444;
+    --ace-purple: #7f1d1d;
+    --ace-blue: #dc2626;
+    --ace-green: #ef4444;
+}
+
+/* Inverted Neon */
+.theme-invertedneon {
+    --ace-bg: #ffffff;
+    --ace-gutter-bg: #f1f5f9;
+    --ace-foreground: #0f172a;
+    --ace-comment: #64748b;
+    --ace-selection-bg: rgba(0, 0, 0, 0.15);
+    --ace-pink: #000000;
+    --ace-purple: #0f172a;
+    --ace-blue: #475569;
+    --ace-green: #000000;
+}
+
+/* Sour Lime */
+.theme-sourlime {
+    --ace-bg: #020617;
+    --ace-gutter-bg: #064e3b;
+    --ace-foreground: #f7fee7;
+    --ace-comment: #a3e635;
+    --ace-selection-bg: rgba(132, 204, 22, 0.20);
+    --ace-pink: #bef264;
+    --ace-purple: #365314;
+    --ace-blue: #84cc16;
+    --ace-green: #bef264;
+}
+
+/* Obsidian Ledger */
+.theme-obsidianledger {
+    --ace-bg: #000000;
+    --ace-gutter-bg: #171717;
+    --ace-foreground: #e5e5e5;
+    --ace-comment: #737373;
+    --ace-selection-bg: rgba(255, 255, 255, 0.20);
+    --ace-pink: #404040;
+    --ace-purple: #111827;
+    --ace-blue: #525252;
+    --ace-green: #404040;
+}
+
+/* Daybreak */
+.theme-daybreak {
+    --ace-bg: #fff0f5;
+    --ace-gutter-bg: #ffe4e1;
+    --ace-foreground: #4a0026;
+    --ace-comment: #800080;
+    --ace-selection-bg: rgba(255, 0, 128, 0.15);
+    --ace-pink: #ff0080;
+    --ace-purple: #800080;
+    --ace-blue: #ff8c00;
+    --ace-green: #ff0080;
+}
+
+/* Desert Sunset */
+.theme-desertsunset {
+    --ace-bg: #fffbf0;
+    --ace-gutter-bg: #fdf5e6;
+    --ace-foreground: #2d1b4d;
+    --ace-comment: #4b0082;
+    --ace-selection-bg: rgba(255, 69, 0, 0.15);
+    --ace-pink: #ff4500;
+    --ace-purple: #4b0082;
+    --ace-blue: #ffd700;
+    --ace-green: #ff4500;
+}
+
+/* Ocean Ripple */
+.theme-oceanripple {
+    --ace-bg: #000510;
+    --ace-gutter-bg: #0a1931;
+    --ace-foreground: #f0f9ff;
+    --ace-comment: #00ffff;
+    --ace-selection-bg: rgba(0, 255, 255, 0.20);
+    --ace-pink: #ffffff;
+    --ace-purple: #0000ff;
+    --ace-blue: #00ffff;
+    --ace-green: #0000ff;
+}
+
+/* Silver Chrome */
+.theme-silverchrome {
+    --ace-bg: #f5f5f5;
+    --ace-gutter-bg: #e5e5e5;
+    --ace-foreground: #171717;
+    --ace-comment: #4d4d4d;
+    --ace-selection-bg: rgba(122, 122, 122, 0.15);
+    --ace-pink: #4d4d4d;
+    --ace-purple: #000000;
+    --ace-blue: #c0c0c0;
+    --ace-green: #7a7a7a;
+}
+
+/* Coral Reef */
+.theme-coralreef {
+    --ace-bg: #e0fcfc;
+    --ace-gutter-bg: #f0fff0;
+    --ace-foreground: #831843;
+    --ace-comment: #be185d;
+    --ace-selection-bg: rgba(255, 20, 147, 0.15);
+    --ace-pink: #00ced1;
+    --ace-purple: #ff7f50;
+    --ace-blue: #ff1493;
+    --ace-green: #ff1493;
+}
+
+/* Dusk */
+.theme-dusk {
+    --ace-bg: #020210;
+    --ace-gutter-bg: #000033;
+    --ace-foreground: #e0e7ff;
+    --ace-comment: #818cf8;
+    --ace-selection-bg: rgba(102, 0, 204, 0.25);
+    --ace-pink: #000066;
+    --ace-purple: #1a0033;
+    --ace-blue: #6600CC;
+    --ace-green: #7700FF;
+}
+
+/* Rainbow Peak */
+.theme-rainbowpeak {
+    --ace-bg: #fafafa;
+    --ace-gutter-bg: #f0fdf4;
+    --ace-foreground: #171717;
+    --ace-comment: #0000ff;
+    --ace-selection-bg: rgba(255, 0, 0, 0.15);
+    --ace-pink: #00ff00;
+    --ace-purple: #ff00ff;
+    --ace-blue: #00ffff;
+    --ace-green: #00ff00;
+}
+
+/* Golden Gate */
+.theme-goldengate {
+    --ace-bg: #fffdf0;
+    --ace-gutter-bg: #fefce8;
+    --ace-foreground: #422006;
+    --ace-comment: #b8860b;
+    --ace-selection-bg: rgba(184, 134, 11, 0.15);
+    --ace-pink: #ffd700;
+    --ace-purple: #451a03;
+    --ace-blue: #b8860b;
+    --ace-green: #ffd700;
+}
+
+/* Emerald Forest */
+.theme-emeraldforest {
+    --ace-bg: #020502;
+    --ace-gutter-bg: #061a06;
+    --ace-foreground: #f0fdf4;
+    --ace-comment: #32cd32;
+    --ace-selection-bg: rgba(173, 255, 47, 0.20);
+    --ace-pink: #32cd32;
+    --ace-purple: #adff2f;
+    --ace-blue: #008000;
+    --ace-green: #32cd32;
+}
+
+/* Night Vision */
+.theme-nightvision {
+    --ace-bg: #000000;
+    --ace-gutter-bg: #001100;
+    --ace-foreground: #00ff00;
+    --ace-comment: #003300;
+    --ace-selection-bg: rgba(0, 255, 0, 0.30);
+    --ace-pink: #003300;
+    --ace-purple: #00ff00;
+    --ace-blue: #00ff00;
+    --ace-green: #00ff00;
+}
+
+/* Berry Blast */
+.theme-berryblast {
+    --ace-bg: #05051a;
+    --ace-gutter-bg: #0000ff;
+    --ace-foreground: #ffffff;
+    --ace-comment: #ff00ff;
+    --ace-selection-bg: rgba(255, 0, 255, 0.20);
+    --ace-pink: #dc143c;
+    --ace-purple: #0000ff;
+    --ace-blue: #ff00ff;
+    --ace-green: #dc143c;
+}
+
+/* Parchment */
+.theme-parchment {
+    --ace-bg: #fcfaf2;
+    --ace-gutter-bg: #f5f5dc;
+    --ace-foreground: #451a03;
+    --ace-comment: #8b4513;
+    --ace-selection-bg: rgba(210, 180, 140, 0.20);
+    --ace-pink: #8b4513;
+    --ace-purple: #f5f5dc;
+    --ace-blue: #d2b48c;
+    --ace-green: #d2b48c;
+}
+
+
+/* Ambiance - Espresso Dark */
+.theme-ambiance {
+    background: #202020;
+    background: linear-gradient(125deg, #202020 0%, #3d2c20 100%);
+    background-size: 400% 400%;
+}
+
+/* Chaos - High Contrast Obsidian */
+.theme-chaos {
+    background: #161616;
+    background: linear-gradient(125deg, #161616 0%, #331111 50%, #112233 100%);
+    background-size: 400% 400%;
+}
+
+/* Chrome - Clean Desktop Light */
+.theme-chrome {
+    background: #ebebeb;
+    background: linear-gradient(125deg, #ffffff 0%, #ebebeb 100%);
+    background-size: 400% 400%;
+}
+
+/* Clouds - Soft Blue-Gray Light */
+.theme-clouds {
+    background: #f8f8f8;
+    background: linear-gradient(125deg, #ffffff 0%, #e6ecf2 100%);
+    background-size: 400% 400%;
+}
+
+/* Clouds Midnight - Twilight Gray-Blue */
+.theme-clouds_midnight {
+    background: #191f26;
+    background: linear-gradient(125deg, #191f26 0%, #252f3b 100%);
+    background-size: 400% 400%;
+}
+
+/* Cobalt - Intense Navy Blue */
+.theme-cobalt {
+    background: #002240;
+    background: linear-gradient(125deg, #002240 0%, #003b6f 50%, #ff8000 100%);
+    background-size: 400% 400%;
+}
+
+/* Crimson Editor - Crisp Light White */
+.theme-crimson_editor {
+    background: #ffffff;
+    background: linear-gradient(125deg, #ffffff 0%, #fcedf0 100%);
+    background-size: 400% 400%;
+}
+
+/* Dawn - Soft Pastel Sunrise Light */
+.theme-dawn {
+    background: #f9f9f9;
+    background: linear-gradient(125deg, #f9f9f9 0%, #f5ebec 50%, #efe0e2 100%);
+    background-size: 400% 400%;
+}
+
+/* Dracula - Classic Cyber Vampire Dark */
+.theme-dracula {
+    background: #282a36;
+    background: linear-gradient(125deg, #282a36 0%, #44475a 60%, #bd93f9 100%);
+    background-size: 400% 400%;
+}
+
+/* Dreamweaver - Legacy Software White */
+.theme-dreamweaver {
+    background: #ffffff;
+    background: linear-gradient(125deg, #ffffff 0%, #e8f0f8 100%);
+    background-size: 400% 400%;
+}
+
+/* Eclipse - Clean Bright Palette */
+.theme-eclipse {
+    background: #ffffff;
+    background: linear-gradient(125deg, #ffffff 0%, #f0f4ff 100%);
+    background-size: 400% 400%;
+}
+
+/* GitHub Legacy Light */
+.theme-github {
+    background: #ffffff;
+    background: linear-gradient(125deg, #ffffff 0%, #f4f5f7 100%);
+    background-size: 400% 400%;
+}
+
+/* GOB - Matrix Retro Lime Dark */
+.theme-gob {
+    background: #080808;
+    background: linear-gradient(125deg, #080808 0%, #051a05 100%);
+    background-size: 400% 400%;
+}
+
+/* Gruvbox - Earthy Organic Warm Dark */
+.theme-gruvbox {
+    background: #282828;
+    background: linear-gradient(125deg, #282828 0%, #3c3836 50%, #b16286 100%);
+    background-size: 400% 400%;
+}
+
+/* Idle Fingers - Muted Industrial Charcoal */
+.theme-idle_fingers {
+    background: #323232;
+    background: linear-gradient(125deg, #323232 0%, #212121 100%);
+    background-size: 400% 400%;
+}
+
+/* IPlastic - Shiny Cool Gray Light */
+.theme-iplastic {
+    background: #eeeeee;
+    background: linear-gradient(125deg, #ffffff 0%, #e0e0e0 100%);
+    background-size: 400% 400%;
+}
+
+/* Katzenmilch - Matte Warm Gray Light */
+.theme-katzenmilch {
+    background: #e8e8e8;
+    background: linear-gradient(125deg, #f0f0f0 0%, #e0dbdb 100%);
+    background-size: 400% 400%;
+}
+
+/* KR Theme - Rich Midnight Gold */
+.theme-kr_theme {
+    background: #0b0a09;
+    background: linear-gradient(125deg, #0b0a09 0%, #1c1a17 100%);
+    background-size: 400% 400%;
+}
+
+/* Kuroir - Textured Warm Ivory Light */
+.theme-kuroir {
+    background: #e8e9e8;
+    background: linear-gradient(125deg, #f4f5f4 0%, #dadbda 100%);
+    background-size: 400% 400%;
+}
+
+/* Merbivore - Deep Warm Lava Charcoal */
+.theme-merbivore {
+    background: #161616;
+    background: linear-gradient(125deg, #161616 0%, #36221c 100%);
+    background-size: 400% 400%;
+}
+
+/* Merbivore Soft - Muted Pastel Charcoal */
+.theme-merbivore_soft {
+    background: #1c1c1c;
+    background: linear-gradient(125deg, #1c1c1c 0%, #2c2523 100%);
+    background-size: 400% 400%;
+}
+
+/* Monokai - Classic Retro Synth Dark */
+.theme-monokai {
+    background: #272822;
+    background: linear-gradient(125deg, #272822 0%, #3e3d32 60%, #f92672 100%);
+    background-size: 400% 400%;
+}
+
+/* Mono Industrial - Cold Tech Asphalt */
+.theme-mono_industrial {
+    background: #222324;
+    background: linear-gradient(125deg, #222324 0%, #151617 100%);
+    background-size: 400% 400%;
+}
+
+/* Nord Dark - Frost Aurora Dusk */
+.theme-nord_dark {
+    background: #2e3440;
+    background: linear-gradient(125deg, #2e3440 0%, #3b4252 50%, #81a1c1 100%);
+    background-size: 400% 400%;
+}
+
+/* One Dark - Modern Sleek Slate */
+.theme-one_dark {
+    background: #282c34;
+    background: linear-gradient(125deg, #282c34 0%, #21252b 70%, #61afef 100%);
+    background-size: 400% 400%;
+}
+
+/* Pastel On Dark - Cozy Studio Soft Mix */
+.theme-pastel_on_dark {
+    background: #2c2828;
+    background: linear-gradient(125deg, #2c2828 0%, #353030 50%, #757ad8 100%);
+    background-size: 400% 400%;
+}
+
+/* Solarized Dark - Mathematical Calibrated Teal */
+.theme-solarized_dark {
+    background: #002b36;
+    background: linear-gradient(125deg, #002b36 0%, #073642 70%, #2aa198 100%);
+    background-size: 400% 400%;
+}
+
+/* Solarized Light - Mathematical Calibrated Cream */
+.theme-solarized_light {
+    background: #fdf6e3;
+    background: linear-gradient(125deg, #fdf6e3 0%, #eee8d5 100%);
+    background-size: 400% 400%;
+}
+
+/* SQL Server - Corporate Registry Light */
+.theme-sqlserver {
+    background: #ffffff;
+    background: linear-gradient(125deg, #ffffff 0%, #eef2f7 100%);
+    background-size: 400% 400%;
+}
+
+/* Terminal - Pure Command Line Dark */
+.theme-terminal {
+    background: #000000;
+    background: linear-gradient(125deg, #000000 0%, #111111 100%);
+    background-size: 400% 400%;
+}
+
+/* Textmate - True Editorial Desktop White */
+.theme-textmate {
+    background: #ffffff;
+    background: linear-gradient(125deg, #ffffff 0%, #f0f0f0 100%);
+    background-size: 400% 400%;
+}
+
+/* Tomorrow Light - Balanced Neutral Light */
+.theme-tomorrow {
+    background: #ffffff;
+    background: linear-gradient(125deg, #ffffff 0%, #f4f4f4 100%);
+    background-size: 400% 400%;
+}
+
+/* Tomorrow Night - Balanced Neutral Dark */
+.theme-tomorrow_night {
+    background: #1d1f21;
+    background: linear-gradient(125deg, #1d1f21 0%, #282a2e 100%);
+    background-size: 400% 400%;
+}
+
+/* Tomorrow Night Blue - Deep Royal Denim Dark */
+.theme-tomorrow_night_blue {
+    background: #002451;
+    background: linear-gradient(125deg, #002451 0%, #001b3d 60%, #ff9da4 100%);
+    background-size: 400% 400%;
+}
+
+/* Tomorrow Night Bright - Deep Midnight Cyber Dark */
+.theme-tomorrow_night_bright {
+    background: #000000;
+    background: linear-gradient(125deg, #000000 0%, #1a1a1a 50%, #e78c45 100%);
+    background-size: 400% 400%;
+}
+
+/* Tomorrow Night 80s - Retro Tech Charcoal */
+.theme-tomorrow_night_eighties {
+    background: #2d2d2d;
+    background: linear-gradient(125deg, #2d2d2d 0%, #393939 100%);
+    background-size: 400% 400%;
+}
+
+/* Twilight - Rich Mahogany Dark */
+.theme-twilight {
+    background: #141414;
+    background: linear-gradient(125deg, #141414 0%, #222222 60%, #f8f8f8 100%);
+    background-size: 400% 400%;
+}
+
+/* Vibrant Ink - Intense Cyberpunk High-Glow Void */
+.theme-vibrant_ink {
+    background: #000000;
+    background: linear-gradient(125deg, #000000 0%, #120024 50%, #ff007f 100%);
+    background-size: 400% 400%;
+}
+
+/* Xcode - Cool Slate-Tinted Light */
+.theme-xcode {
+    background: #ffffff;
+    background: linear-gradient(125deg, #ffffff 0%, #f2f5f9 100%);
+    background-size: 400% 400%;
+}
+
+.theme-midnightvoid {
+    background: linear-gradient(125deg, #020617 0%, #0f172a 100%);
+    background-size: 400% 400%;
+}
+
+/* 2. Arctic Thaw */
+.theme-arcticthaw {
+    background: linear-gradient(125deg, #0f172a 0%, #1e293b 50%, #7dd3fc 100%);
+    background-size: 400% 400%;
+}
+
+/* 3. Abyssal Trench */
+.theme-abyssaltrench {
+    background: linear-gradient(125deg, #000000 0%, #081121 100%);
+    background-size: 400% 400%;
+}
+
+/* 4. Oxidized Iron */
+.theme-oxidizediron {
+    background: linear-gradient(125deg, #1a1a1a 0%, #451a03 100%);
+    background-size: 400% 400%;
+}
+
+/* 5. Deep Sea Kelp */
+.theme-deepseakelp {
+    background: linear-gradient(125deg, #052e16 0%, #10b981 100%);
+    background-size: 400% 400%;
+}
+
+/* 6. Solar Flare */
+.theme-solarflare {
+    background: linear-gradient(125deg, #451a03 0%, #78350f 100%);
+    background-size: 400% 400%;
+}
+
+/* 7. Monochrome Matrix */
+.theme-monochromematrix {
+    background: linear-gradient(125deg, #020617 0%, #000000 100%);
+    background-size: 400% 400%;
+}
+
+/* 8. Lead Fortress */
+.theme-leadfortress {
+    background: linear-gradient(125deg, #1e293b 0%, #0f172a 100%);
+    background-size: 400% 400%;
+}
+
+/* 9. Ashen Wastes */
+.theme-ashenwastes {
+    background: linear-gradient(125deg, #18181b 0%, #7f1d1d 100%);
+    background-size: 400% 400%;
+}
+
+/* 10. Inverted Neon */
+.theme-invertedneon {
+    background: linear-gradient(125deg, #f1f5f9 0%, #cbd5e1 100%);
+    background-size: 400% 400%;
+}
+
+/* 11. Sour Lime */
+.theme-sourlime {
+    background: linear-gradient(125deg, #064e3b 0%, #365314 100%);
+    background-size: 400% 400%;
+}
+
+/* 12. Obsidian Ledger */
+.theme-obsidianledger {
+    background: linear-gradient(125deg, #000000 0%, #171717 100%);
+    background-size: 400% 400%;
+}
+
+
+
+.theme-ivory {
+    background: linear-gradient(125deg, rgb(5, 39, 103) 0%, #3a0647 40%, rgb(10, 50, 120) 70%, #4a085c 100%);
+    background-size: 400% 400%;
+}
+
+.page.theme-darkslate.gradient .canvas-container,
+sidebar.theme-darkslate {
+    background: linear-gradient(125deg, #020617 0%,
+            /* True black-blue at the top */
+            #0f172a 40%,
+            /* Slate surface match */
+            #064e3b 70%,
+            /* Deep moss/emerald shadow */
+            #083344 100%
+            /* Deep cyan anchor */
+        );
+    background-size: 400% 400%;
+}
+
+/* 1. Classic Sunrise/Purple */
+.theme-daybreak {
+    background: linear-gradient(125deg, #ff8c00 0%, #ff0080 50%, #800080 100%);
+    background-size: 400% 400%;
+}
+
+/* 2. Banded Gold, Orange, and Purple */
+.theme-desertsunset {
+    background: linear-gradient(125deg, #4b0082 0%, #ff4500 45%, #ffd700 80%, #ffffff 100%);
+    background-size: 400% 400%;
+}
+
+/* 3. Deep Reflective Blue */
+.theme-oceanripple {
+    background: linear-gradient(125deg, #000080 0%, #0000ff 40%, #00ffff 70%, #ffffff 100%);
+    background-size: 400% 400%;
+}
+
+/* 4. High-Contrast Metallic */
+.theme-silverchrome {
+    background: linear-gradient(125deg, #4d4d4d 0%, #ffffff 45%, #7a7a7a 50%, #c0c0c0 100%);
+    background-size: 400% 400%;
+}
+
+/* 5. Tropical Cyan and Pink */
+.theme-coralreef {
+    background: linear-gradient(125deg, #ff7f50 0%, #ff1493 40%, #ffd700 80%, #00ced1 100%);
+    background-size: 400% 400%;
+}
+
+/* 6. Atmospheric Night */
+.theme-dusk {
+    background: linear-gradient(125deg, #000033 0%, #1a0033 40%, #330066 70%, #000066 100%);
+    background-size: 400% 400%;
+}
+
+/* 7. The Full Spectrum */
+.theme-rainbowpeak {
+    background: linear-gradient(125deg, #ff0000 0%, #ffff00 25%, #00ff00 50%, #00ffff 75%, #0000ff 100%);
+    background-size: 400% 400%;
+}
+
+/* 8. Polished Metal Gold */
+.theme-goldengate {
+    background: linear-gradient(125deg, #b8860b 0%, #ffd700 40%, #ffffff 50%, #b8860b 100%);
+    background-size: 400% 400%;
+}
+
+/* 9. Earthy Vibrant Green */
+.theme-emeraldforest {
+    background: linear-gradient(125deg, #004d00 0%, #008000 40%, #32cd32 70%, #adff2f 100%);
+    background-size: 400% 400%;
+}
+
+/* 10. Matrix-Style Black & Green */
+.theme-nightvision {
+    background: linear-gradient(125deg, #000000 0%, #003300 45%, #00ff00 55%, #000000 100%);
+    background-size: 400% 400%;
+}
+
+/* 11. 90s Candy Blue/Red */
+.theme-berryblast {
+    background: linear-gradient(125deg, #0000ff 0%, #6a5acd 40%, #ff00ff 70%, #dc143c 100%);
+    background-size: 400% 400%;
+}
+
+/* 12. Structured Academic Beige */
+.theme-parchment {
+    background: linear-gradient(125deg, #8b4513 0%, #d2b48c 40%, #f5f5dc 70%, #ffffff 100%);
+    background-size: 400% 400%;
+}
+
 body {
     background-color: var(--ace-bg);
     font-family:
@@ -640,29 +1389,42 @@ body {
     color: var(--ace-blue);
 }
 
-::-webkit-scrollbar {
-    width: 8px;
-    background-color: var(--ace-bg);
+::-webkit-scrollbar,
+.xterm-viewport ::-webkit-scrollbar,
+.xterm-scrollable-element::-webkit-scrollbar,
+.ace_editor ::-webkit-scrollbar,
+.xterm .xterm-scrollable-element > .scrollbar {
+    width: 10px !important;
+    background-color: transparent !important;
 }
 
-::-webkit-scrollbar-thumb {
-    background: var(--ace-selection-bg);
-    border-radius: 4px;
+::-webkit-scrollbar-track,
+.xterm-viewport ::-webkit-scrollbar-track,
+.ace_editor ::-webkit-scrollbar-track,
+.ace_scrollbar::-webkit-scrollbar-track,
+.xterm .xterm-scrollable-element > .scrollbar {
+    background: transparent !important;
+}
+
+.ace_editor {
+    /*background-color: transparent !important;*/
 }
 
 .xterm-scrollable-element,
 .xterm-viewport {
-    background-color: var(--ace-bg) !important;
+    /*background-color: var(--ace-bg) !important;*/
+    background-color: transparent !important;
 }
 
-/* Match the scrollbar to your editor's style */
-.xterm-viewport::-webkit-scrollbar {
-    width: 8px;
-}
 
-.xterm-viewport::-webkit-scrollbar-thumb {
-    background: var(--ace-selection-bg);
-    border-radius: 4px;
+::-webkit-scrollbar-thumb,
+.xterm-scrollable-element::-webkit-scrollbar-thumb,
+.xterm-viewport ::-webkit-scrollbar-thumb,
+.xterm .xterm-scrollable-element > .scrollbar > .slider {
+    width: 10px !important;
+    background: var(--ace-selection-bg) !important;
+    border-radius: 4px !important;
+    opacity: 0.75 !important;
 }
 
 .terminal-search-highlight {
@@ -678,8 +1440,10 @@ body {
 
 .terminal-search-highlight {
     mix-blend-mode: difference;
-    background-color: #ffffff !important; /* Forces absolute, high-contrast inversion math */
-    color: transparent !important;       /* Ensures no inner text CSS blocks the math */
+    background-color: #ffffff !important;
+    /* Forces absolute, high-contrast inversion math */
+    color: transparent !important;
+    /* Ensures no inner text CSS blocks the math */
 }
 
 .terminal-file-underline {

@@ -32,6 +32,7 @@ function currentSession() {
 
 const theme = document.getElementById('theme')
 let savedTheme = localStorage.getItem('theme') || theme.value || 'ace/theme/monokai'
+theme.value = savedTheme
 let themeName = savedTheme.split('/').pop()
 document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
 const editorContainer = document.getElementById('editor')
@@ -43,9 +44,10 @@ editor.renderer.$loop.schedule(editor.renderer.CHANGE_GUTTER);
 editor.setOptions({
     // Core cursor placement optimizations
     scrollPastEnd: 0.9,       // Keeps cursor centered when adding new code at EOF
+    showPrintMargin: true,
     navigateWithinSoftTabs: true,
-    animatedScroll: true,
-    autoScrollEditorIntoView: false,
+    //animatedScroll: true,
+    //autoScrollEditorIntoView: false,
 })
 const keybinding = document.getElementById('keybinding')
 let savedKeybinding = localStorage.getItem('keybinding') || keybinding.value || 'ace/keybinding/vim'
