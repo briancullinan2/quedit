@@ -626,7 +626,7 @@ function CL_Download(cmd, name, auto) {
   //  return 0 // delay like cl_curl does
   //}
 
-  // TODO: make a utility for Cvar stuff?
+  // TODO: make a utility for cvar stuff?
   let cmdStr = addressToString(cmd)
   let dlURL = addressToString(Cvar_VariableString(stringToAddress('cl_dlURL')))
   let gamedir = addressToString(FS_GetCurrentGameDir())
@@ -664,7 +664,7 @@ function CL_Download(cmd, name, auto) {
     }
   }
 
-  var server = addressToString(Cvar_VariableString('cl_currentServerAddress'))
+  let server = addressToString(Cvar_VariableString('cl_currentServerAddress'))
   if(server.length && !window.location.includes(server))
     history.pushState({location: window.location.toString()}, window.title, '?connect ' + server)
 
@@ -759,7 +759,7 @@ function CL_Download(cmd, name, auto) {
   return waitFor
 }
 
-var NET = {
+let NET = {
   queue: [],
   port_try: 0,
   reconnect: false,

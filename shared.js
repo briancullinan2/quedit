@@ -1590,18 +1590,18 @@ const API = (function () {
 
       if (options.CFLAGS && this.database) {
 
-        for (var filePath of options.CFLAGS) {
+        for (let filePath of options.CFLAGS) {
           if (!filePath) continue
           await this.header(filePath)
         }
       }
 
       const clang = await this.getModule(this.clangFilename);
-      var result = await this.run(clang, 'clang', ...options.CFLAGS || []);
+      let result = await this.run(clang, 'clang', ...options.CFLAGS || []);
       if (!obj)
         debugger
       if (this.memfs && this.memfs.exists(obj)) {
-        var bytes = this.memfs.getFileContents(obj)
+        let bytes = this.memfs.getFileContents(obj)
         FS.virtual[obj] = {
           timestamp: new Date(),
           mode: FS_FILE,
@@ -1714,7 +1714,7 @@ const API = (function () {
 
       if (this.database) {
 
-        for (var filePath of obj instanceof Array ? obj : [obj]) {
+        for (let filePath of obj instanceof Array ? obj : [obj]) {
           if (!filePath) continue
           await this.header(filePath, true)
           loadedObjs.push(filePath)
@@ -1723,7 +1723,7 @@ const API = (function () {
       }
 
       if (options.LDFLAGS && this.database) {
-        for (var filePath of options.LDFLAGS) {
+        for (let filePath of options.LDFLAGS) {
           if (!filePath) continue
           if (loadedObjs.includes(filePath)) continue
           await this.header(filePath)
@@ -1742,7 +1742,7 @@ const API = (function () {
 
       try {
         if (wasm && this.memfs && this.memfs.exists(wasm)) {
-          var bytes = this.memfs.getFileContents(wasm)
+          let bytes = this.memfs.getFileContents(wasm)
           if (bytes.length > 0) {
             FS.virtual[wasm] = {
               timestamp: new Date(),
@@ -1826,7 +1826,7 @@ const API = (function () {
 
       /*
       if (args) {
-        for (var filePath of args) {
+        for (let filePath of args) {
           if (!filePath) continue
           await this.header(filePath)
         }
@@ -1874,7 +1874,7 @@ const API = (function () {
 
       /*
       if (args) {
-        for (var filePath of args) {
+        for (let filePath of args) {
           if (!filePath) continue
           await this.header(filePath)
 

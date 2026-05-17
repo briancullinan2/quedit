@@ -142,7 +142,7 @@ async function setRepository(newRepo) {
     if (newOwner.trim())
         owner.value = newOwner;
     repo.value = newRepo;
-    var branches = await getBranches(owner.value, repo.value)
+    const branches = await getBranches(owner.value, repo.value)
     updateSelectOptions('branch', branches)
 }
 
@@ -282,7 +282,7 @@ async function settings() {
 
 function saveSettings(content) {
     try {
-        var settings = JSON.parse(content)
+        let settings = JSON.parse(content)
 
         engineRepo = settings.engine_repository
         // TODO: make this a loop

@@ -700,7 +700,7 @@ function getStreamChecked(fd) {
 	debugger
 	// 1. Check if the file descriptor is within a valid range
 	// In your library, FS.pointers or a similar mapping tracks open files
-	var stream = FS.pointers[fd];
+	let stream = FS.pointers[fd];
 
 	if (!stream) {
 		// Return a standard POSIX EBADF (Bad File Descriptor) error
@@ -711,13 +711,13 @@ function getStreamChecked(fd) {
 	return stream;
 };
 
-var WASI_ESUCCESS = 0;
-var WASI_EBADF = 8;
-var WASI_EINVAL = 28;
-var WASI_ENOSYS = 52;
+const WASI_ESUCCESS = 0;
+const WASI_EBADF = 8;
+const WASI_EINVAL = 28;
+const WASI_ENOSYS = 52;
 
-var WASI_STDOUT_FILENO = 1;
-var WASI_STDERR_FILENO = 2;
+const WASI_STDOUT_FILENO = 1;
+const WASI_STDERR_FILENO = 2;
 
 function fd_prestat_get(fd, bufPtr) {
 	// 1. Scoped result and early exit for invalid FDs
@@ -1236,7 +1236,7 @@ function _fd_close(fd) {
 		if(FS.pointers[fd] && FS.pointers[fd][2].rewrite)
 			debugger
 		if (!FS.pointers[fd]) return 8; // WASI_EBADF
-		//var stream = SYSCALLS.getStreamFromFD(fd);
+		//let stream = SYSCALLS.getStreamFromFD(fd);
 		if (fd <= VFS_NOW) {
 			FS.pointers[fd][2].contents = new Uint8Array(0)
 			FS.pointers[fd][2].rewrite = 0

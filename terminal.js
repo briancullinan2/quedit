@@ -4,16 +4,16 @@ const LINES_TO_SCROLLBACK = 5000
 const MAX_HISTORY_LENGTH = 20
 const preterm = []
 let terminalLoaded = false
-var term = new Terminal({
+const terminalContainer = document.getElementById('terminal')
+const term = new Terminal({
     allowProposedApi: true,
     convertEol: true,
     scrollback: LINES_TO_SCROLLBACK, // Increase this from the default 1000
     cursorBlink: true,
 });
-term.open(document.getElementById('terminal'));
-term.write('\n\r')
+term.open(terminalContainer);
 
-const container = document.getElementById('terminal');
+
 
 
 
@@ -21,7 +21,7 @@ let resizeDebounce = null
 window.addEventListener('resize', () => {
     if (resizeDebounce) return
     resizeDebounce = setTimeout(() => {
-        forceFit(term, container);
+        forceFit(term, terminalContainer);
         updateMaxLines()
     }, 500);
 });
@@ -30,6 +30,8 @@ window.addEventListener('resize', () => {
 const loadedHistory = JSON.parse(localStorage.getItem('history') || '[]')
 const commandHistory = loadedHistory instanceof Array ? loadedHistory : []
 const loadedLog = JSON.parse(localStorage.getItem('terminal_log') || '[]');
+if (loadedLog.length === 0)
+    writePrompt()
 
 
 let historyIndex = -1;
@@ -316,6 +318,8 @@ document.addEventListener('visibilitychange', refreshBlinker);
 
 // 2. Watch for clicks back into the window from other apps
 window.addEventListener('focus', refreshBlinker);
+terminalContainer.addEventListener('click', refreshBlinker);
+terminalContainer.addEventListener('focus', refreshBlinker);
 
 // 3. Handle the 'stuck' blinker when focus shifts to other UI elements (like Ace)
 // We use a slight delay to allow the focus transition to complete
@@ -378,13 +382,13 @@ term.attachCustomKeyEventHandler((arg) => {
                 return false;
             }
             triggerIncrementalSave()
-            term.write('\n\rCTRL+C\n\r')
+            term.write('\n\rCTRL+C')
 
             TERMINATE = true
             if (building) {
-                term.write('Stopping build...\n\r')
+                term.write('\n\rStopping build...')
             }
-            term.write('> ')
+            writePrompt()
             cursorPosition = 0
             currentLine = ''
         }
@@ -513,7 +517,7 @@ term.onData(async data => {
                 term.write(e.toString() + '\r\n' + (e.stack || e.stacktrace) + '\r\n');
             }
 
-            term.write('\r\n> ');
+            writePrompt()
 
             break;
 
@@ -647,8 +651,6 @@ const formatBytes = (bytes) => {
 };
 
 
-// Initial prompt
-//term.write('> ');
 
 
 function forceFit(term, container) {
@@ -698,7 +700,7 @@ function renderTerminalsCommand(panelId) {
 
     if (!panelId) return
 
-    var buttons = document.getElementById('terminals').children[0].children
+    let buttons = document.getElementById('terminals').children[0].children
 
     for (let button of buttons) {
         button.children[0].classList.remove('active')
@@ -772,8 +774,6 @@ function extractFiles(col, row) {
 
 }
 
-
-const terminalContainer = document.getElementById('terminal');
 
 terminalContainer.addEventListener('mousedown', async (event) => {
 
@@ -965,10 +965,17 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
 }
 
 
+function writePrompt() {
+    term.write('\n\r> ')
+}
+
+
+
 
 function updateLineFromHistory(specificValue = null) {
     // 1. Erase current line in terminal: Move to start, clear to end
-    term.write('\r\x1b[K> ');
+    term.write('\r\x1b[K');
+    writePrompt()
 
     // 2. Update the buffer
     currentLine = specificValue !== null ? specificValue : commandHistory[historyIndex];

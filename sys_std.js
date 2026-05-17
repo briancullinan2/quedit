@@ -233,7 +233,7 @@ function ctime(t) {
 }
 
 
-var DATE = {
+let DATE = {
   mktime: mktime,
   asctime: asctime,
   time: function () {
@@ -420,20 +420,20 @@ function emscripten_realloc_buffer(size) {
 }
 
 function _emscripten_resize_heap(requestedSize) {
-  var oldSize = _emscripten_get_heap_size();
-  var PAGE_MULTIPLE = 65536;
-  var maxHeapSize = 2147483648;
+  let oldSize = _emscripten_get_heap_size();
+  let PAGE_MULTIPLE = 65536;
+  let maxHeapSize = 2147483648;
   if (requestedSize > maxHeapSize) {
     return false
   }
-  var t0 = Date.now();
-  var minHeapSize = 16777216;
-  for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
-    var overGrownHeapSize = oldSize * (1 + .2 / cutDown);
+  let t0 = Date.now();
+  let minHeapSize = 16777216;
+  for (let cutDown = 1; cutDown <= 4; cutDown *= 2) {
+    let overGrownHeapSize = oldSize * (1 + .2 / cutDown);
     overGrownHeapSize = Math.min(overGrownHeapSize, requestedSize + 100663296);
-    var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
-    var replacement = emscripten_realloc_buffer(newSize);
-    var t1 = Date.now();
+    let newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
+    let replacement = emscripten_realloc_buffer(newSize);
+    let t1 = Date.now();
     writeLog('Heap resize call from ' + oldSize + ' to ' + newSize
       + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
     if (replacement) {
@@ -464,7 +464,7 @@ function Sys_setjmp(id) {
 }
 
 
-var STD = {
+let STD = {
   longjumps: {},
   threadCount: 0,
   waitListeners: {},
@@ -486,7 +486,7 @@ var STD = {
 
 
 
-var MATHS = {
+let MATHS = {
   srand: function srand() { }, // TODO: highly under-appreciated game dynamic
   rand: Math.random,
   exp2: function (c) { return Math.pow(2, c) },

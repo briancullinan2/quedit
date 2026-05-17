@@ -4,30 +4,40 @@ const ARG_TYPES = {
     FILE: 'file',          // Local file path validation/completion
     DATABASE: 'database',  // GitHub user/repo path pattern tracking
     STRING: 'string',      // Plain text argument
+    NUMERIC: 'number'
 };
-
 const COMMAND_SCHEMA = {
     help: {
         description: "Display structured manual lookups for all available engine commands.",
-        args: [],
-        flags: {}
+        args: [{ name: "command", type: ARG_TYPES.STRING, description: "Target command manual to profile" }],
+        flags: {},
+        demos: [
+            { cmd: "help", desc: "List all global system commands and inline operational manuals" },
+            { cmd: "help build", desc: "Profile parameters, targets, and modes for the build compiler pipeline" }
+        ]
     },
     clear: {
         description: "Clear active terminal screen scrollback history layers.",
         args: [],
-        flags: {}
+        flags: {},
+        demos: [{ cmd: "clear", desc: "Flush terminal screen scrollback" }]
     },
     reset: {
         description: "Hard reset terminal terminal display state engine.",
         args: [],
-        flags: {}
+        flags: {},
+        demos: [{ cmd: "reset", desc: "Reinitialize active graphic canvas streams and terminals" }]
     },
     mount: {
         description: "Mount a target workspace repository branch directory structure.",
         args: [
             { name: "repo_path", type: ARG_TYPES.DATABASE, description: "Target repository identifier string" }
         ],
-        flags: {}
+        flags: {},
+        demos: [
+            { cmd: "mount briancullinan2/quedit", desc: "Mount the main system development repository matrix" },
+            { cmd: "mount id-Software/Quake-III-Arena", desc: "Mount legacy source asset structures" }
+        ]
     },
     ls: {
         description: "List workspace data entries within the current execution path.",
@@ -36,7 +46,13 @@ const COMMAND_SCHEMA = {
             '-R': { description: "Recursively traverse matching sub-paths" },
             '-h': { description: "Render data content metrics using human-readable layouts" },
             '-1': { description: "Force single column flat stream list format output" }
-        }
+        },
+        demos: [
+            { cmd: "ls", desc: "List files within the current active workspace directory" },
+            { cmd: "ls -R", desc: "Recursively print all sub-directories and downstream files" },
+            { cmd: "ls -h", desc: "List files showing size metrics using human-readable formats" },
+            { cmd: "ls -1", desc: "Force flat single column layout stream processing list" }
+        ]
     },
     build: {
         description: "Execute compilation procedures across targeted project modules.",
@@ -48,14 +64,23 @@ const COMMAND_SCHEMA = {
             },
             { name: "target_db", type: ARG_TYPES.DATABASE, description: "Override execution repository target" }
         ],
-        flags: {}
+        flags: {},
+        demos: [
+            { cmd: "build client", desc: "Compile the web front-end engine client package components" },
+            { cmd: "build tools", desc: "Compile toolchain assets including lcc, rcc, and q3asm engines" },
+            { cmd: "build qvms", desc: "Build game sandbox files: qagame, cgame, and user interface modules" },
+            { cmd: "build debug briancullinan2/quedit", desc: "Execute target architecture debug compilation over explicit database workspace" }
+        ]
     },
     remove: {
         description: "Purge targeted structural documents from persistent storage matrices.",
         args: [
             { name: "filename", type: ARG_TYPES.FILE, description: "File path targeted for deletion" }
         ],
-        flags: {}
+        flags: {},
+        demos: [
+            { cmd: "remove code/game/g_main.c", desc: "Purge target gameplay initialization file from cache layers" }
+        ]
     },
     open: {
         description: "Load a specified document directly into the active editing layout space.",
@@ -63,7 +88,11 @@ const COMMAND_SCHEMA = {
             { name: "filename", type: ARG_TYPES.FILE, description: "Target file path to parse" },
             { name: "target_db", type: ARG_TYPES.DATABASE, description: "Repository resource source point" }
         ],
-        flags: {}
+        flags: {},
+        demos: [
+            { cmd: "open src/dagcheck.md", desc: "Open code generator structural documentation file" },
+            { cmd: "open code/client/cl_main.c briancullinan2/quedit", desc: "Load client core engine file from an explicit system database" }
+        ]
     },
     compile: {
         description: "Trigger compiler pipelines on target code assets.",
@@ -71,14 +100,21 @@ const COMMAND_SCHEMA = {
             { name: "filename", type: ARG_TYPES.FILE, description: "Source document targeted for evaluation" },
             { name: "target_db", type: ARG_TYPES.DATABASE, description: "Target environment database repository context" }
         ],
-        flags: {}
+        flags: {},
+        demos: [
+            { cmd: "compile code/game/bg_lib.c", desc: "Run background compatibility library code block processing" }
+        ]
     },
     run: {
         description: "Invoke binary runtime tasks or specialized compiler utility tools.",
         args: [
             { name: "tool", type: ARG_TYPES.FILE, description: "WASM engine target binary element filename" }
         ],
-        flags: {}
+        flags: {},
+        demos: [
+            { cmd: "run quake3e.wasm", desc: "Instantiate primary Quake 3 WASM engine cluster execution" },
+            { cmd: "run q3asm.js.wasm", desc: "Invoke web assembly runtime wrapper context instance directly" }
+        ]
     },
     lburg: {
         description: "Run code generator bottom-up rewrite system compilation tools.",
@@ -86,7 +122,10 @@ const COMMAND_SCHEMA = {
             { name: "input_md", type: ARG_TYPES.FILE, description: "DAG description source ruleset" },
             { name: "output_c", type: ARG_TYPES.FILE, description: "Output C source translation destination layout" }
         ],
-        flags: {}
+        flags: {},
+        demos: [
+            { cmd: "lburg src/dagcheck.md src/dagcheck.c", desc: "Generate low-level system matrix parse definitions" }
+        ]
     },
     clone: {
         description: "Clone external structures down into local indexed DB instances.",
@@ -94,12 +133,17 @@ const COMMAND_SCHEMA = {
             { name: "repo_path", type: ARG_TYPES.DATABASE, description: "Target remote owner/repository pathway" },
             { name: "branch", type: ARG_TYPES.STRING, description: "Specific repository branch tag context" }
         ],
-        flags: {}
+        flags: {},
+        demos: [
+            { cmd: "clone briancullinan2/quedit", desc: "Clone environment profile default production structures" },
+            { cmd: "clone id-Software/Quake-III-Arena main", desc: "Pull explicit code branches from target historical repository tracking lists" }
+        ]
     },
     kill: {
         description: "Terminate all running workers or low-level application processes immediately.",
         args: [],
-        flags: {}
+        flags: {},
+        demos: [{ cmd: "kill", desc: "Force stop all active asynchronous layout thread routines" }]
     },
 
     // ==========================================
@@ -124,7 +168,7 @@ const COMMAND_SCHEMA = {
     terminate: { alias: "kill" },
     stop: { alias: "kill" },
     start: { alias: "run" },
-    hello: { alias: "help" } // Redirect matching demo hooks
+    hello: { alias: "help" }
 };
 
 function writeCommandHelp(targetCommand, argv) {
@@ -144,7 +188,7 @@ function writeCommandHelp(targetCommand, argv) {
     }
 
     term.write(`\n\r\x1b[1;38;5;33mMANUAL LOOKUP: ${targetCommand.toUpperCase()}\x1b[0m\n\r`);
-    term.write(`Description : ${schema.description}\n\r\n\r`);
+    term.write(`\x1b[4mDescription:\x1b[0m ${schema.description}\n\r\n\r`);
 
     // Render Arguments and Typings
     if (schema.args.length > 0) {
@@ -170,6 +214,16 @@ function writeCommandHelp(targetCommand, argv) {
         });
         term.write(`\n\r`);
     }
+
+    if (schema.demos && schema.demos.length > 0) {
+        term.write(`\x1b[4mSample Execution Demos (Interactive):\x1b[0m\n\r`);
+        schema.demos.forEach(demo => {
+            // Bright Turquoise underlines on the actual target command sequence lines 
+            // making them instantly targetable for stage two processing maps
+            term.write(`\x1b[1;38;5;81m${demo.cmd.padEnd(50)}\x1b[0m \x1b[38;5;244m# ${demo.desc}\x1b[0m\n\r`);
+        });
+    }
+
 }
 
 
@@ -180,6 +234,9 @@ async function help(argv) {
     // Scenario A: Render deep metrics for an explicit, single requested command target
     if (targetCommand) {
         writeCommandHelp(targetCommand)
+        if (COMMAND_SCHEMA[targetCommand] && COMMAND_SCHEMA[targetCommand].alias) {
+            writeCommandHelp(COMMAND_SCHEMA[targetCommand].alias)
+        }
         return;
     }
 
@@ -202,9 +259,16 @@ async function help(argv) {
         } else {
             // Render active descriptions 
             term.write(`  \x1b[1;38;5;45m${keyNameDisplay}\x1b[0m : ${item.description}\n\r`);
-            writeCommandHelp(key)
         }
     }
+    for (const key of keys) {
+        if (!COMMAND_SCHEMA[key].alias) {
+            writeCommandHelp(key);
+            // Boundary line divider separating operational tools
+            term.write(`\x1b[38;5;238m${'-'.repeat(term.cols || 80)}\x1b[0m\n\r`);
+        }
+    }
+
     term.write(`\n\rRun "help <command>" to query explicit option arguments and value types.\n\r`);
 }
 
@@ -273,8 +337,6 @@ async function handleCommand(input) {
 
     runningCommand = false;
     triggerIncrementalSave();
-
-    term.write('\n\r> ');
 
 }
 
@@ -993,12 +1055,12 @@ async function lburg(argv, database) {
     })
 }
 async function clone(argv) {
-    let selected = argv[0] || toolsRepo || 'briancullinan2/quedit'
-    let parts = selected.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    const selected = argv[0] || toolsRepo || 'briancullinan2/quedit'
+    const parts = selected.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
 
-    var branch = argv[1]
+    const branch = argv[1]
     if (!branch) {
         branch = await getDefaultBranch(ownerName, repoName)
     }

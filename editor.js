@@ -34,7 +34,7 @@ const theme = document.getElementById('theme')
 let savedTheme = localStorage.getItem('theme') || theme.value || 'ace/theme/monokai'
 let themeName = savedTheme.split('/').pop()
 document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
-var editor = ace.edit("editor");
+let editor = ace.edit("editor");
 editor.setTheme(savedTheme);
 editor.renderer.setShowGutter(true);
 editor.renderer.$gutterLayer.setShowLineNumbers(true)
@@ -157,7 +157,7 @@ editor.commands.addCommand({
 
 /*
 ace.config.loadModule("ace/keybinding/vim", function(m) {
-    var Vim = m.CodeMirror.Vim;
+    let Vim = m.CodeMirror.Vim;
     Vim.defineEx("quit", "q", function(cm) {
         // Your logic to close the editor, tab, or window
         writeLog("User requested quit");
@@ -166,16 +166,16 @@ ace.config.loadModule("ace/keybinding/vim", function(m) {
 
 // Load the Vim module to access the Status Bar attachment
 ace.config.loadModule("ace/keyboard/vim", function(m) {
-    var VimApi = m.CodeMirror.Vim;
+    let VimApi = m.CodeMirror.Vim;
     // Some versions of Ace require this manual attachment:
-    var statusBar = document.getElementById("status-bar");
+    let statusBar = document.getElementById("status-bar");
     
     // This tells Ace to pipe ":commands" and "INSERT/NORMAL" modes to your div
     editor.setOption("showPrintMargin", false); // Optional cleanup
     
     // If using the official status bar extension:
-    // var StatusBar = ace.require("ace/ext/statusbar").StatusBar;
-    // var aceStatusBar = new StatusBar(editor, statusBar);
+    // let StatusBar = ace.require("ace/ext/statusbar").StatusBar;
+    // let aceStatusBar = new StatusBar(editor, statusBar);
 });
 
 */
@@ -257,12 +257,12 @@ async function newFile() {
 
 
 async function saveFile() {
-    var database = owner.value + '/' + repo.value
-    var filePath = currentSession()
+    const database = owner.value + '/' + repo.value
+    const filePath = currentSession()
     if (!currentSession())
         filePath = trees[database].nodesById[currentOpenFileId].path
-    var content = editor.getValue()
-    var newSha = await getGitShaBrowser(content)
+    const content = editor.getValue()
+    const newSha = await getGitShaBrowser(content)
     FS.virtual[filePath] = {
         timestamp: new Date(),
         mode: FS_FILE,

@@ -185,7 +185,7 @@ function InputPushMovedEvent(evt) {
 
 /*
 document.querySelector('element').bind('copy', function(event) {
-  var selectedText = window.getSelection().toString(); 
+  let selectedText = window.getSelection().toString(); 
   selectedText = selectedText.replace(/\u200B/g, '');
 
   clipboardData = event.clipboardData || window.clipboardData || event.originalEvent.clipboardData;
@@ -638,12 +638,12 @@ function InputPushTouchEvent(id, evt, data) {
     }
   }
 
-  var w = Module['canvas'].width;
-  var h = Module['canvas'].height;
-  var dx = data.angle ? (Math.cos(data.angle.radian) * data.distance) : 0
-  var dy = data.angle ? (Math.sin(data.angle.radian) * data.distance) : 0
-  var x = data.angle ? dx : Math.round(data.position.x)
-  var y = data.angle ? dy : Math.round(data.position.y)
+  let w = Module['canvas'].width;
+  let h = Module['canvas'].height;
+  let dx = data.angle ? (Math.cos(data.angle.radian) * data.distance) : 0
+  let dy = data.angle ? (Math.sin(data.angle.radian) * data.distance) : 0
+  let x = data.angle ? dx : Math.round(data.position.x)
+  let y = data.angle ? dy : Math.round(data.position.y)
 
   if (evt.type == 'start') {
     if ((Key_GetCatcher() & KEYCATCH_UI) && id == 3) {
@@ -981,7 +981,7 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
 
 }
 
-var INPUT = {
+let INPUT = {
   editorActive: false,
   touchhats: [[0, 0], [0, 0], [0, 0], [0, 0]], // x/y values for nipples
   joysticks: [],

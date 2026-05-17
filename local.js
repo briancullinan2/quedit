@@ -83,8 +83,8 @@ async function needsInstall(dbName, expectedStores) {
 
 
 async function setupDatabase(dbName, stores) {
-    var created = false
-    var error = null
+    let created = false
+    let error = null
     if (dbName.length < 4) {
         debugger
         console.error('how the fuck does this even happen?')
@@ -98,10 +98,10 @@ async function setupDatabase(dbName, stores) {
 
             try {
 
-                for (var key in stores) {
-                    var storeName = stores[key].key
-                    var keyPath = stores[key].value.item1
-                    var columnNames = stores[key].value.item2
+                for (let key in stores) {
+                    let storeName = stores[key].key
+                    let keyPath = stores[key].value.item1
+                    let columnNames = stores[key].value.item2
 
                     if (!keyPath || keyPath.length == 0) throw new Error('Keypath invalid for: ' + JSON.stringify(stores[key]))
 
@@ -348,7 +348,7 @@ async function queryIndexInternal(storeName, indexName, exactIndex = null, lower
     const store = tx.objectStore(storeName)
     const index = store.index(indexName || store.keyPath)
 
-    var range = null
+    let range = null
     if (exactIndex !== null) {
         range = IDBKeyRange.only(index.keyPath instanceof Array && !(exactIndex instanceof Array) ? [exactIndex] : exactIndex)
     } else if (upper !== null && lower !== null) {

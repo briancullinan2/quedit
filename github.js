@@ -106,7 +106,7 @@ async function loadGitHubTree(repoOwner, repoName, branch) {
             return obj;
         }, {});
 
-        var databases = await getDatabaseMetadata()
+        let databases = await getDatabaseMetadata()
         if (databases.filter(d => d.key == database).length == 0
             || (await needsInstall(database, DB_SCHEME)).item3) {
             await deleteOldDatabase(database)
@@ -402,7 +402,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
         } else {
             writeLog(`Downloading important (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
         }
-       
+
 
         let jsonResponse = await githubRequest(repoOwner, repoName, `contents/${filePath}`)
 

@@ -15,7 +15,7 @@
 })(window, function () {
   return /******/ (function (modules) { // webpackBootstrap
 /******/ 	// The module cache
-/******/ 	var installedModules = {};
+/******/ 	let installedModules = {};
 /******/
 /******/ 	// The require function
 /******/ 	function __webpack_require__(moduleId) {
@@ -26,7 +26,7 @@
         /******/
       }
 /******/ 		// Create a new module (and put it into the cache)
-/******/ 		var module = installedModules[moduleId] = {
+/******/ 		let module = installedModules[moduleId] = {
 /******/ 			i: moduleId,
 /******/ 			l: false,
 /******/ 			exports: {}
@@ -79,17 +79,17 @@
 /******/ 		if (mode & 1) value = __webpack_require__(value);
 /******/ 		if (mode & 8) return value;
 /******/ 		if ((mode & 4) && typeof value === 'object' && value && value.__esModule) return value;
-/******/ 		var ns = Object.create(null);
+/******/ 		let ns = Object.create(null);
 /******/ 		__webpack_require__.r(ns);
 /******/ 		Object.defineProperty(ns, 'default', { enumerable: true, value: value });
-/******/ 		if (mode & 2 && typeof value != 'string') for (var key in value) __webpack_require__.d(ns, key, function (key) { return value[key]; }.bind(null, key));
+/******/ 		if (mode & 2 && typeof value != 'string') for (let key in value) __webpack_require__.d(ns, key, function (key) { return value[key]; }.bind(null, key));
 /******/ 		return ns;
       /******/
     };
 /******/
 /******/ 	// getDefaultExport function for compatibility with non-harmony modules
 /******/ 	__webpack_require__.n = function (module) {
-/******/ 		var getter = module && module.__esModule ?
+/******/ 		let getter = module && module.__esModule ?
 /******/ 			function getDefault() { return module['default']; } :
 /******/ 			function getModuleExports() { return module; };
 /******/ 		__webpack_require__.d(getter, 'a', getter);
@@ -121,7 +121,7 @@
       });
       exports.default = Tree;
 
-      var _ajax = _interopRequireDefault(__webpack_require__(1));
+      let _ajax = _interopRequireDefault(__webpack_require__(1));
 
       __webpack_require__(2);
 
@@ -131,7 +131,7 @@
 
       function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance"); }
 
-      function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+      function _iterableToArrayLimit(arr, i) { let _arr = []; let _n = true; let _d = false; let _e = undefined; try { for (let _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
 
       function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
@@ -140,7 +140,7 @@
       }
 
       function uniq(arr) {
-        var map = {};
+        let map = {};
         return arr.reduce(function (acc, item) {
           if (!map[item]) {
             map[item] = true;
@@ -171,7 +171,7 @@
 
       function collapseFromLeaf(tree, leafNode) {
         try {
-          var nodeLiElement = tree.liElementsById[leafNode.parent.id];
+          let nodeLiElement = tree.liElementsById[leafNode.parent.id];
           if (!nodeLiElement.classList.contains('treejs-node__close')) nodeLiElement.getElementsByClassName('treejs-switcher')[0].click();
         } catch (error) {
           return;
@@ -181,17 +181,17 @@
       }
 
       function expandFromRoot(tree, root) {
-        var nodeLiElement = tree.liElementsById[root.id];
+        let nodeLiElement = tree.liElementsById[root.id];
         if (nodeLiElement.classList.contains('treejs-node__close')) nodeLiElement.getElementsByClassName('treejs-switcher')[0].click();
 
         if (root.hasOwnProperty('children')) {
-          var _iteratorNormalCompletion = true;
-          var _didIteratorError = false;
-          var _iteratorError = undefined;
+          let _iteratorNormalCompletion = true;
+          let _didIteratorError = false;
+          let _iteratorError = undefined;
 
           try {
-            for (var _iterator = root.children[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-              var child = _step.value;
+            for (let _iterator = root.children[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+              let child = _step.value;
               expandFromRoot(tree, child);
             }
           } catch (err) {
@@ -212,9 +212,9 @@
       }
 
       function Tree(container, options) {
-        var _this = this;
+        let _this = this;
 
-        var defaultOptions = {
+        let defaultOptions = {
           selectMode: 'checkbox',
           values: [],
           disables: [],
@@ -251,12 +251,12 @@
           },
           selectedNodes: {
             get: function get() {
-              var nodes = [];
-              var nodesById = this.nodesById;
+              let nodes = [];
+              let nodesById = this.nodesById;
 
-              for (var id in nodesById) {
+              for (let id in nodesById) {
                 if (nodesById.hasOwnProperty(id) && (nodesById[id].status === 1 || nodesById[id].status === 2)) {
-                  var node = Object.assign({}, nodesById[id]);
+                  let node = Object.assign({}, nodesById[id]);
                   delete node.parent;
                   delete node.children;
                   nodes.push(node);
@@ -268,12 +268,12 @@
           },
           disabledNodes: {
             get: function get() {
-              var nodes = [];
-              var nodesById = this.nodesById;
+              let nodes = [];
+              let nodesById = this.nodesById;
 
-              for (var id in nodesById) {
+              for (let id in nodesById) {
                 if (nodesById.hasOwnProperty(id) && nodesById[id].disabled) {
-                  var node = Object.assign({}, nodesById[id]);
+                  let node = Object.assign({}, nodesById[id]);
                   delete node.parent;
                   nodes.push(node);
                 }
@@ -345,7 +345,7 @@
       Tree.prototype.init = function (data) {
         console.time('init');
 
-        var _Tree$parseTreeData = Tree.parseTreeData(data),
+        let _Tree$parseTreeData = Tree.parseTreeData(data),
           treeNodes = _Tree$parseTreeData.treeNodes,
           nodesById = _Tree$parseTreeData.nodesById,
           leafNodesById = _Tree$parseTreeData.leafNodesById,
@@ -356,7 +356,7 @@
         this.nodesById = nodesById;
         this.leafNodesById = leafNodesById;
         this.render(this.treeNodes);
-        var _this$options = this.options,
+        let _this$options = this.options,
           values = _this$options.values,
           disables = _this$options.disables,
           loaded = _this$options.loaded;
@@ -370,7 +370,7 @@
 
       Tree.prototype.load = function (callback) {
         console.time('load');
-        var _this$options2 = this.options,
+        let _this$options2 = this.options,
           url = _this$options2.url,
           method = _this$options2.method,
           beforeLoad = _this$options2.beforeLoad;
@@ -378,7 +378,7 @@
           url: url,
           method: method,
           success: function success(result) {
-            var data = result;
+            let data = result;
             console.timeEnd('load');
 
             if (beforeLoad) {
@@ -391,24 +391,24 @@
       };
 
       Tree.prototype.render = function (treeNodes) {
-        var treeEle = Tree.createRootEle();
+        let treeEle = Tree.createRootEle();
         treeEle.appendChild(this.buildTree(treeNodes, 0));
         this.bindEvent(treeEle);
-        var ele = document.querySelector(this.container);
+        let ele = document.querySelector(this.container);
         empty(ele);
         ele.appendChild(treeEle);
       };
 
       Tree.prototype.buildTree = function (nodes, depth) {
-        var _this2 = this;
+        let _this2 = this;
 
-        var rootUlEle = Tree.createUlEle();
+        let rootUlEle = Tree.createUlEle();
 
         if (nodes && nodes.length) {
           nodes.forEach(function (node) {
-            var liEle = Tree.createLiEle(node, _this2.options.autoOpen === false || depth === _this2.options.closeDepth - 1);
+            let liEle = Tree.createLiEle(node, _this2.options.autoOpen === false || depth === _this2.options.closeDepth - 1);
             _this2.liElementsById[node.id] = liEle;
-            var ulEle = null;
+            let ulEle = null;
 
             if (node.children && node.children.length) {
               ulEle = _this2.buildTree(node.children, depth + 1);
@@ -423,10 +423,10 @@
       };
 
       Tree.prototype.bindEvent = function (ele) {
-        var _this3 = this;
+        let _this3 = this;
 
         ele.addEventListener('click', function (e) {
-          var target = e.target;
+          let target = e.target;
 
           if (target.nodeName === 'SPAN' && (target.classList.contains('treejs-checkbox') || target.classList.contains('treejs-label'))) {
             _this3.onItemClick(target.parentNode.nodeId);
@@ -440,8 +440,8 @@
 
       Tree.prototype.onItemClick = function (id) {
         console.time('onItemClick');
-        var node = this.nodesById[id];
-        var onChange = this.options.onChange;
+        let node = this.nodesById[id];
+        let onChange = this.options.onChange;
 
         if (!node.disabled) {
           this.setValue(id);
@@ -453,10 +453,10 @@
       };
 
       Tree.prototype.setValue = function (value) {
-        var node = this.nodesById[value];
+        let node = this.nodesById[value];
         if (!node) return;
-        var prevStatus = node.status;
-        var status = prevStatus === 1 || prevStatus === 2 ? 0 : 2;
+        let prevStatus = node.status;
+        let status = prevStatus === 1 || prevStatus === 2 ? 0 : 2;
         node.status = status;
         this.markWillUpdateNode(node);
         this.walkUp(node, 'status');
@@ -464,9 +464,9 @@
       };
 
       Tree.prototype.getValues = function () {
-        var values = [];
+        let values = [];
 
-        for (var id in this.leafNodesById) {
+        for (let id in this.leafNodesById) {
           if (this.leafNodesById.hasOwnProperty(id)) {
             if (this.leafNodesById[id].status === 1 || this.leafNodesById[id].status === 2) {
               values.push(id);
@@ -478,17 +478,17 @@
       };
 
       Tree.prototype.setValues = function (values) {
-        var _this4 = this;
+        let _this4 = this;
         this.emptyNodesCheckStatus();
 
         values.forEach(function (value) {
           _this4.setValue(value);
 
-          var node = _this4.nodesById[value];
+          let node = _this4.nodesById[value];
           if (node) {
             // 1. Collect lineage (Root -> Parent -> Target)
-            var lineage = [];
-            var current = node; // Start with the target node itself
+            let lineage = [];
+            let current = node; // Start with the target node itself
 
             while (current) {
               // We only care about nodes that are folders (have children)
@@ -501,9 +501,9 @@
 
             // 2. Open lineage top-down
             lineage.forEach(function (nodeToOpen, index) {
-              var liEle = _this4.liElementsById[nodeToOpen.id];
+              let liEle = _this4.liElementsById[nodeToOpen.id];
               if (liEle && liEle.classList.contains('treejs-node__close')) {
-                var switcher = liEle.querySelector('.treejs-switcher');
+                let switcher = liEle.querySelector('.treejs-switcher');
                 if (switcher) {
                   setTimeout(function () {
                     _this4.onSwitcherClick(switcher);
@@ -513,7 +513,7 @@
             });
 
             // 3. Final Scroll to Target
-            var targetLi = _this4.liElementsById[value];
+            let targetLi = _this4.liElementsById[value];
             if (targetLi) {
               setTimeout(function () {
                 targetLi.scrollIntoView({
@@ -527,14 +527,14 @@
         });
 
         this.updateLiElements();
-        var onChange = this.options.onChange;
+        let onChange = this.options.onChange;
         if (onChange) onChange.call(this);
       };
 
       Tree.prototype.setDisable = function (value) {
-        var node = this.nodesById[value];
+        let node = this.nodesById[value];
         if (!node) return;
-        var prevDisabled = node.disabled;
+        let prevDisabled = node.disabled;
 
         if (!prevDisabled) {
           node.disabled = true;
@@ -545,9 +545,9 @@
       };
 
       Tree.prototype.getDisables = function () {
-        var values = [];
+        let values = [];
 
-        for (var id in this.leafNodesById) {
+        for (let id in this.leafNodesById) {
           if (this.leafNodesById.hasOwnProperty(id)) {
             if (this.leafNodesById[id].disabled) {
               values.push(id);
@@ -559,7 +559,7 @@
       };
 
       Tree.prototype.setDisables = function (values) {
-        var _this5 = this;
+        let _this5 = this;
 
         this.emptyNodesDisable();
         values.forEach(function (value) {
@@ -584,7 +584,7 @@
 
       Tree.prototype.getSelectedNodesById = function () {
         return Object.entries(this.nodesById).reduce(function (acc, _ref) {
-          var _ref2 = _slicedToArray(_ref, 2),
+          let _ref2 = _slicedToArray(_ref, 2),
             id = _ref2[0],
             node = _ref2[1];
 
@@ -598,7 +598,7 @@
 
       Tree.prototype.getDisabledNodesById = function () {
         return Object.entries(this.nodesById).reduce(function (acc, _ref3) {
-          var _ref4 = _slicedToArray(_ref3, 2),
+          let _ref4 = _slicedToArray(_ref3, 2),
             id = _ref4[0],
             node = _ref4[1];
 
@@ -611,7 +611,7 @@
       };
 
       Tree.prototype.updateLiElements = function () {
-        var _this6 = this;
+        let _this6 = this;
 
         Object.values(this.willUpdateNodesById).forEach(function (node) {
           _this6.updateLiElement(node);
@@ -673,9 +673,9 @@
       };
 
       Tree.prototype.onSwitcherClick = function (target) {
-        var liEle = target.parentNode;
-        var ele = liEle.lastChild;
-        var height = ele.scrollHeight;
+        let liEle = target.parentNode;
+        let ele = liEle.lastChild;
+        let height = ele.scrollHeight;
 
         if (liEle.classList.contains('treejs-node__close')) {
           animation(150, {
@@ -715,12 +715,12 @@
       };
 
       Tree.prototype.walkUp = function (node, changeState) {
-        var parent = node.parent;
+        let parent = node.parent;
 
         if (parent) {
           if (changeState === 'status') {
-            var pStatus = null;
-            var statusCount = parent.children.reduce(function (acc, child) {
+            let pStatus = null;
+            let statusCount = parent.children.reduce(function (acc, child) {
               if (!isNaN(child.status)) return acc + child.status;
               return acc;
             }, 0);
@@ -734,7 +734,7 @@
             if (parent.status === pStatus) return;
             parent.status = pStatus;
           } else {
-            var pDisabled = parent.children.reduce(function (acc, child) {
+            let pDisabled = parent.children.reduce(function (acc, child) {
               return acc && child.disabled;
             }, true);
             if (parent.disabled === pDisabled) return;
@@ -747,7 +747,7 @@
       };
 
       Tree.prototype.walkDown = function (node, changeState) {
-        var _this7 = this;
+        let _this7 = this;
 
         if (node.children && node.children.length) {
           node.children.forEach(function (child) {
@@ -762,7 +762,7 @@
       };
 
       Tree.prototype.updateLiElement = function (node) {
-        var classList = this.liElementsById[node.id].classList;
+        let classList = this.liElementsById[node.id].classList;
 
         switch (node.status) {
           case 0:
@@ -792,10 +792,10 @@
       };
 
       Tree.prototype.collapseAll = function () {
-        var leafNodesById = this.leafNodesById;
+        let leafNodesById = this.leafNodesById;
 
-        for (var id in leafNodesById) {
-          var leafNode = leafNodesById[id];
+        for (let id in leafNodesById) {
+          let leafNode = leafNodesById[id];
           collapseFromLeaf(this, leafNode);
         }
       };
@@ -805,13 +805,13 @@
       };
 
       Tree.parseTreeData = function (data) {
-        var treeNodes = deepClone(data);
-        var nodesById = {};
-        var leafNodesById = {};
-        var values = [];
-        var disables = [];
+        let treeNodes = deepClone(data);
+        let nodesById = {};
+        let leafNodesById = {};
+        let values = [];
+        let disables = [];
 
-        var walkTree = function walkTree(nodes, parent) {
+        let walkTree = function walkTree(nodes, parent) {
           nodes.forEach(function (node) {
             nodesById[node.id] = node;
             if (node.checked) values.push(node.id);
@@ -837,19 +837,19 @@
       };
 
       Tree.createRootEle = function () {
-        var div = document.createElement('div');
+        let div = document.createElement('div');
         div.classList.add('treejs');
         return div;
       };
 
       Tree.createUlEle = function () {
-        var ul = document.createElement('ul');
+        let ul = document.createElement('ul');
         ul.classList.add('treejs-nodes');
         return ul;
       };
 
       Tree.createLiEle = function (node, closed) {
-        var li = document.createElement('li');
+        let li = document.createElement('li');
         li.classList.add('treejs-node');
         if (closed) {
           li.classList.add('treejs-node__close');
@@ -860,21 +860,21 @@
           li.classList.add('treejs-node__open');
         }
 
-        var hasChildren = node.children && (node.children instanceof Array || node.children.length);
+        let hasChildren = node.children && (node.children instanceof Array || node.children.length);
         if (hasChildren) {
-          var switcher = document.createElement('span');
+          let switcher = document.createElement('span');
           switcher.classList.add('treejs-switcher');
           li.appendChild(switcher);
         } else {
           li.classList.add('treejs-placeholder');
         }
 
-        var checkbox = document.createElement('span');
+        let checkbox = document.createElement('span');
         checkbox.classList.add('treejs-checkbox');
         li.appendChild(checkbox);
-        var label = document.createElement('span');
+        let label = document.createElement('span');
         label.classList.add('treejs-label');
-        var text = document.createTextNode(node.text);
+        let text = document.createTextNode(node.text);
         label.appendChild(text);
         li.appendChild(label);
         li.nodeId = node.id;
@@ -900,12 +900,12 @@
 
       function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance"); }
 
-      function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+      function _iterableToArrayLimit(arr, i) { let _arr = []; let _n = true; let _d = false; let _e = undefined; try { for (let _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
 
       function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
       function _default(_options) {
-        var defaultOptions = {
+        let defaultOptions = {
           method: 'GET',
           url: '',
           async: true,
@@ -913,10 +913,10 @@
           failed: null,
           'Content-Type': 'application/json; charset=utf-8'
         };
-        var options = Object.assign(defaultOptions, _options);
-        var xhr = new XMLHttpRequest();
-        var postData = Object.entries(options.data).reduce(function (acc, _ref) {
-          var _ref2 = _slicedToArray(_ref, 2),
+        let options = Object.assign(defaultOptions, _options);
+        let xhr = new XMLHttpRequest();
+        let postData = Object.entries(options.data).reduce(function (acc, _ref) {
+          let _ref2 = _slicedToArray(_ref, 2),
             key = _ref2[0],
             value = _ref2[1];
 
@@ -929,7 +929,7 @@
           xhr.setRequestHeader('Content-Type', options['Content-Type']);
           xhr.send(postData);
         } else if (options.method.toUpperCase() === 'GET') {
-          var url = options.url;
+          let url = options.url;
 
           if (postData) {
             if (url.indexOf('?') !== -1) {
@@ -946,7 +946,7 @@
 
         xhr.onreadystatechange = function () {
           if (xhr.readyState === 4 && xhr.status === 200) {
-            var res = xhr.responseText;
+            let res = xhr.responseText;
 
             if (options['Content-Type'] === defaultOptions['Content-Type']) {
               res = JSON.parse(res);
@@ -965,21 +965,21 @@
 /***/ (function (module, exports, __webpack_require__) {
 
 
-      var content = __webpack_require__(3);
+      let content = __webpack_require__(3);
 
       if (typeof content === 'string') content = [[module.i, content, '']];
 
-      var transform;
-      var insertInto;
+      let transform;
+      let insertInto;
 
 
 
-      var options = { "hmr": true }
+      let options = { "hmr": true }
 
       options.transform = transform
       options.insertInto = undefined;
 
-      var update = __webpack_require__(5)(content, options);
+      let update = __webpack_require__(5)(content, options);
 
       if (content.locals) module.exports = content.locals;
 
@@ -1011,12 +1011,12 @@
       */
       // css base code, injected by the css-loader
       module.exports = function (useSourceMap) {
-        var list = [];
+        let list = [];
 
         // return the list of modules as css string
         list.toString = function toString() {
           return this.map(function (item) {
-            var content = cssWithMappingToString(item, useSourceMap);
+            let content = cssWithMappingToString(item, useSourceMap);
             if (item[2]) {
               return "@media " + item[2] + "{" + content + "}";
             } else {
@@ -1029,14 +1029,14 @@
         list.i = function (modules, mediaQuery) {
           if (typeof modules === "string")
             modules = [[null, modules, ""]];
-          var alreadyImportedModules = {};
-          for (var i = 0; i < this.length; i++) {
-            var id = this[i][0];
+          let alreadyImportedModules = {};
+          for (let i = 0; i < this.length; i++) {
+            let id = this[i][0];
             if (typeof id === "number")
               alreadyImportedModules[id] = true;
           }
           for (i = 0; i < modules.length; i++) {
-            var item = modules[i];
+            let item = modules[i];
             // skip already imported module
             // this implementation is not 100% perfect for weird media query combinations
             //  when a module is imported multiple times with different media queries.
@@ -1055,15 +1055,15 @@
       };
 
       function cssWithMappingToString(item, useSourceMap) {
-        var content = item[1] || '';
-        var cssMapping = item[3];
+        let content = item[1] || '';
+        let cssMapping = item[3];
         if (!cssMapping) {
           return content;
         }
 
         if (useSourceMap && typeof btoa === 'function') {
-          var sourceMapping = toComment(cssMapping);
-          var sourceURLs = cssMapping.sources.map(function (source) {
+          let sourceMapping = toComment(cssMapping);
+          let sourceURLs = cssMapping.sources.map(function (source) {
             return '/*# sourceURL=' + cssMapping.sourceRoot + source + ' */'
           });
 
@@ -1076,8 +1076,8 @@
       // Adapted from convert-source-map (MIT)
       function toComment(sourceMap) {
         // eslint-disable-next-line no-undef
-        var base64 = btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap))));
-        var data = 'sourceMappingURL=data:application/json;charset=utf-8;base64,' + base64;
+        let base64 = btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap))));
+        let data = 'sourceMappingURL=data:application/json;charset=utf-8;base64,' + base64;
 
         return '/*# ' + data + ' */';
       }
@@ -1093,10 +1093,10 @@
         Author Tobias Koppers @sokra
       */
 
-      var stylesInDom = {};
+      let stylesInDom = {};
 
-      var memoize = function (fn) {
-        var memo;
+      let memoize = function (fn) {
+        let memo;
 
         return function () {
           if (typeof memo === "undefined") memo = fn.apply(this, arguments);
@@ -1104,7 +1104,7 @@
         };
       };
 
-      var isOldIE = memoize(function () {
+      let isOldIE = memoize(function () {
         // Test for IE <= 9 as proposed by Browserhacks
         // @see http://browserhacks.com/#hack-e71d8692f65334173fee715c222cb805
         // Tests for existence of standard globals is to allow style-loader
@@ -1113,12 +1113,12 @@
         return window && document && document.all && !window.atob;
       });
 
-      var getTarget = function (target) {
+      let getTarget = function (target) {
         return document.querySelector(target);
       };
 
-      var getElement = (function (fn) {
-        var memo = {};
+      let getElement = (function (fn) {
+        let memo = {};
 
         return function (target) {
           // If passing function in options, then use it for resolve "head" element.
@@ -1130,7 +1130,7 @@
             return target();
           }
           if (typeof memo[target] === "undefined") {
-            var styleTarget = getTarget.call(this, target);
+            let styleTarget = getTarget.call(this, target);
             // Special case to return head of iframe instead of iframe itself
             if (window.HTMLIFrameElement && styleTarget instanceof window.HTMLIFrameElement) {
               try {
@@ -1147,11 +1147,11 @@
         };
       })();
 
-      var singleton = null;
-      var singletonCounter = 0;
-      var stylesInsertedAtTop = [];
+      let singleton = null;
+      let singletonCounter = 0;
+      let stylesInsertedAtTop = [];
 
-      var fixUrls = __webpack_require__(6);
+      let fixUrls = __webpack_require__(6);
 
       module.exports = function (list, options) {
         if (typeof DEBUG !== "undefined" && DEBUG) {
@@ -1172,31 +1172,31 @@
         // By default, add <style> tags to the bottom of the target
         if (!options.insertAt) options.insertAt = "bottom";
 
-        var styles = listToStyles(list, options);
+        let styles = listToStyles(list, options);
 
         addStylesToDom(styles, options);
 
         return function update(newList) {
-          var mayRemove = [];
+          let mayRemove = [];
 
-          for (var i = 0; i < styles.length; i++) {
-            var item = styles[i];
-            var domStyle = stylesInDom[item.id];
+          for (let i = 0; i < styles.length; i++) {
+            let item = styles[i];
+            let domStyle = stylesInDom[item.id];
 
             domStyle.refs--;
             mayRemove.push(domStyle);
           }
 
           if (newList) {
-            var newStyles = listToStyles(newList, options);
+            let newStyles = listToStyles(newList, options);
             addStylesToDom(newStyles, options);
           }
 
-          for (var i = 0; i < mayRemove.length; i++) {
-            var domStyle = mayRemove[i];
+          for (let i = 0; i < mayRemove.length; i++) {
+            let domStyle = mayRemove[i];
 
             if (domStyle.refs === 0) {
-              for (var j = 0; j < domStyle.parts.length; j++) domStyle.parts[j]();
+              for (let j = 0; j < domStyle.parts.length; j++) domStyle.parts[j]();
 
               delete stylesInDom[domStyle.id];
             }
@@ -1205,14 +1205,14 @@
       };
 
       function addStylesToDom(styles, options) {
-        for (var i = 0; i < styles.length; i++) {
-          var item = styles[i];
-          var domStyle = stylesInDom[item.id];
+        for (let i = 0; i < styles.length; i++) {
+          let item = styles[i];
+          let domStyle = stylesInDom[item.id];
 
           if (domStyle) {
             domStyle.refs++;
 
-            for (var j = 0; j < domStyle.parts.length; j++) {
+            for (let j = 0; j < domStyle.parts.length; j++) {
               domStyle.parts[j](item.parts[j]);
             }
 
@@ -1220,9 +1220,9 @@
               domStyle.parts.push(addStyle(item.parts[j], options));
             }
           } else {
-            var parts = [];
+            let parts = [];
 
-            for (var j = 0; j < item.parts.length; j++) {
+            for (let j = 0; j < item.parts.length; j++) {
               parts.push(addStyle(item.parts[j], options));
             }
 
@@ -1232,16 +1232,16 @@
       }
 
       function listToStyles(list, options) {
-        var styles = [];
-        var newStyles = {};
+        let styles = [];
+        let newStyles = {};
 
-        for (var i = 0; i < list.length; i++) {
-          var item = list[i];
-          var id = options.base ? item[0] + options.base : item[0];
-          var css = item[1];
-          var media = item[2];
-          var sourceMap = item[3];
-          var part = { css: css, media: media, sourceMap: sourceMap };
+        for (let i = 0; i < list.length; i++) {
+          let item = list[i];
+          let id = options.base ? item[0] + options.base : item[0];
+          let css = item[1];
+          let media = item[2];
+          let sourceMap = item[3];
+          let part = { css: css, media: media, sourceMap: sourceMap };
 
           if (!newStyles[id]) styles.push(newStyles[id] = { id: id, parts: [part] });
           else newStyles[id].parts.push(part);
@@ -1251,13 +1251,13 @@
       }
 
       function insertStyleElement(options, style) {
-        var target = getElement(options.insertInto)
+        let target = getElement(options.insertInto)
 
         if (!target) {
           throw new Error("Couldn't find a style target. This probably means that the value for the 'insertInto' parameter is invalid.");
         }
 
-        var lastStyleElementInsertedAtTop = stylesInsertedAtTop[stylesInsertedAtTop.length - 1];
+        let lastStyleElementInsertedAtTop = stylesInsertedAtTop[stylesInsertedAtTop.length - 1];
 
         if (options.insertAt === "top") {
           if (!lastStyleElementInsertedAtTop) {
@@ -1271,7 +1271,7 @@
         } else if (options.insertAt === "bottom") {
           target.appendChild(style);
         } else if (typeof options.insertAt === "object" && options.insertAt.before) {
-          var nextSibling = getElement(options.insertInto + " " + options.insertAt.before);
+          let nextSibling = getElement(options.insertInto + " " + options.insertAt.before);
           target.insertBefore(style, nextSibling);
         } else {
           throw new Error("[Style Loader]\n\n Invalid value for parameter 'insertAt' ('options.insertAt') found.\n Must be 'top', 'bottom', or Object.\n (https://github.com/webpack-contrib/style-loader#insertat)\n");
@@ -1282,14 +1282,14 @@
         if (style.parentNode === null) return false;
         style.parentNode.removeChild(style);
 
-        var idx = stylesInsertedAtTop.indexOf(style);
+        let idx = stylesInsertedAtTop.indexOf(style);
         if (idx >= 0) {
           stylesInsertedAtTop.splice(idx, 1);
         }
       }
 
       function createStyleElement(options) {
-        var style = document.createElement("style");
+        let style = document.createElement("style");
 
         if (options.attrs.type === undefined) {
           options.attrs.type = "text/css";
@@ -1302,7 +1302,7 @@
       }
 
       function createLinkElement(options) {
-        var link = document.createElement("link");
+        let link = document.createElement("link");
 
         if (options.attrs.type === undefined) {
           options.attrs.type = "text/css";
@@ -1322,7 +1322,7 @@
       }
 
       function addStyle(obj, options) {
-        var style, update, remove, result;
+        let style, update, remove, result;
 
         // If a transform function was defined, run it on the css
         if (options.transform && obj.css) {
@@ -1342,7 +1342,7 @@
         }
 
         if (options.singleton) {
-          var styleIndex = singletonCounter++;
+          let styleIndex = singletonCounter++;
 
           style = singleton || (singleton = createStyleElement(options));
 
@@ -1391,8 +1391,8 @@
         };
       }
 
-      var replaceText = (function () {
-        var textStore = [];
+      let replaceText = (function () {
+        let textStore = [];
 
         return function (index, replacement) {
           textStore[index] = replacement;
@@ -1402,13 +1402,13 @@
       })();
 
       function applyToSingletonTag(style, index, remove, obj) {
-        var css = remove ? "" : obj.css;
+        let css = remove ? "" : obj.css;
 
         if (style.styleSheet) {
           style.styleSheet.cssText = replaceText(index, css);
         } else {
-          var cssNode = document.createTextNode(css);
-          var childNodes = style.childNodes;
+          let cssNode = document.createTextNode(css);
+          let childNodes = style.childNodes;
 
           if (childNodes[index]) style.removeChild(childNodes[index]);
 
@@ -1421,8 +1421,8 @@
       }
 
       function applyToTag(style, obj) {
-        var css = obj.css;
-        var media = obj.media;
+        let css = obj.css;
+        let media = obj.media;
 
         if (media) {
           style.setAttribute("media", media)
@@ -1440,8 +1440,8 @@
       }
 
       function updateLink(link, options, obj) {
-        var css = obj.css;
-        var sourceMap = obj.sourceMap;
+        let css = obj.css;
+        let sourceMap = obj.sourceMap;
 
         /*
           If convertToAbsoluteUrls isn't defined, but sourcemaps are enabled
@@ -1449,7 +1449,7 @@
           on by default.  Otherwise default to the convertToAbsoluteUrls option
           directly
         */
-        var autoFixUrls = options.convertToAbsoluteUrls === undefined && sourceMap;
+        let autoFixUrls = options.convertToAbsoluteUrls === undefined && sourceMap;
 
         if (options.convertToAbsoluteUrls || autoFixUrls) {
           css = fixUrls(css);
@@ -1460,9 +1460,9 @@
           css += "\n/*# sourceMappingURL=data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap)))) + " */";
         }
 
-        var blob = new Blob([css], { type: "text/css" });
+        let blob = new Blob([css], { type: "text/css" });
 
-        var oldSrc = link.href;
+        let oldSrc = link.href;
 
         link.href = URL.createObjectURL(blob);
 
@@ -1491,7 +1491,7 @@
 
       module.exports = function (css) {
         // get current location
-        var location = typeof window !== "undefined" && window.location;
+        let location = typeof window !== "undefined" && window.location;
 
         if (!location) {
           throw new Error("fixUrls requires window.location");
@@ -1502,8 +1502,8 @@
           return css;
         }
 
-        var baseUrl = location.protocol + "//" + location.host;
-        var currentDir = baseUrl + location.pathname.replace(/\/[^\/]*$/, "/");
+        let baseUrl = location.protocol + "//" + location.host;
+        let currentDir = baseUrl + location.pathname.replace(/\/[^\/]*$/, "/");
 
         // convert each url(...)
         /*
@@ -1531,9 +1531,9 @@
       
          /gi  = Get all matches, not the first.  Be case insensitive.
          */
-        var fixedCss = css.replace(/url\s*\(((?:[^)(]|\((?:[^)(]+|\([^)(]*\))*\))*)\)/gi, function (fullMatch, origUrl) {
+        let fixedCss = css.replace(/url\s*\(((?:[^)(]|\((?:[^)(]+|\([^)(]*\))*\))*)\)/gi, function (fullMatch, origUrl) {
           // strip quotes (if they exist)
-          var unquotedOrigUrl = origUrl
+          let unquotedOrigUrl = origUrl
             .trim()
             .replace(/^"(.*)"$/, function (o, $1) { return $1; })
             .replace(/^'(.*)'$/, function (o, $1) { return $1; });
@@ -1544,7 +1544,7 @@
           }
 
           // convert the url to a full url
-          var newUrl;
+          let newUrl;
 
           if (unquotedOrigUrl.indexOf("//") === 0) {
             //TODO: should we add protocol?

@@ -292,11 +292,12 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     renderHashCommand(window.location.hash.substring(1))
 
     setTimeout(() => {
-        forceFit(term, container)
+        forceFit(term, terminalContainer)
         term.write(loadedLog.join('\n\r'))
         term.write(preterm.join(''))
-        term.write('\n\r')
-        term.write('> ');
+        if (loadedLog.length > 0 || preterm.length > 0)
+        writePrompt()
+        // Initial prompt
         terminalLoaded = true
     }, 200);
 });
@@ -497,7 +498,7 @@ const hasSequentialBinaryRegex = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]{3,}/;
 async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true, hidePanels = true) {
     api.github_token = localStorage.getItem('github_token');
 
-    let content = await cacheFile(repoOwner, repoName, filePath, sha);
+    let content = await cacheFile(repoOwner, repoName, filePath, sha, true);
 
     // 1. Scan just the first 1024 bytes for binary characters before decoding everything
     const sampleBytes = content.subarray(0, 1024);

@@ -157,7 +157,7 @@ async function initEngine(program) {
         }
         // Startup args is expecting a char **
         _start(SYS.startArgs.length, stringsToMemory(SYS.startArgs))
-        // should have Cvar system by now
+        // should have Clet system by now
         // this might help prevent this thing that krunker.io does where it lags when it first starts up
         Com_MaxFPSChanged()
     } catch (e) {
@@ -278,9 +278,9 @@ async function run(database = null, noBounce = false) {
 
 
 function _base64ToArrayBuffer(base64) {
-    var binary_string = window.atob(base64);
-    var len = binary_string.length;
-    var bytes = new Uint8Array(len);
+    let binary_string = window.atob(base64);
+    let len = binary_string.length;
+    let bytes = new Uint8Array(len);
     for (let i = 0; i < len; i++) {
         bytes[i] = binary_string.charCodeAt(i);
     }
