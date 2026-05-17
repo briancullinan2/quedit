@@ -296,7 +296,7 @@ function performSharedBufferScanInternal(termToSearch, caseSensitive = false) {
                 if (decoration) {
                     decoration.onRender(element => {
                         // Keeps link targets completely clickable underneath
-                        element.style.pointerEvents = 'none'; 
+                        element.style.pointerEvents = 'none';
                         element.classList.add('terminal-file-underline');
                     });
                     fileUnderlineMarkers.push(decoration);
@@ -1002,16 +1002,21 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
 
     if (!dbFile) dbFile = files[selected][filePath]
 
-
     if (!dbFile) return
 
     currentOpenFileId = dbFile.sha
 
     await openFile(ownerName, repoName, filePath, dbFile.sha, true /* record history */, false /* show file list */)
-    if (lineNumber)
-        editor.gotoLine(lineNumber, 0, true);
-    editor.focus();
+    setTimeout(() => {
+        editorContainer.classList.remove('hidden')
+        editorContainer.classList.add('not-hidden')
 
+        if (lineNumber)
+            editor.gotoLine(lineNumber, 0, true);
+        editor.focus();
+        latestPanelId = 'editor'
+    }, 500)
+    resizeDebouncer()
 }
 
 

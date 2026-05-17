@@ -34,6 +34,7 @@ const theme = document.getElementById('theme')
 let savedTheme = localStorage.getItem('theme') || theme.value || 'ace/theme/monokai'
 let themeName = savedTheme.split('/').pop()
 document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
+const editorContainer = document.getElementById('editor')
 let editor = ace.edit("editor");
 editor.setTheme(savedTheme);
 editor.renderer.setShowGutter(true);
@@ -244,7 +245,8 @@ async function newFile() {
     editor.setSession(session);
     resizeDebouncer()
     hideOpenPanels()
-    document.getElementById('editor').classList.add('not-hidden')
+    editorContainer.classList.add('not-hidden')
+    editorContainer.classList.remove('hidden')
 
 }
 
@@ -330,7 +332,7 @@ function updateMaxLines() {
         // add scroll to bottom of files
     //    + (height * 0.25 / lineHeight)
     //if (!isFull) {
-        calculatedMax = Math.floor(height / lineHeight) - 1;
+        calculatedMax = Math.floor(height / lineHeight);
     //}
 
     editor.setOptions({

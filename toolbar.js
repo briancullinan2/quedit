@@ -276,7 +276,8 @@ async function settings() {
     resizeDebouncer()
     
     hideOpenPanels()
-    document.getElementById('editor').classList.add('not-hidden')
+    editorContainer.classList.add('not-hidden')
+    editorContainer.classList.remove('hidden')
 
 }
 

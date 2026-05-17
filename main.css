@@ -26,7 +26,7 @@ body {
 
 #editor-container {
     flex: 1 1 auto;
-    flex-basis: calc(50% - 54px);
+    flex-basis: min-content;
     min-height: 0;
     overflow: hidden;
 }
@@ -157,6 +157,14 @@ body {
     flex-basis: 100%;
 }
 
+#main-body>* {
+    flex-shrink: 1;
+    flex-grow: 1;
+    min-height: 0;
+    max-width: 100%;
+}
+
+
 #main>* {
     flex-shrink: 1;
     flex-grow: 1;
@@ -184,7 +192,7 @@ body {
 
 
 #tabs {
-    width: 54px;
+    max-width: 54px;
     flex-basis: 54px;
 }
 
@@ -718,8 +726,20 @@ input[type="checkbox"]:focus-visible {
     display: none;
 }
 
+#viewport-frame {
+    position: absolute;
+    z-index: -1;
+}
+
+#viewport-frame {
+    position: absolute;
+    z-index: -1;
+    visibility: hidden;
+    flex-basis: calc(100% - 54px);
+}
+
+
 #terminal-container.not-hidden,
-#edito.not-hiddenr,
 #assetlist.not-hidden,
 #gamelist.not-hidden,
 #database.not-hidden,
@@ -727,7 +747,13 @@ input[type="checkbox"]:focus-visible {
 #filelist.not-hidden,
 #editor.not-hidden {
     display: block;
-    flex-basis: 100%;
+    min-width: 200px;
+}
+
+#viewport-frame.not-hidden {
+    visibility: visible;
+    position: static;
+    z-index: 100;
 }
 
 #terminal.not-hidden {}
@@ -787,18 +813,6 @@ input[type="checkbox"]:focus-visible {
         display: none;
     }
 
-    #viewport-frame {
-        position: absolute;
-        z-index: -1;
-        visibility: hidden;
-        flex-basis: calc(100% - 54px);
-    }
-
-    #viewport-frame.not-hidden {
-        visibility: visible;
-        position: static;
-        z-index: 100;
-    }
 
     #main {
         /*flex-direction: row;

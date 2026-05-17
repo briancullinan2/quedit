@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         term.write(loadedLog.join('\n\r'))
         term.write(preterm.join(''))
         if (loadedLog.length > 0 || preterm.length > 0)
-        writePrompt()
+            writePrompt()
         // Initial prompt
         terminalLoaded = true
     }, 200);
@@ -495,7 +495,20 @@ function hexDump(sampleBytes, content, filePath) {
 
 const hasSequentialBinaryRegex = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]{3,}/;
 
-async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true, hidePanels = true) {
+let openFileDebounce = null
+let latestOpenRequest = null
+async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true, hidePanels = true, noBounce = false) {
+
+    latestOpenRequest = () => openFile(repoOwner, repoName, filePath, sha, recordHistory, hidePanels, true)
+    if (!noBounce && openFileDebounce) return
+    if (!noBounce) {
+        openFileDebounce = setTimeout(() => {
+            latestOpenRequest()
+            openFileDebounce = null
+        }, 400);
+        return
+    }
+
     api.github_token = localStorage.getItem('github_token');
 
     let content = await cacheFile(repoOwner, repoName, filePath, sha, true);
@@ -520,12 +533,15 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     const mode = getModeByFilename(filePath);
     session.setMode(mode);
     editor.setSession(session);
-   
+
     resizeDebouncer()
-    
+
     if (hidePanels)
         hideOpenPanels()
-    document.getElementById('editor').classList.add('not-hidden')
+
+
+    editorContainer.classList.remove('hidden')
+    editorContainer.classList.add('not-hidden')
 
     // 3. Record it in history if this isn't a "Back/Forward" action
     let selector = document.getElementById('filename')
@@ -566,7 +582,7 @@ function renderHashCommand(fileName, noBounce = false) {
         clearTimeout(hashDebounce)
     }
     if (!noBounce) {
-        hashDebounce = setTimeout(() => renderHashCommand(fileName, true), 500)
+        hashDebounce = setTimeout(() => renderHashCommand(fileName, true), 200)
         return
     }
 
@@ -646,17 +662,33 @@ document.getElementById('assetlist').addEventListener('click', treeHandler.bind(
 document.getElementById('database').addEventListener('click', treeHandler.bind(null, '#database'));
 
 
-function renderTabsCommand(panelId) {
+let toolbarTabDebounce = null
+let latestPanelId = null
+function renderTabsCommand(panelId, noBounce = false) {
 
     if (!panelId) return
-    //    panelId = 'filelist'
+
+    if (panelId != 'collapse')
+        latestPanelId = panelId
+
+    if (!noBounce && toolbarTabDebounce) return
+    if (!noBounce) {
+        toolbarTabDebounce = setTimeout(() => {
+            renderTabsCommand(latestPanelId, true)
+            toolbarTabDebounce = null
+        }, 400)
+        return
+    }
 
     let database = owner.value + '/' + repo.value
 
     if (panelId == 'collapse') {
         let hasOpen = hideOpenPanels()
-        if (!hasOpen)
+        if (!hasOpen) {
             document.getElementById('filelist').classList.remove('hidden')
+            document.getElementById('filelist').classList.add('not-hidden')
+        }
+
     }
     else if (panelId) {
 
@@ -696,7 +728,7 @@ function renderTabsCommand(panelId) {
 
 
 
-let panels = document.querySelectorAll('#filesearch, #filelist, #gamelist, #assetlist, #database, #github')
+let panels = document.querySelectorAll('#token-modal, #viewport-frame, #terminal-container, #editor, #filesearch, #filelist, #gamelist, #assetlist, #database, #github')
 
 document.getElementById('tabs').addEventListener('click', async (e) => {
 
@@ -705,27 +737,24 @@ document.getElementById('tabs').addEventListener('click', async (e) => {
 });
 
 
-function hideOpenPanels() {
+function hideOpenPanels(all = false) {
     let hasOpen = false;
 
     let buttons = document.getElementById('tabs').children[0].children
 
-    document.getElementById('viewport-frame').classList.remove('not-hidden')
-    document.getElementById('editor').classList.remove('not-hidden')
-    document.getElementById('terminal-container').classList.remove('not-hidden')
-
-    modal.classList.add('hidden')
 
     for (let button of buttons) {
+        //if(!button.)
         button.children[0].classList.remove('active')
     }
 
     for (let panel of panels) {
+        if (latestPanelId === panel) continue
         if (!panel.classList.contains('hidden')) {
             panel.classList.add('hidden')
-            panel.classList.remove('not-hidden')
             hasOpen = true
         }
+        panel.classList.remove('not-hidden')
     }
     return hasOpen
 }
