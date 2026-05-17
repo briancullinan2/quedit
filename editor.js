@@ -55,12 +55,6 @@ let currentOpenFileId = 'temp' + (tempCount)
 
 updateMaxLines()
 
-setTimeout(() => {
-    updateMaxLines()
-    editor.resize();
-    editor.renderer.updateFull();
-}, 300)
-
 
 function setTheme(theme) {
     const themeName = theme.split('/').pop(); // Gets 'monokai' or 'dracula'
@@ -78,19 +72,19 @@ function setTheme(theme) {
             foreground: themeColors.foreground,
             cursor: themeColors.foreground,
             selection: themeColors.selection,
-            
+
             // Mapping for Inverse Logic:
             // Setting a marker to Black (0) + White (7) will now 
             // swap the Ace background and foreground colors.
             black: themeColors.background,   // ANSI 0
             white: themeColors.foreground,   // ANSI 7
-            
+
             // Map syntax colors to ANSI indices
             magenta: themeColors.pink,       // ANSI 5
             cyan: themeColors.purple,        // ANSI 6
             blue: themeColors.blue,          // ANSI 4
             green: themeColors.green,        // ANSI 2
-            
+
             // Optional: Gutter color for bright variants
             brightBlack: themeColors.gutter  // ANSI 8
         };
@@ -248,8 +242,7 @@ window.addEventListener('keydown', (e) => {
 async function newFile() {
     const session = getOrCreateAceSession('temp' + (++tempCount), '');
     editor.setSession(session);
-    editor.resize();
-    editor.renderer.updateFull();
+    resizeDebouncer()
     hideOpenPanels()
     document.getElementById('editor').classList.add('not-hidden')
 
@@ -309,25 +302,41 @@ const getModeByFilename = (filePath) => {
 };
 
 
+function fullScreenLayout() {
+    const width = window.document.body.clientWidth - SCROLLBAR_WIDTH
+        - (window.document.body.clientWidth < 800 ? 60 : 0);
+    return width < 800
+}
+
+function getFullScreenFit(defaultFactor = 0.25) {
+    const isFull = fullScreenLayout()
+    const tools = document.getElementById('toolbar').clientHeight
+        + document.getElementById('statusbar').clientHeight
+        + document.getElementById('terminals').clientHeight
+        + 10;
+    const height = (window.innerHeight - tools) * defaultFactor
+    return height
+}
+
+
 function updateMaxLines() {
     const lineHeight = editor.renderer.lineHeight;
-    const availableHeight = document.getElementById('editor-container').clientHeight;
+    //const availableHeight = document.getElementById('editor-container').clientHeight;
 
     // Calculate how many lines fit in that space
-    const calculatedMax = Math.floor(availableHeight / lineHeight);
+    const isFull = fullScreenLayout()
+    const height = getFullScreenFit(0.99) // isFull ? 0.99 : 0.75) // opposite terminal 0.25
+    //let calculatedMax = editor.getValue().split('\n').length
+        // add scroll to bottom of files
+    //    + (height * 0.25 / lineHeight)
+    //if (!isFull) {
+        calculatedMax = Math.floor(height / lineHeight) - 1;
+    //}
 
-    if (window.document.body.clientWidth < 800) {
-        editor.setOptions({
-            maxLines: Infinity,
-            minLines: 10 // Optional: ensure it doesn't disappear
-        });
-    }
-    else {
-        editor.setOptions({
-            maxLines: calculatedMax - 1,
-            minLines: calculatedMax - 1 // Optional: ensure it doesn't disappear
-        });
-    }
+    editor.setOptions({
+        maxLines: calculatedMax,
+        minLines: calculatedMax // Optional: ensure it doesn't disappear
+    });
 }
 
 

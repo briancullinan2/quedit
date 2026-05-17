@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     renderHashCommand(window.location.hash.substring(1))
 
     setTimeout(() => {
-        forceFit(term, terminalContainer)
+        resizeDebouncer()
         term.write(loadedLog.join('\n\r'))
         term.write(preterm.join(''))
         if (loadedLog.length > 0 || preterm.length > 0)
@@ -520,8 +520,9 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     const mode = getModeByFilename(filePath);
     session.setMode(mode);
     editor.setSession(session);
-    editor.resize();
-    editor.renderer.updateFull();
+   
+    resizeDebouncer()
+    
     if (hidePanels)
         hideOpenPanels()
     document.getElementById('editor').classList.add('not-hidden')

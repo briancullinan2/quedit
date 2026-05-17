@@ -273,8 +273,8 @@ async function settings() {
 
     const session = getOrCreateAceSession(filePath, settings);
     editor.setSession(session);
-    editor.resize();
-    editor.renderer.updateFull();
+    resizeDebouncer()
+    
     hideOpenPanels()
     document.getElementById('editor').classList.add('not-hidden')
 

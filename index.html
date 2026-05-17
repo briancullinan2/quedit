@@ -22,23 +22,29 @@
                     <ul>
                         <li><a onclick="updatePlaceholder()" alt="Github login" class="bx bx-arrow-in-right-square-half"
                                 target="_new" href="https://github.com/settings/tokens?type=beta"></a></li>
+                        <li><a alt="Console" href="#terminal-container" class="bx bx-terminal"></a></li>
+                        <li><a alt="Edit settings" href="#settings" class="bx bx-gear"></a></li>
+                        <li><a alt="Sharable game link" href="#share" class="bx bx-share"></a></li>
                         <li class="setting" placeholder="Repository owner">
                             <select required name="owner" id="owner">
                                 <option value="" selected disabled>Repository owner</option>
                                 <option value="briancullinan2">briancullinan2</option>
                                 <option value="ec-">ec-</option>
-                            </select></li>
+                            </select>
+                        </li>
                         <li class="setting" placeholder="Current repository">
                             <select required name="repository" id="repository">
                                 <option value="" selected disabled>Current repository</option>
                                 <option value="Quake3e">Quake3e</option>
                                 <option value="baseq3a">baseq3a</option>
-                            </select></li>
+                            </select>
+                        </li>
                         <li class="setting" placeholder="Current branch">
                             <select required name="branch" id="branch">
                                 <option value="" selected disabled>Current branch</option>
                                 <option value="main">main</option>
-                            </select></li>
+                            </select>
+                        </li>
                     </ul>
                 </li>
                 <li>
@@ -96,8 +102,7 @@
                 <li class="setting" style="min-width: 200px;" placeholder="Automatically reload">
                     <div style="display: flex; align-items: center;">
                         <span>Hot reload: &nbsp; </span>
-                        <input type="checkbox" name="reload"
-                            id="reload" checked="checked" />
+                        <input type="checkbox" name="reload" id="reload" checked="checked" />
                     </div>
                 </li>
                 <li class="engine">
@@ -117,7 +122,8 @@
                 <li class="setting" placeholder="Current WASI-SDK">
                     <select required name="wasi" id="wasi">
                         <option value="" selected disabled>WASI-SDK v33 (Not downloaded)</option>
-                    </select></li>
+                    </select>
+                </li>
                 <li class="setting" placeholder="Current theme">
                     <select required name="theme" id="theme">
                         <option value="" selected disabled>Current theme</option>
@@ -186,8 +192,6 @@
                         </optgroup>
                     </select>
                 </li>
-                <li><a alt="Console" href="#terminal-container" class="bx bx-terminal"></a></li>
-                <li><a alt="Edit settings" href="#settings" class="bx bx-gear"></a></li>
             </ul>
         </div>
         <div id="main-body" class="panel-row">
@@ -205,6 +209,7 @@
                     <li><a alt="Show console" href="#terminal-container" class="bx bx-terminal"></a></li>
                 </ul>
             </div>
+
             <div id="editor-container" class="panel-row">
                 <div id="filesearch" class="hidden">
 
@@ -225,7 +230,7 @@
 
                 </div>
 <div id="editor">
-#include <stdio.h>
+#include &lt;stdio.h&gt;
 
 int main() {
     printf("Hello World!\n");
@@ -253,28 +258,30 @@ int main() {
                 <canvas></canvas>
             </div>
             <canvas id="scratch"></canvas>
-        </div>
-        <div id="terminal-container" class="panel-column">
-            <div id="terminals">
-                <ul>
-                    <li><a class="active" href="#all">All</a></li>
-                    <li><a href="#error">Error</a></li>
-                    <li><a href="#warn">Warn</a></li>
-                    <li><a href="#info">Info</a></li>
-                    <li><a href="#soft">CLI Render</a></li>
-                    <li><a href="#immediate">Immediate</a></li>
-                    <li><a href="#build">Build</a></li>
-                    <li><a href="#terminal-container">Console</a></li>
-                    <li><a href="#ai">AI Integration</a></li>
-                    <li style="flex-grow: 1;"><span>&nbsp;</span></li>
-                    <li placeholder="Search..."><input autocomplete="off" type="search" id="search-terminal" name="search-terminal"
-                            placeholder="Search..." /></li>
-                </ul>
-            </div>
-            <div id="terminal">
 
+            <div id="terminal-container" class="panel-column">
+                <div id="terminals">
+                    <ul>
+                        <li><a class="active" href="#all">All</a></li>
+                        <li><a href="#error">Error</a></li>
+                        <li><a href="#warn">Warn</a></li>
+                        <li><a href="#info">Info</a></li>
+                        <li><a href="#soft">CLI Render</a></li>
+                        <li><a href="#immediate">Immediate</a></li>
+                        <li><a href="#build">Build</a></li>
+                        <li><a href="#terminal-container">Console</a></li>
+                        <li><a href="#ai">AI Integration</a></li>
+                        <li style="flex-grow: 1;"><span>&nbsp;</span></li>
+                        <li placeholder="Search..."><input autocomplete="off" type="search" id="search-terminal"
+                                name="search-terminal" placeholder="Search..." /></li>
+                    </ul>
+                </div>
+                <div id="terminal">
+
+                </div>
             </div>
         </div>
+
         <div id="statusbar">
             <span>Status: </span>
             <span>No engine</span>
@@ -301,14 +308,14 @@ int main() {
 
     <script src="/jszip.min.js" type="text/javascript" defer></script>
     <script src="/ace/ace.js" type="text/javascript" charset="utf-8" defer></script>
+    <script src="/xterm.js" type="text/javascript" defer></script>
+    <script src="/terminal.js" type="text/javascript" defer></script>
     <script src="/editor.js" type="text/javascript" defer></script>
     <script src="/local.js" type="text/javascript" defer></script>
     <script src="/make.js" type="text/javascript" defer></script>
     <script src="/make-tools.js" type="text/javascript" defer></script>
     <script src="/make-qvm.js" type="text/javascript" defer></script>
     <script src="/github.js" type="text/javascript" defer></script>
-    <script src="/xterm.js" type="text/javascript" defer></script>
-    <script src="/terminal.js" type="text/javascript" defer></script>
     <script src="/tree.js" type="text/javascript" defer></script>
     <script src="/toolbar.js" type="text/javascript" defer></script>
     <script src="/filelist.js" type="text/javascript" defer></script>

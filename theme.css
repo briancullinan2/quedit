@@ -664,16 +664,28 @@ body {
     background: var(--ace-selection-bg);
     border-radius: 4px;
 }
-/*
+
 .terminal-search-highlight {
+    /*
     color: var(--ace-bg);
     background-color: var(--ace-foreground);
     backdrop-filter: invert(100%);
      The actual inversion 
     z-index: 10;
     opacity: 1;
+    */
 }
-*/
+
+.terminal-search-highlight {
+    mix-blend-mode: difference;
+    background-color: #ffffff !important; /* Forces absolute, high-contrast inversion math */
+    color: transparent !important;       /* Ensures no inner text CSS blocks the math */
+}
+
+.terminal-file-underline {
+    border-bottom: 2px dashed var(--ace-blue) !important;
+    cursor: pointer !important;
+}
 
 input,
 select,
@@ -702,6 +714,13 @@ select:focus {
     background: var(--ace-bg);
     /* Pop to the main editor bg when active */
 }
+
+
+#search-terminal:not(::placeholder) {
+    border-color: var(--ace-blue);
+    background: var(--ace-bg);
+}
+
 
 input:placeholder-shown {
     border-color: var(--ace-bg);

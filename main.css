@@ -16,20 +16,19 @@ body {
     box-shadow: none;
     font-family: inherit;
 }
+
 *:focus {
     outline: none !important;
     box-shadow: none !important;
 }
 
 
-#main-body {
-    flex-basis: 100%;
-}
 
 #editor-container {
     flex: 1 1 auto;
     flex-basis: calc(50% - 54px);
     min-height: 0;
+    overflow: hidden;
 }
 
 #viewport-frame {
@@ -162,6 +161,7 @@ body {
     flex-shrink: 1;
     flex-grow: 1;
     min-height: 0;
+    max-width: 100%;
 }
 
 #statusbar>* {
@@ -185,6 +185,7 @@ body {
 
 #tabs {
     width: 54px;
+    flex-basis: 54px;
 }
 
 
@@ -305,6 +306,22 @@ button {
     width: stretch;
 }
 
+#terminals,
+#terminal {
+    max-width: 100%;
+}
+
+#terminal-container {
+    max-width: calc(100% - 60px);
+}
+
+#terminals ul,
+#toolbar ul,
+#tabs ul {
+    max-width: 100%;
+    display: flex;
+}
+
 
 #terminals ul,
 #terminals li,
@@ -316,6 +333,7 @@ button {
     margin: 0;
     padding: 0;
     white-space: nowrap;
+
 }
 
 
@@ -329,10 +347,35 @@ button {
     display: flex;
     flex-direction: row;
     align-items: center;
+    justify-content: stretch;
+}
+
+#terminals li {
+    flex-basis: min-content;
+    flex-grow: 1;
+    flex-shrink: 1;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: min-content;
+    min-width: 60px;
+    width: fit-content;
+}
+
+
+#terminals li:last-child {
+    width: 100%;
+    max-width: none;
+}
+
+#terminals li:nth-last-child(2) {
+    max-width: none;
 }
 
 #toolbar li {
     padding: 0 5px;
+
 }
 
 #toolbar a {
@@ -358,6 +401,11 @@ button {
     font-size: 16px;
     border-top: 2px solid transparent;
     display: block;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
 }
 
 
@@ -447,8 +495,7 @@ button {
 
 
 [placeholder]:has(#search-terminal:active)::after,
-[placeholder]:has(#search-terminal:focus)::after
-{
+[placeholder]:has(#search-terminal:focus)::after {
     opacity: 1;
 }
 
@@ -549,7 +596,8 @@ button {
 }
 
 .close-btn:hover {
-    color: #d9230f; /* Glows with Apache Red when hovered */
+    color: #d9230f;
+    /* Glows with Apache Red when hovered */
     transform: scale(1.1);
 }
 
@@ -660,6 +708,31 @@ input[type="checkbox"]:focus-visible {
     box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.4);
 }
 
+#terminal-container,
+#editor,
+#assetlist,
+#gamelist,
+#database,
+#searchlist,
+#filelist {
+    display: none;
+}
+
+#terminal-container.not-hidden,
+#edito.not-hiddenr,
+#assetlist.not-hidden,
+#gamelist.not-hidden,
+#database.not-hidden,
+#searchlist.not-hidden,
+#filelist.not-hidden,
+#editor.not-hidden {
+    display: block;
+    flex-basis: 100%;
+}
+
+#terminal.not-hidden {}
+
+.not-hidden {}
 
 @media all and (max-width: 800px) {
 
@@ -697,11 +770,13 @@ input[type="checkbox"]:focus-visible {
 
     html,
     body {
-        overflow: scroll;
+        overflow: visible;
     }
 
     #editor-container {
         flex-basis: calc(100% - 54px);
+        overflow: visible;
+        height: auto;
     }
 
     #editor-container:has(~ .not-hidden) {
@@ -726,8 +801,8 @@ input[type="checkbox"]:focus-visible {
     }
 
     #main {
-        flex-direction: row;
-        flex-wrap: wrap;
+        /*flex-direction: row;
+        flex-wrap: wrap;*/
     }
 
     html,
@@ -745,30 +820,48 @@ input[type="checkbox"]:focus-visible {
         height: stretch;
         max-height: none;
         max-width: 100%;
-        width: auto;
-        min-width: min-content;
+        /*width: auto;
+        min-width: min-content;*/
         overflow: visible;
         flex-basis: min-content;
         flex-grow: 1;
+        flex-wrap: nowrap;
     }
 
-    .not-hidden {
-        display: block !important;
-        overflow: visible !important;
-        max-width: none !important;
-        max-height: none !important;
+    #terminals li {
+        flex-basis: 10%;
+        min-width: 60px;
+        flex-shrink: 1;
     }
 
-    #terminal-container,
+    #terminals li:last-child {
+        flex-basis: 10%;
+        min-width: 150px;
+    }
+
+
+    #terminals li:nth-last-child(2) {
+        display: none;
+    }
+
+    #terminals ul {
+        flex-wrap: wrap;
+    }
+
+
+    #terminal-container {
+        max-width: calc(100% - 60px);
+    }
+
     #terminal,
     #terminals {
-        width: calc(100% - 60px);
+        max-width: 100%;
     }
 
 
     #terminal-container.not-hidden {
-        display: flex !important;
-        justify-content: stretch;
+        /*display: flex !important;
+        justify-content: stretch;*/
     }
 
     #statusbar {

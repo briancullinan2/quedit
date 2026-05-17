@@ -2,6 +2,7 @@ const DIFFERENTIATE_SAVED = false
 const LINES_TO_SAVE = 1000
 const LINES_TO_SCROLLBACK = 5000
 const MAX_HISTORY_LENGTH = 20
+const SCROLLBAR_WIDTH = 15
 const preterm = []
 let terminalLoaded = false
 const terminalContainer = document.getElementById('terminal')
@@ -14,17 +15,23 @@ const term = new Terminal({
 term.open(terminalContainer);
 
 
-
-
-
 let resizeDebounce = null
-window.addEventListener('resize', () => {
+function resizeDebouncer() {
     if (resizeDebounce) return
     resizeDebounce = setTimeout(() => {
-        forceFit(term, terminalContainer);
+        forceFit();
         updateMaxLines()
+        editor.resize();
+        editor.renderer.updateFull();
+        resizeDebounce = null
+
     }, 500);
-});
+}
+
+
+
+
+window.addEventListener('resize', resizeDebouncer);
 
 
 const loadedHistory = JSON.parse(localStorage.getItem('history') || '[]')
@@ -145,6 +152,7 @@ async function triggerIncrementalSave() {
         return
     }
     incrementalDebouncer = setTimeout(() => {
+        performSharedBufferScanInternal(searchTerminal.value)
         const last1000 = DIFFERENTIATE_SAVED ? getInternalTerminalLog() : getInternalTerminalLogColored();
         localStorage.setItem('terminal_log', JSON.stringify(last1000));
         incrementalDebouncer = null
@@ -182,7 +190,7 @@ function triggerFind(e) {
     debounceTimeout = setTimeout(() => {
         if (searchTerminal.value.length > 2) {
 
-            performSearch(searchTerminal.value);
+            performSharedBufferScanInternal(searchTerminal.value);
 
 
             const termToFind = searchTerminal.value;
@@ -232,56 +240,107 @@ function triggerFind(e) {
     }, 250);
 }
 
-
+// Shared Global Decoration Tracking Repositories
 let searchAddonMarkers = [];
-function performSearch(termToSearch, caseSensitive = false) {
+let fileUnderlineMarkers = [];
+let globalScanDebounceTimer = null;
+
+
+function performSharedBufferScanInternal(termToSearch, caseSensitive = false) {
+    // 1. Wipe out all previous marker decoration nodes cleanly
     searchAddonMarkers.forEach(m => m.dispose());
+    fileUnderlineMarkers.forEach(m => m.dispose());
     searchAddonMarkers = [];
+    fileUnderlineMarkers = [];
     searchResults = [];
 
-    const themeColors = getAceThemeColors();
     const buffer = term.buffer.active;
-    const flags = caseSensitive ? 'g' : 'gi';
-    const regex = new RegExp(termToSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+    const activeRowMarkerOffset = buffer.baseY + buffer.cursorY;
 
-    // Scan the entire buffer length
+    // 2. Setup Regex Parsers
+    let searchRegex = null;
+    if (termToSearch && termToSearch.trim().length > 0) {
+        const flags = caseSensitive ? 'g' : 'gi';
+        searchRegex = new RegExp(termToSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+    }
+
+    // Your working file pattern logic
+    const fileRegex = /([\w\d\._\-\/]+\.\w+)\b(?::(\d+))?(?::(\d+))?/g;
+
+    // 3. Scan Entire Active Terminal Buffer Length Row-by-Row
     for (let i = 0; i < buffer.length; i++) {
         const line = buffer.getLine(i);
         if (!line) continue;
 
         const lineText = line.translateToString(true);
-        let match;
+        const relativeMarkerDistance = i - activeRowMarkerOffset;
 
-        while ((match = regex.exec(lineText)) !== null) {
-            const x = match.index;
-            const length = match[0].length;
+        // ==========================================
+        // PASS A: Extract & Underline Valid File Paths
+        // ==========================================
+        let fileMatch;
+        fileRegex.lastIndex = 0; // Reset state tracker for global flag loop
+        while ((fileMatch = fileRegex.exec(lineText)) !== null) {
+            const x = fileMatch.index;
+            const length = fileMatch[0].length;
 
-            // CORRECT OFFSET CALCULATION:
-            // registerMarker takes the distance from the current bottom of the buffer
-            const marker = term.registerMarker(i - (buffer.baseY + buffer.cursorY));
-
+            const marker = term.registerMarker(relativeMarkerDistance);
             if (marker) {
                 const decoration = term.registerDecoration({
                     marker,
                     x,
                     width: length,
-                    layer: 'top',
-                    backgroundColor: themeColors.foreground,
-                    foregroundColor: themeColors.background,
+                    layer: 'top'
                 });
 
-                decoration.onRender(element => {
-                    element.style.pointerEvents = 'none';
-                    element.classList.add('terminal-search-highlight');
-                });
-
-                searchAddonMarkers.push(decoration);
+                if (decoration) {
+                    decoration.onRender(element => {
+                        // Keeps link targets completely clickable underneath
+                        element.style.pointerEvents = 'none'; 
+                        element.classList.add('terminal-file-underline');
+                    });
+                    fileUnderlineMarkers.push(decoration);
+                }
             }
+        }
 
-            searchResults.push({ line: i, x: x + 1 });
+        // ==========================================
+        // PASS B: Execute Literal Text Search Highlighting
+        // ==========================================
+        if (searchRegex) {
+            let searchMatch;
+            searchRegex.lastIndex = 0;
+            const themeColors = getAceThemeColors();
+
+            while ((searchMatch = searchRegex.exec(lineText)) !== null) {
+                const x = searchMatch.index;
+                const length = searchMatch[0].length;
+
+                const marker = term.registerMarker(relativeMarkerDistance);
+                if (marker) {
+                    const decoration = term.registerDecoration({
+                        marker,
+                        x,
+                        width: length,
+                        layer: 'top',
+                        backgroundColor: themeColors.foreground,
+                        foregroundColor: themeColors.background,
+                    });
+
+                    if (decoration) {
+                        decoration.onRender(element => {
+                            element.style.pointerEvents = 'none';
+                            element.classList.add('terminal-search-highlight');
+                        });
+                        searchAddonMarkers.push(decoration);
+                    }
+                }
+                searchResults.push({ line: i, x: x + 1 });
+            }
         }
     }
 }
+
 
 
 function refreshBlinker() {
@@ -652,36 +711,27 @@ const formatBytes = (bytes) => {
 
 
 
-
-function forceFit(term, container) {
+function forceFit() {
     // 1. Get the internal dimension service (where Xterm 5 stores sizing)
     const core = term._core;
     const dims = core._renderService.dimensions;
 
     if (!dims || dims.css.cell.width === 0) {
         // The renderer isn't ready yet—try again in the next frame
-        requestAnimationFrame(() => forceFit(term, container));
+        requestAnimationFrame(forceFit);
         return;
     }
 
-    // 2. Calculate based on the parent's actual pixel size
-    const scrollbarWidth = 15; // Standard buffer for the scrollbar
-    const width = window.document.body.clientWidth - scrollbarWidth
-        - (window.document.body.clientWidth < 800 ? 60 : 0);
-    const height = width >= 800
-        ? window.innerHeight
-        //- document.getElementById('toolbar').clientHeight
-        * 0.25
-        : Math.max(window.innerHeight
-            - document.getElementById('toolbar').clientHeight
-            - document.getElementById('statusbar').clientHeight
-            - document.getElementById('terminals').clientHeight
-            - 2,
-            term.buffer.active.baseY + term.rows
-        );
-
+    const isFull = fullScreenLayout()
+    const width = window.document.body.clientWidth - SCROLLBAR_WIDTH
+        - (window.document.body.clientWidth < 800 ? 75 : 0);
     const cols = Math.max(2, Math.floor(width / dims.css.cell.width));
-    const rows = Math.max(1, Math.floor(height / dims.css.cell.height));
+    //if (isFull) {
+    //    term.resize(cols, term.buffer.active.baseY + term.rows);
+    //    return
+    //}
+    const height = getFullScreenFit(0.99) // isFull ? 0.99 : 0.25)
+    const rows = Math.max(1, Math.floor(height / dims.css.cell.height) - 1);
 
     // 3. Force the resize
     term.resize(cols, rows);
@@ -973,8 +1023,13 @@ function writePrompt() {
 
 
 function updateLineFromHistory(specificValue = null) {
-    // 1. Erase current line in terminal: Move to start, clear to end
-    term.write('\r\x1b[K');
+    const buffer = term.buffer.active
+    //let currentLine = buffer.getLine(buffer.baseY + buffer.cursorY)
+
+    if (currentLine === '> ' + commandHistory[historyIndex]) {
+        debugger
+    }
+    term.write('\r\x1b[K\x1b[A');
     writePrompt()
 
     // 2. Update the buffer
@@ -985,3 +1040,4 @@ function updateLineFromHistory(specificValue = null) {
     cursorPosition = currentLine.length
 
 }
+
