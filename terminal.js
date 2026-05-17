@@ -912,7 +912,7 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
 
 
     // TODO: FS.virtual for IDB access and database
-    if (!dbFile && filePath.includes('build/')) {
+    if (!dbFile) {
 
         dbFile = FS.virtual[filePath]
         let databases = await getDatabaseMetadata()
@@ -941,6 +941,10 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
 
     }
 
+    if (!dbFile || !selected) {
+        writeLog('File not found: ' + filePath)
+        return
+    }
 
     let parts = selected.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value

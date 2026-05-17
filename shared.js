@@ -1531,7 +1531,8 @@ const API = (function () {
 
         let buildDir = filePath.substring(0, filePath.lastIndexOf('/'))
         if (alwaysMkdir)
-          writeLog('Header loading: ' + filePath)
+          writeLog('Header loading (worker): ' + filePath)
+        
         if (filePath.includes('build/release-') || filePath.includes('build/debug-')) {
           //debugger
         }

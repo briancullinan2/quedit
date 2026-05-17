@@ -1,78 +1,282 @@
 
+// Definitive Semantic Autocomplete Types
+const ARG_TYPES = {
+    FILE: 'file',          // Local file path validation/completion
+    DATABASE: 'database',  // GitHub user/repo path pattern tracking
+    STRING: 'string',      // Plain text argument
+};
+
+const COMMAND_SCHEMA = {
+    help: {
+        description: "Display structured manual lookups for all available engine commands.",
+        args: [],
+        flags: {}
+    },
+    clear: {
+        description: "Clear active terminal screen scrollback history layers.",
+        args: [],
+        flags: {}
+    },
+    reset: {
+        description: "Hard reset terminal terminal display state engine.",
+        args: [],
+        flags: {}
+    },
+    mount: {
+        description: "Mount a target workspace repository branch directory structure.",
+        args: [
+            { name: "repo_path", type: ARG_TYPES.DATABASE, description: "Target repository identifier string" }
+        ],
+        flags: {}
+    },
+    ls: {
+        description: "List workspace data entries within the current execution path.",
+        args: [],
+        flags: {
+            '-R': { description: "Recursively traverse matching sub-paths" },
+            '-h': { description: "Render data content metrics using human-readable layouts" },
+            '-1': { description: "Force single column flat stream list format output" }
+        }
+    },
+    build: {
+        description: "Execute compilation procedures across targeted project modules.",
+        args: [
+            {
+                name: "mode",
+                type: ['release', 'debug', 'tools', 'qvms', 'client', 'engine', 'server', 'shaders', 'stringify', 'q3lcc', 'q3rcc', 'q3asm', 'lburg', 'game', 'cgame', 'ui'],
+                description: "Target build execution configuration profile"
+            },
+            { name: "target_db", type: ARG_TYPES.DATABASE, description: "Override execution repository target" }
+        ],
+        flags: {}
+    },
+    remove: {
+        description: "Purge targeted structural documents from persistent storage matrices.",
+        args: [
+            { name: "filename", type: ARG_TYPES.FILE, description: "File path targeted for deletion" }
+        ],
+        flags: {}
+    },
+    open: {
+        description: "Load a specified document directly into the active editing layout space.",
+        args: [
+            { name: "filename", type: ARG_TYPES.FILE, description: "Target file path to parse" },
+            { name: "target_db", type: ARG_TYPES.DATABASE, description: "Repository resource source point" }
+        ],
+        flags: {}
+    },
+    compile: {
+        description: "Trigger compiler pipelines on target code assets.",
+        args: [
+            { name: "filename", type: ARG_TYPES.FILE, description: "Source document targeted for evaluation" },
+            { name: "target_db", type: ARG_TYPES.DATABASE, description: "Target environment database repository context" }
+        ],
+        flags: {}
+    },
+    run: {
+        description: "Invoke binary runtime tasks or specialized compiler utility tools.",
+        args: [
+            { name: "tool", type: ARG_TYPES.FILE, description: "WASM engine target binary element filename" }
+        ],
+        flags: {}
+    },
+    lburg: {
+        description: "Run code generator bottom-up rewrite system compilation tools.",
+        args: [
+            { name: "input_md", type: ARG_TYPES.FILE, description: "DAG description source ruleset" },
+            { name: "output_c", type: ARG_TYPES.FILE, description: "Output C source translation destination layout" }
+        ],
+        flags: {}
+    },
+    clone: {
+        description: "Clone external structures down into local indexed DB instances.",
+        args: [
+            { name: "repo_path", type: ARG_TYPES.DATABASE, description: "Target remote owner/repository pathway" },
+            { name: "branch", type: ARG_TYPES.STRING, description: "Specific repository branch tag context" }
+        ],
+        flags: {}
+    },
+    kill: {
+        description: "Terminate all running workers or low-level application processes immediately.",
+        args: [],
+        flags: {}
+    },
+
+    // ==========================================
+    // Symbolic Alias/Redirect Mapping Matrix
+    // ==========================================
+    rm: { alias: "remove" },
+    manual: { alias: "help" },
+    delete: { alias: "remove" },
+    make: { alias: "build" },
+    edit: { alias: "open" },
+    clang: { alias: "compile" },
+    lcc: { alias: "compile" },
+    rcc: { alias: "compile" },
+    ld: { alias: "compile" },
+    cc1: { alias: "compile" },
+    as: { alias: "compile" },
+    cpp: { alias: "compile" },
+    'clang++': { alias: "compile" },
+    wasm: { alias: "compile" },
+    'wasm-ld': { alias: "compile" },
+    'ldd': { alias: "compile" },
+    terminate: { alias: "kill" },
+    stop: { alias: "kill" },
+    start: { alias: "run" },
+    hello: { alias: "help" } // Redirect matching demo hooks
+};
+
+function writeCommandHelp(targetCommand, argv) {
+    if (!targetCommand) return
+
+    const schema = COMMAND_SCHEMA[targetCommand];
+    if (!schema) {
+        term.write(`\x1b[38;5;203m[HELP ERROR]\x1b[0m Unknown command entity descriptor: "${targetCommand}"\n\r`);
+        return;
+    }
+
+    // Handle Symbolic Redirection Hooks instantly
+    if (schema.alias) {
+        term.write(`\x1b[38;5;221m[ALIAS]\x1b[0m Command \x1b[1m"${targetCommand}"\x1b[0m is a symbolic link to: \x1b[38;5;118m${schema.alias}\x1b[0m\n\r`);
+        term.write(`Execute "help ${schema.alias}" to view operational engine constraints.\n\r`);
+        return;
+    }
+
+    term.write(`\n\r\x1b[1;38;5;33mMANUAL LOOKUP: ${targetCommand.toUpperCase()}\x1b[0m\n\r`);
+    term.write(`Description : ${schema.description}\n\r\n\r`);
+
+    // Render Arguments and Typings
+    if (schema.args.length > 0) {
+        term.write(`\x1b[4mArguments:\x1b[0m\n\r`);
+        schema.args.forEach((arg, index) => {
+            let typeString = '';
+            if (Array.isArray(arg.type)) {
+                typeString = `[enum: ${arg.type.join('|')}]`;
+            } else {
+                typeString = `<${arg.type}>`;
+            }
+            term.write(`  argv[${index}] : ${arg.name.padEnd(14)} \x1b[38;5;214m${typeString.padEnd(30)}\x1b[0m # ${arg.description}\n\r`);
+        });
+        term.write(`\n\r`);
+    }
+
+    // Render Compilation and Runtime Flags
+    const flagKeys = Object.keys(schema.flags);
+    if (flagKeys.length > 0) {
+        term.write(`\x1b[4mAvailable Flags:\x1b[0m\n\r`);
+        flagKeys.forEach(flag => {
+            term.write(`  ${flag.padEnd(10)} : ${schema.flags[flag].description}\n\r`);
+        });
+        term.write(`\n\r`);
+    }
+}
+
+
+
+async function help(argv) {
+    const targetCommand = argv[0];
+
+    // Scenario A: Render deep metrics for an explicit, single requested command target
+    if (targetCommand) {
+        writeCommandHelp(targetCommand)
+        return;
+    }
+
+    // Scenario B: Global lookup list pass (Default plain "help" execution context)
+    term.write(`\n\r\x1b[1;38;5;118m=== AVAILABLE SYSTEM MATRIX COMMANDS ===\x1b[0m\n\r`);
+
+    // Sort keys to maintain a clean layout presentation
+    const keys = Object.keys(COMMAND_SCHEMA).sort();
+
+    // Compute padding alignments
+    const maxKeyLen = Math.max(...keys.map(k => k.length), 10);
+
+    for (const key of keys) {
+        const item = COMMAND_SCHEMA[key];
+        const keyNameDisplay = key.padEnd(maxKeyLen + 2);
+
+        if (item.alias) {
+            // Render basic alias linkage markers concisely
+            term.write(`  \x1b[38;5;244m${keyNameDisplay} -> alias to [${item.alias}]\x1b[0m\n\r`);
+        } else {
+            // Render active descriptions 
+            term.write(`  \x1b[1;38;5;45m${keyNameDisplay}\x1b[0m : ${item.description}\n\r`);
+            writeCommandHelp(key)
+        }
+    }
+    term.write(`\n\rRun "help <command>" to query explicit option arguments and value types.\n\r`);
+}
+
+
 const CWD = ''
 const HISTORY = []
 
 
 let runningCommand = false
 let detachedConsole = false
-
 async function handleCommand(input) {
-    const database = owner.value + '/' + repo.value
+    const database = owner.value + '/' + repo.value;
     const tokens = tokenize(input.trim());
 
-
-    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
-
-    let CONFIGURATION = api.configuration === 'release'
-        ? dirs.ENGINE_RELEASE
-        : dirs.ENGINE_DEBUG
-
+    api.configuration = configuration.value === 'debug' ? 'debug' : 'release';
 
     if (tokens.length === 0) return;
 
+    runningCommand = true;
+    const [commandName, ...args] = tokens;
 
-    runningCommand = true
-
-
-    const [command, ...args] = tokens;
-
-    const commands = {
+    // Hard function link index matching your execution files
+    const executableFunctions = {
         remove: remove,
-        rm: remove,
-        delete: remove,
         mount: mount,
         ls: ls,
         help: help,
         hello: hello,
         build: buildCommand,
-        make: buildCommand,
         header: header,
         open: openCommand,
-        edit: openCommand,
         compile: compileWorker,
         clang: clang,
         run: runWorker,
         lburg: lburg,
         clone: clone,
-        'lcc': clang,
-        'rcc': clang,
-        'ld': clang,
-        'cc1': clang,
-        'as': clang,
-        'cpp': clang,
-        'clang++': clang,
         wasm: wasm,
-        'wasm-ld': wasm,
-        'ldd': wasm,
         reset: reset,
         clear: clear,
         link: link,
-        kill: kill,
-        terminate: kill,
-        stop: kill,
-        start: run,
+        kill: kill
     };
 
-    if (commands[command]) {
-        await commands[command](args, database);
-    } else {
-        term.write(`Command not found: ${command}\n\r`);
+    // 1. Resolve Command Aliases safely by checking schema redirect records
+    let resolvedCommandKey = commandName;
+    const schemaMatch = COMMAND_SCHEMA[commandName];
+
+    if (schemaMatch && schemaMatch.alias) {
+        resolvedCommandKey = schemaMatch.alias;
     }
 
-    runningCommand = false
-    triggerIncrementalSave()
-}
+    // 2. Route directly to execution blocks
+    const targetExecutionRoute = executableFunctions[resolvedCommandKey];
 
+    if (targetExecutionRoute) {
+        try {
+            await targetExecutionRoute(args, database);
+        } catch (execError) {
+            if (typeof originalConsole !== 'undefined')
+                originalConsole.error(execError)
+            term.write(formatMessage(CMD_PREAMBLE, [`Failed executing: ${resolvedCommandKey}`, execError]));
+        }
+    } else {
+        term.write(`Command not found: ${commandName}\n\r`);
+    }
+
+    runningCommand = false;
+    triggerIncrementalSave();
+
+    term.write('\n\r> ');
+
+}
 
 
 async function mount(argv, database) {
@@ -150,9 +354,7 @@ async function ls(argv, database) {
     }
 }
 
-async function help() {
-    term.write('Available commands: help, clear, build, set\n\r');
-}
+
 
 
 async function hello(argv) {

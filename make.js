@@ -768,7 +768,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
             || FS.virtual[file].contents.length === 0)
     ) {
         if (!loadedDirectories.includes(buildDir) && makeDirs) {
-            writeLog('Loading: ' + buildDir)
+            writeLog(`Loading index (${api.worker ? 'frontend' : 'worker'}): ${buildDir}`)
             loadedDirectories.push(buildDir)
             if (makeDirs)
                 mkdirp(buildDir, database)
@@ -779,16 +779,16 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
 
         // TODO!!!!! check if commit has changed or file has changed on disk
         if (!FS.virtual[file] && makeDirs /* only load github if its a controlled file */) {
-            writeLog('Loading: ' + file)
-            await cacheFile(ownerName, repoName, file)
+            writeLog(`Loading IDB/Github (${api.worker ? 'frontend' : 'worker'}): ${file}`)
+            await cacheFile(ownerName, repoName, file, null, makeDirs)
         } else if (FS.virtual[file]) {
-            writeLog('Already have: ' + file)
+            writeLog(`Already have (${api.worker ? 'frontend' : 'worker'}): ${file}`)
         } else if (makeDirs) {
             debugger
         }
 
     } else {
-        writeLog('Already have: ' + file)
+        writeLog(`Already have (${api.worker ? 'frontend' : 'worker'}): ${file}`)
     }
 
     try {
@@ -803,14 +803,14 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
             }
         }
     } catch (e) {
-        writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
+        writeLog(`(${api.worker ? 'frontend' : 'worker'}) ${e.message}\n\r${e.stack || e.stacktrace}`)
     }
 
     if (!obj) return
 
     if (!FS.virtual[obj]) {
         if (!loadedDirectories.includes(outDir) && makeDirs) {
-            writeLog('Loading: ' + outDir)
+            writeLog(`Loading index output (${api.worker ? 'frontend' : 'worker'}): ${outDir}`)
             if (makeDirs)
                 mkdirp(outDir, database)
             let currentDir = await queryIndex(DB_STORE_NAME, 'parent', outDir, null, null, database)
@@ -821,10 +821,10 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
 
         // don't load object files from github
         if (!FS.virtual[obj]) {
-            writeLog('Loading: ' + obj)
+            writeLog(`Loading IDB output (${api.worker ? 'frontend' : 'worker'}): ${obj}`)
             FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
         } else {
-            writeLog('Already have: ' + file)
+            writeLog(`Already have (${api.worker ? 'frontend' : 'worker'}): ${file}`)
         }
         //if (api.memfs && !api.memfs.exists(obj) && FS.virtual[file])
         //    api.memfs.addFile(obj, FS.virtual[obj].contents)

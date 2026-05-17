@@ -861,42 +861,42 @@ function environ_get(environ_ptrs, environ_buf) {
 }
 
 function args_sizes_get(argcPtr, argvBufSizePtr) {
-    const args = SYS.startArgs || [];
-    const view = new DataView(Module.memory.buffer);
+	const args = SYS.startArgs || [];
+	const view = new DataView(Module.memory.buffer);
 
-    view.setUint32(argcPtr, args.length, true);
+	view.setUint32(argcPtr, args.length, true);
 
-    const encoder = new TextEncoder();
-    const totalLength = args.reduce((acc, str) => acc + encoder.encode(str).length + 1, 0);
-    view.setUint32(argvBufSizePtr, totalLength, true);
+	const encoder = new TextEncoder();
+	const totalLength = args.reduce((acc, str) => acc + encoder.encode(str).length + 1, 0);
+	view.setUint32(argvBufSizePtr, totalLength, true);
 
-    return 0; // WASI_ESUCCESS
+	return 0; // WASI_ESUCCESS
 }
 
 function args_get(argvPtr, argvBufPtr) {
-    const args = SYS.startArgs || [];
-    let currentBufPtr = argvBufPtr;
-    const encoder = new TextEncoder();
+	const args = SYS.startArgs || [];
+	let currentBufPtr = argvBufPtr;
+	const encoder = new TextEncoder();
 
-    const buffer = Module.memory.buffer;
-    const view = new DataView(buffer);
-    const heap = new Uint8Array(buffer); // FIXED: Uint8Array prevents sign-extension bugs
+	const buffer = Module.memory.buffer;
+	const view = new DataView(buffer);
+	const heap = new Uint8Array(buffer); // FIXED: Uint8Array prevents sign-extension bugs
 
-    args.forEach((arg, i) => {
-        // 1. Write the pointer to the array offset
-        view.setUint32(argvPtr + (i * 4), currentBufPtr, true);
+	args.forEach((arg, i) => {
+		// 1. Write the pointer to the array offset
+		view.setUint32(argvPtr + (i * 4), currentBufPtr, true);
 
-        // 2. Encode and safely copy unsigned bytes
-        const bytes = encoder.encode(arg);
-        heap.set(bytes, currentBufPtr);
+		// 2. Encode and safely copy unsigned bytes
+		const bytes = encoder.encode(arg);
+		heap.set(bytes, currentBufPtr);
 
-        // 3. Write clean explicit null terminator
-        heap[currentBufPtr + bytes.length] = 0;
+		// 3. Write clean explicit null terminator
+		heap[currentBufPtr + bytes.length] = 0;
 
-        currentBufPtr += bytes.length + 1;
-    });
+		currentBufPtr += bytes.length + 1;
+	});
 
-    return 0; // WASI_ESUCCESS
+	return 0; // WASI_ESUCCESS
 }
 
 function debug_print_mem(view, ptr, length) {
@@ -1113,6 +1113,9 @@ function proc_exit(rval) {
 
 function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, rights_inheriting, fdflags, openedFdPtr) {
 
+	if (dirfd === 0) {
+		debugger
+	}
 	// 1. Resolve Memory Buffer (Host vs Inner Module)
 	const buffer = Module.memory.buffer;
 
@@ -1132,7 +1135,8 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	const O_EXCL = 4;
 	const O_TRUNC = 8;
 
-	const exists = typeof FS.virtual[localName] !== 'undefined';
+	const exists = typeof FS.virtual[localName] !== 'undefined'
+		&& FS.virtual[localName] !== null;
 
 	if (!exists) {
 		if (oflags & O_CREAT
@@ -1181,6 +1185,8 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 				localName,
 				localPointer
 			]
+			if (!FS.pointers[0][2].rewrite)
+				FS.pointers[0][2].rewrite = localPointer
 			// DO THIS ON OPEN SO WE CAN CHANGE ICONS
 			//if (!(oflags & O_TRUNC))
 			//	Sys_notify(FS.virtual[localName], localName)
@@ -1204,6 +1210,10 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 				localName,
 				FS.filePointer
 			]
+			//if (!FS.pointers[0][2].rewrite)
+			//	FS.pointers[0][2].rewrite = FS.filePointer
+			//else
+			//	debugger
 			// DO THIS ON OPEN SO WE CAN CHANGE ICONS
 			//if (!(oflags & O_TRUNC))
 			//	Sys_notify(FS.virtual[localName], localName)
@@ -1222,8 +1232,16 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 
 function _fd_close(fd) {
 	try {
+		if(fd === 0) debugger
+		if(FS.pointers[fd] && FS.pointers[fd][2].rewrite)
+			debugger
+		if (!FS.pointers[fd]) return 8; // WASI_EBADF
 		//var stream = SYSCALLS.getStreamFromFD(fd);
-		if (fd <= VFS_NOW) return
+		if (fd <= VFS_NOW) {
+			FS.pointers[fd][2].contents = new Uint8Array(0)
+			FS.pointers[fd][2].rewrite = 0
+			return
+		}
 		if (FS.pointers[fd] && FS.pointers[fd][2].rewrite) {
 			debugger
 			FS.pointers[FS.pointers[fd][2].rewrite] = null
@@ -1317,103 +1335,53 @@ function writeU32(ptr, value) {
 }
 
 function fd_read(fd, iovs, iovsLen, nreadPtr) {
-    let stream = FS.pointers[fd];
-    if (!stream) return 8; // WASI_EBADF
-    
-    if (stream[2] && stream[2].rewrite) {
-        stream = FS.pointers[stream[2].rewrite];
-    }
+	let stream = FS.pointers[fd];
+	if (!stream) return 8; // WASI_EBADF
 
-    if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
-        updateGlobalBufferAndViews();
-    }
+	if (stream[2] && stream[2].rewrite) {
+		stream = FS.pointers[stream[2].rewrite];
+	}
 
-    const view = new DataView(Module.memory.buffer);
-    const contents = stream[2].contents; // Uint8Array of file data
-    
-    if (!contents) return 22; // WASI_EINVAL (File has no content payload)
+	if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
+		updateGlobalBufferAndViews();
+	}
 
-    let totalRead = 0;
+	const view = new DataView(Module.memory.buffer);
+	const contents = stream[2].contents; // Uint8Array of file data
 
-    for (let i = 0; i < iovsLen; i++) {
-        const iovPtr = iovs + (i * 8);
-        const bufOffset = view.getUint32(iovPtr, true);
-        const bufLen = view.getUint32(iovPtr + 4, true);
+	if (!contents) return 22; // WASI_EINVAL (File has no content payload)
 
-        // ALWAYS read current offset directly from the source array reference
-        let currentOffset = stream[0]; 
-        const available = contents.length - currentOffset;
-        const toRead = Math.min(bufLen, available);
+	let totalRead = 0;
 
-        if (toRead > 0) {
-            const heap = new Uint8Array(Module.memory.buffer);
-            heap.set(contents.subarray(currentOffset, currentOffset + toRead), bufOffset);
-            
-            // Mutate the reference element immediately so the next loop index gets it
-            stream[0] += toRead; 
-            totalRead += toRead;
-        }
+	for (let i = 0; i < iovsLen; i++) {
+		const iovPtr = iovs + (i * 8);
+		const bufOffset = view.getUint32(iovPtr, true);
+		const bufLen = view.getUint32(iovPtr + 4, true);
 
-        // If this vector consumed the rest of the file, we can exit cleanly
-        if (stream[0] >= contents.length) {
-            break;
-        }
-    }
+		// ALWAYS read current offset directly from the source array reference
+		let currentOffset = stream[0];
+		const available = contents.length - currentOffset;
+		const toRead = Math.min(bufLen, available);
 
-    const finalView = new DataView(Module.memory.buffer);
-    finalView.setUint32(nreadPtr, totalRead, true);
-    return 0; // WASI_ESUCCESS
+		if (toRead > 0) {
+			const heap = new Uint8Array(Module.memory.buffer);
+			heap.set(contents.subarray(currentOffset, currentOffset + toRead), bufOffset);
+
+			// Mutate the reference element immediately so the next loop index gets it
+			stream[0] += toRead;
+			totalRead += toRead;
+		}
+
+		// If this vector consumed the rest of the file, we can exit cleanly
+		if (stream[0] >= contents.length) {
+			break;
+		}
+	}
+
+	const finalView = new DataView(Module.memory.buffer);
+	finalView.setUint32(nreadPtr, totalRead, true);
+	return 0; // WASI_ESUCCESS
 }
-
-function fd_read(fd, iovs, iovsLen, nreadPtr) {
-    let stream = FS.pointers[fd];
-    if (!stream) return 8; // WASI_EBADF
-    
-    if (stream[2] && stream[2].rewrite) {
-        stream = FS.pointers[stream[2].rewrite];
-    }
-
-    if (typeof Module.HEAPU8 === 'undefined' || Module.HEAPU8.byteLength === 0) {
-        updateGlobalBufferAndViews();
-    }
-
-    const view = new DataView(Module.memory.buffer);
-    const contents = stream[2].contents; // Uint8Array of file data
-    
-    if (!contents) return 22; // WASI_EINVAL (File has no content payload)
-
-    let totalRead = 0;
-
-    for (let i = 0; i < iovsLen; i++) {
-        const iovPtr = iovs + (i * 8);
-        const bufOffset = view.getUint32(iovPtr, true);
-        const bufLen = view.getUint32(iovPtr + 4, true);
-
-        // ALWAYS read current offset directly from the source array reference
-        let currentOffset = stream[0]; 
-        const available = contents.length - currentOffset;
-        const toRead = Math.min(bufLen, available);
-
-        if (toRead > 0) {
-            const heap = new Uint8Array(Module.memory.buffer);
-            heap.set(contents.subarray(currentOffset, currentOffset + toRead), bufOffset);
-            
-            // Mutate the reference element immediately so the next loop index gets it
-            stream[0] += toRead; 
-            totalRead += toRead;
-        }
-
-        // If this vector consumed the rest of the file, we can exit cleanly
-        if (stream[0] >= contents.length) {
-            break;
-        }
-    }
-
-    const finalView = new DataView(Module.memory.buffer);
-    finalView.setUint32(nreadPtr, totalRead, true);
-    return 0; // WASI_ESUCCESS
-}
-
 
 /**
  * WASI fd_pread Implementation
@@ -1465,88 +1433,88 @@ function fd_pread(fd, iovs, iovsLen, offsetBigInt, nreadPtr) {
 
 function fd_readdir(fd, buf, buf_len, cookie, nread_ptr) {
 	debugger
-    const view = new DataView(Module.memory.buffer);
-    const heap = new Uint8Array(Module.memory.buffer);
+	const view = new DataView(Module.memory.buffer);
+	const heap = new Uint8Array(Module.memory.buffer);
 
-    // 1. Validate descriptor stream existence
-    let stream = FS.pointers[fd];
-    if (!stream) return 8; // WASI_EBADF
-    if (stream[2].rewrite) {
-        stream = FS.pointers[stream[2].rewrite];
-    }
+	// 1. Validate descriptor stream existence
+	let stream = FS.pointers[fd];
+	if (!stream) return 8; // WASI_EBADF
+	if (stream[2].rewrite) {
+		stream = FS.pointers[stream[2].rewrite];
+	}
 
-    const dirNode = stream[2];
-    const dirPath = stream[3]; // e.g. "code/game" or "" for root
+	const dirNode = stream[2];
+	const dirPath = stream[3]; // e.g. "code/game" or "" for root
 
-    // 2. Filter FS.virtual keys to find immediate children matching this directory
-    const prefix = dirPath === "" || dirPath === "/" ? "" : (dirPath.endsWith('/') ? dirPath : dirPath + '/');
-    const entries = Object.keys(FS.virtual).filter(key => {
-        if (prefix === "") {
-            // Root items shouldn't contain forward slashes unless it's deep nesting
-            return !key.includes('/');
-        }
-        if (!key.startsWith(prefix) || key === prefix) return false;
-        
-        // Ensure we are only pulling immediate children (no deep recursion)
-        const relativePart = key.substring(prefix.length);
-        return !relativePart.includes('/');
-    });
+	// 2. Filter FS.virtual keys to find immediate children matching this directory
+	const prefix = dirPath === "" || dirPath === "/" ? "" : (dirPath.endsWith('/') ? dirPath : dirPath + '/');
+	const entries = Object.keys(FS.virtual).filter(key => {
+		if (prefix === "") {
+			// Root items shouldn't contain forward slashes unless it's deep nesting
+			return !key.includes('/');
+		}
+		if (!key.startsWith(prefix) || key === prefix) return false;
 
-    let currentCookie = Number(cookie);
-    let bytesWritten = 0;
+		// Ensure we are only pulling immediate children (no deep recursion)
+		const relativePart = key.substring(prefix.length);
+		return !relativePart.includes('/');
+	});
 
-    // 3. Serialize entries starting from the requested cookie index
-    while (currentCookie < entries.length) {
-        const name = entries[currentCookie];
-        const node = FS.virtual[name];
-        
-        // Encode entry name string to UTF-8 array
-        const encoder = new TextEncoder();
-        const nameBytes = encoder.encode(name);
-        
-        // WASI dirent size = 24 bytes header + name length
-        const entrySize = 24 + nameBytes.length;
+	let currentCookie = Number(cookie);
+	let bytesWritten = 0;
 
-        // Stop if adding this directory entry would overflow the guest target memory buffer
-        if (bytesWritten + entrySize > buf_len) {
-            break;
-        }
+	// 3. Serialize entries starting from the requested cookie index
+	while (currentCookie < entries.length) {
+		const name = entries[currentCookie];
+		const node = FS.virtual[name];
 
-        const currentBufPtr = buf + bytesWritten;
-        const nextCookieValue = BigInt(currentCookie + 1);
-        const inodeValue = BigInt(fd); // Fallback stable pointer indicator
-        
-        // Determine WASI file type (4 = directory, 8 = regular file)
-        const type = ((node.mode >> 12) === 4) ? 4 : 8;
+		// Encode entry name string to UTF-8 array
+		const encoder = new TextEncoder();
+		const nameBytes = encoder.encode(name);
 
-        // Write 24-byte WASI dirent layout header structure
-        view.setBigUint64(currentBufPtr + 0, nextCookieValue, true);          // d_next (cookie for NEXT element)
-        view.setBigUint64(currentBufPtr + 8, inodeValue, true);               // d_ino
-        view.setUint32(currentBufPtr + 16, nameBytes.length, true);           // d_namlen
-        view.setUint8(currentBufPtr + 20, type);                              // d_type
-        
-        // Clear 3 padding bytes (offsets 21, 22, 23)
-        view.setUint16(currentBufPtr + 21, 0, true);
-        view.setUint8(currentBufPtr + 23, 0);
+		// WASI dirent size = 24 bytes header + name length
+		const entrySize = 24 + nameBytes.length;
 
-        // Copy raw name token bytes directly behind header block layout
-        heap.set(nameBytes, currentBufPtr + 24);
+		// Stop if adding this directory entry would overflow the guest target memory buffer
+		if (bytesWritten + entrySize > buf_len) {
+			break;
+		}
 
-        bytesWritten += entrySize;
-        currentCookie++;
-    }
+		const currentBufPtr = buf + bytesWritten;
+		const nextCookieValue = BigInt(currentCookie + 1);
+		const inodeValue = BigInt(fd); // Fallback stable pointer indicator
 
-    // Write final output metrics back to the requested registration pointer
-    view.setUint32(nread_ptr, bytesWritten, true);
-    return 0; // WASI_ESUCCESS
+		// Determine WASI file type (4 = directory, 8 = regular file)
+		const type = ((node.mode >> 12) === 4) ? 4 : 8;
+
+		// Write 24-byte WASI dirent layout header structure
+		view.setBigUint64(currentBufPtr + 0, nextCookieValue, true);          // d_next (cookie for NEXT element)
+		view.setBigUint64(currentBufPtr + 8, inodeValue, true);               // d_ino
+		view.setUint32(currentBufPtr + 16, nameBytes.length, true);           // d_namlen
+		view.setUint8(currentBufPtr + 20, type);                              // d_type
+
+		// Clear 3 padding bytes (offsets 21, 22, 23)
+		view.setUint16(currentBufPtr + 21, 0, true);
+		view.setUint8(currentBufPtr + 23, 0);
+
+		// Copy raw name token bytes directly behind header block layout
+		heap.set(nameBytes, currentBufPtr + 24);
+
+		bytesWritten += entrySize;
+		currentCookie++;
+	}
+
+	// Write final output metrics back to the requested registration pointer
+	view.setUint32(nread_ptr, bytesWritten, true);
+	return 0; // WASI_ESUCCESS
 }
 
 function random_get(buf, buf_len) {
-    const data = new Uint8Array(Module.memory.buffer, buf, buf_len);
-    for (let i = 0; i < buf_len; ++i) {
-        data[i] = (Math.random() * 256) | 0;
-    }
-    return 0; // WASI_ESUCCESS (Explicitly notify the guest stack environment of success)
+	const data = new Uint8Array(Module.memory.buffer, buf, buf_len);
+	for (let i = 0; i < buf_len; ++i) {
+		data[i] = (Math.random() * 256) | 0;
+	}
+	return 0; // WASI_ESUCCESS (Explicitly notify the guest stack environment of success)
 }
 
 function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
@@ -1593,6 +1561,11 @@ function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
  * Maps to POSIX dup2(fd, to) logic.
  */
 function fd_renumber(fd, to) {
+
+
+	if(to === 0) {
+		debugger
+	}
 
 
 	// 1. Validate the source descriptor
@@ -1827,7 +1800,7 @@ function callsys(argvPtr) {
 
 		return result;
 	} catch (e) {
-		writeLog(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack||e.stacktrace}`);
+		writeLog(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack || e.stacktrace}`);
 		return 100; // Standard error exit for LCC
 	}
 }

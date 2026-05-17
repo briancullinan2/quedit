@@ -337,7 +337,7 @@ const colors = {
 };
 
 
-
+const CMD_PREAMBLE = '\x1b[38;5;196m[RUNTIME ERROR]\x1b[0m';
 const API_PREAMBLE = '\x1b[38;5;214m[COMPILER]\x1b[0m ';      // Gold/Orange
 
 const TAR_PREAMBLE = '\x1b[38;5;179m[TAR]\x1b[0m ';           // Warm Tan

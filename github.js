@@ -378,17 +378,31 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
             }
         }
 
-        // TODO: IF GITHUB, ALWAYS UPDATE
-        if (FS.virtual[filePath]
-            && !(forceReload
-                || files[selected]
-                || files[selected][filePath])
-        ) {
 
-            writeLog('Already have: ' + filePath)
+        // TODO: only continue if the file is in github
+        const shouldDownload = files[selected] && files[selected][filePath]
+
+
+        // TODO: IF GITHUB, ALWAYS UPDATE
+        if (!shouldDownload && FS.virtual[filePath]) {
+            writeLog(`Already have (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
             return FS.virtual[filePath].contents
         }
 
+        if (!shouldDownload) {
+            writeLog(`Skipping unimportant (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+            return null
+        }
+
+
+        // TODO: use this to indicate whether we should update against file change time
+        if (!forceReload) {
+            writeLog(`Skipping important (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+            return
+        } else {
+            writeLog(`Downloading important (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+        }
+       
 
         let jsonResponse = await githubRequest(repoOwner, repoName, `contents/${filePath}`)
 
@@ -429,12 +443,12 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
             writeLog(`Memfs Error: ${e.message}\n\r${e.stack || e.stacktrace}`)
         }
 
-        writeLog('Downloaded fresh: ' + filePath)
+        writeLog(`Downloaded fresh (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
 
         return bytes
     } catch (e) {
         writeLog(`Cache file error in ${filePath}`)
-        if(!e.message.includes('HTTP_ERROR:')) {
+        if (!e.message.includes('HTTP_ERROR:')) {
             writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
         }
 
