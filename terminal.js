@@ -21,8 +21,6 @@ function resizeDebouncer() {
     resizeDebounce = setTimeout(() => {
         forceFit();
         updateMaxLines()
-        editor.resize();
-        editor.renderer.updateFull();
         resizeDebounce = null
 
     }, 500);
@@ -723,15 +721,19 @@ function forceFit() {
     }
 
     const isFull = fullScreenLayout()
-    const width = window.document.body.clientWidth - SCROLLBAR_WIDTH
-        - (window.document.body.clientWidth < 800 ? 75 : 0);
+    let width = isFull
+        ? window.document.body.clientWidth - SCROLLBAR_WIDTH - 60
+        : document.getElementById('terminal-container').clientWidth - SCROLLBAR_WIDTH;
+    if (width < 200) {
+        width = 200
+    }
     const cols = Math.max(2, Math.floor(width / dims.css.cell.width));
     //if (isFull) {
     //    term.resize(cols, term.buffer.active.baseY + term.rows);
     //    return
     //}
     const height = getFullScreenFit(0.99) // isFull ? 0.99 : 0.25)
-    const rows = Math.max(1, Math.floor(height / dims.css.cell.height) - 1);
+    const rows = Math.max(1, Math.floor(height / dims.css.cell.height));
 
     // 3. Force the resize
     term.resize(cols, rows);

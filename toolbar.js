@@ -4,18 +4,6 @@ const branch = document.getElementById('branch');
 const configuration = document.getElementById('configuration')
 
 
-branch.addEventListener('change', (e) => {
-
-    let fileList = 'engine_repository'
-    if (!document.getElementById('gamelist').classList.contains('hidden'))
-        fileList = 'game_repository'
-    if (!document.getElementById('assetlist').classList.contains('hidden'))
-        fileList = 'asset_repository'
-
-    localStorage.setItem(fileList, owner.value + '/' + repo.value)
-})
-
-
 
 
 
@@ -162,65 +150,99 @@ updateSelectOptions(repo, repos)
 repo.value = localStorage.getItem('default_repository') || repos[0]
 
 
-function renderToolbarCommand(buttonId) {
+async function renderToolbarCommand(buttonId) {
     let engineRepo = localStorage.getItem('engine_repository') || document.getElementById('filelist').dataset['repository'] || 'briancullinan2/Quake3e'
 
-    if (buttonId == 'compile') {
+    if (buttonId === 'compile') {
         if (configuration.value == 'tools')
-            return buildTools(toolsRepo)
-        if (configuration.value == 'qvms')
-            return buildQVM(gameRepo)
-        return buildClient(engineRepo)
+            await buildTools(toolsRepo)
+        else if (configuration.value == 'qvms')
+            await buildQVM(gameRepo)
+        else
+            await buildClient(engineRepo)
     }
 
-    if (buttonId == 'play')
-        return run()
+    if (buttonId === 'github')
+        updatePlaceholder()
 
-    if (buttonId == 'back')
-        return NavHistory.back()
+    if (buttonId === 'play')
+        run()
 
-    if (buttonId == 'next')
-        return NavHistory.forward()
+    if (buttonId === 'back')
+        NavHistory.back()
 
-    if (buttonId == 'new')
-        return newFile()
+    if (buttonId === 'next')
+        NavHistory.forward()
 
-    if (buttonId == 'save')
-        return saveFile()
+    if (buttonId === 'new')
+        newFile()
 
-    if (buttonId == 'settings')
-        return settings()
+    if (buttonId === 'save')
+        saveFile()
 
-    if (buttonId == 'reload')
+    if (buttonId === 'settings')
+        settings()
+
+    if (buttonId === 'reload')
         localStorage.setItem('hot_reload', !!document.getElementById('reload').checked);
 
-    if (buttonId == 'repository')
+    if (buttonId === 'repository')
         localStorage.setItem('default_repository', repo.value)
 
-    if (buttonId == 'owner')
+    if (buttonId === 'owner')
         localStorage.setItem('default_owner', owner.value)
 
+    if (buttonId === 'configuration')
+        localStorage.setItem('configuration', configuration.value);
 
-    let filename = currentSession()
-    if (filename?.includes('settings.json')) {
-        //saveFile()
-        settings()
+    if (buttonId === 'theme')
+        setTheme(theme.value)
+
+    if (buttonId === 'branch') {
+
+        // don't change a repo if it's already set to one of
+        //   defined repos, just let filelist display it
+
     }
 
-    renderTabsCommand(buttonId)
+    if (buttonId === 'fullscreen') {
+        // TODO: request from window
+    }
+
+    if (buttonId === 'configuration'
+        || buttonId === 'wasi'
+        || buttonId === 'theme'
+        || buttonId === 'spawn'
+        || buttonId === 'map'
+        || buttonId === 'branch'
+        || buttonId === 'repository'
+        || buttonId === 'owner'
+        || buttonId === 'keybinding'
+        || buttonId === 'filename'
+        || buttonId === 'reload'
+    ) {
+        let filename = currentSession()
+        if (filename?.includes('settings.json')) {
+            //saveFile()
+            settings()
+        }
+    }
+
+    // already debounced above
+    renderTabsCommand(buttonId, true)
 }
 
 
 document.getElementById('toolbar').addEventListener('change', async (e) => {
     renderToolbarCommand(
-        e.target.href?.split('#').pop() || e.target.id)
+        e.target.id || e.target.href?.split('#').pop())
 
 });
 
 
 document.getElementById('toolbar').addEventListener('click', async (e) => {
     renderToolbarCommand(
-        e.target.href?.split('#').pop() || e.target.id)
+        e.target.id || e.target.href?.split('#').pop())
 
 });
 
@@ -231,7 +253,7 @@ configuration.value = currentConfig
 document.getElementById('reload').checked = localStorage.getItem('hot_reload') !== 'false';
 
 configuration.addEventListener('change', async (e) => {
-    localStorage.setItem('configuration', configuration.value);
+
 
 });
 
@@ -273,12 +295,12 @@ async function settings() {
 
     const session = getOrCreateAceSession(filePath, settings);
     editor.setSession(session);
-    resizeDebouncer()
-    
+
     hideOpenPanels()
+    resizeDebouncer()
+
     editorContainer.classList.add('not-hidden')
     editorContainer.classList.remove('hidden')
-
 }
 
 function saveSettings(content) {
@@ -346,13 +368,13 @@ function saveSettings(content) {
         repo.value = settings.default_repository
 
         commandHistory.splice(0, history.length);
-        for(let cmd of settings.history)
+        for (let cmd of settings.history)
             commandHistory.push(cmd)
         localStorage.setItem('history', JSON.stringify(commandHistory instanceof Array ? commandHistory || [] : []))
     }
     catch (e) {
         PREAMBLE = EDITOR_PREAMBLE
-        writeLog(`${e.message}\n\r${e.stack||e.stacktrace}`)
+        writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
     }
 
 }

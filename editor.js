@@ -40,6 +40,13 @@ editor.setTheme(savedTheme);
 editor.renderer.setShowGutter(true);
 editor.renderer.$gutterLayer.setShowLineNumbers(true)
 editor.renderer.$loop.schedule(editor.renderer.CHANGE_GUTTER);
+editor.setOptions({
+    // Core cursor placement optimizations
+    scrollPastEnd: 0.9,       // Keeps cursor centered when adding new code at EOF
+    navigateWithinSoftTabs: true,
+    animatedScroll: true,
+    autoScrollEditorIntoView: false,
+})
 const keybinding = document.getElementById('keybinding')
 let savedKeybinding = localStorage.getItem('keybinding') || keybinding.value || 'ace/keybinding/vim'
 if (!document.querySelector(`[value*="${savedKeybinding}"]`))
@@ -117,12 +124,6 @@ function getAceThemeColors() {
 }
 
 
-
-theme.addEventListener('change', (e) => {
-    // Clean up old classes and add new one
-    setTheme(e.target.value)
-
-});
 
 
 let navTimer;
@@ -243,8 +244,8 @@ window.addEventListener('keydown', (e) => {
 async function newFile() {
     const session = getOrCreateAceSession('temp' + (++tempCount), '');
     editor.setSession(session);
-    resizeDebouncer()
     hideOpenPanels()
+    resizeDebouncer()
     editorContainer.classList.add('not-hidden')
     editorContainer.classList.remove('hidden')
 
@@ -329,17 +330,21 @@ function updateMaxLines() {
     const isFull = fullScreenLayout()
     const height = getFullScreenFit(0.99) // isFull ? 0.99 : 0.75) // opposite terminal 0.25
     //let calculatedMax = editor.getValue().split('\n').length
-        // add scroll to bottom of files
+    // add scroll to bottom of files
     //    + (height * 0.25 / lineHeight)
     //if (!isFull) {
-        calculatedMax = Math.floor(height / lineHeight);
+    calculatedMax = Math.floor(height / lineHeight);
     //}
 
-    editor.setOptions({
-        maxLines: calculatedMax,
-        minLines: calculatedMax // Optional: ensure it doesn't disappear
-    });
+    editorContainer.style.height = `${height}px`;
+    editor.resize();
+    editor.renderer.updateFull();
+
 }
 
+editor.on("changeSelection", () => {
+    // Automatically aligns the viewport view frame whenever the cursor moves
+    editor.renderer.scrollCursorIntoView(null, 0.5);
+});
 
 

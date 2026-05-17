@@ -68,7 +68,7 @@ async function initializeFiletrees() {
     }
 
 
-    engineRepo = localStorage.getItem('engine_repository');
+    engineRepo = localStorage.getItem('engine_repository') || engineRepo;
 
     let parts = engineRepo?.split('/') || document.getElementById('filelist').dataset['repository']?.split('/')
 
@@ -76,13 +76,12 @@ async function initializeFiletrees() {
         let newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
         let newOwner = parts.length == 2 ? parts[0] : owner.value
         let branches = await getBranches(newOwner, newRepo)
-        engineRepo = newOwner + '/' + newRepo
         updateSelectOptions('branch', branches)
         if (newOwner && newRepo)
             await loadFileTree(newOwner, newRepo, branches[0]?.name || 'main', '#filelist')
     }
 
-    gameRepo = localStorage.getItem('game_repository');
+    gameRepo = localStorage.getItem('game_repository') || gameRepo;
 
     let parts2 = gameRepo?.split('/') || document.getElementById('gamelist').dataset['repository']?.split('/')
     if (parts2) {
@@ -90,14 +89,13 @@ async function initializeFiletrees() {
         let newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repo.value
         let newOwner2 = parts2.length == 2 ? parts2[0] : owner.value
         let branches2 = await getBranches(newOwner2, newRepo2)
-        gameRepo = newOwner2 + '/' + newRepo2
 
         if (newOwner2 && newRepo2)
             await loadFileTree(newOwner2, newRepo2, branches2[0]?.name || 'main', '#gamelist')
     }
 
 
-    assetRepo = localStorage.getItem('asset_repository');
+    assetRepo = localStorage.getItem('asset_repository') || assetRepo;
 
     let parts3 = assetRepo?.split('/') || document.getElementById('assetlist').dataset['repository']?.split('/')
 
@@ -106,7 +104,6 @@ async function initializeFiletrees() {
         let newRepo3 = parts3.length == 2 ? parts3[1] : parts3[0] || repo.value
         let newOwner3 = parts3.length == 2 ? parts3[0] : owner.value
         let branches3 = await getBranches(newOwner3, newRepo3)
-        assetRepo = newOwner3 + '/' + newRepo3
 
         if (newOwner3 && newRepo3)
             await loadFileTree(newOwner3, newRepo3, branches3[0]?.name || 'main', '#assetlist')
@@ -288,11 +285,14 @@ async function expandDatabaseTree(target, folderId) {
 document.addEventListener('DOMContentLoaded', async (event) => {
 
     await initializeFiletrees();
+    forceFit();
+    updateMaxLines()
 
-    renderHashCommand(window.location.hash.substring(1))
+    renderHashCommand(window.location.hash.substring(1), true)
+
+    resizeDebouncer()
 
     setTimeout(() => {
-        resizeDebouncer()
         term.write(loadedLog.join('\n\r'))
         term.write(preterm.join(''))
         if (loadedLog.length > 0 || preterm.length > 0)
@@ -534,11 +534,11 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     session.setMode(mode);
     editor.setSession(session);
 
-    resizeDebouncer()
 
     if (hidePanels)
         hideOpenPanels()
 
+    resizeDebouncer()
 
     editorContainer.classList.remove('hidden')
     editorContainer.classList.add('not-hidden')
@@ -582,7 +582,7 @@ function renderHashCommand(fileName, noBounce = false) {
         clearTimeout(hashDebounce)
     }
     if (!noBounce) {
-        hashDebounce = setTimeout(() => renderHashCommand(fileName, true), 200)
+        hashDebounce = setTimeout(() => renderHashCommand(fileName, true), 100)
         return
     }
 
@@ -682,7 +682,7 @@ function renderTabsCommand(panelId, noBounce = false) {
 
     let database = owner.value + '/' + repo.value
 
-    if (panelId == 'collapse') {
+    if (panelId === 'collapse') {
         let hasOpen = hideOpenPanels()
         if (!hasOpen) {
             document.getElementById('filelist').classList.remove('hidden')
@@ -690,39 +690,86 @@ function renderTabsCommand(panelId, noBounce = false) {
         }
 
     }
-    else if (panelId) {
 
-        hideOpenPanels()
-
+    if (panelId !== 'collapse') {
         document.querySelector(`#tabs [href="#${panelId}"]`)?.classList.add('active')
-
-        let panel = document.getElementById(panelId)
-        if (panel) {
-            panel.classList.remove('hidden')
-            panel.classList.add('not-hidden')
-
-            let newRepo = panel.dataset['repository']
-            if (panelId == 'filelist')
-                newRepo = localStorage.getItem('engine_repository') || newRepo
-            if (panelId == 'gamelist')
-                newRepo = localStorage.getItem('game_repository') || newRepo
-            if (panelId == 'assetlist')
-                newRepo = localStorage.getItem('asset_repository') || newRepo
-
-            if (newRepo)
-                setRepository(newRepo || database)
-        }
-
-
-        if (panelId == 'database')
-            showDatabases()
-
-        if (panelId == 'viewport-frame'
-            && !GL.canvas
-        ) run()
     }
 
 
+    let panelDocumentId = panelId
+    if (panelId === 'play' || panelId === 'run' || panelId === 'reload'
+        || panelId === 'spawn' || panelId === 'map'
+    )
+        panelDocumentId = 'viewport-frame'
+    if (panelId === 'compile' || panelId === 'build')
+        panelDocumentId = 'terminal'
+    if (panelId === 'new' || panelId === 'filename' || panelId === 'settings')
+        panelDocumentId = 'editor'
+
+
+    // write the panel id as if they clicked directly on the folder list
+    if (panelId === 'owner' || panelId === 'branch'
+        || panelId === 'repository'
+    ) {
+        // TODO: the opposite of below, match selected repos up with 
+        //  their possible already set file tree
+        if (engineRepo === owner.value + '/' + repo.value)
+            panelId = 'filelist'
+        if (gameRepo === owner.value + '/' + repo.value)
+            panelId = 'gamelist'
+        if (assetRepo === owner.value + '/' + repo.value)
+            panelId = 'assetlist'
+        if (toolsRepo === owner.value + '/' + repo.value
+            || toolsRepo2 === owner.value + '/' + repo.value
+        )
+            panelId = panelDocumentId = 'database'
+    }
+
+
+
+
+
+    let panel = document.getElementById(panelDocumentId)
+
+    // react repo and owner controls to selected filelist
+    if (panel) {
+        let newRepo = panel.dataset['repository']
+        if (panelId === 'filelist')
+            newRepo = localStorage.getItem('engine_repository') || newRepo
+        if (panelId === 'gamelist')
+            newRepo = localStorage.getItem('game_repository') || newRepo
+        if (panelId === 'assetlist')
+            newRepo = localStorage.getItem('asset_repository') || newRepo
+
+        if (newRepo)
+            setRepository(newRepo || database)
+    }
+
+    if (panelId == 'database')
+        showDatabases()
+
+    if (panelId === 'viewport-frame'
+        && !GL.canvas
+    ) run()
+
+    const DOESNT_AFFECT_UI = [
+        'github', 'back', 'next', 'fullscreen',
+        'layout', 'share', 'pause', 'stop', 'save',
+        'configuration', 'theme', 'configuration',
+        'wasi', 'theme', 'keybinding',
+    ]
+
+
+    if (!DOESNT_AFFECT_UI.includes(panelId)) {
+        hideOpenPanels()
+    }
+
+    if (panel) {
+        panel.classList.remove('hidden')
+        panel.classList.add('not-hidden')
+    }
+
+    resizeDebouncer()
 }
 
 

@@ -902,11 +902,3 @@ input[type="checkbox"]:checked::before {
 input[type="checkbox"]:focus-visible {
     box-shadow: 0 0 0 2px rgb(from var(--ace-green) r g b / 50%);
 }
-
-#toolbar ul ul {
-    flex-wrap: nowrap;
-    border-left: 2px solid var(--ace-selection-bg);
-    border-right: 2px solid var(--ace-selection-bg);
-    margin: 0 10px;
-    padding: 0 10px;
-}

@@ -18,37 +18,22 @@
     <div id="main" class="panel-column">
         <div id="toolbar">
             <ul>
-                <li class="setting">
+                <li>
                     <ul>
-                        <li><a onclick="updatePlaceholder()" alt="Github login" class="bx bx-arrow-in-right-square-half"
+                        <li><a id="github" alt="Github login" class="bx bx-arrow-in-right-square-half"
                                 target="_new" href="https://github.com/settings/tokens?type=beta"></a></li>
                         <li><a alt="Console" href="#terminal-container" class="bx bx-terminal"></a></li>
                         <li><a alt="Edit settings" href="#settings" class="bx bx-gear"></a></li>
                         <li><a alt="Sharable game link" href="#share" class="bx bx-share"></a></li>
-                        <li class="setting" placeholder="Repository owner">
-                            <select required name="owner" id="owner">
-                                <option value="" selected disabled>Repository owner</option>
-                                <option value="briancullinan2">briancullinan2</option>
-                                <option value="ec-">ec-</option>
-                            </select>
+                        <li><a alt="Toggle layout" href="#layout" class="bx bx-iframe"></a></li>
+                        <li><a alt="Fullscreen mode" href="#fullscreen" class="bx bx-fullscreen"></a></li>
+                        <li>
+                            <a alt="Compile" href="#compile" class="bx bx-code"></a>
                         </li>
-                        <li class="setting" placeholder="Current repository">
-                            <select required name="repository" id="repository">
-                                <option value="" selected disabled>Current repository</option>
-                                <option value="Quake3e">Quake3e</option>
-                                <option value="baseq3a">baseq3a</option>
-                            </select>
-                        </li>
-                        <li class="setting" placeholder="Current branch">
-                            <select required name="branch" id="branch">
-                                <option value="" selected disabled>Current branch</option>
-                                <option value="main">main</option>
-                            </select>
-                        </li>
-                    </ul>
-                </li>
-                <li>
-                    <ul>
+                        <li><a alt="Run" href="#play" class="bx bx-play"></a></li>
+                        <li><a alt="Pause" href="#pause" class="bx bx-pause"></a></li>
+                        <li><a alt="Stop" href="#stop" class="bx bx-stop"></a></li>
+                        <li><a alt="Reload" href="#reload" class="bx bx-refresh-cw-alt"></a></li>
                         <li>
                             <a alt="New file" href="#new" class="bx bx-file-plus"></a>
                         </li>
@@ -63,17 +48,6 @@
                         <option value="" selected disabled>Current filename</option>
                         <option value="">Current filename</option>
                     </select>
-                </li>
-                <li>
-                    <ul>
-                        <li>
-                            <a alt="Compile" href="#compile" class="bx bx-code"></a>
-                        </li>
-                        <li><a alt="Run" href="#play" class="bx bx-play"></a></li>
-                        <li><a alt="Pause" href="#pause" class="bx bx-pause"></a></li>
-                        <li><a alt="Stop" href="#stop" class="bx bx-stop"></a></li>
-                        <li><a alt="Reload" href="#reload" class="bx bx-refresh-cw-alt"></a></li>
-                    </ul>
                 </li>
                 <li class="setting" placeholder="Key binding">
                     <select required name="keybinding" id="keybinding">
@@ -104,20 +78,6 @@
                         <span>Hot reload: &nbsp; </span>
                         <input type="checkbox" name="reload" id="reload" checked="checked" />
                     </div>
-                </li>
-                <li class="engine">
-                    <ul>
-                        <li placeholder="Spawn point">
-                            <select required name="spawn" id="spawn">
-                                <option value="" selected disabled>Spawn point</option>
-                            </select>
-                        </li>
-                        <li class="engine" placeholder="Current map">
-                            <select required name="map" id="map">
-                                <option value="" selected disabled>Current map</option>
-                            </select>
-                        </li>
-                    </ul>
                 </li>
                 <li class="setting" placeholder="Current WASI-SDK">
                     <select required name="wasi" id="wasi">
@@ -192,12 +152,51 @@
                         </optgroup>
                     </select>
                 </li>
+                <li class="setting">
+                    <ul>
+                        <li class="setting" placeholder="Repository owner">
+                            <select required name="owner" id="owner">
+                                <option value="" selected disabled>Repository owner</option>
+                                <option value="briancullinan2">briancullinan2</option>
+                                <option value="ec-">ec-</option>
+                            </select>
+                        </li>
+                        <li class="setting" placeholder="Current repository">
+                            <select required name="repository" id="repository">
+                                <option value="" selected disabled>Current repository</option>
+                                <option value="Quake3e">Quake3e</option>
+                                <option value="baseq3a">baseq3a</option>
+                            </select>
+                        </li>
+                        <li class="setting" placeholder="Current branch">
+                            <select required name="branch" id="branch">
+                                <option value="" selected disabled>Current branch</option>
+                                <option value="main">main</option>
+                            </select>
+                        </li>
+                    </ul>
+                </li>
+                <li class="engine">
+                    <ul>
+                        <li placeholder="Spawn point">
+                            <select required name="spawn" id="spawn">
+                                <option value="" selected disabled>Spawn point</option>
+                            </select>
+                        </li>
+                        <li class="engine" placeholder="Current map">
+                            <select required name="map" id="map">
+                                <option value="" selected disabled>Current map</option>
+                            </select>
+                        </li>
+                    </ul>
+                </li>
             </ul>
         </div>
         <div id="main-body" class="panel-row">
             <div id="tabs">
                 <ul>
                     <li><a alt="Collapse" href="#collapse" class="bx bx-arrow-in-left-square-half"></a></li>
+                    <li><a alt="Collapse" href="#editor" class="bx bx-pen-alt"></a></li>
                     <li><a alt="Search files" href="#filesearch" class="bx bx-search"></a></li>
                     <li><a alt="Engine files" href="#filelist" class="active bx bx-folder-code"></a></li>
                     <li><a alt="Game files" href="#gamelist" class="bx bx-handheld-alt"></a></li>
@@ -205,30 +204,31 @@
                     <li><a alt="Local database" href="#database" class="bx bx-database"></a></li>
                     <li><a alt="Github commit" href="#github" class="bx bx-git-repo-forked"></a></li>
                     <li><a alt="Edit settings" href="#settings" class="bx bx-gear"></a></li>
-                    <li><a alt="Show engine" href="#viewport-frame" class="bx bx-play"></a></li>
+                    <li><a alt="Show engine" href="#viewport-frame" class="bx bx-joystick"></a></li>
                     <li><a alt="Show console" href="#terminal-container" class="bx bx-terminal"></a></li>
                 </ul>
             </div>
 
-            <div id="editor-container" class="panel-row">
-                <div id="filesearch" class="hidden">
+            <div id="toggle-wrapper" class="panel-row">
+                <div id="editor-container" class="panel-row">
+                    <div id="filesearch" class="hidden">
 
-                </div>
-                <div id="filelist" data-repository="briancullinan2/Quake3e">
+                    </div>
+                    <div id="filelist" data-repository="briancullinan2/Quake3e">
 
-                </div>
-                <div id="gamelist" data-repository="ec-/baseq3a" class="hidden">
+                    </div>
+                    <div id="gamelist" data-repository="ec-/baseq3a" class="hidden">
 
-                </div>
-                <div id="assetlist" class="hidden">
+                    </div>
+                    <div id="assetlist" class="hidden">
 
-                </div>
-                <div id="database" class="hidden">
+                    </div>
+                    <div id="database" class="hidden">
 
-                </div>
-                <div id="github" class="hidden">
+                    </div>
+                    <div id="github" class="hidden">
 
-                </div>
+                    </div>
 <div id="editor">
 #include &lt;stdio.h&gt;
 
@@ -239,49 +239,49 @@ int main() {
 }
 
 </div>
-            </div>
-            <div id="viewport-frame">
-                <div id="dialog">
-                    <h4 class="title"></h4>
-                    <p class="description"></p>
                 </div>
-                <div id="flipper">
-                    <div class="front">
-                        <!-- front content -->
+                <div id="viewport-frame">
+                    <div id="dialog">
+                        <h4 class="title"></h4>
+                        <p class="description"></p>
                     </div>
-                    <div class="back">
-                        <!-- back content -->
+                    <div id="flipper">
+                        <div class="front">
+                            <!-- front content -->
+                        </div>
+                        <div class="back">
+                            <!-- back content -->
+                        </div>
                     </div>
+                    <div id="left-joystick"></div>
+                    <div id="right-joystick"></div>
+                    <canvas></canvas>
                 </div>
-                <div id="left-joystick"></div>
-                <div id="right-joystick"></div>
-                <canvas></canvas>
-            </div>
-            <canvas id="scratch"></canvas>
+                <canvas id="scratch"></canvas>
 
-            <div id="terminal-container" class="panel-column">
-                <div id="terminals">
-                    <ul>
-                        <li><a class="active" href="#all">All</a></li>
-                        <li><a href="#error">Error</a></li>
-                        <li><a href="#warn">Warn</a></li>
-                        <li><a href="#info">Info</a></li>
-                        <li><a href="#soft">CLI Render</a></li>
-                        <li><a href="#immediate">Immediate</a></li>
-                        <li><a href="#build">Build</a></li>
-                        <li><a href="#terminal-container">Console</a></li>
-                        <li><a href="#ai">AI Integration</a></li>
-                        <li style="flex-grow: 1;"><span>&nbsp;</span></li>
-                        <li placeholder="Search..."><input autocomplete="off" type="search" id="search-terminal"
-                                name="search-terminal" placeholder="Search..." /></li>
-                    </ul>
-                </div>
-                <div id="terminal">
+                <div id="terminal-container" class="panel-column">
+                    <div id="terminals">
+                        <ul>
+                            <li><a class="active" href="#all">All</a></li>
+                            <li><a href="#error">Error</a></li>
+                            <li><a href="#warn">Warn</a></li>
+                            <li><a href="#info">Info</a></li>
+                            <li><a href="#soft">CLI Render</a></li>
+                            <li><a href="#immediate">Immediate</a></li>
+                            <li><a href="#build">Build</a></li>
+                            <li><a href="#terminal-container">Console</a></li>
+                            <li><a href="#ai">AI Integration</a></li>
+                            <li style="flex-grow: 1;"><span>&nbsp;</span></li>
+                            <li placeholder="Search..."><input autocomplete="off" type="search" id="search-terminal"
+                                    name="search-terminal" placeholder="Search..." /></li>
+                        </ul>
+                    </div>
+                    <div id="terminal">
 
+                    </div>
                 </div>
             </div>
         </div>
-
         <div id="statusbar">
             <span>Status: </span>
             <span>No engine</span>
