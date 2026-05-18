@@ -11,6 +11,7 @@ const convertFlatToNested = (data) => {
                 existingPath = {
                     id: `${item.sha}`,
                     text: part,
+                    status: 0,
                     state: {
                         open: false,
                         expanded: false
@@ -238,6 +239,7 @@ async function expandDatabaseTree(target, folderId) {
                 text: name,
                 path: path,
                 parent: trees['#database'].nodesById[folderId],
+                status: 0,
                 state: { open: false, expanded: false },
                 // If it's a directory, give it a dummy child so it's expandable
                 children: isDir ? [{ text: 'Loading...', id: `${path}/loading` }] : null
@@ -331,6 +333,7 @@ async function showDatabases(folderId) {
             loadedDatabases[d.key] = {
                 id: `${d.key}`,
                 text: d.key,
+                status: 0,
                 state: {
                     open: false,
                     expanded: false
@@ -339,6 +342,7 @@ async function showDatabases(folderId) {
                 children: [{
                     id: `${d.key}/loading`,
                     text: 'Loading...',
+                    status: 0,
                     state: {
                         open: false,
                         expanded: false
@@ -356,6 +360,7 @@ async function showDatabases(folderId) {
         loadedDatabases[`Virtual Memory`] = {
             id: `Virtual Memory`,
             text: `Virtual Memory`,
+            status: 0,
             state: {
                 open: false,
                 expanded: false
@@ -364,6 +369,7 @@ async function showDatabases(folderId) {
             children: [{
                 id: `Virtual Memory/loading`,
                 text: 'Loading...',
+                status: 0,
                 state: {
                     open: false,
                     expanded: false
@@ -438,8 +444,28 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
 
     let content = await cacheFile(repoOwner, repoName, filePath, sha, true);
     if (!content || content.length === 0) {
-        let response = await fetch(filePath)
-        content = await response.arrayBuffer()
+        try {
+            let response = await fetch(filePath)
+            if (response.ok)
+                content = await response.arrayBuffer()
+        } catch (e) {
+        }
+    }
+    if (!content || content.length === 0) {
+        try {
+            let response = await fetch('https://quake.games/' + filePath)
+            if (response.ok)
+                content = await response.arrayBuffer()
+        } catch (e) {
+        }
+    }
+    if (!content || content.length === 0) {
+        try {
+            let response = await fetch('https://quake.games/' + filePath.replace('docs/', ''))
+            if (response.ok)
+                content = await response.arrayBuffer()
+        } catch (e) {
+        }
     }
     const byteView = new Uint8Array(content);
     // 1. Scan just the first 1024 bytes for binary characters before decoding everything
@@ -551,11 +577,15 @@ window.addEventListener('popstate', (event) => {
 
 function treeHandler(selector, e) {
     const node = e.target.closest('.treejs-node');
+    if (!node) return
+
+    const fileId = node.getAttribute('data-id'); // Assuming you set this
+    //setTimeout(() => trees[selector].values = [fileId], 500)
+
+
     if (node && node.classList.contains('treejs-placeholder')) {
-        const fileId = node.getAttribute('data-id'); // Assuming you set this
         const filePath = trees[selector].nodesById[fileId].path
         currentOpenFileId = fileId;
-        trees[selector].values = [fileId];
         let selected = owner.value + '/' + repo.value
         let nodeDB
         if (nodeDB = node.getAttribute('data-database')) {

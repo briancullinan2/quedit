@@ -456,8 +456,9 @@
         let node = this.nodesById[value];
         if (!node) return;
         let prevStatus = node.status;
+        
         let status = prevStatus === 1 || prevStatus === 2 ? 0 : 2;
-        node.status = status;
+        //node.status = status;
         this.markWillUpdateNode(node);
         this.walkUp(node, 'status');
         this.walkDown(node, 'status');
@@ -571,7 +572,7 @@
       Tree.prototype.emptyNodesCheckStatus = function () {
         this.willUpdateNodesById = this.getSelectedNodesById();
         Object.values(this.willUpdateNodesById).forEach(function (node) {
-          if (!node.disabled) node.status = 0;
+          //if (!node.disabled) node.status = 0;
         });
       };
 
@@ -732,7 +733,7 @@
             }
 
             if (parent.status === pStatus) return;
-            parent.status = pStatus;
+            //parent.status = pStatus;
           } else {
             let pDisabled = parent.children.reduce(function (acc, child) {
               return acc && child.disabled;
@@ -775,6 +776,7 @@
             break;
 
           case 2:
+            debugger
             classList.remove('treejs-node__halfchecked');
             classList.add('treejs-node__checked');
             break;

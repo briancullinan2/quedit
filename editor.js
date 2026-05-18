@@ -372,7 +372,8 @@ const getModeByFilename = (filePath) => {
         'cc': 'c_cpp',
         'cfc': 'coldfusion',
         'cfm': 'coldfusion',
-        'cfg': 'ini',
+        //'cfg': 'ini',
+        'cfg': 'q3_config',
         'cjs': 'javascript',
         'cl': 'lisp',
         'clj': 'clojure',
@@ -457,6 +458,7 @@ const getModeByFilename = (filePath) => {
         'lua': 'lua',
         'm': 'matlab',
         'makefile': 'makefile',
+        'make': 'makefile',
         'markdown': 'markdown',
         'md': 'markdown',
         'mel': 'mel',
@@ -526,12 +528,18 @@ const getModeByFilename = (filePath) => {
         'tsx': 'tsx',
         'twig': 'twig',
         'txt': 'text',
+        'wasm': 'wasm_disassembly',
+        'qvm': 'qvm_disassembly',
         'v': 'verilog',
+        'shader': 'q3_shader',
+        'shaderx': 'q3_shader',
         'vala': 'vala',
         'vapi': 'vala',
         'vbe': 'vbscript',
         'vbs': 'vbscript',
         'vert': 'glsl',
+        'cam': 'q3_cam',
+        'map': 'q3_map',
         'vh': 'verilog',
         'vhd': 'vhdl',
         'vhdl': 'vhdl',
@@ -546,6 +554,10 @@ const getModeByFilename = (filePath) => {
         'zsh': 'sh'
     };
 
+    // makefile accomadation
+    let filenameAsType = filePath.split('/').pop().toLowerCase()
+    if(!modes[ext] && modes[filenameAsType])
+        return `ace/mode/${modes[filenameAsType]}`
     return `ace/mode/${modes[ext] || 'text'}`;
 };
 
