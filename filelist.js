@@ -307,6 +307,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     }, 1000);
 
     setTimeout(() => {
+        setTerminalAceTheme()
         term.write(loadedLog.map(l => l.text || l).join(''))
         if (loadedLog.length > 0)
             writePrompt()

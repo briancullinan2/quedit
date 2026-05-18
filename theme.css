@@ -198,20 +198,21 @@ body {
 }
 
 .theme-gob {
-    --ace-bg: #080808;
-    --ace-gutter-bg: #050505;
+    --ace-bg: #0B0B0B;
+    --ace-gutter-bg: #0B1818;
     --ace-foreground: #00FF00;
-    /* Pure Green Matrix Vibe */
-    --ace-comment: #004400;
-    --ace-selection-bg: #002200;
-    --ace-pink: #FFFFFF;
-    /* High Contrast Keywords */
-    --ace-purple: #00AA00;
-    /* Muted Constants */
-    --ace-blue: #00FF00;
-    /* Uniform Green */
-    --ace-green: #00FF00;
-    /* Strings */
+    --ace-comment: #00E060;
+    --ace-selection-bg: rgba(221, 240, 255, 0.20);
+
+    /* High Contrast / Accent Mappings from the theme */
+    --ace-pink: #10FF98;
+    /* From .ace_storage / .ace_list */
+    --ace-purple: #10D8E8;
+    /* From .ace_keyword / .ace_meta (True Cyan/Teal) */
+    --ace-blue: #20E8B0;
+    /* From .ace_support */
+    --ace-green: #00F800;
+    /* From .ace_support.ace_function (Pure Vibrant Green) */
 }
 
 .theme-tomorrow-night-bright {
@@ -1369,6 +1370,15 @@ body {
 }
 
 
+#toolbar ul ul {
+    flex-wrap: nowrap;
+    border-left: 2px solid var(--ace-selection-bg);
+    border-right: 2px solid var(--ace-selection-bg);
+    margin: 0 10px;
+    padding: 0 10px;
+}
+
+
 #assetlist,
 #gamelist,
 #database,
@@ -1393,7 +1403,7 @@ body {
 .xterm-viewport ::-webkit-scrollbar,
 .xterm-scrollable-element::-webkit-scrollbar,
 .ace_editor ::-webkit-scrollbar,
-.xterm .xterm-scrollable-element > .scrollbar {
+.xterm .xterm-scrollable-element>.scrollbar {
     width: 10px !important;
     height: 10px !important;
     background-color: transparent !important;
@@ -1404,24 +1414,40 @@ body {
 .ace_editor ::-webkit-scrollbar-track,
 .ace_scrollbar::-webkit-scrollbar-track,
 .ace_editor .ace_scrollbar-h::-webkit-scrollbar-track,
-.xterm .xterm-scrollable-element > .scrollbar {
+.xterm .xterm-scrollable-element>.scrollbar {
     background: transparent !important;
+}
+
+/* Global text selection styles */
+::selection {
+    background-color: rgb(from var(--ace-selection-bg) r g b / 50%); /* Highlight background */
+    /*color: #00FF00;*/                             /* Highlight text color */
 }
 
 
 ::-webkit-scrollbar-thumb,
 .xterm-scrollable-element::-webkit-scrollbar-thumb,
 .xterm-viewport ::-webkit-scrollbar-thumb,
-.xterm .xterm-scrollable-element > .scrollbar > .slider,
+.xterm .xterm-scrollable-element>.scrollbar>.slider,
 #terminal .xterm-viewport::-webkit-scrollbar-thumb,
-.ace_editor ::-webkit-scrollbar-thumb  {
+.ace_editor ::-webkit-scrollbar-thumb {
     width: 10px !important;
 
     /*background: var(--ace-selection-bg) !important;*/
-    background: var(--ace-selection-bg) !important;
+    background: rgb(from var(--ace-selection-bg) r g b / 50%) !important;
     border-radius: 4px !important;
     opacity: 1 !important;
     visibility: visible !important;
+}
+
+.xterm .xterm-selection div {
+    background-color: var(--ace-selection-bg) !important;
+    /* Semi-transparent orange */
+}
+
+/* Optional: Customize the color of selected text if using the DOM backend */
+.xterm-rows .xterm-selection-selected {
+    color: #ffffff !important;
 }
 
 .ace_editor {
@@ -1429,7 +1455,8 @@ body {
 }
 
 /* Ensure the outer wrapper container doesn't hard-clip the sub-components */
-#editor-container, .ace_editor {
+#editor-container,
+.ace_editor {
     overflow: visible !important;
 }
 
@@ -1437,15 +1464,19 @@ body {
 /* Ensure the horizontal scrollbar wrapper is never pushed outside the viewport */
 .ace_editor .ace_scrollbar-h {
     bottom: 0 !important;
-    height: 15px !important; /* Forces your layout track height constraint explicitly */
-    z-index: 5 !important;   /* Keeps it layered safely on top of background blocks */
+    height: 15px !important;
+    /* Forces your layout track height constraint explicitly */
+    z-index: 5 !important;
+    /* Keeps it layered safely on top of background blocks */
     background: transparent !important;
 }
 
 /* Push the text layer canvas up slightly so text never hides underneath the scrollbar */
 .ace_editor .ace_scroller {
-    bottom: 15px !important; /* Must match the height of your scrollbar exactly */
+    bottom: 15px !important;
+    /* Must match the height of your scrollbar exactly */
 }
+
 /* --- Pin Vertical Scrollbar Only --- */
 .ace_editor .ace_scrollbar-v {
     display: block !important;
@@ -1455,7 +1486,8 @@ body {
 
 /* Force the vertical tracking layer to always calculate a scrollable space */
 .ace_editor .ace_scrollbar-v .ace_scrollbar-inner {
-    min-height: 100.1% !important; /* Continuous scroll buffer */
+    min-height: 100.1% !important;
+    /* Continuous scroll buffer */
 }
 
 /* --- Completely Release Horizontal Scrollbar to Engine Control --- */
@@ -1487,7 +1519,8 @@ body {
 }
 
 #terminal .xterm-viewport .xterm-scroll-area {
-    padding-bottom: 200px !important; /* Forces a massive, scrollable blank area */
+    padding-bottom: 200px !important;
+    /* Forces a massive, scrollable blank area */
 }
 
 /* Ensure the visible container layer doesn't aggressively clip it out */
@@ -1504,14 +1537,13 @@ body {
     bottom: 0 !important;
     height: 100% !important;
     /* Pushes it up past the clipping floor boundary */
-    padding-bottom: 16px !important; 
+    padding-bottom: 16px !important;
     overflow-x: auto !important;
     pointer-events: none;
 }
 
 
-.xterm-scrollable-element
-{
+.xterm-scrollable-element {
     overflow: visible;
     min-width: fit-content;
     position: static !important;
@@ -1544,6 +1576,7 @@ body {
 }
 
 .terminal-file-underline {
+    background-color: transparent;
     border-bottom: 2px dashed var(--ace-blue) !important;
     cursor: pointer !important;
 }
@@ -1555,7 +1588,7 @@ button {
     background: var(--ace-gutter-bg);
 
     /* Subtle border using the selection/bracket color */
-    border: 2px solid var(--ace-selection-bg);
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
 
     /* Text color from the editor foreground */
     color: var(--ace-foreground);
@@ -1670,7 +1703,7 @@ select option {
     background: var(--ace-gutter-bg);
     /* Use your Monokai variables! */
     color: var(--ace-foreground);
-    border: 2px solid var(--ace-selection-bg);
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
     font-family:
         /* 1. MacOS/iOS: The gold standard for modern screens */
         "SF Mono",

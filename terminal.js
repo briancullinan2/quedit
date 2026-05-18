@@ -374,7 +374,8 @@ function performSharedBufferScanInternal(termToSearch, caseSensitive = false) {
                     marker,
                     x,
                     width: length,
-                    layer: 'top'
+                    layer: 'top',
+                    //backgroundColor: 'rgba(0, 0, 0, 0)'
                 });
 
                 if (decoration) {

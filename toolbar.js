@@ -297,7 +297,6 @@ async function settings() {
     editor.setSession(session);
 
     hideOpenPanels()
-    resizeDebouncer()
 
     editorContainer.classList.add('not-hidden')
     editorContainer.classList.remove('hidden')

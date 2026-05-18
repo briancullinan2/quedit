@@ -39,6 +39,7 @@ if (document.querySelector(`#theme [value*="${savedTheme}"]`))
 else
     theme.value = theme.value || 'ace/theme/monokai'
 let themeName = savedTheme.split('/').pop()
+document.body.classList.remove('theme-monokai')
 document.body.classList.add(`theme-${themeName.replace(/_/g, '-')}`);
 const editorWrapper = document.getElementById('editor-container')
 const editorContainer = document.getElementById('editor')
@@ -84,41 +85,87 @@ function setTheme(theme) {
         }
     }
 
+    document.body.classList.add(`theme-${themeName.replace(/_/g, '-')}`);
 
     localStorage.setItem('theme', theme)
     // Actually tell Ace to change its internal theme too
     editor.setTheme(theme);
     savedTheme = theme
+    // wait for update on page so it can scan for colors out of css
     setTimeout(() => {
-        const themeColors = getAceThemeColors();
-        if (!themeColors) return;
-
-        term.options.theme = {
-            background: themeColors.background,
-            foreground: themeColors.foreground,
-            cursor: themeColors.foreground,
-            selection: themeColors.selection,
-
-            // Mapping for Inverse Logic:
-            // Setting a marker to Black (0) + White (7) will now 
-            // swap the Ace background and foreground colors.
-            black: themeColors.background,   // ANSI 0
-            white: themeColors.foreground,   // ANSI 7
-
-            // Map syntax colors to ANSI indices
-            magenta: themeColors.pink,       // ANSI 5
-            cyan: themeColors.purple,        // ANSI 6
-            blue: themeColors.blue,          // ANSI 4
-            green: themeColors.green,        // ANSI 2
-
-            // Optional: Gutter color for bright variants
-            brightBlack: themeColors.gutter  // ANSI 8
-        };
+        setTerminalAceTheme()
     }, 500);
 
 }
 
+// Utility to convert rgb/rgba strings to hex
+function parseToHex(colorStr, backgroundStr = null) {
+    if (!colorStr || typeof colorStr !== 'string') return colorStr;
+    if (colorStr.startsWith('#')) return colorStr;
 
+    const match = colorStr.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
+    if (!match) return colorStr;
+
+    const r = parseInt(match[1], 10);
+    const g = parseInt(match[2], 10);
+    const b = parseInt(match[3], 10);
+    const a = match[4] !== undefined ? parseFloat(match[4]) : 1;
+
+    // OPTION A: If xterm fails to render transparency properly, 
+    // flatten the color over the background color.
+    if (backgroundStr && a < 1) {
+        const bgMatch = backgroundStr.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+        if (bgMatch) {
+            const bgR = parseInt(bgMatch[1], 16);
+            const bgG = parseInt(bgMatch[2], 16);
+            const bgB = parseInt(bgMatch[3], 16);
+
+            const blendedR = Math.round((1 - a) * bgR + a * r).toString(16).padStart(2, '0');
+            const blendedG = Math.round((1 - a) * bgG + a * g).toString(16).padStart(2, '0');
+            const blendedB = Math.round((1 - a) * bgB + a * b).toString(16).padStart(2, '0');
+            return `#${blendedR}${blendedG}${blendedB}`;
+        }
+    }
+
+    // OPTION B: Standard 8-digit hex conversion (#RRGGBBAA)
+    const hexR = r.toString(16).padStart(2, '0');
+    const hexG = g.toString(16).padStart(2, '0');
+    const hexB = b.toString(16).padStart(2, '0');
+    const hexA = Math.round(a * 255).toString(16).padStart(2, '0');
+
+    return `#${hexR}${hexG}${hexB}`; // ${hexA}
+}
+
+function setTerminalAceTheme() {
+    const themeColors = getAceThemeColors();
+    if (!themeColors) return;
+
+    // Ensure the background is parsed first for flattening logic
+    const bgHex = parseToHex(themeColors.background);
+
+    term.options.theme = {
+        background: bgHex,
+        foreground: parseToHex(themeColors.foreground),
+        cursor: parseToHex(themeColors.foreground),
+
+        // Pass bgHex as a fallback parent to blend selection alpha smoothly
+        selection: parseToHex(themeColors.selection, bgHex),
+        selectionBackground: parseToHex(themeColors.selection, bgHex),
+        selectionInactiveBackground: parseToHex(themeColors.gutter, bgHex),
+
+        // Mapping for Inverse Logic:
+        black: bgHex,                         // ANSI 0
+        white: parseToHex(themeColors.foreground), // ANSI 7
+
+        // Map syntax colors to ANSI indices
+        magenta: parseToHex(themeColors.pink),     // ANSI 5
+        cyan: parseToHex(themeColors.purple),      // ANSI 6
+        blue: parseToHex(themeColors.blue),        // ANSI 4
+        green: parseToHex(themeColors.green),      // ANSI 2
+
+        brightBlack: parseToHex(themeColors.gutter) // ANSI 8
+    };
+}
 
 function getAceThemeColors() {
     const editorEle = document.querySelector('.ace_editor');
@@ -305,26 +352,200 @@ async function saveFile() {
         saveSettings(content)
 }
 
-
 const getModeByFilename = (filePath) => {
     const ext = filePath.split('.').pop().toLowerCase();
+
     const modes = {
-        'js': 'javascript',
-        'c': 'c_cpp',
-        'cpp': 'c_cpp',
-        'h': 'c_cpp',
-        'i': 'c_cpp',
-        'a': 'c_cpp',
-        'cs': 'csharp',
-        'html': 'html',
-        'css': 'css',
-        'json': 'json',
-        'md': 'markdown',
-        'txt': 'text',
-        's': 'assembly_x86',
-        'S': 'assembly_x86',
+        'abap': 'abap',
+        'abc': 'abc',
+        'ada': 'ada',
+        'adb': 'ada',
+        'ahk': 'autohotkey',
+        'apex': 'apex',
+        'applescript': 'applescript',
+        'as': 'actionscript',
         'asm': 'assembly_x86',
+        'bat': 'batchfile',
+        'bash': 'sh',
+        'c': 'c_cpp',
+        'cbl': 'cobol',
+        'cc': 'c_cpp',
+        'cfc': 'coldfusion',
+        'cfm': 'coldfusion',
+        'cfg': 'ini',
+        'cjs': 'javascript',
+        'cl': 'lisp',
+        'clj': 'clojure',
+        'cljs': 'clojure',
+        'cls': 'apex',
+        'cmake': 'cmake',
+        'cmd': 'batchfile',
+        'cob': 'cobol',
+        'coffee': 'coffee',
+        'conf': 'apache_conf',
+        'cpp': 'c_cpp',
+        'cs': 'csharp',
+        'css': 'css',
+        'csx': 'csharp',
+        'cxx': 'c_cpp',
+        'd': 'd',
+        'dart': 'dart',
+        'diff': 'diff',
+        'dockerfile': 'dockerfile',
+        'dot': 'dot',
+        'e': 'eiffel',
+        'edn': 'clojure',
+        'ejs': 'ejs',
+        'erl': 'erlang',
+        'ex': 'elixir',
+        'exs': 'elixir',
+        'f': 'fortran',
+        'f90': 'fortran',
+        'f95': 'fortran',
+        'for': 'fortran',
+        'forth': 'forth',
+        'frag': 'glsl',
+        'fs': 'fsharp',
+        'fsi': 'fsharp',
+        'fsx': 'fsharp',
+        'fth': 'forth',
+        'ftl': 'freemarker',
+        'gcode': 'gcode',
+        'gitignore': 'ini',
+        'glsl': 'glsl',
+        'go': 'golang',
+        'gql': 'graphql',
+        'graphql': 'graphql',
+        'groovy': 'groovy',
+        'gsh': 'groovy',
+        'gvy': 'groovy',
+        'gy': 'groovy',
+        'h': 'c_cpp',
+        'haml': 'haml',
+        'handlebars': 'handlebars',
+        'hbs': 'handlebars',
+        'hh': 'c_cpp',
+        'hjson': 'hjson',
+        'hpp': 'c_cpp',
+        'hrl': 'erlang',
+        'hs': 'haskell',
+        'htm': 'html',
+        'html': 'html',
+        'htaccess': 'apache_conf',
+        'hxx': 'c_cpp',
+        'i': 'c_cpp',
+        'ini': 'ini',
+        'ino': 'c_cpp',
+        'io': 'io',
+        'java': 'java',
+        'jade': 'pug',
+        'jl': 'julia',
+        'js': 'javascript',
+        'json': 'json',
+        'jsm': 'javascript',
+        'jsp': 'jsp',
+        'jsx': 'jsx',
+        'kt': 'kotlin',
+        'kts': 'kotlin',
+        'less': 'less',
+        'liquid': 'liquid',
+        'lisp': 'lisp',
+        'log': 'text',
+        'ls': 'livescript',
+        'lsp': 'lisp',
+        'ltx': 'latex',
+        'lua': 'lua',
+        'm': 'matlab',
+        'makefile': 'makefile',
+        'markdown': 'markdown',
+        'md': 'markdown',
+        'mel': 'mel',
+        'mjs': 'javascript',
+        'mk': 'makefile',
+        'ml': 'ocaml',
+        'mli': 'ocaml',
+        'mm': 'objectivec',
+        'mysql': 'mysql',
+        'nginx': 'nginx',
+        'nim': 'nim',
+        'nix': 'nix',
+        'nsh': 'nsis',
+        'nsi': 'nsis',
+        'pas': 'pascal',
+        'patch': 'diff',
+        'perl': 'perl',
+        'pgsql': 'pgsql',
+        'php': 'php',
+        'phtml': 'php',
+        'pig': 'pig',
+        'pl': 'perl',
+        'plsql': 'plsql',
+        'pm': 'perl',
+        'pp': 'pascal',
+        'powershell': 'powershell',
+        'prefs': 'ini',
+        'properties': 'properties',
+        'props': 'properties',
+        'proto': 'protobuf',
+        'ps1': 'powershell',
+        'psm1': 'powershell',
+        'pug': 'pug',
+        'puppet': 'puppet',
+        'py': 'python',
+        'pyw': 'python',
+        'q': 'q',
+        'r': 'r',
+        'rb': 'ruby',
+        'rdoc': 'rdoc',
+        'rhtml': 'ruby',
+        'rprofile': 'r',
+        'rs': 'rust',
+        's': 'assembly_x86',
+        'sass': 'sass',
+        'sbt': 'scala',
+        'scad': 'scad',
+        'scala': 'scala',
+        'scheme': 'scheme',
+        'scm': 'scheme',
+        'scss': 'scss',
+        'sh': 'sh',
+        'sieve': 'sieve',
+        'slim': 'slim',
+        'smali': 'smali',
+        'smarty': 'smarty',
+        'sql': 'sql',
+        'ss': 'scheme',
+        'styl': 'stylus',
+        'svg': 'svg',
+        'swift': 'swift',
+        'tcl': 'tcl',
+        'tex': 'latex',
+        'toml': 'toml',
+        'tpl': 'smarty',
+        'ts': 'typescript',
+        'tsx': 'tsx',
+        'twig': 'twig',
+        'txt': 'text',
+        'v': 'verilog',
+        'vala': 'vala',
+        'vapi': 'vala',
+        'vbe': 'vbscript',
+        'vbs': 'vbscript',
+        'vert': 'glsl',
+        'vh': 'verilog',
+        'vhd': 'vhdl',
+        'vhdl': 'vhdl',
+        'vue': 'vue',
+        'xhtml': 'html',
+        'xml': 'xml',
+        'xsd': 'xml',
+        'xsl': 'xml',
+        'yaml': 'yaml',
+        'yml': 'yaml',
+        'zig': 'zig',
+        'zsh': 'sh'
     };
+
     return `ace/mode/${modes[ext] || 'text'}`;
 };
 
@@ -542,7 +763,7 @@ editor.commands.addCommand({
         const range = editor.getSelectionRange();
         if (range && !range.isEmpty()) {
             let selectedText = editor.session.getTextRange(range);
-            
+
             if (selectedText) {
                 // FIX: Strip out null bytes (\x00) and dangerous low-ASCII control characters (0-31)
                 // except for normal layout formatting like tabs (\t), line feeds (\n), and carriage returns (\r)
