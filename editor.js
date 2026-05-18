@@ -2,6 +2,8 @@
 let tempCount = 1;
 const sessionCache = {};
 
+const statusBar = document.getElementById('statusbar')
+
 function getOrCreateAceSession(fileId, content) {
     if (sessionCache[fileId]) {
         return sessionCache[fileId];
@@ -35,6 +37,7 @@ let savedTheme = localStorage.getItem('theme') || theme.value || 'ace/theme/mono
 theme.value = savedTheme
 let themeName = savedTheme.split('/').pop()
 document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
+const editorWrapper = document.getElementById('editor-container')
 const editorContainer = document.getElementById('editor')
 let editor = ace.edit("editor");
 editor.setTheme(savedTheme);
@@ -46,6 +49,7 @@ editor.setOptions({
     scrollPastEnd: 0.9,       // Keeps cursor centered when adding new code at EOF
     showPrintMargin: true,
     navigateWithinSoftTabs: true,
+    printMarginColumn: 80
     //animatedScroll: true,
     //autoScrollEditorIntoView: false,
 })
@@ -127,23 +131,26 @@ function getAceThemeColors() {
 
 
 
-
 let navTimer;
 editor.on("changeSelection", function () {
-    if (NavHistory.isNavigating) return;
+    if (typeof NavHistory !== 'undefined' && NavHistory.isNavigating) return;
 
     clearTimeout(navTimer);
     navTimer = setTimeout(() => {
         const pos = editor.getCursorPosition();
-        const currentFile = currentOpenFileId; // Your global var
+        const currentFile = typeof currentOpenFileId !== 'undefined' ? currentOpenFileId : null;
 
-        // Only push if it's a different file or a significantly different line
+        // Ground coordinates to human 1-based format inside tracking tables
+        const humanRow = pos.row + 1;
+        const humanCol = pos.column + 1;
+
         const lastPoint = NavHistory.stack[NavHistory.index];
-        if (!lastPoint || lastPoint.fileId !== currentFile || Math.abs(lastPoint.row - pos.row) > 5) {
-            NavHistory.push(currentFile, pos.row, pos.column);
+        if (!lastPoint || lastPoint.fileId !== currentFile || Math.abs(lastPoint.row - humanRow) > 5) {
+            NavHistory.push(currentFile, humanRow, humanCol);
         }
-    }, 500); // Wait 500ms of idle time
+    }, 500);
 });
+
 
 editor.commands.addCommand({
     name: "save",
@@ -166,7 +173,6 @@ ace.config.loadModule("ace/keybinding/vim", function(m) {
 ace.config.loadModule("ace/keyboard/vim", function(m) {
     let VimApi = m.CodeMirror.Vim;
     // Some versions of Ace require this manual attachment:
-    let statusBar = document.getElementById("status-bar");
     
     // This tells Ace to pipe ":commands" and "INSERT/NORMAL" modes to your div
     editor.setOption("showPrintMargin", false); // Optional cleanup
@@ -242,6 +248,9 @@ window.addEventListener('keydown', (e) => {
 });
 
 
+window.addEventListener('keyup', (e) => {
+    isModifierPressed = e.ctrlKey || e.metaKey;
+})
 
 async function newFile() {
     const session = getOrCreateAceSession('temp' + (++tempCount), '');
@@ -257,7 +266,7 @@ async function newFile() {
 async function saveFile() {
     const database = owner.value + '/' + repo.value
     const filePath = currentSession()
-    if (!currentSession())
+    if (!filePath)
         filePath = trees[database].nodesById[currentOpenFileId].path
     const content = editor.getValue()
     const newSha = await getGitShaBrowser(content)
@@ -316,9 +325,7 @@ function fullScreenLayout() {
 function getFullScreenFit(defaultFactor = 0.25) {
     const isFull = fullScreenLayout()
     const tools = document.getElementById('toolbar').clientHeight
-        + document.getElementById('statusbar').clientHeight
-        + document.getElementById('terminals').clientHeight
-        + 10;
+        + statusBar.clientHeight;
     const height = (window.innerHeight - tools) * defaultFactor
     return height
 }
@@ -326,27 +333,191 @@ function getFullScreenFit(defaultFactor = 0.25) {
 
 function updateMaxLines() {
     const lineHeight = editor.renderer.lineHeight;
-    //const availableHeight = document.getElementById('editor-container').clientHeight;
+    //const availableHeight = editorWrapper.clientHeight;
 
     // Calculate how many lines fit in that space
     const isFull = fullScreenLayout()
-    const height = getFullScreenFit(0.99) // isFull ? 0.99 : 0.75) // opposite terminal 0.25
+    const realHeight = getFullScreenFit(1.001)
+    //const height = getFullScreenFit(1.01) // isFull ? 0.99 : 0.75) // opposite terminal 0.25
     //let calculatedMax = editor.getValue().split('\n').length
     // add scroll to bottom of files
     //    + (height * 0.25 / lineHeight)
     //if (!isFull) {
-    calculatedMax = Math.floor(height / lineHeight);
+    //calculatedMax = Math.floor(height / lineHeight);
     //}
-
-    editorContainer.style.height = `${height}px`;
+    //editor.setOptions({
+    //    maxLines: calculatedMax,
+    //    minLines: calculatedMax
+    //});
+    editorContainer.style.height = `${realHeight}px`;
     editor.resize();
     editor.renderer.updateFull();
 
 }
 
-editor.on("changeSelection", () => {
-    // Automatically aligns the viewport view frame whenever the cursor moves
-    editor.renderer.scrollCursorIntoView(null, 0.5);
+
+/**
+ * Ace Editor Real-Time Interaction and Telemetry Linker
+ * Tracks token context beneath cursor on hotkey modifier hold.
+ */
+
+// Global tracking references for throttling layout updates
+let lastTrackedRow = -1;
+let lastTrackedColumn = -1;
+let aceMoveDebounceTimer = null;
+
+/**
+ * Main event processor for Ace mouse movements.
+ * Converts screen positions into exact buffer coordinates.
+ */
+function detectAceEditorEvents(event) {
+    if (!editor || !editor.renderer) return null;
+
+    // 1. GATEWAY: Only process calculations if Ctrl (Win/Linux) or Cmd (Mac) is held down
+    //if (!event.ctrlKey && !event.metaKey) {
+    // Optional: clear status bar token readouts if modifier is released
+    //    return null;
+    //}
+
+    const canvasX = event.clientX;
+    const canvasY = event.clientY;
+
+    // 2. Map mouse screen pixels directly to Ace internal character coordinates
+    const screenPos = editor.renderer.screenToTextCoordinates(canvasX, canvasY);
+    const row = screenPos.row;
+    const column = screenPos.column;
+
+    // Skip recalculation if the mouse is hovering over the exact same character slot
+    if (row === lastTrackedRow && column === lastTrackedColumn) {
+        return previousAceUpdate;
+    }
+
+    lastTrackedRow = row;
+    lastTrackedColumn = column;
+
+    // 3. Get the precise string token sitting under the mouse
+    const session = editor.getSession();
+    const token = session.getTokenAt(row, column);
+
+    // Extract the full raw text line for debugging context
+    const lineText = session.getLine(row);
+
+    let tokenText = null;
+    let tokenType = null;
+    let isFunctionCall = false;
+
+    if (token) {
+        tokenText = token.value.trim();
+        tokenType = token.type;
+
+        // Peek ahead at the next token to check if it's an invocation paren: "myFunc("
+        const nextToken = session.getTokenAt(row, column + token.value.length);
+        if (tokenType.includes("support.function") ||
+            tokenType.includes("entity.name.function") ||
+            (nextToken && nextToken.value.startsWith('('))) {
+            isFunctionCall = true;
+        }
+    }
+
+    // Convert internal zero-based indices to human-readable 1-based indices (+1)
+    const humanLine = row + 1;
+    const humanCol = column + 1;
+    const database = owner.value + '/' + repo.value
+    const filePath = currentSession()
+    if (!filePath)
+        filePath = trees[database].nodesById[currentOpenFileId].path
+    const updatePayload = {
+        event,
+        row: humanLine,
+        column: humanCol,
+        lineText,
+        tokenText,
+        tokenType,
+        isFunctionCall,
+        id: typeof currentOpenFileId !== 'undefined' ? currentOpenFileId : 'unknown',
+        file: filePath,
+    };
+
+    // Update global status readouts dynamically
+    updateAceStatus(updatePayload);
+
+    return updatePayload;
+}
+
+/**
+ * Updates your shared application status bar layout element
+ */
+function updateAceStatus(data) {
+    if (!statusBar) return;
+    if (!data) {
+        statusBar.innerText = "Editor: Idle";
+        return;
+    }
+    const cursor = editor.getCursorPosition();
+    const cursorLine = cursor.row + 1;
+    const cursorCol = cursor.column + 1;
+    const tokenInfo = data.tokenText
+        ? `Token: "${data.tokenText}" [${data.tokenType}]${data.isFunctionCall ? ' (Function Call)' : ''}, `
+        : '';
+
+    statusBar.innerText = `Editor: Mouse: ${data.row}x${data.column}, `
+        + `Cursor: ${cursorLine}x${cursorCol}, `
+        + tokenInfo
+        + `File: ${data.file}, ID: ${data.id}`;
+}
+
+/**
+ * Throttle handler to guard performance during heavy mouse drag/sweep gestures
+ */
+let previousAceUpdate = null;
+function onAceMouseMove(event) {
+    // Immediate early exit if modifier isn't engaged to ensure completely zero lag typing
+    //if (!event.ctrlKey && !event.metaKey) {
+    //    return;
+    //}
+
+    if (aceMoveDebounceTimer) return;
+
+    aceMoveDebounceTimer = setTimeout(() => {
+        previousAceUpdate = detectAceEditorEvents(event);
+        aceMoveDebounceTimer = null;
+    }, 100); // Efficient 100ms calculation window
+}
+
+// =========================================================================
+// EVENT REGISTRATION AND ATTACHMENTS
+// =========================================================================
+
+// Attach to the main content container renderer canvas layer of the Ace architecture
+editorWrapper.addEventListener('mousemove', onAceMouseMove);
+
+/**
+ * Click handler execution block.
+ * When a user clicks a function token with the modifier held, jump execution locations.
+ */
+editorWrapper.addEventListener('mousedown', async (event) => {
+
+    // Intercept standard focus adjustments
+    event.preventDefault();
+
+    const telemetry = detectAceEditorEvents(event);
+    if (!telemetry || !telemetry.tokenText) return;
+
+    if (!event.ctrlKey && !event.metaKey) return;
+
+    if (typeof writeLog === 'function') {
+        writeLog(`Ace Intercept -> Token: ${telemetry.tokenText}, Line: ${telemetry.row}, Fn: ${telemetry.isFunctionCall}`);
+    }
+
+    debugger
+
+    // --- THE JUMP ENGINE EXTENSION HOOK ---
+    if (telemetry.isFunctionCall) {
+        if (typeof lookupFunctionDefinition === 'function') {
+            // Your future linker handler: parses function references across index trees
+            await lookupFunctionDefinition(telemetry.tokenText, telemetry.fileId);
+        } else {
+            console.log(`Ready to link function definition for: ${telemetry.tokenText}`);
+        }
+    }
 });
-
-

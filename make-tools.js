@@ -384,7 +384,7 @@ function writeLog(msg, ...args) {
     if (!msg.includes) debugger
     if (msg.includes && msg.includes('TypeError:')) debugger
     let formatted = formatMessage(PREAMBLE, [msg, ...args])
-    if (typeof term !== 'undefined' && !skipTerminal) term.write(formatted);
+    if (typeof term !== 'undefined' && !skipTerminal) terminalWrite(formatted);
     else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.log(msg, ...args);
     else console.log(msg, ...args)
@@ -442,7 +442,7 @@ const originalConsole = {
 
 self.console.log = (...args) => {
     const formatted = formatMessage('log', args);
-    if (typeof term !== 'undefined') term.write(formatted);
+    if (typeof term !== 'undefined') terminalWrite(formatted);
     else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.log(...args);
     if (typeof triggerIncrementalSave !== 'undefined')
@@ -451,7 +451,7 @@ self.console.log = (...args) => {
 
 self.console.warn = (...args) => {
     const formatted = formatMessage('warn', args);
-    if (typeof term !== 'undefined') term.write(formatted);
+    if (typeof term !== 'undefined') terminalWrite(formatted);
     else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.warn(...args);
     if (typeof triggerIncrementalSave !== 'undefined')
@@ -460,7 +460,7 @@ self.console.warn = (...args) => {
 
 self.console.error = (...args) => {
     const formatted = formatMessage('error', args);
-    if (typeof term !== 'undefined') term.write(formatted);
+    if (typeof term !== 'undefined') terminalWrite(formatted);
     else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.error(...args);
     if (typeof triggerIncrementalSave !== 'undefined')
@@ -469,7 +469,7 @@ self.console.error = (...args) => {
 
 self.console.info = (...args) => {
     const formatted = formatMessage('info', args);
-    if (typeof term !== 'undefined') term.write(formatted);
+    if (typeof term !== 'undefined') terminalWrite(formatted);
     else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.info(...args);
     if (typeof triggerIncrementalSave !== 'undefined')

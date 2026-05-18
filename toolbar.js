@@ -369,7 +369,8 @@ function saveSettings(content) {
 
         commandHistory.splice(0, history.length);
         for (let cmd of settings.history)
-            commandHistory.push(cmd)
+            if (cmd.trim().length > 0)
+                commandHistory.push(cmd)
         localStorage.setItem('history', JSON.stringify(commandHistory instanceof Array ? commandHistory || [] : []))
     }
     catch (e) {

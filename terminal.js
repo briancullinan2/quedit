@@ -1,9 +1,9 @@
-const DIFFERENTIATE_SAVED = false
+
+//const DIFFERENTIATE_SAVED = false
 const LINES_TO_SAVE = 1000
 const LINES_TO_SCROLLBACK = 5000
 const MAX_HISTORY_LENGTH = 20
 const SCROLLBAR_WIDTH = 15
-const preterm = []
 let terminalLoaded = false
 const terminalContainer = document.getElementById('terminal')
 const term = new Terminal({
@@ -11,6 +11,10 @@ const term = new Terminal({
     convertEol: true,
     scrollback: LINES_TO_SCROLLBACK, // Increase this from the default 1000
     cursorBlink: true,
+    //overviewRulerWidth: true,
+    //theme: {
+    //    background: '#000000', // Matches your theme color background
+    //}
 });
 term.open(terminalContainer);
 
@@ -28,7 +32,6 @@ function resizeDebouncer() {
 
 
 
-
 window.addEventListener('resize', resizeDebouncer);
 
 
@@ -38,6 +41,86 @@ const loadedLog = JSON.parse(localStorage.getItem('terminal_log') || '[]');
 if (loadedLog.length === 0)
     writePrompt()
 
+let lineCount = loadedLog.reduce((sum, l) => {
+    const text = l.text || l; // handles both structured objects and raw strings
+    return sum + (text.match(/\n/g) || []).length;
+}, 0);
+
+
+let lastPartialLine = ''
+
+function terminalWrite(message, source, skipActualWrite = false) {
+    if (!message) {
+        debugger
+        return
+    }
+    let render = message
+    if (!message.endsWith('\n\r') && !message.endsWith('\n')) {
+        let parts = message.split(/\n\r*/)
+        lastPartialLine = parts.pop()
+        render = parts.join('\n\r')
+    }
+
+    if (lastPartialLine) {
+        lastPartialLine = ''
+        render = lastPartialLine + render
+    }
+
+    lineCount += (message.match(/\n/g) || []).length
+    loadedLog.push({ render: render.includes('\n') ? forceLineWrap(render, term.cols) : '', source: source, text: message, index: loadedLog.length, line: lineCount })
+
+    if (!terminalLoaded) {
+        return
+    }
+
+    if (!skipActualWrite)
+        term.write(message)
+}
+
+function forceLineWrap(text, maxCharsPerRow = 80) {
+    const rows = [];
+    let currentLine = '';
+    let visibleCount = 0;
+
+    // Tokenize text into individual printable characters vs ANSI sequences
+    // Matches standard ANSI codes: \x1b[...m
+    const tokenRegex = /(\x1b\[[0-9;]*[a-zA-Z])|([\s\S])/g;
+    let match;
+
+    while ((match = tokenRegex.exec(text)) !== null) {
+        const [token, ansiCode, printableChar] = match;
+
+        if (ansiCode) {
+            // Invisible color tag—pass it into the line buffer for free
+            currentLine += ansiCode;
+        } else {
+            // Printable text character
+            if (printableChar === '\n') {
+                // Hard break found naturally in stream, push and reset
+                rows.push(currentLine);
+                currentLine = '';
+                visibleCount = 0;
+            } else {
+                currentLine += printableChar;
+                visibleCount++;
+
+                if (visibleCount >= maxCharsPerRow) {
+                    // Artificial limit hit! Wrap to next segment line
+                    rows.push(currentLine);
+                    currentLine = '';
+                    visibleCount = 0;
+                }
+            }
+        }
+    }
+
+    // Flush remaining stray items in the text buffer
+    if (currentLine.length > 0) {
+        rows.push(currentLine);
+    }
+
+    return rows.join('\n\r');
+}
 
 let historyIndex = -1;
 let currentLine = '';
@@ -150,9 +233,12 @@ async function triggerIncrementalSave() {
         return
     }
     incrementalDebouncer = setTimeout(() => {
+        debounceTerminalStatus()
         performSharedBufferScanInternal(searchTerminal.value)
-        const last1000 = DIFFERENTIATE_SAVED ? getInternalTerminalLog() : getInternalTerminalLogColored();
-        localStorage.setItem('terminal_log', JSON.stringify(last1000));
+        const lines = loadedLog.slice(-LINES_TO_SAVE)
+        //const last1000 = DIFFERENTIATE_SAVED 
+        //? getInternalTerminalLog() : getInternalTerminalLogColored();
+        localStorage.setItem('terminal_log', JSON.stringify(lines));
         incrementalDebouncer = null
     }, 1000)
 }
@@ -414,11 +500,13 @@ function highlightMatch(x, y, text) {
 
 term.attachCustomKeyEventHandler((arg) => {
 
+    debounceTerminalStatus()
 
+    if(arg.type === "keydown" || arg.type === "keyup")
+        isModifierPressed = arg.ctrlKey || arg.metaKey;
 
     if (arg.type === "keydown") {
         // Check for Ctrl (Windows/Linux) or Cmd (Mac)
-        isModifierPressed = arg.ctrlKey || arg.metaKey;
 
 
         if (isModifierPressed && arg.code === "KeyF") {
@@ -522,11 +610,6 @@ function specialWrite(msg) {
         needsHeaders = true
     }
 
-    if (!terminalLoaded) {
-        preterm.push(msg)
-        return
-    }
-
     if (!runningCommand && !detachedConsole && !alreadyWroteDetached) {
         detachedConsole = true
         PREAMBLE = WARN_PREAMBLE
@@ -537,7 +620,7 @@ function specialWrite(msg) {
         skipTerminal = true
     }
     if (!skipTerminal)
-        term.write(msg)
+        terminalWrite(msg)
     triggerIncrementalSave()
 }
 
@@ -548,6 +631,7 @@ term.onData(async data => {
         case '\r': // Enter
             if (currentLine.trim().length > 0) {
                 commandHistory.push(currentLine);
+                terminalWrite(currentLine + '\n\r', 'user-input', true)
 
                 // If we exceed 10, remove the difference from the beginning
                 if (commandHistory.length > MAX_HISTORY_LENGTH) {
@@ -571,7 +655,7 @@ term.onData(async data => {
 
                 await handleCommand(thisLine);
             } catch (e) {
-                term.write(e.toString() + '\r\n' + (e.stack || e.stacktrace) + '\r\n');
+                terminalWrite(e.toString() + '\r\n' + (e.stack || e.stacktrace) + '\r\n');
             }
 
             writePrompt()
@@ -597,7 +681,8 @@ term.onData(async data => {
 
         case '\u001b[A': // Up Arrow
             if (commandHistory.length > 0) {
-                commandHistory[historyIndex] = currentLine
+                if (currentLine.trim().length > 0)
+                    commandHistory[historyIndex] = currentLine
                 if (historyIndex === -1) historyIndex = commandHistory.length - 1;
                 else if (historyIndex > 0) historyIndex--;
                 updateLineFromHistory();
@@ -606,7 +691,8 @@ term.onData(async data => {
 
         case '\u001b[B': // Down Arrow
             if (historyIndex !== -1) {
-                commandHistory[historyIndex] = currentLine
+                if (currentLine.trim().length > 0)
+                    commandHistory[historyIndex] = currentLine
                 if (historyIndex < commandHistory.length - 1) {
                     historyIndex++;
                     updateLineFromHistory();
@@ -681,6 +767,7 @@ term.onData(async data => {
                 }
             }
     }
+    debounceTerminalStatus()
 });
 
 
@@ -732,7 +819,9 @@ function forceFit() {
     //    term.resize(cols, term.buffer.active.baseY + term.rows);
     //    return
     //}
-    const height = getFullScreenFit(0.99) // isFull ? 0.99 : 0.25)
+    const height = getFullScreenFit(1.01)
+        // isFull ? 0.99 : 0.25)
+        - document.getElementById('terminals').clientHeight
     const rows = Math.max(1, Math.floor(height / dims.css.cell.height));
 
     // 3. Force the resize
@@ -798,7 +887,8 @@ function extractFiles(col, row) {
             path: m[1],
             line: m[2] ? parseInt(m[2], 10) : null,
             index: m.index,
-            center: m.index + (m[0].length / 2) // Middle of the match for better accuracy
+            center: m.index + (m[0].length / 2), // Middle of the match for better accuracy
+            isFallback: false
         }, lines[(lineText.substring(0, m.index).match(/\n/g) || []).length]));
 
 
@@ -815,7 +905,7 @@ function extractFiles(col, row) {
 
     return [{
         off: 0,
-        text: lines[2].line.trim(),
+        text: lines[2].line?.trim(),
         path: null,
         line: null,
         index: targetIndex - col, // Start of the clicked line
@@ -827,57 +917,152 @@ function extractFiles(col, row) {
 }
 
 
-terminalContainer.addEventListener('mousedown', async (event) => {
-
-    if (!event.ctrlKey || !isModifierPressed) return;
-
-    event.preventDefault()
-
+function detectTerminalEvents(event, x, y, updateStatus = true) {
     const rect = terminalContainer.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    if (event) {
+        x |= event.clientX - rect.left;
+        y |= event.clientY - rect.top;
+    }
 
     const col = Math.floor(x / term._core._renderService.dimensions.css.cell.width);
-    const row = Math.floor(y / term._core._renderService.dimensions.css.cell.height) + term.buffer.active.viewportY;
+    const row = Math.floor(y / term._core._renderService.dimensions.css.cell.height) + term.buffer.active.viewportY + 1;
 
     // Only update cursor if the click is on the "active" input line
     const activeRow = term.buffer.active.baseY + term.buffer.active.cursorY;
 
     const files = extractFiles(col, row);
-    const lineText = files[0]?.text.trim()
+    const lineText = files[0]?.text?.trim()
         || term.buffer.active.getLine(row)?.translateToString(true)
-    if (files.length === 0
-        || lineText.length === 0
-    ) return;
 
-
-
-    // 3. Regex to find "filename.ext:line" or "filename.ext:line:col"
-    // This matches standard compiler/error output formats
-    const filePattern = /([\w\d\._\-\/]+\.\w+)\b(?::(\d+))?(?::(\d+))?[\n\r\s$]*/;
-    const match = lineText.match(filePattern);
-    const filePath = files[0].path
-    const lineNumber = files[0].line
-
-    if (files[0].path) {
-        writeLog(`File: ${files[0].path}, Line: ${files[0].line}`);
+    let filePath
+    let lineNumber
+    let isFallback
+    if (lineText && files.length > 0) {
+        // 3. Regex to find "filename.ext:line" or "filename.ext:line:col"
+        // This matches standard compiler/error output formats
+        const filePattern = /([\w\d\._\-\/]+\.\w+)\b(?::(\d+))?(?::(\d+))?[\n\r\s$]*/;
+        const match = lineText.match(filePattern);
+        filePath = files[0].path
+        lineNumber = files[0].line
+        isFallback = files[0].isFallback
     }
 
-    let history
+
+    let history = null
+
+    if (lineText) {
+        if ((history = commandHistory
+            .findLastIndex(i => i.trim().length > 0 && i.trim() === lineText.trim()))
+            && history >= y
+            || (history = commandHistory
+                .findLastIndex(i => i.trim().length > 0 && i.trim().includes(lineText.trim())))
+            && history >= y
+            || (history = commandHistory.
+                findLastIndex(i => i.trim().length > 0 && lineText.trim().includes(i.trim())))
+            && history >= y
+        ) {
+            // if they click on a previous command with ctrl button, insert it into the current line
+        }
+    }
+
+    if (updateStatus) {
+        updateTerminalStatus(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, isFallback, history)
+    }
+
+
+    return {
+        event,
+        x, y, activeRow,
+        col, row,
+        lineText, filePath, lineNumber,
+        isFallback,
+        history,
+    }
+
+}
+
+
+let debounceTerminalMouse = null
+let previousUpdate = null
+async function debounceTerminalStatus(event) {
+
+    //if (!event.ctrlKey && !event.metaKey && !isModifierPressed) return false;
+
+
+
+    const rect = terminalContainer.getBoundingClientRect();
+    if (previousUpdate && event) {
+        previousUpdate.event = event
+        previousUpdate.x = event.clientX - rect.left;
+        previousUpdate.y = event.clientY - rect.top;
+    }
+
+    if (debounceTerminalMouse) return false
+
+    debounceTerminalMouse = setTimeout(() => {
+
+        if (!previousUpdate && !event) {
+            // do nothing
+        }
+        else if (!previousUpdate) {
+            previousUpdate = detectTerminalEvents(
+                event, event.clientX - rect.left, event.clientY - rect.top)
+        } else {
+            previousUpdate = detectTerminalEvents(
+                previousUpdate.event, previousUpdate.x, previousUpdate.y)
+        }
+
+
+        debounceTerminalMouse = null
+    }, 200)
+
+
+    return false
+}
+
+function updateTerminalStatus(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, isFallback, history) {
+
+    statusBar.innerText = `Terminal: Mouse: ${col}x${row}, `
+        + `Cursor: ${cursorPosition}x${activeRow}, `
+        + (history !== null && history !== -1 ? `History: ${history}, ` : '')
+        + (filePath && !isFallback ? lineNumber !== null ?
+            `File: ${filePath}, Line: ${lineNumber}`
+            : `File: ${filePath}`
+            : '')
+
+}
+
+terminalContainer.addEventListener('mousemove', debounceTerminalStatus);
+
+
+
+
+terminalContainer.addEventListener('mousedown', async (event) => {
+
+    if (!event.ctrlKey && !event.metaKey && !isModifierPressed) return false;
+
+    event.preventDefault()
+    const rect = terminalContainer.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    const {
+        activeRow, col, row,
+        lineText, filePath, lineNumber,
+        isFallback, history,
+    } = detectTerminalEvents(event, x, y)
+
+    if (filePath) {
+        writeLog(`File: ${filePath}, Line: ${lineNumber}, Fallback: ${isFallback}`);
+    }
+
+
     if (row === activeRow) {
         changeCursorPosition(event, x, y, activeRow, col, row, lineText, filePath, lineNumber)
-    } else if ((history = commandHistory.findIndex(i => i.trim() === lineText.trim()))
-        && history >= y
-        || (history = commandHistory.findIndex(i => i.trim().includes(lineText.trim())))
-        && history >= y
-        || (history = commandHistory.findIndex(i => lineText.trim().includes(i.trim())))
-        && history >= y
-    ) {
-        // if they click on a previous command with ctrl button, insert it into the current line
+    } else if (history !== null && history !== -1) {
         historyIndex = history
         updateLineFromHistory()
-    } else if (!files[0].isFallback) {
-
+    } else if (filePath && !isFallback) {
         await clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber)
     }
 

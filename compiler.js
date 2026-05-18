@@ -1,5 +1,4 @@
 
-const status = document.getElementById('statusbar')
 
 class WorkerAPI {
     constructor(options) {

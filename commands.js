@@ -176,23 +176,23 @@ function writeCommandHelp(targetCommand, argv) {
 
     const schema = COMMAND_SCHEMA[targetCommand];
     if (!schema) {
-        term.write(`\x1b[38;5;203m[HELP ERROR]\x1b[0m Unknown command entity descriptor: "${targetCommand}"\n\r`);
+        terminalWrite(`\x1b[38;5;203m[HELP ERROR]\x1b[0m Unknown command entity descriptor: "${targetCommand}"\n\r`);
         return;
     }
 
     // Handle Symbolic Redirection Hooks instantly
     if (schema.alias) {
-        term.write(`\x1b[38;5;221m[ALIAS]\x1b[0m Command \x1b[1m"${targetCommand}"\x1b[0m is a symbolic link to: \x1b[38;5;118m${schema.alias}\x1b[0m\n\r`);
-        term.write(`Execute "help ${schema.alias}" to view operational engine constraints.\n\r`);
+        terminalWrite(`\x1b[38;5;221m[ALIAS]\x1b[0m Command \x1b[1m"${targetCommand}"\x1b[0m is a symbolic link to: \x1b[38;5;118m${schema.alias}\x1b[0m\n\r`);
+        terminalWrite(`Execute "help ${schema.alias}" to view operational engine constraints.\n\r`);
         return;
     }
 
-    term.write(`\n\r\x1b[1;38;5;33mMANUAL LOOKUP: ${targetCommand.toUpperCase()}\x1b[0m\n\r`);
-    term.write(`\x1b[4mDescription:\x1b[0m ${schema.description}\n\r\n\r`);
+    terminalWrite(`\n\r\x1b[1;38;5;33mMANUAL LOOKUP: ${targetCommand.toUpperCase()}\x1b[0m\n\r`);
+    terminalWrite(`\x1b[4mDescription:\x1b[0m ${schema.description}\n\r\n\r`);
 
     // Render Arguments and Typings
     if (schema.args.length > 0) {
-        term.write(`\x1b[4mArguments:\x1b[0m\n\r`);
+        terminalWrite(`\x1b[4mArguments:\x1b[0m\n\r`);
         schema.args.forEach((arg, index) => {
             let typeString = '';
             if (Array.isArray(arg.type)) {
@@ -200,27 +200,27 @@ function writeCommandHelp(targetCommand, argv) {
             } else {
                 typeString = `<${arg.type}>`;
             }
-            term.write(`  argv[${index}] : ${arg.name.padEnd(14)} \x1b[38;5;214m${typeString.padEnd(30)}\x1b[0m # ${arg.description}\n\r`);
+            terminalWrite(`  argv[${index}] : ${arg.name.padEnd(14)} \x1b[38;5;214m${typeString.padEnd(30)}\x1b[0m # ${arg.description}\n\r`);
         });
-        term.write(`\n\r`);
+        terminalWrite(`\n\r`);
     }
 
     // Render Compilation and Runtime Flags
     const flagKeys = Object.keys(schema.flags);
     if (flagKeys.length > 0) {
-        term.write(`\x1b[4mAvailable Flags:\x1b[0m\n\r`);
+        terminalWrite(`\x1b[4mAvailable Flags:\x1b[0m\n\r`);
         flagKeys.forEach(flag => {
-            term.write(`  ${flag.padEnd(10)} : ${schema.flags[flag].description}\n\r`);
+            terminalWrite(`  ${flag.padEnd(10)} : ${schema.flags[flag].description}\n\r`);
         });
-        term.write(`\n\r`);
+        terminalWrite(`\n\r`);
     }
 
     if (schema.demos && schema.demos.length > 0) {
-        term.write(`\x1b[4mSample Execution Demos (Interactive):\x1b[0m\n\r`);
+        terminalWrite(`\x1b[4mSample Execution Demos (Interactive):\x1b[0m\n\r`);
         schema.demos.forEach(demo => {
             // Bright Turquoise underlines on the actual target command sequence lines 
             // making them instantly targetable for stage two processing maps
-            term.write(`\x1b[1;38;5;81m${demo.cmd.padEnd(50)}\x1b[0m \x1b[38;5;244m# ${demo.desc}\x1b[0m\n\r`);
+            terminalWrite(`\x1b[1;38;5;81m${demo.cmd.padEnd(50)}\x1b[0m \x1b[38;5;244m# ${demo.desc}\x1b[0m\n\r`);
         });
     }
 
@@ -241,7 +241,7 @@ async function help(argv) {
     }
 
     // Scenario B: Global lookup list pass (Default plain "help" execution context)
-    term.write(`\n\r\x1b[1;38;5;118m=== AVAILABLE SYSTEM MATRIX COMMANDS ===\x1b[0m\n\r`);
+    terminalWrite(`\n\r\x1b[1;38;5;118m=== AVAILABLE SYSTEM MATRIX COMMANDS ===\x1b[0m\n\r`);
 
     // Sort keys to maintain a clean layout presentation
     const keys = Object.keys(COMMAND_SCHEMA).sort();
@@ -255,21 +255,21 @@ async function help(argv) {
 
         if (item.alias) {
             // Render basic alias linkage markers concisely
-            term.write(`  \x1b[38;5;244m${keyNameDisplay} -> alias to [${item.alias}]\x1b[0m\n\r`);
+            terminalWrite(`  \x1b[38;5;244m${keyNameDisplay} -> alias to [${item.alias}]\x1b[0m\n\r`);
         } else {
             // Render active descriptions 
-            term.write(`  \x1b[1;38;5;45m${keyNameDisplay}\x1b[0m : ${item.description}\n\r`);
+            terminalWrite(`  \x1b[1;38;5;45m${keyNameDisplay}\x1b[0m : ${item.description}\n\r`);
         }
     }
     for (const key of keys) {
         if (!COMMAND_SCHEMA[key].alias) {
             writeCommandHelp(key);
             // Boundary line divider separating operational tools
-            term.write(`\x1b[38;5;238m${'-'.repeat(term.cols || 80)}\x1b[0m\n\r`);
+            terminalWrite(`\x1b[38;5;238m${'-'.repeat(term.cols || 80)}\x1b[0m\n\r`);
         }
     }
 
-    term.write(`\n\rRun "help <command>" to query explicit option arguments and value types.\n\r`);
+    terminalWrite(`\n\rRun "help <command>" to query explicit option arguments and value types.\n\r`);
 }
 
 
@@ -329,10 +329,10 @@ async function handleCommand(input) {
         } catch (execError) {
             if (typeof originalConsole !== 'undefined')
                 originalConsole.error(execError)
-            term.write(formatMessage(CMD_PREAMBLE, [`Failed executing: ${resolvedCommandKey}`, execError]));
+            terminalWrite(formatMessage(CMD_PREAMBLE, [`Failed executing: ${resolvedCommandKey}`, execError]));
         }
     } else {
-        term.write(`Command not found: ${commandName}\n\r`);
+        terminalWrite(`Command not found: ${commandName}\n\r`);
     }
 
     runningCommand = false;
@@ -397,13 +397,13 @@ async function ls(argv, database) {
 
 
     if (flags.flat) {
-        entries.forEach(e => term.writeln(e.path));
+        entries.forEach(e => terminalWrite(e.path +  '\n\r'));
     } else {
         // Calculate column width for alignment
         const maxName = Math.max(...entries.map(e => e.path.length), 10);
 
-        term.writeln(`${'NAME'.padEnd(maxName + 2)}${'SIZE'.padEnd(10)}TYPE`);
-        term.writeln('-'.repeat(maxName + 20));
+        terminalWrite(`${'NAME'.padEnd(maxName + 2)}${'SIZE'.padEnd(10)}TYPE\n\r`);
+        terminalWrite('-'.repeat(maxName + 20) +  '\n\r');
 
         entries.forEach(e => {
             const size = e.contents ? flags.human ? formatBytes(e.contents.length) : e.contents.length.toString() : '0B';
@@ -411,7 +411,7 @@ async function ls(argv, database) {
             const sizeStr = size.padEnd(10);
             const color = e.mode === FS_DIR ? '\x1b[1;34m' : '\x1b[0m'; // Blue for dirs
 
-            term.writeln(`${color}${nameStr}\x1b[0m${sizeStr}${e.mode}`);
+            terminalWrite(`${color}${nameStr}\x1b[0m${sizeStr}${e.mode}\n\r`);
         });
     }
 }
@@ -422,7 +422,7 @@ async function ls(argv, database) {
 async function hello(argv) {
     const name = argv[0] || 'User';
     let user = (await getAuthenticatedUser()).login
-    term.write(`Hello, ${user || name}!\n\r`);
+    terminalWrite(`Hello, ${user || name}!\n\r`);
 }
 
 
@@ -507,12 +507,12 @@ async function buildCommand(argv, database) {
     }
     else if (mode) {
         let modes = Array.from(configuration.children).map(m => m.value)
-        term.write(`Valid modes ${modes.join('|')}: ${mode} given.\n\r`);
+        terminalWrite(`Valid modes ${modes.join('|')}: ${mode} given.\n\r`);
         return;
     }
 
 
-    term.write(`Starting ${mode} build...\n\r`);
+    terminalWrite(`Starting ${mode} build...\n\r`);
 
     if (selected === engineRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
     {
@@ -659,7 +659,7 @@ async function link(argv, database) {
     api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
 
 
-    term.write(`Starting ${mode} linking...\n\r`);
+    terminalWrite(`Starting ${mode} linking...\n\r`);
 
 
     if (selected === engineRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
@@ -1066,7 +1066,7 @@ async function clone(argv) {
     }
     await loadGitHubTree(ownerName, repoName, branch)
 
-    term.write('Checked out: ' + branch + ' from ' + ownerName + '/' + repoName + '\n\r');
+    terminalWrite('Checked out: ' + branch + ' from ' + ownerName + '/' + repoName + '\n\r');
 
     // TODO: switch to aux filelist and display
 }

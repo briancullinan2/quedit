@@ -1395,6 +1395,7 @@ body {
 .ace_editor ::-webkit-scrollbar,
 .xterm .xterm-scrollable-element > .scrollbar {
     width: 10px !important;
+    height: 10px !important;
     background-color: transparent !important;
 }
 
@@ -1402,29 +1403,116 @@ body {
 .xterm-viewport ::-webkit-scrollbar-track,
 .ace_editor ::-webkit-scrollbar-track,
 .ace_scrollbar::-webkit-scrollbar-track,
+.ace_editor .ace_scrollbar-h::-webkit-scrollbar-track,
 .xterm .xterm-scrollable-element > .scrollbar {
     background: transparent !important;
-}
-
-.ace_editor {
-    /*background-color: transparent !important;*/
-}
-
-.xterm-scrollable-element,
-.xterm-viewport {
-    /*background-color: var(--ace-bg) !important;*/
-    background-color: transparent !important;
 }
 
 
 ::-webkit-scrollbar-thumb,
 .xterm-scrollable-element::-webkit-scrollbar-thumb,
 .xterm-viewport ::-webkit-scrollbar-thumb,
-.xterm .xterm-scrollable-element > .scrollbar > .slider {
+.xterm .xterm-scrollable-element > .scrollbar > .slider,
+#terminal .xterm-viewport::-webkit-scrollbar-thumb,
+.ace_editor ::-webkit-scrollbar-thumb  {
     width: 10px !important;
+
+    /*background: var(--ace-selection-bg) !important;*/
     background: var(--ace-selection-bg) !important;
     border-radius: 4px !important;
-    opacity: 0.75 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+#terminal .xterm .xterm-viewport {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.ace_editor {
+    /*background-color: transparent !important;*/
+}
+
+/* Ensure the outer wrapper container doesn't hard-clip the sub-components */
+#editor-container, .ace_editor {
+    overflow: visible !important;
+}
+
+
+/* Ensure the horizontal scrollbar wrapper is never pushed outside the viewport */
+.ace_editor .ace_scrollbar-h {
+    bottom: 0 !important;
+    height: 15px !important; /* Forces your layout track height constraint explicitly */
+    z-index: 5 !important;   /* Keeps it layered safely on top of background blocks */
+    background: transparent !important;
+}
+
+/* Push the text layer canvas up slightly so text never hides underneath the scrollbar */
+.ace_editor .ace_scroller {
+    bottom: 15px !important; /* Must match the height of your scrollbar exactly */
+}
+/* --- Pin Vertical Scrollbar Only --- */
+.ace_editor .ace_scrollbar-v {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Force the vertical tracking layer to always calculate a scrollable space */
+.ace_editor .ace_scrollbar-v .ace_scrollbar-inner {
+    min-height: 100.1% !important; /* Continuous scroll buffer */
+}
+
+/* --- Completely Release Horizontal Scrollbar to Engine Control --- */
+.ace_editor .ace_scrollbar-h {
+    /* Let Ace determine display block/none properties dynamically */
+}
+
+.ace_editor .ace_scrollbar-h .ace_scrollbar-inner {
+    /* No minimal overrides here—prevents horizontal layout calculation loops */
+}
+
+/* --- Global Scrollbar Maintenance Styles --- */
+.ace_editor .ace_scrollbar-fade {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Strip away the automated fading layout routine entirely */
+.ace_editor .ace_scrollbar-fade {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+#terminal .xterm {
+    padding-bottom: 60px;
+    --xterm-internal-padding: 50px;
+}
+
+#terminal .xterm-viewport .xterm-scroll-area {
+    padding-bottom: 200px !important; /* Forces a massive, scrollable blank area */
+}
+
+/* Ensure the visible container layer doesn't aggressively clip it out */
+#terminal .xterm-viewport {
+    overflow-y: scroll !important;
+}
+
+/* Force the horizontal scroll layer wrapper into absolute view bounds */
+#terminal .xterm .xterm-viewport {
+    bottom: 0 !important;
+    height: 100% !important;
+    /* Pushes it up past the clipping floor boundary */
+    padding-bottom: 16px !important; 
+    overflow-x: auto !important;
+}
+
+
+.xterm-scrollable-element,
+.xterm-viewport {
+    /*background-color: var(--ace-bg) !important;*/
+    background-color: transparent !important;
 }
 
 .terminal-search-highlight {

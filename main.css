@@ -774,22 +774,48 @@ input[type="checkbox"]:focus-visible {
     flex-basis: calc(100% - 54px);
 }
 
+#editor-container:not(:has(.not-hidden ~ .not-hidden)) .not-hidden
+{
+    flex-basis: 100%;
+    width: 100%;
+}
 
-#editor-container:not(:has(.not-hidden)) ~ *:not(.hidden),
-#editor:not(.hidden),
-#terminal-container.not-hidden,
-#filelist.not-hidden,
+
+#editor-container:has(.not-hidden ~ .not-hidden) #viewport-frame.not-hidden,
+#editor-container:has(.not-hidden ~ .not-hidden) #editor.not-hidden
+{
+    flex-basis: 50%;
+    width: 50%;
+}
+
 #assetlist.not-hidden,
 #gamelist.not-hidden,
 #database.not-hidden,
-#searchlist.not-hidden,
 #filelist.not-hidden,
+#searchlist.not-hidden
+{
+    display: block;
+    min-width: 200px;
+    flex-basis: 200px;
+    visibility: visible;
+}
+
+#editor:not(.hidden),
 #editor.not-hidden {
     display: block;
     min-width: 200px;
     visibility: visible;
 }
 
+#editor-container:not(:has(.not-hidden)) ~ #terminal-container:not(.hidden),
+#terminal-container.not-hidden
+{
+    display: flex;
+    min-width: 200px;
+    visibility: visible;
+}
+
+#editor-container:not(:has(.not-hidden)) ~ #viewport-frame:not(.hidden),
 #viewport-frame:not(.hidden),
 #viewport-frame.not-hidden {
     visibility: visible;
@@ -857,11 +883,6 @@ input[type="checkbox"]:focus-visible {
         overflow: visible;
     }
 
-    #editor-container {
-        flex-basis: calc(100% - 54px);
-        overflow: visible;
-        height: auto;
-    }
 
     #editor-container:has(~ .not-hidden) {
         display: none;
@@ -875,29 +896,6 @@ input[type="checkbox"]:focus-visible {
     #main {
         /*flex-direction: row;
         flex-wrap: wrap;*/
-    }
-
-    html,
-    body,
-    #main {
-        height: max-content;
-        max-height: none;
-        min-height: 100vh;
-        width: 100%;
-        max-width: 100%;
-    }
-
-    #main-body {
-        min-height: max-content;
-        height: stretch;
-        max-height: none;
-        max-width: 100%;
-        /*width: auto;
-        min-width: min-content;*/
-        overflow: visible;
-        flex-basis: min-content;
-        flex-grow: 1;
-        flex-wrap: nowrap;
     }
 
     #terminals li {
@@ -921,16 +919,6 @@ input[type="checkbox"]:focus-visible {
     }
 
 
-    #terminal,
-    #terminals {
-        max-width: 100%;
-    }
-
-
-    #terminal-container.not-hidden {
-        /*display: flex !important;
-        justify-content: stretch;*/
-    }
 
     #statusbar {
         flex-basis: 100%;

@@ -302,9 +302,8 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     resizeDebouncer()
 
     setTimeout(() => {
-        term.write(loadedLog.join('\n\r'))
-        term.write(preterm.join(''))
-        if (loadedLog.length > 0 || preterm.length > 0)
+        term.write(loadedLog.map(l => l.text || l).join(''))
+        if (loadedLog.length > 0)
             writePrompt()
         // Initial prompt
         terminalLoaded = true
@@ -769,7 +768,7 @@ function renderTabsCommand(panelId, noBounce = false) {
         'github', 'back', 'next', 'fullscreen',
         'layout', 'share', 'pause', 'stop', 'save',
         'configuration', 'theme', 'configuration',
-        'wasi', 'theme', 'keybinding',
+        'wasi', 'theme', 'keybinding', 'viewport-frame' // special case to cancel classing
     ]
 
 
