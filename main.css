@@ -15,6 +15,7 @@ body {
     outline: none;
     box-shadow: none;
     font-family: inherit;
+    background-repeat: no-repeat;
 }
 
 *:focus {
@@ -205,6 +206,9 @@ body {
     flex-basis: 54px;
 }
 
+#paint {
+    position: relative;
+}
 
 #statusbar,
 #toolbar {
@@ -241,9 +245,9 @@ body {
     padding-right: 4px;
 }
 
-input,
-select,
-button {
+#toolbar input,
+#toolbar select,
+#toolbar button {
     border: 2px solid #666;
     background: white;
     padding: 3px 5px;
@@ -251,6 +255,13 @@ button {
     width: stretch;
 }
 
+/*
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+*/
 
 
 #statusbar {
@@ -790,11 +801,7 @@ input[type="checkbox"]:focus-visible {
     visibility: collapse;
 }
 
-#viewport-frame {
-    position: absolute;
-    z-index: -1;
-}
-
+#paint,
 #viewport-frame {
     position: absolute;
     z-index: -1;
@@ -807,12 +814,13 @@ input[type="checkbox"]:focus-visible {
     width: 100%;
 }
 
-
+/*
 #editor-container:has(.not-hidden ~ .not-hidden) #viewport-frame.not-hidden,
 #editor-container:has(.not-hidden ~ .not-hidden) #editor.not-hidden {
     flex-basis: 50%;
     width: 50%;
 }
+*/
 
 #assetlist.not-hidden,
 #gamelist.not-hidden,
@@ -832,15 +840,16 @@ input[type="checkbox"]:focus-visible {
     visibility: visible;
 }
 
-#editor-container:not(:has(.not-hidden))~#terminal-container:not(.hidden),
+/*#editor-container:not(:has(.not-hidden))~#terminal-container:not(.hidden),*/
 #terminal-container.not-hidden {
     display: flex;
     min-width: 200px;
     visibility: visible;
 }
 
-#editor-container:not(:has(.not-hidden))~#viewport-frame:not(.hidden),
-#viewport-frame:not(.hidden),
+#editor-container:not(:has(.not-hidden))~#paint:not(.hidden),
+/*#editor-container:not(:has(.not-hidden))~#viewport-frame:not(.hidden),*/
+/*#viewport-frame:not(.hidden),*/
 #viewport-frame.not-hidden {
     visibility: visible;
     position: static;

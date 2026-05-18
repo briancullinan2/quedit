@@ -1399,6 +1399,7 @@ body {
     color: var(--ace-blue);
 }
 
+
 ::-webkit-scrollbar,
 .xterm-viewport ::-webkit-scrollbar,
 .xterm-scrollable-element::-webkit-scrollbar,
@@ -1408,6 +1409,11 @@ body {
     height: 10px !important;
     background-color: transparent !important;
 }
+
+::-webkit-scrollbar-track-piece {
+    background: transparent !important;
+}
+
 
 ::-webkit-scrollbar-track,
 .xterm-viewport ::-webkit-scrollbar-track,
@@ -1581,9 +1587,9 @@ body {
     cursor: pointer !important;
 }
 
-input,
-select,
-button {
+#toolbar input,
+#toolbar select,
+#toolbar button {
     /* Use the Gutter background for a distinct UI look */
     background: var(--ace-gutter-bg);
 

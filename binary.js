@@ -458,6 +458,8 @@ function hexDump(sampleBytes, content, filePath) {
         infoStack = renderAasDisassemblySuite(content, filePath)
     } else if (filePath.endsWith('.dm3') || filePath.endsWith('.dm68')) {
         infoStack = parseDM3Telemetry(sampleBytes)
+    } else if (filePath.endsWith('.dat') || filePath.endsWith('.dm68')) {
+        infoStack = parseQ3FontDat(content)
     } else {
 
         infoStack = `Binary file detected (${content.length} bytes)\n`;
@@ -2782,3 +2784,131 @@ function parseDM3Telemetry(bytes) {
 }
 
 
+
+
+/**
+ * Standalone Q3 Font DAT Parser
+ * 
+ * Parses Quake 3 / ioquake3 generated font dat files (e.g., fontImage_12.dat)
+ * Extracts all 256 glyph boundaries, texture coordinates, and scaling data.
+ * 
+ * @param {Uint8Array} bytes - Raw DAT binary
+ * @returns {string} Plain text diagnostic console log
+ */
+function parseQ3FontDat(bytes) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    
+    // Standard Quake 3 / idTech 3 Engine Constants
+    const GLYPHS_PER_FONT = 256;
+    const SHADER_NAME_LENGTH = 32;
+    const MAX_QPATH = 64;
+
+    let offset = 0;
+
+    // Helper functions to simulate the C readInt() and readFloat()
+    function readInt() {
+        if (offset + 4 > bytes.length) return 0;
+        const val = view.getInt32(offset, true); // Little Endian
+        offset += 4;
+        return val;
+    }
+
+    function readFloat() {
+        if (offset + 4 > bytes.length) return 0;
+        const val = view.getFloat32(offset, true); // Little Endian
+        offset += 4;
+        return val;
+    }
+
+    function readString(length) {
+        let str = "";
+        for (let i = 0; i < length; i++) {
+            if (offset >= bytes.length) break;
+            const charCode = view.getUint8(offset++);
+            // Stop appending on null terminator, but we must advance the offset 
+            // by the full 'length' to maintain structure alignment
+            if (charCode !== 0 && str.length === i) {
+                str += String.fromCharCode(charCode);
+            }
+        }
+        return str;
+    }
+
+    let report = `========================================================================\n`;
+    report += ` Q3 FONT DAT PARSER\n`;
+    report += `========================================================================\n\n`;
+
+    const font = {
+        glyphs: [],
+        glyphScale: 0,
+        name: ""
+    };
+
+    let populatedGlyphsCount = 0;
+
+    report += `GLYPH METRICS:\n`;
+    report += `---------------------------------------------------------------------------------\n`;
+    report += `Char | Idx | Size (WxH) | Image (WxH) | UVs (S, T) -> (S2, T2)     | Shader\n`;
+    report += `---------------------------------------------------------------------------------\n`;
+
+    // 1. Read all 256 glyph structures
+    for (let i = 0; i < GLYPHS_PER_FONT; i++) {
+        const glyph = {
+            index: i,
+            char: String.fromCharCode(i),
+            height: readInt(),
+            top: readInt(),
+            bottom: readInt(),
+            pitch: readInt(),
+            xSkip: readInt(),
+            imageWidth: readInt(),
+            imageHeight: readInt(),
+            s: readFloat(),
+            t: readFloat(),
+            s2: readFloat(),
+            t2: readFloat(),
+            glyphHandle: readInt(), // OpenGL handle, usually useless offline
+            shaderName: readString(SHADER_NAME_LENGTH)
+        };
+
+        font.glyphs.push(glyph);
+
+        // Only print glyphs that actually have data (filtering out unprintable/empty blocks)
+        if (glyph.imageWidth > 0 || glyph.imageHeight > 0 || glyph.xSkip > 0) {
+            // Escape special chars for terminal printing
+            let displayChar = glyph.char;
+            if (i < 32 || i === 127 || i === 255) displayChar = `\\${i}`; 
+
+            const size = `${glyph.pitch}x${glyph.height}`.padEnd(10, ' ');
+            const imgSize = `${glyph.imageWidth}x${glyph.imageHeight}`.padEnd(11, ' ');
+            
+            const s = glyph.s.toFixed(3);
+            const t = glyph.t.toFixed(3);
+            const s2 = glyph.s2.toFixed(3);
+            const t2 = glyph.t2.toFixed(3);
+            const uvs = `(${s}, ${t}) -> (${s2}, ${t2})`.padEnd(26, ' ');
+
+            const shader = glyph.shaderName || "N/A";
+
+            report += ` ${displayChar.padStart(3, ' ')} | ${i.toString().padStart(3, ' ')} | ${size} | ${imgSize} | ${uvs} | ${shader}\n`;
+            populatedGlyphsCount++;
+        }
+    }
+
+    // 2. Read the global Font metrics appended to the end of the file
+    font.glyphScale = readFloat();
+    font.name = readString(MAX_QPATH);
+
+    report += `---------------------------------------------------------------------------------\n\n`;
+    
+    report += `FONT SUMMARY:\n`;
+    report += `  Name                 : ${font.name || "Unknown/Embedded"}\n`;
+    report += `  Total Glyphs Populated: ${populatedGlyphsCount} / ${GLYPHS_PER_FONT}\n`;
+    report += `  Global Glyph Scale   : ${font.glyphScale.toFixed(4)}\n`;
+    report += `  Final Byte Offset    : 0x${offset.toString(16)} / 0x${bytes.length.toString(16)}\n`;
+    report += `========================================================================\n`;
+
+    // You can also return 'font' as an object if you want to use the JSON data downstream.
+    // For now, we print the diagnostic text.
+    return report;
+}

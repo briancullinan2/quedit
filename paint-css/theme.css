@@ -1,0 +1,229 @@
+#paint {
+    /* Main layout foundations */
+    --background: var(--ace-bg);
+    --text-color: var(--ace-foreground);
+    --text-color-muted: var(--ace-foreground);
+    --text-color-red: var(--ace-pink);
+    --text-color-green: var(--ace-green);
+    --text-color-blue: var(--ace-blue);
+    --link-color: var(--ace-comment);
+    
+    /* Structure boundaries & surface panels */
+    --section-background-color: var(--ace-gutter-bg);
+    --area-background-color: var(--ace-bg);
+    --block-background-color: var(--ace-gutter-bg);
+    --header-background-color: var(--ace-gutter-bg);
+    --border-color: var(--ace-gutter-bg);
+    
+    /* Button configurations */
+    --button-background-color: var(--ace-bg);
+    --button-background-color-hover: var(--ace-gutter-bg);
+    --button-background-color-active: var(--ace-purple);
+    --button-shadow-color: transparent;
+    --button-text-color-active: var(--ace-comment);
+    --button-border-radius: 0px;
+    
+    --button-toggle-background-color: var(--ace-bg);
+    --button-toggle-background-color-hover: var(--ace-gutter-bg);
+    
+    /* Input element states */
+    --input-background-color: var(--ace-gutter-bg);
+    --input-background-color-hover: var(--ace-bg);
+    --input-text-color: var(--ace-comment);
+    --input-border-color: var(--ace-bg);
+    --input-border-color-active: var(--ace-blue);
+    --input-border-radius: 0px;
+    --input-group-border-color: var(--ace-bg);
+    
+    /* Menu & Navigation layers */
+    --menu-background-color: var(--ace-gutter-bg);
+    --menu-text-color: var(--ace-foreground);
+    --menu-icons-filter: invert(0.65); /* Adjusted to make assets read well against custom gray */
+    --menu-icons-filter-active: none;
+    --mobile-menu-toggle-filter: invert(0.65);
+    
+    /* Selection highlights & structural actions */
+    --background-color-active: var(--ace-selection-bg);
+    --background-color-hover: var(--ace-gutter-bg);
+    --text-color-active: var(--ace-comment);
+    
+    /* Layout details & overrides */
+    --number-input-arrow-width: 2rem;
+    --scrollbar-track-color: var(--ace-bg);
+    --scrollbar-thumb-color: var(--ace-gutter-bg);
+}
+/* ==========================================================================
+   2. Structural Border Controls & Angular Overrides
+   ========================================================================== */
+#paint *,
+#paint .block,
+#paint .block h2,
+#paint .layers_list .layer_name,
+#paint .ui_input_grid,
+#paint input,
+#paint select,
+#paint button {
+    border-radius: 0px !important; /* Total removal of rounding across layout controls */
+}
+
+/* Global 2px layout constraint injection */
+#paint .block {
+    background-color: var(--block-background-color);
+    border: 2px solid var(--border-color);
+}
+
+#paint .block h2 {
+    background-color: var(--header-background-color);
+    border-bottom: 2px solid var(--border-color);
+}
+
+#paint .loaded .canvas_wrapper canvas {
+    border: 2px solid var(--border-color);
+}
+
+#paint .layers_arrow,
+#paint .layer_add,
+#paint .layers_list .layer_name {
+    border: 2px solid var(--border-color);
+}
+
+#paint .group {
+    border: 2px solid var(--border-color);
+}
+
+/* ==========================================================================
+   3. Input and Interactive Control Customizations
+   ========================================================================== */
+#paint input[type="text"], 
+#paint select, 
+#paint input[type="number"], 
+#paint textarea {
+    background: var(--input-background-color);
+    border: 2px solid var(--input-border-color);
+    color: var(--input-text-color);
+}
+
+#paint input[type="text"]:focus, 
+#paint select:focus, 
+#paint input[type="number"]:focus, 
+#paint textarea:focus {
+    border-color: var(--input-border-color-active);
+    outline: none;
+}
+
+#paint button, 
+#paint input[type="button"] {
+    border: 2px solid var(--border-color);
+    background-color: var(--button-background-color);
+    color: var(--text-color);
+}
+
+#paint button:hover, 
+#paint input[type="button"]:hover {
+    background-color: var(--button-background-color-hover);
+    color: var(--theme-comment);
+}
+
+#paint button[aria-pressed="true"], 
+#paint input[type="button"][aria-pressed="true"] {
+    background-color: var(--button-background-color-active);
+    color: var(--button-text-color-active);
+    border-color: var(--theme-purple);
+}
+
+/* Custom layout sizing for details inspector forms */
+#paint .block.details button {
+    border: 2px solid var(--border-color);
+}
+
+#paint .block.details button.active {
+    background-color: var(--background-color-active);
+    color: var(--text-color-active);
+    border-color: var(--input-border-color-active);
+}
+
+/* ==========================================================================
+   4. Main Dropdown and Context Navigation Menu Layers
+   ========================================================================== */
+.main_menu > ul.menu_bar {
+    background: var(--menu-background-color);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.main_menu > ul.menu_bar > li > a {
+    color: var(--menu-text-color);
+}
+
+.main_menu > ul.menu_bar > li > a:focus {
+    box-shadow: 0 -3px var(--menu-dropdown-background-color) inset;
+}
+
+.main_menu > ul.menu_bar > li > a:hover {
+    background: var(--menu-dropdown-hover-background-color);
+    color: var(--menu-dropdown-hover-text-color);
+}
+
+.main_menu > ul.menu_bar > li > a[aria-expanded="true"] {
+    background: var(--menu-dropdown-background-color);
+    color: var(--menu-dropdown-text-color);
+    box-shadow: 2px 0 0 0 var(--border-color), -2px 0 0 0 var(--border-color);
+}
+
+/* Floating Window List Containers */
+.main_menu > ul.menu_dropdown {
+    border: 2px solid var(--menu-dropdown-border-color);
+    background: var(--menu-dropdown-background-color);
+    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.15); /* Replaces rounding with a retro-block accent drop */
+}
+
+.main_menu > ul.menu_dropdown > li > hr {
+    border: 1px solid var(--menu-dropdown-divider-color);
+    border-bottom: none;
+}
+
+.main_menu > ul.menu_dropdown > li > a {
+    color: var(--menu-dropdown-text-color);
+}
+
+.main_menu > ul.menu_dropdown > li > a:focus,
+.main_menu > ul.menu_dropdown > li > a:hover {
+    background: var(--menu-dropdown-hover-background-color);
+    color: var(--menu-dropdown-hover-text-color);
+}
+
+.main_menu > ul.menu_dropdown > li > a[aria-expanded="true"] {
+    background: var(--menu-dropdown-hover-background-color);
+    color: var(--menu-dropdown-hover-text-color);
+}
+
+.main_menu > ul.menu_dropdown > li > a > .shortcut {
+    color: var(--menu-dropdown-text-muted-color);
+}
+
+/* ==========================================================================
+   5. Active Selections & Workspaces
+   ========================================================================== */
+#paint .sidebar_left .item {
+    background-color: var(--area-background-color);
+    border: 2px solid var(--border-color);
+}
+
+#paint .sidebar_left .item:hover {
+    background-color: var(--background-color-hover);
+}
+
+#paint .sidebar_left .item.active {
+    background-color: var(--background-color-active);
+    border-color: var(--input-border-color-active);
+}
+
+#paint .layers_list .item.active .layer_name {
+    background-color: var(--background-color-active);
+    color: var(--text-color-active);
+    border-color: var(--input-border-color-active);
+}
+
+#paint .attributes {
+    background-color: var(--area-background-color);
+    border-bottom: 2px solid var(--border-color);
+}
