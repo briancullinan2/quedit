@@ -299,8 +299,6 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     forceFit();
     updateMaxLines()
 
-    renderHashCommand(window.location.hash.substring(1), true)
-
     resizeDebouncer()
 
     // do way after terminal loads
@@ -309,12 +307,26 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     }, 1000);
 
     setTimeout(() => {
+        if (window.AppConfig) {
+            // 1. Force transparent grid background setting to true
+            window.AppConfig.TRANSPARENCY = true
+
+            // 2. Trigger a full canvas re-render to update the visual workspace layers
+            if (window.Layers && typeof window.Layers.render === 'function') {
+                window.Layers.render();
+            }
+            //window.GUI.render_main_gui()
+        }
+
         setTerminalAceTheme()
         term.write(loadedLog.map(l => l.text || l).join(''))
         if (loadedLog.length > 0)
             writePrompt()
         // Initial prompt
         terminalLoaded = true
+
+        renderHashCommand(window.location.hash.substring(1), true)
+
     }, 200);
 });
 
@@ -424,6 +436,130 @@ function loadTree(database, cursor) {
     }
 }
 
+async function openImage(content, filePath) {
+    const filename = filePath.split('/').pop();
+    const dataUri = arrayBufferToDataUri(content, filePath);
+
+    // 1. We MUST decode the image dimensions asynchronously first.
+    // miniPaint needs width/height for Autoresize_canvas_action.
+    const dimensions = await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        };
+        img.onerror = () => {
+            console.error("Failed to decode image data URI boundaries.");
+            resolve({ width: 800, height: 600 }); // Sanity fallback
+        };
+        img.src = dataUri;
+    });
+
+    // 2. Map clean settings matching miniPaint's required internal keys
+    const layerSettings = {
+        data: dataUri,
+        name: filename,
+        order: window.Base_layers?.auto_increment || 1,
+        type: "image",
+        height: 512,
+        height_original: 512,
+        link: dataUri,  // img,
+        name: "Data URL",
+        type: "image",
+        width: 512,
+        width_original: 512,
+        _exif: {
+            exif: [],
+            general: {
+                Name: filename,
+                Size: `${(content.byteLength / 1024).toFixed(2)} KB`,
+                Type: getMimeTypeByExtension(filename),
+                Last_modified: new Date().toISOString()
+            }
+        }
+    };
+
+    // 3. Extract your custom EXIF parser hook if available
+    if ((filename.includes('.jpg') || filename.includes('.jpeg')) && window.Layers?.extract_exif) {
+        try {
+            const fakeFileObj = {
+                name: filename,
+                size: content.byteLength,
+                type: 'image/jpeg',
+                lastModified: Date.now()
+            };
+            layerSettings._exif = window.Layers.extract_exif(fakeFileObj) || layerSettings._exif;
+        } catch (exifErr) {
+            console.warn("EXIF extraction skipped:", exifErr);
+        }
+    }
+
+    // 4. Verify state pipeline and build the formal Webpack constructor instances
+    if (window.State && window.Actions) {
+        try {
+
+            var t = new Image;
+            t.crossOrigin = "Anonymous"
+            t.onload = function () {
+                var e = {
+                    name: "Data URL",
+                    type: "image",
+                    link: t,
+                    width: t.width,
+                    height: t.height,
+                    width_original: t.width,
+                    height_original: t.height
+                };
+                window.State.do_action(new window.Actions.Bundle_action("open_file_data_url", "Open File Data URL", [new window.Actions.Insert_layer_action(e), new window.Actions.Autoresize_canvas_action(t.width, t.height, null, !0, !0)])),
+                    t.onload = function () {
+                        //u.A.need_render = !0
+                    }
+            }
+            t.onerror = function (e) {
+                g().error("Sorry, image could not be loaded. Try copy image and paste it.")
+            }
+            t.src = dataUri
+            /*
+//window.file_open_data_url_handler(dataUri)
+
+// Instantiate the individual actions properly
+const insertLayerAction = new window.Actions.Insert_layer_action(layerSettings);
+ 
+const resizeCanvasAction = new window.Actions.Autoresize_canvas_action(
+512, 
+512, 
+null, 
+true, 
+true
+);
+
+// Create the official Bundle_action wrapper matching miniPaint exactly
+const bundle = new window.Actions.Bundle_action(
+"open_file_data_url", 
+"Open File Data URL", 
+[insertLayerAction, resizeCanvasAction]
+);
+
+// Execute via state engine
+window.State.do_action(bundle);
+*/
+            // Force layout synchronization redraw
+        } catch (err) {
+            console.error("Failed executing miniPaint bundled actions:", err);
+        }
+    } else {
+        console.error("miniPaint core engine references (window.State / window.Actions) are missing.");
+    }
+}
+
+// Helper to keep the metadata block pristine
+function getMimeTypeByExtension(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const map = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' };
+    return map[ext] || 'image/png';
+}
+
+
+const imageEditor = document.getElementById('paint')
 
 
 let openFileDebounce = null
@@ -474,7 +610,16 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     const sampleStr = decoder.decode(sampleBytes);
 
     let str
-    if (hasSequentialBinaryRegex.test(sampleStr)) {
+    const isImage = /\.(png|jpe?g|gif|webp)$/i.test(filePath);
+
+    if (isImage) {
+        setTimeout(() => {
+            openImage(content, filePath)
+        }, 500);
+
+        // Optionally fall back to text hexDump or return early so Ace Editor doesn't choke
+        str = "[Binary Image Layer Inserted]";
+    } else if (hasSequentialBinaryRegex.test(sampleStr)) {
         str = hexDump(sampleBytes, content, filePath)
     } else {
         // Standard plain text file path
@@ -493,10 +638,15 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     if (hidePanels)
         hideOpenPanels(false)
 
-    resizeDebouncer()
-
     editorContainer.classList.remove('hidden')
     editorContainer.classList.add('not-hidden')
+
+    if (isImage) {
+        imageEditor.classList.remove('hidden')
+        imageEditor.classList.add('not-hidden')
+    }
+
+    resizeDebouncer()
 
     // 3. Record it in history if this isn't a "Back/Forward" action
     let selector = document.getElementById('filename')
@@ -837,7 +987,7 @@ function updateBodyPanelIds() {
 
 const FILELIST_IDS = ['filesearch', 'filelist', 'gamelist', 'assetlist', 'database']
 
-let panels = document.querySelectorAll('#token-modal, #viewport-frame, #terminal-container, #editor, #filesearch, #filelist, #gamelist, #assetlist, #database, #github')
+let panels = document.querySelectorAll('#paint, #token-modal, #viewport-frame, #terminal-container, #editor, #filesearch, #filelist, #gamelist, #assetlist, #database, #github')
 
 document.getElementById('tabs').addEventListener('click', async (e) => {
 

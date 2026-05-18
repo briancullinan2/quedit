@@ -3568,6 +3568,7 @@
                     value: function(e) {
                         for (var t = parseInt(e.getAttribute("data-level"), 10) || 0, n = parseInt(e.getAttribute("data-index"), 10) || 0, r = S, a = 0; a < t; a++)
                             r = r[null != this.dropdownStack[a] ? this.dropdownStack[a].index : n].children;
+                        if(!r) return;
                         var i = r[n];
                         this.close_child_dropdowns(0),
                         i.target ? this.emit("select_target", i.target, i) : i.href && this.emit("select_href", i.href, null)
@@ -14364,6 +14365,10 @@
                     this.POP = new p.A,
                     this.Base_layers = new d.A,
                     this.Base_gui = new h.A,
+                    window.Base_layers = this.Base_layers,
+                    window.open_handler = this.open_handler,
+                    window.extract_exif = this.extract_exif,
+                    window.file_open_data_url_handler = this.file_open_data_url_handler,
                     this.Helper = new A.A,
                     this.GUI_tools = new _.A,
                     this.Clipboard_class = new m(function(e, n, r) {
@@ -14494,6 +14499,7 @@
                 }, {
                     key: "open_data_url",
                     value: function() {
+                        debugger
                         var e = this
                           , t = {
                             title: "Open data URL",
@@ -14504,6 +14510,7 @@
                                 value: ""
                             }],
                             on_finish: function(t) {
+                                debugger
                                 e.file_open_data_url_handler(t.data)
                             }
                         };
@@ -14512,6 +14519,7 @@
                 }, {
                     key: "file_open_data_url_handler",
                     value: function(e) {
+                        debugger
                         if ("" != e) {
                             var t = new Image;
                             t.crossOrigin = "Anonymous",
@@ -43084,6 +43092,8 @@
             v.A.Layers = n,
             v.A.State = i,
             v.A.Tools = r,
+            window.Actions = e,
+            window.GUI = a,
             window.Layers = n,
             window.AppConfig = y.A,
             window.State = i,

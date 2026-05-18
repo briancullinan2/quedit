@@ -25,6 +25,12 @@ function resizeDebouncer() {
     resizeDebounce = setTimeout(() => {
         forceFit();
         updateMaxLines()
+        if (imageEditor.classList.contains('not-hidden')) {
+            //window.GUI.render_main_gui()
+            setTimeout(() => {
+                //window.GUI.render_main_gui()
+            }, 500)
+        }
         resizeDebounce = null
 
     }, 500);
