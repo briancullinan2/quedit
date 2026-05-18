@@ -13,7 +13,7 @@
     --area-background-color: var(--ace-bg);
     --block-background-color: var(--ace-gutter-bg);
     --header-background-color: var(--ace-gutter-bg);
-    --border-color: var(--ace-gutter-bg);
+    --border-color: var(--ace-selection-bg);
     
     /* Button configurations */
     --button-background-color: var(--ace-bg);
@@ -29,14 +29,14 @@
     /* Input element states */
     --input-background-color: var(--ace-gutter-bg);
     --input-background-color-hover: var(--ace-bg);
-    --input-text-color: var(--ace-comment);
+    --input-text-color: var(--ace-foreground);
     --input-border-color: var(--ace-bg);
     --input-border-color-active: var(--ace-blue);
     --input-border-radius: 0px;
     --input-group-border-color: var(--ace-bg);
     
     /* Menu & Navigation layers */
-    --menu-background-color: var(--ace-gutter-bg);
+    --menu-background-color: transparent;
     --menu-text-color: var(--ace-foreground);
     --menu-icons-filter: invert(0.65); /* Adjusted to make assets read well against custom gray */
     --menu-icons-filter-active: none;
@@ -52,6 +52,18 @@
     --scrollbar-track-color: var(--ace-bg);
     --scrollbar-thumb-color: var(--ace-gutter-bg);
 }
+
+#paint {
+    --menu-dropdown-background-color: var(--ace-gutter-bg);
+    --menu-dropdown-border-color: var(--ace-bg);
+    --menu-dropdown-text-color: var(--ace-foreground);
+    --menu-dropdown-text-muted-color: var(--ace-foreground);
+    --menu-dropdown-hover-background-color: var(--ace-selection-bg);
+    --menu-dropdown-hover-text-color: var(--ace-foreground);
+    --menu-dropdown-divider-color: var(--ace-bg);
+}
+
+
 /* ==========================================================================
    2. Structural Border Controls & Angular Overrides
    ========================================================================== */

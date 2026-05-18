@@ -661,7 +661,7 @@ const DOESNT_AFFECT_UI = [
     'github', 'back', 'next', 'fullscreen',
     'layout', 'share', 'pause', 'stop', 'save',
     'configuration', 'theme', 'configuration',
-    'wasi', 'theme', 'keybinding'
+    'wasi', 'theme', 'keybinding', 'reload'
 ]
 
 let toolbarTabDebounce = null

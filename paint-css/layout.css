@@ -2,7 +2,7 @@
 	display: -ms-grid;
 	display: grid;
 	margin: 0;
-	position: absolute;
+	position: fixed;
 	/* dont change it, vh does not work on mobiles with bottom footer */
 	top: 30px;
 	right: 0;

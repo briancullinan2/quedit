@@ -1426,8 +1426,10 @@ body {
 
 /* Global text selection styles */
 ::selection {
-    background-color: rgb(from var(--ace-selection-bg) r g b / 50%); /* Highlight background */
-    /*color: #00FF00;*/                             /* Highlight text color */
+    background-color: rgb(from var(--ace-selection-bg) r g b / 50%);
+    /* Highlight background */
+    /*color: #00FF00;*/
+    /* Highlight text color */
 }
 
 
@@ -1622,36 +1624,36 @@ select:focus {
 }
 
 
-input:placeholder-shown {
+#toolbar input:placeholder-shown {
     border-color: var(--ace-bg);
     background-color: var(--ace-gutter-bg);
     color: var(--ace-foreground);
 }
 
-input::placeholder {
+#toolbar input::placeholder {
     color: var(--ace-foreground);
     opacity: 0.75;
     /* Firefox lowers opacity by default, so set to 1 */
 }
 
 /* For older versions of Internet Explorer/Edge */
-input::-ms-input-placeholder {
+#toolbar input::-ms-input-placeholder {
     color: var(--ace-foreground);
 }
 
 /* For older versions of Firefox (18-) */
-input::-moz-placeholder {
+#toolbar input::-moz-placeholder {
     color: var(--ace-foreground);
     opacity: 0.75;
 }
 
-button:hover {
+#toolbar button:hover {
     background: var(--ace-selection-bg);
     border-color: var(--ace-green);
     cursor: pointer;
 }
 
-button:active {
+#toolbar button:active {
     background: var(--ace-active-line-bg);
     transform: translateY(1px);
     /* Simple physical feedback */
@@ -1663,7 +1665,7 @@ button:active {
     font-style: italic;
 }*/
 
-select option {
+#toolbar select option {
     background: var(--ace-gutter-bg);
     color: var(--ace-foreground);
 }
@@ -1764,14 +1766,14 @@ select option {
 
 
 
-input[type="checkbox"] {
+#toolbar input[type="checkbox"] {
     background-color: var(--ace-gutter-bg);
     border-color: var(--ace-blue);
     box-shadow: 1px 2px 5px rgb(from var(--ace-foreground) r g b / 50%);
     height: calc(var(--global-height) + 4px);
 }
 
-input[type="checkbox"]::before {
+#toolbar input[type="checkbox"]::before {
     background-color: var(--ace-bg);
     box-shadow: -1px -2px 5px inset rgba(0, 0, 0, 0.5);
     width: calc(var(--global-height) - 4px);
@@ -1780,25 +1782,25 @@ input[type="checkbox"]::before {
 }
 
 
-input[type="checkbox"]::after {
+#toolbar input[type="checkbox"]::after {
     color: var(--ace-foreground);
 }
 
-input[type="checkbox"]:checked::after {
+#toolbar input[type="checkbox"]:checked::after {
     color: var(--ace-bg);
 }
 
-input[type="checkbox"]:checked {
+#toolbar input[type="checkbox"]:checked {
     background-color: var(--ace-blue);
     /* iOS Green */
     border-color: var(--ace-blue);
 }
 
-input[type="checkbox"]:checked::before {
+#toolbar input[type="checkbox"]:checked::before {
     transform: translateX(26px);
     transform: translateX(calc(60px - var(--global-height) - 2px));
 }
 
-input[type="checkbox"]:focus-visible {
+#toolbar input[type="checkbox"]:focus-visible {
     box-shadow: 0 0 0 2px rgb(from var(--ace-green) r g b / 50%);
 }

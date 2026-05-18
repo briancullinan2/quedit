@@ -255,6 +255,45 @@ body {
     width: stretch;
 }
 
+
+#paint .wrapper
+{
+    position: absolute !important;
+    overflow: unset !important;
+}
+
+#paint .main_menu {
+    position: absolute !important;
+    top: unset !important;
+    bottom: 100%;
+}
+
+#paint .sidebar_left {
+    background: transparent !important;
+}
+
+#paint {
+    background: transparent !important;
+    color: inherit;
+}
+
+#paint .submenu
+{
+    background: transparent !important;
+}
+
+#paint .attributes
+{
+    background-color: transparent !important;
+    border: none !important;
+}
+
+#paint .sidebar_right .block
+{
+    box-shadow: none !important;
+    border-bottom: 2px solid var(--ace-selection-bg) !important;
+}
+
 /*
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
@@ -759,7 +798,7 @@ input[type="checkbox"]::before {
 
 input[type="checkbox"]::after {
     content: "OFF";
-    left: 30px;
+    left: calc(100% - 22px);
     position: relative;
     /*top: 4px;*/
     font-size: 12px;
@@ -847,7 +886,11 @@ input[type="checkbox"]:focus-visible {
     visibility: visible;
 }
 
-#editor-container:not(:has(.not-hidden))~#paint:not(.hidden),
+#editor-container:not(:has(.not-hidden))~#paint:not(.hidden) {
+    visibility: visible;
+    position: relative;
+    z-index: 100;
+}
 /*#editor-container:not(:has(.not-hidden))~#viewport-frame:not(.hidden),*/
 /*#viewport-frame:not(.hidden),*/
 #viewport-frame.not-hidden {
