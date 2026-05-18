@@ -34,9 +34,12 @@ function currentSession() {
 
 const theme = document.getElementById('theme')
 let savedTheme = localStorage.getItem('theme') || theme.value || 'ace/theme/monokai'
-theme.value = savedTheme
+if (document.querySelector(`#theme [value*="${savedTheme}"]`))
+    theme.value = savedTheme
+else
+    theme.value = theme.value || 'ace/theme/monokai'
 let themeName = savedTheme.split('/').pop()
-document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
+document.body.classList.add(`theme-${themeName.replace(/_/g, '-')}`);
 const editorWrapper = document.getElementById('editor-container')
 const editorContainer = document.getElementById('editor')
 let editor = ace.edit("editor");
@@ -55,8 +58,10 @@ editor.setOptions({
 })
 const keybinding = document.getElementById('keybinding')
 let savedKeybinding = localStorage.getItem('keybinding') || keybinding.value || 'ace/keybinding/vim'
-if (!document.querySelector(`[value*="${savedKeybinding}"]`))
+if (!document.querySelector(`#keybinding [value*="${savedKeybinding}"]`))
     savedKeybinding = keybinding.value || 'ace/keybinding/vim'
+else
+    keybinding.value = savedKeybinding
 if (!savedKeybinding || savedKeybinding == 'null')
     editor.setKeyboardHandler(null);
 else
@@ -72,7 +77,14 @@ updateMaxLines()
 
 function setTheme(theme) {
     const themeName = theme.split('/').pop(); // Gets 'monokai' or 'dracula'
-    document.body.className = `theme-${themeName.replace(/_/g, '-')}`;
+
+    for (let cn of document.body.classList) {
+        if (cn.startsWith('theme-')) {
+            document.body.classList.remove(cn)
+        }
+    }
+
+
     localStorage.setItem('theme', theme)
     // Actually tell Ace to change its internal theme too
     editor.setTheme(theme);

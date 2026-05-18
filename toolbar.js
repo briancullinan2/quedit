@@ -229,7 +229,7 @@ async function renderToolbarCommand(buttonId) {
     }
 
     // already debounced above
-    renderTabsCommand(buttonId, true)
+    renderTabsCommand(buttonId)
 }
 
 

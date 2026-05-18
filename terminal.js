@@ -472,6 +472,7 @@ window.addEventListener('blur', () => {
             // If we are still visible, we want the cursor to keep blinking 
             // even if the terminal technically lost focus to a sidebar
             refreshBlinker();
+            term.clearSelection();
         }
     }, 100);
 });
@@ -502,7 +503,7 @@ term.attachCustomKeyEventHandler((arg) => {
 
     debounceTerminalStatus()
 
-    if(arg.type === "keydown" || arg.type === "keyup")
+    if (arg.type === "keydown" || arg.type === "keyup")
         isModifierPressed = arg.ctrlKey || arg.metaKey;
 
     if (arg.type === "keydown") {
@@ -920,8 +921,8 @@ function extractFiles(col, row) {
 function detectTerminalEvents(event, x, y, updateStatus = true) {
     const rect = terminalContainer.getBoundingClientRect();
     if (event) {
-        x |= event.clientX - rect.left;
-        y |= event.clientY - rect.top;
+        x ||= event.clientX - rect.left;
+        y ||= event.clientY - rect.top;
     }
 
     const col = Math.floor(x / term._core._renderService.dimensions.css.cell.width);
@@ -1088,33 +1089,49 @@ function changeCursorPosition(event, x, y, activeRow, col, row, lineText, filePa
 }
 
 
-async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber) {
+let terminalClickDebouncer = null
+
+async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, noBounce = false) {
 
     let selected
     let dbFile
+
+    if (terminalClickDebouncer) {
+        clearTimeout(terminalClickDebouncer)
+    }
+    if (!noBounce) {
+        terminalClickDebouncer = setTimeout(() => clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, true), 500)
+        return
+    }
+
+
+    // do this once now to full reset
+    hideOpenPanels()
+    latestPanelId = previousPanelId = 'editor' // switch from terminal automatically
+
     if (!dbFile && files[engineRepo]) {
         dbFile = files[engineRepo][filePath]
         if (dbFile) {
             trees[engineRepo].values = [dbFile.sha];
             selected = engineRepo
+            renderTabsCommand('filelist', true, false)
         }
-        renderTabsCommand('filelist')
     }
     if (!dbFile && files[gameRepo]) {
         dbFile = files[gameRepo][filePath]
         if (dbFile) {
             trees[gameRepo].values = [dbFile.sha];
             selected = gameRepo
+            renderTabsCommand('gamelist', true, false)
         }
-        renderTabsCommand('gamelist')
     }
     if (!dbFile && files[assetRepo]) {
         dbFile = files[assetRepo][filePath]
         if (dbFile) {
             trees[assetRepo].values = [dbFile.sha];
             selected = assetRepo
+            renderTabsCommand('assetlist', true, false)
         }
-        renderTabsCommand('assetlist')
     }
 
     if (!dbFile) {
@@ -1172,7 +1189,7 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
         }
 
         if (dbFile) {
-            renderTabsCommand('database')
+            renderTabsCommand('database', true, false)
             trees['#database'].values = [item.key];
         }
 

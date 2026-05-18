@@ -301,6 +301,11 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
     resizeDebouncer()
 
+    // do way after terminal loads
+    setTimeout(() => {
+        performSharedBufferScanInternal()
+    }, 1000);
+
     setTimeout(() => {
         term.write(loadedLog.map(l => l.text || l).join(''))
         if (loadedLog.length > 0)
@@ -613,8 +618,8 @@ function renderHashCommand(fileName, noBounce = false) {
         .querySelector(`[href="#${fileName}"]`)) {
         renderToolbarCommand(fileName)
     }
-
-    if (document.getElementById('tabs')
+    // ALREADY CALLED BY renderToolbarCommand
+    else if (document.getElementById('tabs')
         .querySelector(`[href="#${fileName}"]`)) {
         renderTabsCommand(fileName || 'filelist')
     }
@@ -674,39 +679,8 @@ document.getElementById('assetlist').addEventListener('click', treeHandler.bind(
 document.getElementById('database').addEventListener('click', treeHandler.bind(null, '#database'));
 
 
-let toolbarTabDebounce = null
-let latestPanelId = null
-function renderTabsCommand(panelId, noBounce = false) {
 
-    if (!panelId) return
-
-    if (panelId != 'collapse')
-        latestPanelId = panelId
-
-    if (!noBounce && toolbarTabDebounce) return
-    if (!noBounce) {
-        toolbarTabDebounce = setTimeout(() => {
-            renderTabsCommand(latestPanelId, true)
-            toolbarTabDebounce = null
-        }, 400)
-        return
-    }
-
-    let database = owner.value + '/' + repo.value
-
-    if (panelId === 'collapse') {
-        let hasOpen = hideOpenPanels()
-        if (!hasOpen) {
-            document.getElementById('filelist').classList.remove('hidden')
-            document.getElementById('filelist').classList.add('not-hidden')
-        }
-
-    }
-
-    if (panelId !== 'collapse') {
-        document.querySelector(`#tabs [href="#${panelId}"]`)?.classList.add('active')
-    }
-
+function getDocumentPanelFromClickId(panelId) {
 
     let panelDocumentId = panelId
     if (panelId === 'play' || panelId === 'run' || panelId === 'reload'
@@ -737,21 +711,52 @@ function renderTabsCommand(panelId, noBounce = false) {
             panelId = panelDocumentId = 'database'
     }
 
+    return [panelId, panelDocumentId]
+}
 
 
+const DOESNT_AFFECT_UI = [
+    'github', 'back', 'next', 'fullscreen',
+    'layout', 'share', 'pause', 'stop', 'save',
+    'configuration', 'theme', 'configuration',
+    'wasi', 'theme', 'keybinding', 'collapse' // detected above
+]
 
+let toolbarTabDebounce = null
+let latestPanelId = null
+let previousPanelId = null
+let debouncedPanelId = null
+let previousFilelistId = null
+function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
 
-    let panel = document.getElementById(panelDocumentId)
+    if (!panelId) return
+
+    // helps always use the latest submitted id, even though latest and previous are tracked separately below
+    debouncedPanelId = panelId
+
+    if (!noBounce && toolbarTabDebounce) return
+    if (!noBounce) {
+        toolbarTabDebounce = setTimeout(() => {
+            renderTabsCommand(debouncedPanelId, true, hidePanels)
+            toolbarTabDebounce = null
+        }, 400)
+        return
+    }
+
+    let database = owner.value + '/' + repo.value
+
+    const [reasignedPanelId, panelDocumentId] = getDocumentPanelFromClickId(panelId)
+    const panel = document.getElementById(panelDocumentId)
 
     // react repo and owner controls to selected filelist
     if (panel) {
         let newRepo = panel.dataset['repository']
         if (panelId === 'filelist')
-            newRepo = localStorage.getItem('engine_repository') || newRepo
+            newRepo = engineRepo || localStorage.getItem('engine_repository') || newRepo
         if (panelId === 'gamelist')
-            newRepo = localStorage.getItem('game_repository') || newRepo
+            newRepo = gameRepo || localStorage.getItem('game_repository') || newRepo
         if (panelId === 'assetlist')
-            newRepo = localStorage.getItem('asset_repository') || newRepo
+            newRepo = assetRepo || localStorage.getItem('asset_repository') || newRepo
 
         if (newRepo)
             setRepository(newRepo || database)
@@ -764,21 +769,82 @@ function renderTabsCommand(panelId, noBounce = false) {
         && !GL.canvas
     ) run()
 
-    const DOESNT_AFFECT_UI = [
-        'github', 'back', 'next', 'fullscreen',
-        'layout', 'share', 'pause', 'stop', 'save',
-        'configuration', 'theme', 'configuration',
-        'wasi', 'theme', 'keybinding', 'viewport-frame' // special case to cancel classing
-    ]
-
-
+    let changedClass = false
     if (!DOESNT_AFFECT_UI.includes(panelId)) {
-        hideOpenPanels()
+        // don't record as a state
+        if (panel && panelId != 'collapse') {
+            // prevent duplication and swaping
+            if (latestPanelId !== previousPanelId
+                && latestPanelId !== panel.id
+            ) {
+                previousPanelId = latestPanelId
+                changedClass = true
+            }
+            if (latestPanelId !== panel.id) {
+                latestPanelId = panel.id
+                changedClass = true
+            }
+        }
     }
 
-    if (panel) {
-        panel.classList.remove('hidden')
-        panel.classList.add('not-hidden')
+    if (!DOESNT_AFFECT_UI.includes(panelId)) {
+        let hadOpen = false
+        if (hidePanels) {
+            hadOpen = hideOpenPanels(FILELIST_IDS.includes(panelId) /* hide all if we are switching files lists */)
+        }
+
+        if (panel) {
+            panel.classList.remove('hidden')
+            panel.classList.add('not-hidden')
+        }
+
+        if (changedClass) {
+            updateBodyPanelIds()
+        }
+
+        let previousNone = true
+        let latestNone = true
+        let notFilelist = null
+        for (let filelistId of FILELIST_IDS) {
+            if (previousPanelId === filelistId) {
+                previousFilelistId = filelistId
+                previousNone = false
+            } else if (latestPanelId === filelistId) {
+                previousFilelistId = filelistId
+                latestNone = false
+            }
+        }
+
+        // defect from over compensating for class names not changing latestPanelId above created a defect here
+        if (latestNone) {
+            notFilelist = latestPanelId
+        }
+        else if (previousNone) {
+            notFilelist = previousPanelId
+        }
+
+
+        if (panelId === 'collapse') {
+
+            if (!hadOpen) {
+                document.getElementById(previousFilelistId)?.classList.remove('hidden')
+                document.getElementById(previousFilelistId)?.classList.add('not-hidden')
+            }
+
+        }
+
+        // make sure not file list stays open
+        
+        if (notFilelist) {
+
+            document.getElementById(notFilelist)?.classList.remove('hidden')
+            document.getElementById(notFilelist)?.classList.add('not-hidden')
+        }
+
+    }
+
+    if (panelId !== 'collapse') {
+        document.querySelector(`#tabs [href="#${panelDocumentId}"]`)?.classList.add('active')
     }
 
     resizeDebouncer()
@@ -786,6 +852,32 @@ function renderTabsCommand(panelId, noBounce = false) {
 
 
 
+function updateBodyPanelIds() {
+
+    for (let cn of document.body.classList) {
+        if (cn.startsWith('panel-')) {
+            document.body.classList.remove(cn)
+        }
+    }
+
+
+    for (let cn of document.body.classList) {
+        if (cn.startsWith('previous-')) {
+            document.body.classList.remove(cn)
+        }
+    }
+
+
+    if (previousPanelId)
+        document.body.classList.add('previous-' + previousPanelId)
+    if (latestPanelId)
+        document.body.classList.add('panel-' + latestPanelId)
+
+
+}
+
+
+const FILELIST_IDS = ['filesearch', 'filelist', 'gamelist', 'assetlist', 'database']
 
 let panels = document.querySelectorAll('#token-modal, #viewport-frame, #terminal-container, #editor, #filesearch, #filelist, #gamelist, #assetlist, #database, #github')
 
@@ -796,11 +888,11 @@ document.getElementById('tabs').addEventListener('click', async (e) => {
 });
 
 
-function hideOpenPanels(all = false) {
+
+function hideOpenPanels(all = true) {
     let hasOpen = false;
 
     let buttons = document.getElementById('tabs').children[0].children
-
 
     for (let button of buttons) {
         //if(!button.)
@@ -809,9 +901,12 @@ function hideOpenPanels(all = false) {
 
     for (let panel of panels) {
         if (latestPanelId === panel) continue
+        if (FILELIST_IDS.includes(panel.id)) {
+            hasOpen = true
+            if(!all) continue
+        }
         if (!panel.classList.contains('hidden')) {
             panel.classList.add('hidden')
-            hasOpen = true
         }
         panel.classList.remove('not-hidden')
     }
