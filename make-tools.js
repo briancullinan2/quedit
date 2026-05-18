@@ -522,7 +522,6 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
                 writeLog("Generating dagcheck.c via lburg...");
                 const dagMd = "src/dagcheck.md";
                 const dagC = path.join(CONFIGURATION, "src/dagcheck.c");
-                debugger
 
                 if (!FS.virtual[obj] && !forceChanged)
                     FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)

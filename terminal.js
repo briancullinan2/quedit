@@ -812,10 +812,7 @@ function forceFit() {
     let width = isFull
         ? window.document.body.clientWidth - SCROLLBAR_WIDTH - 60
         : document.getElementById('terminal-container').clientWidth - SCROLLBAR_WIDTH;
-    if (width < 200) {
-        width = 200
-    }
-    const cols = Math.max(2, Math.floor(width / dims.css.cell.width));
+    const cols = Math.max(2, Math.floor(width / dims.css.cell.width), 120);
     //if (isFull) {
     //    term.resize(cols, term.buffer.active.baseY + term.rows);
     //    return
@@ -926,7 +923,7 @@ function detectTerminalEvents(event, x, y, updateStatus = true) {
     }
 
     const col = Math.floor(x / term._core._renderService.dimensions.css.cell.width);
-    const row = Math.floor(y / term._core._renderService.dimensions.css.cell.height) + term.buffer.active.viewportY + 1;
+    const row = Math.floor(y / term._core._renderService.dimensions.css.cell.height) + term.buffer.active.viewportY;
 
     // Only update cursor if the click is on the "active" input line
     const activeRow = term.buffer.active.baseY + term.buffer.active.cursorY;

@@ -1424,12 +1424,6 @@ body {
     visibility: visible !important;
 }
 
-#terminal .xterm .xterm-viewport {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
 .ace_editor {
     /*background-color: transparent !important;*/
 }
@@ -1488,6 +1482,8 @@ body {
 #terminal .xterm {
     padding-bottom: 60px;
     --xterm-internal-padding: 50px;
+    width: max-content !important;
+    position: static !important;
 }
 
 #terminal .xterm-viewport .xterm-scroll-area {
@@ -1500,12 +1496,25 @@ body {
 }
 
 /* Force the horizontal scroll layer wrapper into absolute view bounds */
+
 #terminal .xterm .xterm-viewport {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
     bottom: 0 !important;
     height: 100% !important;
     /* Pushes it up past the clipping floor boundary */
     padding-bottom: 16px !important; 
     overflow-x: auto !important;
+    pointer-events: none;
+}
+
+
+.xterm-scrollable-element
+{
+    overflow: visible;
+    min-width: fit-content;
+    position: static !important;
 }
 
 

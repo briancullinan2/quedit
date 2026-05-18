@@ -1577,7 +1577,7 @@ const API = (function () {
 
       await prepInputOutput(input, obj, this.database, true)
 
-      if (!FS.virtual[input].contents) {
+      if (!FS.virtual[input] || !FS.virtual[input].contents) {
         debugger
         console.error('Input file empty: ' + input)
       }

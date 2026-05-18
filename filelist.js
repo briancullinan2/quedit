@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 
     // do way after terminal loads
     setTimeout(() => {
-        performSharedBufferScanInternal()
+        performSharedBufferScanInternal(searchTerminal.value)
     }, 1000);
 
     setTimeout(() => {
@@ -419,95 +419,6 @@ function loadTree(database, cursor) {
 
 
 
-
-function getQVMHeader(sampleBytes, content, filePath) {
-
-
-
-    // 1. Read QVM Header Magic Number (0x12721444 or 'qvm\x12')
-    // Standard QVM headers start with Magic (4 bytes), Instruction Count (4 bytes), 
-    // Code Offset/Length (4), Data Offset/Length (4), Lit Offset/Length (4), BSS Length (4)
-    const isQVM = sampleBytes[0] === 0x44 && sampleBytes[1] === 0x14 && sampleBytes[2] === 0x72 && sampleBytes[3] === 0x12;
-
-    let infoStack = `QVM file detected (${content.length} bytes)\n`;
-    infoStack += `========================================================================\n`;
-
-    if (isQVM && sampleBytes.length >= 24) {
-        // Parse 32-bit Little Endian integers from the QVM header metadata
-        const view = new DataView(sampleBytes.buffer, sampleBytes.byteOffset, sampleBytes.byteLength);
-        const instructionCount = view.getUint32(4, true);
-        const codeLength = view.getUint32(8, true);
-        const dataLength = view.getUint32(12, true);
-        const litLength = view.getUint32(16, true);
-        const bssLength = view.getUint32(20, true);
-
-        // Render the compilation metadata block
-        infoStack += `Output filename:      ${filePath}\n`;
-        infoStack += `Compiler Sequence:    pass #1: define -> pass #2: compile -> pass #3: define -> pass #4: compile\n`;
-        infoStack += `------------------------------------------------------------------------\n`;
-        infoStack += `Code Segment size:    ${codeLength.toString().padEnd(10)} bytes\n`;
-        infoStack += `Data Segment size:    ${dataLength.toString().padEnd(10)} bytes\n`;
-        infoStack += `Lit Segment size:     ${litLength.toString().padEnd(10)} bytes\n`;
-        infoStack += `BSS Segment size:     ${bssLength.toString().padEnd(10)} bytes (Uninitialized Data)\n`;
-        infoStack += `Instruction Count:    ${instructionCount.toString().padEnd(10)}\n`;
-        infoStack += `------------------------------------------------------------------------\n`;
-        infoStack += `Status:               Successfully mapped binary targets.\n`;
-    } else {
-        infoStack += `Format:               Unknown Raw Binary Data\n`;
-    }
-
-    //const hexRows = hexDump(sampleBytes, content, filePath)
-
-    return infoStack
-}
-
-
-
-function hexDump(sampleBytes, content, filePath) {
-    let infoStack
-
-    if (filePath.includes('.qvm')) {
-        infoStack = getQVMHeader(sampleBytes, content, filePath)
-    } else {
-        infoStack = `Binary file detected (${content.length} bytes)\n`;
-    }
-
-    infoStack += `========================================================================\n\n`;
-    infoStack += `Raw Header Hex View (First ${sampleBytes.length} bytes):\n`;
-    infoStack += `------------------------------------------------------------------------\n`;
-
-    let hexRows = [];
-    for (let i = 0; i < sampleBytes.length; i += 16) {
-        let chunk = [];
-        for (let j = 0; j < 16; j++) {
-            if (i + j < sampleBytes.length) {
-                let byteHex = sampleBytes[i + j].toString(16).padStart(2, '0').toUpperCase();
-                chunk.push(byteHex);
-            }
-        }
-
-        // Add visual split column delimiter at byte index 8
-        if (chunk.length > 8) {
-            chunk.splice(8, 0, "|");
-        }
-
-        // Pad out short rows at the end of the data chunk sample
-        let hexLine = chunk.join(" ");
-        let offset = i.toString(16).padStart(4, '0').toUpperCase();
-        hexRows.push(`0x${offset}:  ${hexLine}`);
-    }
-
-    let str = infoStack + hexRows.join("\n");
-
-    return str
-}
-
-
-
-
-
-const hasSequentialBinaryRegex = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]{3,}/;
-
 let openFileDebounce = null
 let latestOpenRequest = null
 async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true, hidePanels = true, noBounce = false) {
@@ -531,7 +442,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     }
     const byteView = new Uint8Array(content);
     // 1. Scan just the first 1024 bytes for binary characters before decoding everything
-    const sampleBytes = byteView.subarray(0, 1024);
+    const sampleBytes = byteView.subarray(0, 8192);
     const decoder = new TextDecoder();
     const sampleStr = decoder.decode(sampleBytes);
 
@@ -553,7 +464,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
 
 
     if (hidePanels)
-        hideOpenPanels()
+        hideOpenPanels(false)
 
     resizeDebouncer()
 
@@ -719,7 +630,7 @@ const DOESNT_AFFECT_UI = [
     'github', 'back', 'next', 'fullscreen',
     'layout', 'share', 'pause', 'stop', 'save',
     'configuration', 'theme', 'configuration',
-    'wasi', 'theme', 'keybinding', 'collapse' // detected above
+    'wasi', 'theme', 'keybinding'
 ]
 
 let toolbarTabDebounce = null
@@ -727,6 +638,8 @@ let latestPanelId = null
 let previousPanelId = null
 let debouncedPanelId = null
 let previousFilelistId = null
+let notFilelist = null
+
 function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
 
     if (!panelId) return
@@ -762,7 +675,16 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
             setRepository(newRepo || database)
     }
 
-    if (panelId == 'database')
+    if (panelId === 'terminal-container'
+        || panelId === 'terminal'
+        || panelId === 'compile'
+    ) {
+        setTimeout(() => {
+            performSharedBufferScanInternal(searchTerminal.value)
+        }, 1000);
+    }
+
+    if (panelId === 'database')
         showDatabases()
 
     if (panelId === 'viewport-frame'
@@ -798,13 +720,8 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
             panel.classList.add('not-hidden')
         }
 
-        if (changedClass) {
-            updateBodyPanelIds()
-        }
-
         let previousNone = true
         let latestNone = true
-        let notFilelist = null
         for (let filelistId of FILELIST_IDS) {
             if (previousPanelId === filelistId) {
                 previousFilelistId = filelistId
@@ -824,21 +741,31 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
         }
 
 
-        if (panelId === 'collapse') {
+        if (panelId === 'collapse'
+            // nice side effect if they click the same list it also toggles
+            || (panelId === previousFilelistId && !changedClass)
+        ) {
 
             if (!hadOpen) {
                 document.getElementById(previousFilelistId)?.classList.remove('hidden')
                 document.getElementById(previousFilelistId)?.classList.add('not-hidden')
+            } else {
+                document.getElementById(previousFilelistId)?.classList.add('hidden')
+                document.getElementById(previousFilelistId)?.classList.remove('not-hidden')
             }
 
         }
 
-        // make sure not file list stays open
-        
+        // make sure not file list stays open, whatever exists other than a file list
         if (notFilelist) {
-
+            if (latestPanelId !== notFilelist)
+                previousPanelId = notFilelist
             document.getElementById(notFilelist)?.classList.remove('hidden')
             document.getElementById(notFilelist)?.classList.add('not-hidden')
+        }
+
+        if (changedClass) {
+            updateBodyPanelIds()
         }
 
     }
@@ -890,7 +817,7 @@ document.getElementById('tabs').addEventListener('click', async (e) => {
 
 
 function hideOpenPanels(all = true) {
-    let hasOpen = false;
+    let hadOpen = false;
 
     let buttons = document.getElementById('tabs').children[0].children
 
@@ -900,17 +827,26 @@ function hideOpenPanels(all = true) {
     }
 
     for (let panel of panels) {
-        if (latestPanelId === panel) continue
-        if (FILELIST_IDS.includes(panel.id)) {
-            hasOpen = true
-            if(!all) continue
-        }
+
+
         if (!panel.classList.contains('hidden')) {
-            panel.classList.add('hidden')
+            if (FILELIST_IDS.includes(panel.id)) {
+                if (!all && !hadOpen) {
+                    hadOpen = true
+                    continue
+                } else if (!all) {
+                    debugger
+                }
+                hadOpen = true
+            }
+
         }
+
+        if (latestPanelId === panel) continue
+        panel.classList.add('hidden')
         panel.classList.remove('not-hidden')
     }
-    return hasOpen
+    return hadOpen
 }
 
 

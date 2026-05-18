@@ -28,7 +28,7 @@ body {
     flex-basis: min-content;
     min-height: 0;
     overflow: hidden;
-    min-width: 0;
+    min-width: fit-content;
 }
 
 #viewport-frame {
@@ -151,6 +151,7 @@ body {
     height: 100vh;
     max-height: calc(100vh);
     overflow: hidden;
+    max-width: 100%;
 }
 
 #main-body {
@@ -168,6 +169,8 @@ body {
 
 #toggle-wrapper {
     max-width: calc(100% - 60px);
+    width: calc(100% - 60px);
+    justify-content: stretch;
 }
 
 #main>* {
@@ -175,7 +178,7 @@ body {
     flex-grow: 1;
     min-height: 0;
     max-width: 100%;
-    width:100%;
+    width: 100%;
 }
 
 #statusbar>* {
@@ -210,13 +213,6 @@ body {
     max-width: 100%;
     max-height: min-content;
     flex-basis: min-content;
-}
-
-#terminal {
-    flex: 1 1 auto;
-    flex-basis: 400px;
-    min-height: min-content;
-    max-height: none;
 }
 
 .treejs-label {
@@ -264,11 +260,6 @@ button {
 
 
 
-#toolbar input,
-#toolbar select,
-#toolbar button {}
-
-
 .treejs-node__checked {
     background: #ccc;
 }
@@ -278,7 +269,7 @@ button {
     flex-direction: column;
 }
 
-#toolbar ul > *:has(ul) {
+#toolbar ul>*:has(ul) {
     flex-basis: fit-content;
 }
 
@@ -290,21 +281,18 @@ button {
     padding: 0 10px;
 }
 
-#toolbar ul > li:has(ul)
-{
+#toolbar ul>li:has(ul) {
     padding: 2px 0;
 }
 
-#toolbar ul > li:has(ul):first-child > ul,
-#toolbar ul > li:has(ul) + li:has(ul) > ul
-{
+#toolbar ul>li:has(ul):first-child>ul,
+#toolbar ul>li:has(ul)+li:has(ul)>ul {
     padding-left: 0;
     margin-left: 0;
     border-left: 0;
 }
 
-#toolbar ul > li:has(ul):last-child > ul
-{
+#toolbar ul>li:has(ul):last-child>ul {
     padding-right: 0;
     margin-right: 0;
     border-right: 0;
@@ -316,7 +304,7 @@ button {
     flex-direction: row;
     max-width: 100%;
     flex-wrap: wrap;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
 }
 
@@ -349,6 +337,29 @@ button {
     width: stretch;
 }
 
+#toolbar select {
+    width: 140px;
+}
+
+#toolbar #filename {
+    width: 100%;
+}
+
+#toolbar li:has(#filename),
+#toolbar li:has(#reload) {
+    min-width: 200px;
+}
+
+#terminal {
+    flex: 1 1 auto;
+    flex-basis: 400px;
+    max-height: none;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+
+}
+
 #terminals,
 #terminal {
     max-width: 100%;
@@ -357,7 +368,32 @@ button {
 #terminal-container {
     max-width: 100%;
     flex-basis: 100%;
+    position: relative;
 }
+
+
+#terminal .xterm .xterm-scrollable-element>.scrollbar.vertical {
+    height: 100%;
+    top: 40px !important;
+}
+
+
+#terminal .xterm .xterm-scrollable-element>.scrollbar.horizontal {
+    width: 100%;
+}
+
+#terminal .xterm .xterm-scrollable-element>.scrollbar>.slider,
+#terminal .xterm .xterm-scrollable-element>.scrollbar {
+    z-index: 1000;
+    opacity: 1;
+    pointer-events: all;
+}
+
+#terminal .xterm .xterm-screen {
+    z-index: 0;
+    pointer-events: none;
+}
+
 #terminals ul,
 #toolbar ul,
 #tabs ul {
@@ -774,16 +810,14 @@ input[type="checkbox"]:focus-visible {
     flex-basis: calc(100% - 54px);
 }
 
-#editor-container:not(:has(.not-hidden ~ .not-hidden)) .not-hidden
-{
+#editor-container:not(:has(.not-hidden ~ .not-hidden)) #editor {
     flex-basis: 100%;
     width: 100%;
 }
 
 
 #editor-container:has(.not-hidden ~ .not-hidden) #viewport-frame.not-hidden,
-#editor-container:has(.not-hidden ~ .not-hidden) #editor.not-hidden
-{
+#editor-container:has(.not-hidden ~ .not-hidden) #editor.not-hidden {
     flex-basis: 50%;
     width: 50%;
 }
@@ -792,8 +826,7 @@ input[type="checkbox"]:focus-visible {
 #gamelist.not-hidden,
 #database.not-hidden,
 #filelist.not-hidden,
-#searchlist.not-hidden
-{
+#searchlist.not-hidden {
     display: block;
     min-width: 200px;
     flex-basis: 200px;
@@ -807,15 +840,14 @@ input[type="checkbox"]:focus-visible {
     visibility: visible;
 }
 
-#editor-container:not(:has(.not-hidden)) ~ #terminal-container:not(.hidden),
-#terminal-container.not-hidden
-{
+#editor-container:not(:has(.not-hidden))~#terminal-container:not(.hidden),
+#terminal-container.not-hidden {
     display: flex;
     min-width: 200px;
     visibility: visible;
 }
 
-#editor-container:not(:has(.not-hidden)) ~ #viewport-frame:not(.hidden),
+#editor-container:not(:has(.not-hidden))~#viewport-frame:not(.hidden),
 #viewport-frame:not(.hidden),
 #viewport-frame.not-hidden {
     visibility: visible;
@@ -824,18 +856,13 @@ input[type="checkbox"]:focus-visible {
 }
 
 
-#editor-container:not(:has(.not-hidden))
-{
-    display:none;
+#editor-container:not(:has(.not-hidden)) {
+    display: none;
     visibility: collapse;
 }
 
-#editor-container:not(:has(.not-hidden)) ~ *
-{
-    flex-basis: 50%;
-}
 
-#viewport-frame.hidden ~ #terminal-container,
+#viewport-frame.hidden~#terminal-container,
 #terminal-container.not-hidden {
     flex-basis: 100%;
 }
@@ -843,6 +870,16 @@ input[type="checkbox"]:focus-visible {
 
 
 .not-hidden {}
+
+@media all and (max-width: 1000px) {
+
+
+    #terminals li:nth-last-child(2) {
+        display: none;
+    }
+
+}
+
 
 @media all and (max-width: 800px) {
 

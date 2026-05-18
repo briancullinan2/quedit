@@ -141,10 +141,12 @@ function getAceThemeColors() {
     };
 }
 
-
-
 let navTimer;
+
 editor.on("changeSelection", function () {
+    // FIX: If the user is selecting a block of text, do not interrupt them
+    //if (!editor.selection.isEmpty()) return; 
+
     if (typeof NavHistory !== 'undefined' && NavHistory.isNavigating) return;
 
     clearTimeout(navTimer);
@@ -162,7 +164,6 @@ editor.on("changeSelection", function () {
         }
     }, 500);
 });
-
 
 editor.commands.addCommand({
     name: "save",
@@ -533,3 +534,27 @@ editorWrapper.addEventListener('mousedown', async (event) => {
         }
     }
 });
+
+editor.commands.addCommand({
+    name: "forceSystemCopy",
+    bindKey: { win: "Ctrl-C", mac: "Command-C" },
+    exec: function (editor) {
+        const range = editor.getSelectionRange();
+        if (range && !range.isEmpty()) {
+            let selectedText = editor.session.getTextRange(range);
+            
+            if (selectedText) {
+                // FIX: Strip out null bytes (\x00) and dangerous low-ASCII control characters (0-31)
+                // except for normal layout formatting like tabs (\t), line feeds (\n), and carriage returns (\r)
+                selectedText = selectedText.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+
+                navigator.clipboard.writeText(selectedText).then(() => {
+                    console.log("Sanitized range copy successful.");
+                }).catch(err => {
+                    console.error("Clipboard API blocked: ", err);
+                });
+            }
+        }
+    }
+});
+

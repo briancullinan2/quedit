@@ -397,13 +397,13 @@ async function ls(argv, database) {
 
 
     if (flags.flat) {
-        entries.forEach(e => terminalWrite(e.path +  '\n\r'));
+        entries.forEach(e => terminalWrite(e.path + '\n\r'));
     } else {
         // Calculate column width for alignment
         const maxName = Math.max(...entries.map(e => e.path.length), 10);
 
         terminalWrite(`${'NAME'.padEnd(maxName + 2)}${'SIZE'.padEnd(10)}TYPE\n\r`);
-        terminalWrite('-'.repeat(maxName + 20) +  '\n\r');
+        terminalWrite('-'.repeat(maxName + 20) + '\n\r');
 
         entries.forEach(e => {
             const size = e.contents ? flags.human ? formatBytes(e.contents.length) : e.contents.length.toString() : '0B';
@@ -516,23 +516,7 @@ async function buildCommand(argv, database) {
 
     if (selected === engineRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
     {
-        await downloadHeaders(q3eCommonHeaders, 10, selected)
-    }
-
-    if (TERMINATE) return
-    if (selected === gameRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
-    {
-        await downloadHeaders(qvmHeaders, 10, selected)
-    }
-
-    if (TERMINATE) return
-    if (selected === toolsRepo) {
-        await downloadHeaders(lccToolHeaders, 10, selected)
-    }
-
-    if (TERMINATE) return
-    if (selected === toolsRepo2) {
-        await downloadHeaders(asmToolHeaders, 10, selected)
+        await downloadHeaders(q3eCommonHeaders, 10, mode === 'all' ? engineRepo : selected)
     }
 
     needsHeaders = false
@@ -541,52 +525,72 @@ async function buildCommand(argv, database) {
     if (TERMINATE) return
 
     if (mode === 'stringify' || mode === 'all')
-        await buildStringify(selected, false, true)
+        await buildStringify(mode === 'all' ? engineRepo : selected, false, true)
 
     if (TERMINATE) return
     if (mode === 'shaders')
-        await buildShaders(selected, false, true)
+        await buildShaders(mode === 'all' ? engineRepo : selected, false, true)
 
     if (TERMINATE) return
     if (mode === 'client'
         || mode === 'release' || mode === 'debug'
         || mode === 'all'
     )
-        await buildClient(selected, mode === 'client' || mode === 'engine', false, true) // also builds shaders
+        await buildClient(mode === 'all' ? engineRepo : selected, mode === 'client' || mode === 'engine', false, true) // also builds shaders
 
     if (TERMINATE) return
 
+    if (selected === toolsRepo) {
+        await downloadHeaders(lccToolHeaders, 10, mode === 'all' ? toolsRepo : selected)
+    }
+
+    if (TERMINATE) return
 
     if (mode === 'lburg' || mode === 'all' || mode === 'tools')
-        await buildTools(selected, 'lburg', mode === 'lburg', true) // shared debouncer
+        await buildTools(mode === 'all' ? toolsRepo : selected, 'lburg', mode === 'lburg', true) // shared debouncer
 
     if (TERMINATE) return
     if (mode === 'q3rcc' || mode === 'all' || mode === 'tools')
-        await buildTools(selected, 'q3rcc', mode === 'q3rcc', true) // implicit forceChanged = true
+        await buildTools(mode === 'all' ? toolsRepo : selected, 'q3rcc', mode === 'q3rcc', true) // implicit forceChanged = true
 
     if (TERMINATE) return
     if (mode === 'q3cpp' || mode === 'all' || mode === 'tools')
-        await buildTools(selected, 'q3cpp', mode === 'q3cpp', true)
+        await buildTools(mode === 'all' ? toolsRepo : selected, 'q3cpp', mode === 'q3cpp', true)
 
     if (TERMINATE) return
     if (mode === 'q3lcc' || mode === 'all' || mode === 'tools')
-        await buildTools(selected, 'q3lcc', mode === 'q3lcc', true)
+        await buildTools(mode === 'all' ? toolsRepo : selected, 'q3lcc', mode === 'q3lcc', true)
 
     if (TERMINATE) return
+
+    if (selected === toolsRepo2) {
+        await downloadHeaders(asmToolHeaders, 10, mode === 'all' || mode === 'tools' ? toolsRepo2 : selected)
+    }
+
     if (mode === 'q3asm' || mode === 'all' || mode === 'tools')
-        await buildTools(selected, 'q3asm', mode === 'q3asm', true)
+        await buildTools(mode === 'q3asm' || mode === 'tools' ? selected : toolsRepo2, 'q3asm', mode === 'q3asm', true)
+
+
+
+
+    if (TERMINATE) return
+
+    if (selected === gameRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
+    {
+        await downloadHeaders(qvmHeaders, 10, mode === 'all' ? gameRepo : selected)
+    }
 
     if (TERMINATE) return
 
     if (mode === 'game' || mode === 'all' || mode === 'qvms')
-        await buildModule('game', dirs.QADIR, gameFiles, selected, ['QAGAME'], mode === 'game', false, true);
+        await buildModule('game', dirs.QADIR, gameFiles, mode === 'all' ? gameRepo : selected, ['QAGAME'], mode === 'game', false, true);
 
     if (TERMINATE) return
     if (mode === 'cgame' || mode === 'all' || mode === 'qvms')
-        await buildModule('cgame', dirs.CGDIR, cgameFiles, selected, ['CGAME'], mode === 'cgame', false, true);
+        await buildModule('cgame', dirs.CGDIR, cgameFiles, mode === 'all' ? gameRepo : selected, ['CGAME'], mode === 'cgame', false, true);
     if (TERMINATE) return
     if (mode === 'ui' || mode === 'all' || mode === 'qvms')
-        await buildModule('ui', dirs.UIDIR, uiFiles, selected, ['UI'], mode === 'ui' || mode === 'q3_ui', false, true);
+        await buildModule('ui', dirs.UIDIR, uiFiles, mode === 'all' ? gameRepo : selected, ['UI'], mode === 'ui' || mode === 'q3_ui', false, true);
 
 
 }
@@ -664,74 +668,80 @@ async function link(argv, database) {
 
     if (selected === engineRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
     {
-        await downloadHeaders(q3eCommonHeaders, 10, selected)
+        await downloadHeaders(q3eCommonHeaders, 10, mode === 'all' ? engineRepo : selected)
     }
 
     if (TERMINATE) return
-    if (selected === gameRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
-    {
-        await downloadHeaders(qvmHeaders, 10, selected)
-    }
 
-    if (TERMINATE) return
-    if (selected === toolsRepo) {
-        await downloadHeaders(lccToolHeaders, 10, selected)
-    }
-
-    if (TERMINATE) return
-    if (selected === toolsRepo2) {
-        await downloadHeaders(asmToolHeaders, 10, selected)
-    }
-
-    if (TERMINATE) return
 
     if (mode === 'stringify' || mode === 'all')
-        await linkStringify(selected, true)
+        await linkStringify(mode === 'all' ? engineRepo : selected, true)
 
     if (TERMINATE) return
     if (mode === 'client' || mode === 'engine'
         || mode === 'shaders' || mode === 'release'
         || mode === 'debug' || mode === 'all'
     )
-        await linkEngine(selected, true)
+        await linkEngine(mode === 'all' ? engineRepo : selected, true)
+
+    if (TERMINATE) return
+
+
+    if (selected === toolsRepo) {
+        await downloadHeaders(lccToolHeaders, 10, mode === 'all' ? toolsRepo : selected)
+    }
+
+
 
     if (TERMINATE) return
     if (mode === 'lburg' || mode === 'tools' || mode === 'all')
-        await linkLburg(selected, true)
+        await linkLburg(mode === 'all' ? toolsRepo : selected, true)
 
     if (TERMINATE) return
     if (mode === 'q3rcc' || mode === 'tools' || mode === 'all')
-        await linkRCC(selected, true)
+        await linkRCC(mode === 'all' ? toolsRepo : selected, true)
 
     if (TERMINATE) return
     if (mode === 'q3cpp' || mode === 'tools' || mode === 'all')
-        await linkCPP(selected, true)
+        await linkCPP(mode === 'all' ? toolsRepo : selected, true)
 
     if (TERMINATE) return
     if (mode === 'q3lcc' || mode === 'tools' || mode === 'all')
-        await linkLCC(selected, true)
+        await linkLCC(mode === 'all' ? toolsRepo : selected, true)
+
+    if (TERMINATE) return
+
+    if (selected === toolsRepo2) {
+        await downloadHeaders(asmToolHeaders, 10, mode === 'all' || mode === 'tools' ? toolsRepo2 : selected)
+    }
+
 
     if (TERMINATE) return
     if (mode === 'q3asm' || mode === 'tools' || mode === 'all')
-        await linkAsm(selected, true)
+        await linkAsm(mode === 'all' || mode === 'tools' ? toolsRepo2 : selected, true)
 
+    if (TERMINATE) return
+    if (selected === gameRepo) // TODO: || file.includes('code/') && !file.includes('code/'))
+    {
+        await downloadHeaders(qvmHeaders, 10, mode === 'all' ? gameRepo : selected)
+    }
     if (TERMINATE) return
 
 
     if (mode === 'game' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'game', dirs.QADIR, gameFiles, true)
+        await linkModule(mode === 'all' ? gameRepo : selected, 'game', dirs.QADIR, gameFiles, true)
 
     if (TERMINATE) return
     if (mode === 'cgame' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'cgame', dirs.CGDIR, cgameFiles, true)
+        await linkModule(mode === 'all' ? gameRepo : selected, 'cgame', dirs.CGDIR, cgameFiles, true)
 
     if (TERMINATE) return
     if (mode === 'ui' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'ui', dirs.UIDIR, uiFiles, true)
+        await linkModule(mode === 'all' ? gameRepo : selected, 'ui', dirs.UIDIR, uiFiles, true)
 
     if (TERMINATE) return
     if (mode === 'q3_ui' || mode === 'qvms' || mode === 'all')
-        await linkModule(selected, 'q3_ui', dirs.Q3UIDIR, q3uiFiles, true)
+        await linkModule(mode === 'all' ? gameRepo : selected, 'q3_ui', dirs.Q3UIDIR, q3uiFiles, true)
 
     if (TERMINATE) return
 
