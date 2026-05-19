@@ -136,57 +136,6 @@ function parseToHex(colorStr, backgroundStr = null) {
     return `#${hexR}${hexG}${hexB}`; // ${hexA}
 }
 
-function setTerminalAceTheme() {
-    const themeColors = getAceThemeColors();
-    if (!themeColors) return;
-
-    // Ensure the background is parsed first for flattening logic
-    const bgHex = parseToHex(themeColors.background);
-
-    term.options.theme = {
-        background: bgHex,
-        foreground: parseToHex(themeColors.foreground),
-        cursor: parseToHex(themeColors.foreground),
-
-        // Pass bgHex as a fallback parent to blend selection alpha smoothly
-        selection: parseToHex(themeColors.selection, bgHex),
-        selectionBackground: parseToHex(themeColors.selection, bgHex),
-        selectionInactiveBackground: parseToHex(themeColors.gutter, bgHex),
-
-        // Mapping for Inverse Logic:
-        black: bgHex,                         // ANSI 0
-        white: parseToHex(themeColors.foreground), // ANSI 7
-
-        // Map syntax colors to ANSI indices
-        magenta: parseToHex(themeColors.pink),     // ANSI 5
-        cyan: parseToHex(themeColors.purple),      // ANSI 6
-        blue: parseToHex(themeColors.blue),        // ANSI 4
-        green: parseToHex(themeColors.green),      // ANSI 2
-
-        brightBlack: parseToHex(themeColors.gutter) // ANSI 8
-    };
-}
-
-function getAceThemeColors() {
-    const editorEle = document.querySelector('.ace_editor');
-    if (!editorEle) return null;
-
-    // We pull directly from the computed style of the editor, 
-    // which now contains your --ace variables.
-    const style = getComputedStyle(editorEle);
-
-    return {
-        background: style.getPropertyValue('--ace-bg').trim(),
-        foreground: style.getPropertyValue('--ace-foreground').trim(),
-        gutter: style.getPropertyValue('--ace-gutter-bg').trim(),
-        selection: style.getPropertyValue('--ace-selection-bg').trim(),
-        pink: style.getPropertyValue('--ace-pink').trim(),
-        purple: style.getPropertyValue('--ace-purple').trim(),
-        blue: style.getPropertyValue('--ace-blue').trim(),
-        green: style.getPropertyValue('--ace-green').trim(),
-        comment: style.getPropertyValue('--ace-comment').trim()
-    };
-}
 
 let navTimer;
 
@@ -579,7 +528,7 @@ function getFullScreenFit(defaultFactor = 0.25) {
 
 function updateMaxLines() {
 
-    if (editorContainer.classList.contains('not-hidden'))
+    if (!editorContainer.classList.contains('not-hidden'))
         return
 
     const lineHeight = editor.renderer.lineHeight;
@@ -587,7 +536,7 @@ function updateMaxLines() {
 
     // Calculate how many lines fit in that space
     const isFull = fullScreenLayout()
-    const realHeight = getFullScreenFit(1.001)
+    const realHeight = getFullScreenFit(1.01)
     //const height = getFullScreenFit(1.01) // isFull ? 0.99 : 0.75) // opposite terminal 0.25
     //let calculatedMax = editor.getValue().split('\n').length
     // add scroll to bottom of files

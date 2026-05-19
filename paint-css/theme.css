@@ -13,7 +13,7 @@
     --area-background-color: var(--ace-bg);
     --block-background-color: var(--ace-gutter-bg);
     --header-background-color: var(--ace-gutter-bg);
-    --border-color: var(--ace-selection-bg);
+    --border-color: rgb(from var(--ace-selection-bg) r g b / 50%);
 
     /* Button configurations */
     --button-background-color: var(--ace-bg);
@@ -44,7 +44,7 @@
     --mobile-menu-toggle-filter: invert(0.65);
 
     /* Selection highlights & structural actions */
-    --background-color-active: var(--ace-selection-bg);
+    --background-color-active: rgb(from var(--ace-selection-bg) r g b / 50%);
     --background-color-hover: var(--ace-gutter-bg);
     --text-color-active: var(--ace-comment);
 
@@ -60,7 +60,7 @@
     --menu-dropdown-border-color: var(--ace-bg);
     --menu-dropdown-text-color: var(--ace-foreground);
     --menu-dropdown-text-muted-color: var(--ace-foreground);
-    --menu-dropdown-hover-background-color: var(--ace-selection-bg);
+    --menu-dropdown-hover-background-color: rgb(from var(--ace-selection-bg) r g b / 50%);
     --menu-dropdown-hover-text-color: var(--ace-foreground);
     --menu-dropdown-divider-color: var(--ace-bg);
 }
@@ -73,7 +73,7 @@
 }
 
 #paint button.ui_toggle_button:hover {
-    background-color: var(--ace-selection-bg);
+    background-color: rgb(from var(--ace-selection-bg) r g b / 50%);
     color: var(--ace-foreground);
     border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
 }
@@ -286,7 +286,7 @@
 #paint input[type="number"]:hover,
 #paint textarea:hover {
     border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
-    background: var(--ace-selection-bg);
+    background: rgb(from var(--ace-selection-bg) r g b / 50%);
 }
 
 #paint input[type="text"]:active,
@@ -312,13 +312,13 @@
 #paint button:hover,
 #paint input[type="button"]:hover {
     border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
-    background-color: var(--ace-selection-bg);
+    background-color: rgb(from var(--ace-selection-bg) r g b / 50%);
     color: var(--theme-comment);
 }
 
 
 .ui_range .handle {
-    background: var(--ace-selection-bg);
+    background: rgb(from var(--ace-selection-bg) r g b / 50%);
     border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
 }
 
@@ -451,7 +451,7 @@
 
 #paint .block.details button.reset:hover,
 #paint .sidebar_left .item:hover {
-    background-color: var(--ace-selection-bg);
+    background-color: rgb(from var(--ace-selection-bg) r g b / 50%);
     border-color: rgb(from var(--ace-blue) r g b / 50%);
     opacity: 1;
 }
@@ -521,7 +521,84 @@
 }
 
 #main_menu>ul.menu_dropdown>li>a:hover {
-    background: var(--ace-selection-bg);
+    background: rgb(from var(--ace-selection-bg) r g b / 50%);
     border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
 
+}
+
+#paint #undo_button,
+#paint .left_mobile_menu,
+#paint .right_mobile_menu {
+    background-image: none !important;
+    font-family: boxicons !important;
+    font-style: normal;
+    font-weight: 400;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+    display: inline-block;
+    speak: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    height: unset;
+    width: unset;
+    font-size: 24px;
+    padding: 3px 5px;
+    filter:none;
+}
+
+
+#undo_button::before,
+.right_mobile_menu::before,
+.left_mobile_menu::before {
+    background: none !important;
+    text-decoration: none;
+    font-size: 24px;
+    color: var(--ace-foreground);
+    padding: 0;
+    margin: 0;
+    font-family: boxicons !important;
+    font-style: normal;
+    font-weight: 400;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+    display: inline-block;
+    speak: none;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    padding: 0;
+}
+
+.left_mobile_menu::before {
+    content: "\f71c";
+}
+
+#undo_button::before {
+    content: "\f7ef";
+}
+
+.right_mobile_menu::before {
+    content: "\f71b";
+}
+
+
+#undo_button::after,
+.left_mobile_menu::after,
+.right_mobile_menu::after {
+    background: unset;
+    display: none;
+    position: unset;
+    filter: none;
+    left: unset;
+    top: unset;
+    right: unset;
+    bottom: unset;
+}
+
+
+#paint .sidebar_right,
+#paint .sidebar_left
+{
+    box-shadow: none !important;
 }

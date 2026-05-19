@@ -24,6 +24,27 @@
 </head>
 
 <body class="theme-monokai">
+    
+    <div id="token-modal" class="hidden">
+        <div class="modal-content">
+            <form onsubmit="saveToken(); return false;" action="#">
+                <button class="close-btn bx bx-x" onclick="modal.classList.add('hidden'); return false;"></button>
+                <h3>GitHub Access Token</h3>
+                <p>Required for API access</p>
+                <div placeholder="Enter ghp your token here...">
+                    <input placeholder="Enter ghp your token here..." type="password" id="gh-token-input"
+                        name="gh-token-input" />
+                </div>
+                <div class="actions">
+                    <button onclick="saveToken(); return false;">Save Token</button>
+                    <button onclick="clearToken(); return false;" class="danger">Clear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="popups"></div>
+    
     <div id="main" class="panel-column">
         <div id="toolbar">
             <ul>
@@ -279,9 +300,7 @@ int main() {
 
                             <div class="submenu">
                                 <div class="block attributes" id="action_attributes"></div>
-                                <button class="undo_button" id="undo_button" type="button">
-                                    <span class="sr_only">Undo</span>
-                                </button>
+                                <button placeholder="Undo" class="undo_button" id="undo_button" type="button"></button>
                             </div>
                             
                             <div class="sidebar_left" id="tools_container"></div>
@@ -333,12 +352,8 @@ int main() {
                             </div>
                         </div>
                         <div class="mobile_menu">
-                            <button class="left_mobile_menu" id="left_mobile_menu_button" type="button">
-                                <span class="sr_only">Toggle Menu</span>
-                            </button>
-                            <button class="right_mobile_menu" id="mobile_menu_button" type="button">
-                                <span class="sr_only">Toggle Menu</span>
-                            </button>
+                            <button placeholder="Toggle Menu" class="left_mobile_menu" id="left_mobile_menu_button" type="button"></button>
+                            <button placeholder="Toggle Menu" class="right_mobile_menu" id="mobile_menu_button" type="button"></button>
                         </div>
                         <div class="hidden" id="tmp"></div>
                         
@@ -397,28 +412,8 @@ int main() {
             <span>No engine</span>
         </div>
     </div>
-
-    <div id="token-modal" class="hidden">
-        <div class="modal-content">
-            <form onsubmit="saveToken(); return false;" action="#">
-                <button class="close-btn bx bx-x" onclick="modal.classList.add('hidden'); return false;"></button>
-                <h3>GitHub Access Token</h3>
-                <p>Required for API access</p>
-                <div placeholder="Enter ghp your token here...">
-                    <input placeholder="Enter ghp your token here..." type="password" id="gh-token-input"
-                        name="gh-token-input" />
-                </div>
-                <div class="actions">
-                    <button onclick="saveToken(); return false;">Save Token</button>
-                    <button onclick="clearToken(); return false;" class="danger">Clear</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <div id="global-tooltip" class="tooltip-box" popover></div>
-    <div id="popups"></div>
-    
+
     <script src="/jszip.min.js" type="text/javascript" defer></script>
     <script src="/ace/ace.js" type="text/javascript" charset="utf-8" defer></script>
     <script src="/xterm.js" type="text/javascript" defer></script>
@@ -438,7 +433,6 @@ int main() {
     <script src="/commands.js" type="text/javascript" defer></script>
     <script src="/shared.js" type="text/javascript" defer></script>
     <script src="/paint.js" type="text/javascript" defer></script>
-
     <script defer type="text/javascript" src="nipplejs.js"></script>
     <script defer type="text/javascript" src="sys_emgl.js"></script>
     <script defer type="text/javascript" src="sys_fs.js"></script>
@@ -448,7 +442,6 @@ int main() {
     <script defer type="text/javascript" src="sys_web.js"></script>
     <script defer type="text/javascript" src="sys_snd.js"></script>
     <script defer type="text/javascript" src="sys_wasm.js"></script>
-
     <!-- toji map viewer -->
     <script type="text/javascript" src="js/util/webxr-polyfill.min.js"></script>
     <script type="text/javascript" src="js/util/game-shim.js"></script>
@@ -460,8 +453,6 @@ int main() {
     <script type="text/javascript" src="js/q3shader.js"></script>
     <script type="text/javascript" src="js/q3glshader.js"></script>
     <script type="text/javascript" src="js/q3movement.js"></script>
-
-
 </body>
 
 </html>

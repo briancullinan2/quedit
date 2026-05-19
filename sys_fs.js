@@ -438,7 +438,19 @@ function Sys_FRead(bufferAddress, byteSize, count, pointer) {
 }
 
 
+function Sys_fprintf(fp, fmt, args) {
+	debugger
+	let formatted = stringToAddress('DEADBEEF')
+	let length = sprintf(formatted, fmt, args)
+	if (length < 1 || !HEAPU32[formatted >> 2]) {
+		formatted = fmt
+	}
+	Sys_fputs(formatted, fp)
+}
+
+
 function Sys_fgetc(fp) {
+	debugger
 	let c = stringToAddress('DEADBEEF')
 	HEAPU32[c >> 2] = 0
 	if (Sys_FRead(c, 1, 1, fp) != 1) {
@@ -504,14 +516,6 @@ function Sys_fputc(c, f) {
 	return Sys_FWrite(s, 1, 1, f) == 1 ? 0 : -1;
 }
 
-function Sys_fprintf(fp, fmt, args) {
-	let formatted = stringToAddress('DEADBEEF')
-	let length = sprintf(formatted, fmt, args)
-	if (length < 1 || !HEAPU32[formatted >> 2]) {
-		formatted = fmt
-	}
-	Sys_fputs(formatted, fp)
-}
 
 function Sys_access(filename, i) {
 	if (i != F_OK) {
