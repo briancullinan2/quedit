@@ -153,6 +153,10 @@ repo.value = localStorage.getItem('default_repository') || repos[0]
 async function renderToolbarCommand(buttonId) {
     let engineRepo = localStorage.getItem('engine_repository') || document.getElementById('filelist').dataset['repository'] || 'briancullinan2/Quake3e'
 
+    if(!buttonId) return
+    if (buttonId.startsWith('main_menu'))
+        return true
+
     if (buttonId === 'compile') {
         if (configuration.value == 'tools')
             await buildTools(toolsRepo)
@@ -166,10 +170,10 @@ async function renderToolbarCommand(buttonId) {
         updatePlaceholder()
 
     if (buttonId === 'play')
-        run()
+        //runEngine()
 
-    if (buttonId === 'back')
-        NavHistory.back()
+        if (buttonId === 'back')
+            NavHistory.back()
 
     if (buttonId === 'next')
         NavHistory.forward()
@@ -234,14 +238,14 @@ async function renderToolbarCommand(buttonId) {
 
 
 document.getElementById('toolbar').addEventListener('change', async (e) => {
-    renderToolbarCommand(
+    return renderToolbarCommand(
         e.target.id || e.target.href?.split('#').pop())
 
 });
 
 
 document.getElementById('toolbar').addEventListener('click', async (e) => {
-    renderToolbarCommand(
+    return renderToolbarCommand(
         e.target.id || e.target.href?.split('#').pop())
 
 });

@@ -257,22 +257,22 @@
 | UI Icon Button |
 \****************/
 
-#paint .ui_icon_button {
+.ui_icon_button {
     height: 2.8rem;
     line-height: 2.8rem;
 }
 
-#paint .ui_icon_button.input_height {
+.ui_icon_button.input_height {
     height: 2.4rem;
     line-height: 2.4rem;
 }
 
-#paint .ui_icon_button>svg {
+.ui_icon_button>svg {
     display: block;
     font-size: 1.6rem;
 }
 
-#paint .ui_icon_button>img {
+.ui_icon_button>img {
     display: block;
     margin: 0 auto;
 }
@@ -366,7 +366,7 @@
     margin: -1px 0;
 }
 
-.ui_input_grid>.ui_input_group> :first-child,
+#paint .ui_input_grid>.ui_input_group> :first-child,
 #paint .ui_input_grid>.ui_input_group> :last-child {
     border-radius: 0;
 }
@@ -410,7 +410,7 @@
     vertical-align: middle;
 }
 
-.ui_number_input>input[type="number"]::-webkit-outer-spin-button,
+#paint .ui_number_input>input[type="number"]::-webkit-outer-spin-button,
 #paint .ui_number_input>input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
@@ -445,7 +445,7 @@
     border: 0;
 }
 
-.ui_number_input>.increase_number:focus,
+#paint .ui_number_input>.increase_number:focus,
 #paint .ui_number_input>.decrease_number:focus {
     outline: 0;
 }
@@ -715,7 +715,7 @@
     flex-grow: 1;
 }
 
-.ui_swatches .swatch:hover,
+#paint .ui_swatches .swatch:hover,
 #paint .ui_swatches .swatch:focus {
     background: white;
     box-shadow: 0 0 0 2px white inset, 0 0 0 3px var(--border-color) inset;

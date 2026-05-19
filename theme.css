@@ -1370,7 +1370,7 @@ body {
 }
 
 
-#toolbar ul ul {
+#toolbar>ul>li>ul {
     flex-wrap: nowrap;
     border-left: 2px solid var(--ace-selection-bg);
     border-right: 2px solid var(--ace-selection-bg);
@@ -1589,91 +1589,12 @@ body {
     cursor: pointer !important;
 }
 
-#toolbar input,
-#toolbar select,
-#toolbar button {
-    /* Use the Gutter background for a distinct UI look */
-    background: var(--ace-gutter-bg);
-
-    /* Subtle border using the selection/bracket color */
-    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
-
-    /* Text color from the editor foreground */
-    color: var(--ace-foreground);
-    font-family: inherit;
-    line-height: var(--global-height);
-}
-
 #statusbar {
     background-color: var(--ace-gutter-bg);
     color: var(--ace-foreground);
     max-height: var(--global-height);
 }
 
-input:focus,
-select:focus {
-    border-color: var(--ace-blue);
-    background: var(--ace-bg);
-    /* Pop to the main editor bg when active */
-}
-
-
-#search-terminal:not(::placeholder) {
-    border-color: var(--ace-blue);
-    background: var(--ace-bg);
-}
-
-
-#toolbar input:placeholder-shown {
-    border-color: var(--ace-bg);
-    background-color: var(--ace-gutter-bg);
-    color: var(--ace-foreground);
-}
-
-#toolbar input::placeholder {
-    color: var(--ace-foreground);
-    opacity: 0.75;
-    /* Firefox lowers opacity by default, so set to 1 */
-}
-
-/* For older versions of Internet Explorer/Edge */
-#toolbar input::-ms-input-placeholder {
-    color: var(--ace-foreground);
-}
-
-/* For older versions of Firefox (18-) */
-#toolbar input::-moz-placeholder {
-    color: var(--ace-foreground);
-    opacity: 0.75;
-}
-
-#toolbar button:hover {
-    background: var(--ace-selection-bg);
-    border-color: var(--ace-green);
-    cursor: pointer;
-}
-
-#toolbar button:active {
-    background: var(--ace-active-line-bg);
-    transform: translateY(1px);
-    /* Simple physical feedback */
-}
-
-/* Style for placeholders to match comments */
-/*input::placeholder {
-    color: var(--ace-comment);
-    font-style: italic;
-}*/
-
-#toolbar select option {
-    background: var(--ace-gutter-bg);
-    color: var(--ace-foreground);
-}
-
-#terminals a,
-#tabs a {
-    color: var(--ace-foreground);
-}
 
 
 #toolbar {
@@ -1745,12 +1666,9 @@ select:focus {
     border-top-color: var(--ace-foreground);
 }
 
-#toolbar a {
-    color: var(--ace-foreground)
-}
 
 .modal-content {
-    background: var(--ace-bg);
+    background: var(--ace-gutter-bg);
     color: var(--ace-foreground);
     border: 2px solid var(--ace-gutter-bg);
 }
@@ -1769,17 +1687,20 @@ select:focus {
 #toolbar input[type="checkbox"] {
     background-color: var(--ace-gutter-bg);
     border-color: var(--ace-blue);
-    box-shadow: 1px 2px 5px rgb(from var(--ace-foreground) r g b / 50%);
     height: calc(var(--global-height) + 4px);
+    transition: box-shadow ease-in-out 0.3s;
 }
+
 
 #toolbar input[type="checkbox"]::before {
     background-color: var(--ace-bg);
-    box-shadow: -1px -2px 5px inset rgba(0, 0, 0, 0.5);
+    box-shadow: -1px -2px 5px inset rgb(from var(--ace-gutter-bg) r g b / 50%);
     width: calc(var(--global-height) - 4px);
     height: calc(var(--global-height) - 4px);
 
 }
+
+
 
 
 #toolbar input[type="checkbox"]::after {
@@ -1790,10 +1711,12 @@ select:focus {
     color: var(--ace-bg);
 }
 
+#toolbar input[type="checkbox"]:checked:focus,
 #toolbar input[type="checkbox"]:checked {
     background-color: var(--ace-blue);
     /* iOS Green */
-    border-color: var(--ace-blue);
+    border-color: rgb(from var(--ace-blue) r g b / 50%);
+    box-shadow: 1px 2px 3px rgb(from var(--ace-foreground) r g b / 50%);
 }
 
 #toolbar input[type="checkbox"]:checked::before {

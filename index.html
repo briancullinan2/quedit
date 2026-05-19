@@ -29,6 +29,7 @@
             <ul>
                 <li>
                     <ul>
+                        <li><nav aria-label="Main Menu" class="main_menu" id="main_menu"></nav></li>
                         <li><a id="github" alt="Github login" class="bx bx-arrow-in-right-square-half"
                                 target="_new" href="https://github.com/settings/tokens?type=beta"></a></li>
                         <li><a alt="Console" href="#terminal-container" class="bx bx-terminal"></a></li>
@@ -229,7 +230,8 @@
             <div id="tabs">
                 <ul>
                     <li><a alt="Collapse" href="#collapse" class="bx bx-arrow-in-left-square-half"></a></li>
-                    <li><a alt="Collapse" href="#editor" class="bx bx-pen-alt"></a></li>
+                    <li><a alt="Edit code" href="#editor" class="bx bx-code"></a></li>
+                    <li><a alt="Edit images" href="#paint" class="bx bx-palette"></a></li>
                     <li><a alt="Search files" href="#filesearch" class="bx bx-search"></a></li>
                     <li><a alt="Engine files" href="#filelist" class="active bx bx-folder-code"></a></li>
                     <li><a alt="Game files" href="#gamelist" class="bx bx-handheld-alt"></a></li>
@@ -275,8 +277,6 @@ int main() {
                     <div id="paint">
                         <div class="wrapper">
 
-                            <nav aria-label="Main Menu" class="main_menu" id="main_menu"></nav>
-                            
                             <div class="submenu">
                                 <div class="block attributes" id="action_attributes"></div>
                                 <button class="undo_button" id="undo_button" type="button">
@@ -359,7 +359,13 @@ int main() {
                     </div>
                     <div id="left-joystick"></div>
                     <div id="right-joystick"></div>
-                    <canvas></canvas>
+                    <canvas id="viewport">
+                        Sorry, but your browser does not support WebGL or does not have it enabled.
+                        To get a WebGL-enabled browser, please see:<br/>
+                        <a href="http://get.webgl.org/" target="_blank">
+                            http://get.webgl.org/
+                        </a>
+                    </canvas>
                 </div>
                 <canvas id="scratch"></canvas>
                 
@@ -394,8 +400,8 @@ int main() {
 
     <div id="token-modal" class="hidden">
         <div class="modal-content">
-            <form onsubmit="saveToken()" action="#">
-                <button class="close-btn" onclick="modal.classList.add('hidden')">&times;</button>
+            <form onsubmit="saveToken(); return false;" action="#">
+                <button class="close-btn bx bx-x" onclick="modal.classList.add('hidden'); return false;"></button>
                 <h3>GitHub Access Token</h3>
                 <p>Required for API access</p>
                 <div placeholder="Enter ghp your token here...">
@@ -403,13 +409,15 @@ int main() {
                         name="gh-token-input" />
                 </div>
                 <div class="actions">
-                    <button onclick="saveToken()">Save Token</button>
-                    <button onclick="clearToken()" class="danger">Clear</button>
+                    <button onclick="saveToken(); return false;">Save Token</button>
+                    <button onclick="clearToken(); return false;" class="danger">Clear</button>
                 </div>
             </form>
         </div>
     </div>
 
+
+    
     <script src="/jszip.min.js" type="text/javascript" defer></script>
     <script src="/ace/ace.js" type="text/javascript" charset="utf-8" defer></script>
     <script src="/xterm.js" type="text/javascript" defer></script>
@@ -439,6 +447,19 @@ int main() {
     <script defer type="text/javascript" src="sys_web.js"></script>
     <script defer type="text/javascript" src="sys_snd.js"></script>
     <script defer type="text/javascript" src="sys_wasm.js"></script>
+
+    <!-- toji map viewer -->
+    <script type="text/javascript" src="js/util/webxr-polyfill.min.js"></script>
+    <script type="text/javascript" src="js/util/game-shim.js"></script>
+    <script type="text/javascript" src="js/util/gl-matrix-min.js"></script>
+    <script type="text/javascript" src="js/util/stats.min.js"></script>
+    <script type="text/javascript" src="js/basis/basis-basics.js"></script>
+    <script type="text/javascript" src="js/main.js"></script>
+    <script type="text/javascript" src="js/q3bsp.js"></script>
+    <script type="text/javascript" src="js/q3shader.js"></script>
+    <script type="text/javascript" src="js/q3glshader.js"></script>
+    <script type="text/javascript" src="js/q3movement.js"></script>
+
 
 </body>
 

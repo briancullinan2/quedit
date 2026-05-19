@@ -176,7 +176,7 @@ const ENV = {
 ENV.ENV = ENV
 
 let runDebounce = null
-async function run(database = null, noBounce = false) {
+async function runEngine(database = null, noBounce = false) {
     if (runDebounce) {
         clearTimeout(runDebounce)
     }
