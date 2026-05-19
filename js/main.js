@@ -25,15 +25,15 @@
  *    distribution.
  */
 
-var polyfill = new WebXRPolyfill();
+let polyfill = new WebXRPolyfill();
 
 // The bits that need to change to load different maps are right here!
 // ===========================================
 
-var mapName = 'q3tourney2';
+let mapName = 'q3tourney2';
 
 // If you're running from your own copy of Quake 3, you'll want to use these shaders
-/*var mapShaders = [
+/*let mapShaders = [
     'scripts/base.shader', 'scripts/base_button.shader', 'scripts/base_floor.shader',
     'scripts/base_light.shader', 'scripts/base_object.shader', 'scripts/base_support.shader',
     'scripts/base_trim.shader', 'scripts/base_wall.shader', 'scripts/common.shader',
@@ -46,46 +46,46 @@ var mapName = 'q3tourney2';
 ];*/
 
 // For my demo, I compiled only the shaders the map used into a single file for performance reasons
-var mapShaders = ['scripts/common.shader'];
+let mapShaders = ['scripts/common.shader'];
 
 // ===========================================
 // Everything below here is common to all maps
-var leftViewMat, rightViewMat, projMat;
-var leftViewport, rightViewport;
-var activeShader;
-var map, playerMover;
-var mobileSite = false;
+let leftViewMat, rightViewMat, projMat;
+let leftViewport, rightViewport;
+let activeShader;
+let map, playerMover;
+let mobileSite = false;
 
-var zAngle = 3;
-var xAngle = 0;
-var cameraPosition = [0, 0, 0];
-var onResize = null;
+let zAngle = 3;
+let xAngle = 0;
+let cameraPosition = [0, 0, 0];
+let onResize = null;
 
 // WebXR Globals
-var xrDevice = null;
-var xrSession = null;
-var xrReferenceSpace = null;
-var xrPose = null;
-var xrViews = [];
+let xrDevice = null;
+let xrSession = null;
+let xrReferenceSpace = null;
+let xrPose = null;
+let xrViews = [];
 
 // These values are in meters
-var playerHeight = 57; // Roughly where my eyes sit (1.78 meters off the ground)
-var xrIPDScale = 32.0; // There are 32 units per meter in Quake 3
+let playerHeight = 57; // Roughly where my eyes sit (1.78 meters off the ground)
+let xrIPDScale = 32.0; // There are 32 units per meter in Quake 3
 
-var xrDrawMode = 0;
+let xrDrawMode = 0;
 
-var SKIP_FRAMES = 0;
-var REPEAT_FRAMES = 1;
+let SKIP_FRAMES = 0;
+let REPEAT_FRAMES = 1;
 
 function isXRPresenting() {
     return !!xrSession;
 }
 
 function getQueryVariable(variable) {
-    var query = window.location.search.substring(1);
-    var vars = query.split("&");
-    for (var i = 0; i < vars.length; i++) {
-        var pair = vars[i].split("=");
+    let query = window.location.search.substring(1);
+    let vars = query.split("&");
+    for (let i = 0; i < vars.length; i++) {
+        let pair = vars[i].split("=");
         if (pair[0] == variable) {
             return unescape(pair[1]);
         }
@@ -114,15 +114,15 @@ function initGL(gl, canvas) {
 
 // Load the map
 function initMap(gl) {
-    //var titleEl = document.getElementById("mapTitle");
+    //let titleEl = document.getElementById("mapTitle");
     //titleEl.innerHtml = mapName.toUpperCase();
 
-    var tesselation = getQueryVariable("tesselate");
+    let tesselation = getQueryVariable("tesselate");
     if (tesselation) {
         tesselation = parseInt(tesselation, 10);
     }
 
-    var xrMode = getQueryVariable("vrDrawMode");
+    let xrMode = getQueryVariable("vrDrawMode");
     if (xrMode) {
         xrDrawMode = parseInt(xrMode, 10);
     }
@@ -147,7 +147,7 @@ function initPlayerMover(bsp) {
     onResize();
 }
 
-var lastIndex = 0;
+let lastIndex = 0;
 // "Respawns" the player at a specific spawn point. Passing -1 will move the player to the next spawn point.
 function respawnPlayer(index) {
     if (map.entities && playerMover) {
@@ -156,7 +156,7 @@ function respawnPlayer(index) {
         }
         lastIndex = index;
 
-        var spawnPoint = map.entities.info_player_deathmatch[index];
+        let spawnPoint = map.entities.info_player_deathmatch[index];
         playerMover.position = [
             spawnPoint.origin[0],
             spawnPoint.origin[1],
@@ -177,10 +177,10 @@ function eulerFromQuaternion(out, q, order) {
     // Borrowed from Three.JS :)
     // q is assumed to be normalized
     // http://www.mathworks.com/matlabcentral/fileexchange/20696-function-to-convert-between-dcm-euler-angles-quaternions-and-euler-vectors/content/SpinCalc.m
-    var sqx = q[0] * q[0];
-    var sqy = q[1] * q[1];
-    var sqz = q[2] * q[2];
-    var sqw = q[3] * q[3];
+    let sqx = q[0] * q[0];
+    let sqy = q[1] * q[1];
+    let sqz = q[2] * q[2];
+    let sqw = q[3] * q[3];
 
     if (order === 'XYZ') {
         out[0] = Math.atan2(2 * (q[0] * q[3] - q[1] * q[2]), (sqw - sqx - sqy + sqz));
@@ -212,7 +212,7 @@ function eulerFromQuaternion(out, q, order) {
     }
 }
 
-var lastMove = 0;
+let lastMove = 0;
 
 function onFrame(gl, event) {
     if (!map || !playerMover) { return; }
@@ -225,11 +225,11 @@ function onFrame(gl, event) {
     }
 
     // For great laggage!
-    for (var i = 0; i < REPEAT_FRAMES; ++i)
+    for (let i = 0; i < REPEAT_FRAMES; ++i)
         drawFrame(gl);
 }
 
-var poseMatrix = mat4.create();
+let poseMatrix = mat4.create();
 function getViewMatrix(out, pose, view) {
     mat4.identity(out);
 
@@ -240,8 +240,8 @@ function getViewMatrix(out, pose, view) {
     mat4.rotateX(out, out, Math.PI / 2);
 
     if (view) {
-        /*var orientation = pose.orientation;
-        var position = pose.position;
+        /*let orientation = pose.orientation;
+        let position = pose.position;
         if (!orientation) { orientation = [0, 0, 0, 1]; }
         if (!position) { position = [0, 0, 0]; }
     
@@ -295,7 +295,7 @@ function drawFrame(gl) {
             xrViews = [];
         }
 
-        for (var v = 0; v < xrPose.views.length; ++v) {
+        for (let v = 0; v < xrPose.views.length; ++v) {
             if (xrViews.length <= v) {
                 xrViews.push({
                     viewMat: mat4.create(),
@@ -303,7 +303,7 @@ function drawFrame(gl) {
                     viewport: null,
                 });
             }
-            var view = xrViews[v];
+            let view = xrViews[v];
             getViewMatrix(view.viewMat, xrPose, xrPose.views[v]);
             view.projMat = xrPose.views[v].projectionMatrix;
             view.viewport = xrSession.renderState.baseLayer.getViewport(xrPose.views[v]);
@@ -316,8 +316,8 @@ function drawFrame(gl) {
     }
 }
 
-var pressed = new Array(128);
-var cameraMat = mat4.create();
+let pressed = new Array(128);
+let cameraMat = mat4.create();
 
 function moveLookLocked(xDelta, yDelta) {
     zAngle += xDelta * 0.0025;
@@ -339,8 +339,8 @@ function filterDeadzone(value) {
     return Math.abs(value) > 0.35 ? value : 0;
 }
 
-var xrOrientation = quat.create();
-var xrEuler = vec3.create();
+let xrOrientation = quat.create();
+let xrEuler = vec3.create();
 function moveViewOriented(dir, frameTime) {
     if (dir[0] !== 0 || dir[1] !== 0 || dir[2] !== 0) {
         mat4.identity(cameraMat);
@@ -363,7 +363,7 @@ function moveViewOriented(dir, frameTime) {
 function updateInput(frameTime) {
     if (!playerMover) { return; }
 
-    var dir = [0, 0, 0];
+    let dir = [0, 0, 0];
 
     // This is our first person movement code. It's not really pretty, but it works
     if (pressed['W'.charCodeAt(0)]) {
@@ -380,15 +380,15 @@ function updateInput(frameTime) {
     }
 
     if (!xrSession) {
-        var gamepads = [];
+        let gamepads = [];
         if (navigator.getGamepads) {
             gamepads = navigator.getGamepads();
         } else if (navigator.webkitGetGamepads) {
             gamepads = navigator.webkitGetGamepads();
         }
 
-        for (var i = 0; i < gamepads.length; ++i) {
-            var pad = gamepads[i];
+        for (let i = 0; i < gamepads.length; ++i) {
+            let pad = gamepads[i];
             if (pad) {
                 dir[0] += filterDeadzone(pad.axes[0]);
                 dir[1] -= filterDeadzone(pad.axes[1]);
@@ -398,8 +398,8 @@ function updateInput(frameTime) {
                     filterDeadzone(pad.axes[3]) * 25.0
                 );
 
-                for (var j = 0; j < Math.min(pad.buttons.length, 4); ++j) {
-                    var button = pad.buttons[j];
+                for (let j = 0; j < Math.min(pad.buttons.length, 4); ++j) {
+                    let button = pad.buttons[j];
                     if (typeof (button) == "number" && button == 1.0) {
                         playerMover.jump();
                     } else if (button.pressed) {
@@ -415,13 +415,13 @@ function updateInput(frameTime) {
 
 // Set up event handling
 function initEvents() {
-    var movingModel = false;
-    var lastX = 0;
-    var lastY = 0;
-    var lastMoveX = 0;
-    var lastMoveY = 0;
-    var viewport = document.getElementById("viewport");
-    var viewportFrame = document.getElementById("viewport-frame");
+    let movingModel = false;
+    let lastX = 0;
+    let lastY = 0;
+    let lastMoveX = 0;
+    let lastMoveY = 0;
+    let viewport = document.getElementById("viewport");
+    let viewportFrame = document.getElementById("viewport-frame");
 
     document.addEventListener("keydown", function (event) {
         if (event.keyCode == 32 && !pressed[32]) {
@@ -459,8 +459,8 @@ function initEvents() {
     }
 
     function moveLook(x, y) {
-        var xDelta = x - lastX;
-        var yDelta = y - lastY;
+        let xDelta = x - lastX;
+        let yDelta = y - lastY;
         lastX = x;
         lastY = y;
 
@@ -475,12 +475,12 @@ function initEvents() {
     }
 
     function moveUpdate(x, y, frameTime) {
-        var xDelta = x - lastMoveX;
-        var yDelta = y - lastMoveY;
+        let xDelta = x - lastMoveX;
+        let yDelta = y - lastMoveY;
         lastMoveX = x;
         lastMoveY = y;
 
-        var dir = [xDelta, yDelta * -1, 0];
+        let dir = [xDelta, yDelta * -1, 0];
 
         moveViewOriented(dir, frameTime * 2);
     }
@@ -509,7 +509,7 @@ function initEvents() {
 
     // Touch handling code
     viewport.addEventListener('touchstart', function (event) {
-        var touches = event.touches;
+        let touches = event.touches;
         switch (touches.length) {
             case 1: // Single finger looks around
                 startLook(touches[0].pageX, touches[0].pageY);
@@ -531,7 +531,7 @@ function initEvents() {
         return false;
     }, false);
     viewport.addEventListener('touchmove', function (event) {
-        var touches = event.touches;
+        let touches = event.touches;
         switch (touches.length) {
             case 1:
                 moveLook(touches[0].pageX, touches[0].pageY);
@@ -551,9 +551,9 @@ function initEvents() {
 // Hopefully this future-proofs us a bit
 function getAvailableContext(canvas, contextList) {
     if (canvas.getContext) {
-        for (var i = 0; i < contextList.length; ++i) {
+        for (let i = 0; i < contextList.length; ++i) {
             try {
-                var context = canvas.getContext(contextList[i], {
+                let context = canvas.getContext(contextList[i], {
                     antialias: false,
                     alpha: false,
                     xrCompatible: true
@@ -566,14 +566,14 @@ function getAvailableContext(canvas, contextList) {
     return null;
 }
 
-var rafCallback = null;
+let rafCallback = null;
 
 function renderLoop(gl, stats) {
-    var startTime = new Date().getTime();
-    var lastTimestamp = startTime;
-    var lastFps = startTime;
+    let startTime = new Date().getTime();
+    let lastTimestamp = startTime;
+    let lastFps = startTime;
 
-    var frameId = 0;
+    let frameId = 0;
 
     function onRequestedFrame(t, frame) {
         timestamp = new Date().getTime();
@@ -609,28 +609,33 @@ function renderLoop(gl, stats) {
 }
 
 function runTojiEngine() {
-    var stats = new Stats();
-    document.getElementById("viewport-frame").appendChild(stats.domElement);
 
-    var canvas = document.getElementById("viewport");
+    let viewportFrame = document.getElementById("viewport-frame");
+    if(!viewportFrame.classList.contains('not-hidden'))
+        return 
+
+    let stats = new Stats();
+    viewportFrame.appendChild(stats.domElement);
+
+    let viewport = document.getElementById("viewport");
 
     // Get the GL Context (try 'webgl2' first, then fallback)
-    var gl = getAvailableContext(canvas, ['webgl2', 'webgl', 'experimental-webgl']);
+    let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
 
     onResize = function () {
         if (!isXRPresenting()) {
-            var devicePixelRatio = window.devicePixelRatio || 1;
+            let devicePixelRatio = window.devicePixelRatio || 1;
 
             if (document.fullscreenElement) {
-                canvas.width = screen.width * devicePixelRatio;
-                canvas.height = screen.height * devicePixelRatio;
+                viewport.width = screen.width * devicePixelRatio;
+                viewport.height = screen.height * devicePixelRatio;
             } else {
-                canvas.width = canvas.clientWidth * devicePixelRatio;
-                canvas.height = canvas.clientHeight * devicePixelRatio;
+                viewport.width = viewport.clientWidth * devicePixelRatio;
+                viewport.height = viewport.clientHeight * devicePixelRatio;
             }
 
-            gl.viewport(0, 0, canvas.width, canvas.height);
-            mat4.perspective(projMat, 45.0, canvas.width / canvas.height, 1.0, 4096.0);
+            gl.viewport(0, 0, viewport.width, viewport.height);
+            mat4.perspective(projMat, 45.0, viewport.width / viewport.height, 1.0, 4096.0);
         }
     }
 
@@ -640,19 +645,19 @@ function runTojiEngine() {
     } else {
         //document.getElementById('viewport-info').style.display = 'block';
         initEvents();
-        initGL(gl, canvas);
+        initGL(gl, viewport);
         renderLoop(gl, stats);
     }
 
     onResize();
     window.addEventListener("resize", onResize, false);
 
-    //var showFPS = document.getElementById("showFPS");
+    //let showFPS = document.getElementById("showFPS");
     //showFPS.addEventListener("change", function() {
     //    stats.domElement.style.display = showFPS.checked ? "block" : "none";
     //});
 
-    /*var playMusic = document.getElementById("playMusic");
+    /*let playMusic = document.getElementById("playMusic");
     playMusic.addEventListener("change", function() {
         if(map) {
             map.playMusic(playMusic.checked);
@@ -660,8 +665,6 @@ function runTojiEngine() {
     });*/
 
     // Handle fullscreen transition
-    var viewportFrame = document.getElementById("viewport-frame");
-    var viewport = document.getElementById("viewport");
     document.addEventListener("fullscreenchange", function () {
         if (document.fullscreenElement) {
             viewport.requestPointerLock(); // Attempt to lock the mouse automatically on fullscreen
@@ -673,8 +676,8 @@ function runTojiEngine() {
     function goFullscreen() {
         viewportFrame.requestFullScreen();
     }
-    //var fullscreenButton = document.getElementById('fullscreenBtn');
-    //var mobileFullscreenBtn = document.getElementById("mobileFullscreenBtn");
+    //let fullscreenButton = document.getElementById('fullscreenBtn');
+    //let mobileFullscreenBtn = document.getElementById("mobileFullscreenBtn");
     //fullscreenButton.addEventListener('click', goFullscreen, false);
     //mobileFullscreenBtn.addEventListener('click', goFullscreen, false);
 
@@ -722,8 +725,8 @@ function runTojiEngine() {
 
 
     // TODO: VR??
-    //var vrBtn = document.getElementById("vrBtn");
-    //var mobileVrBtn = document.getElementById("mobileVrBtn");
+    //let vrBtn = document.getElementById("vrBtn");
+    //let mobileVrBtn = document.getElementById("mobileVrBtn");
     //vrBtn.addEventListener("click", presentXR, false);
     //mobileVrBtn.addEventListener("click", presentXR, false);
 
@@ -733,9 +736,9 @@ function runTojiEngine() {
 window.addEventListener("load", function () {
     function OnVRSupported(supported) {
         if (!supported) { return; }
-        var vrToggle = document.getElementById("vrToggle");
+        let vrToggle = document.getElementById("vrToggle");
         vrToggle.style.display = "block";
-        var mobileVrBtn = document.getElementById("mobileVrBtn");
+        let mobileVrBtn = document.getElementById("mobileVrBtn");
         mobileVrBtn.style.display = "block";
     }
 

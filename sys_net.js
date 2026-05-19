@@ -539,7 +539,7 @@ function Com_DL_Begin(localName, remoteURL) {
   remoteURL += (remoteURL.includes('?') ? '&' : '?') + 'time=' + NET.cacheBuster
   return fetch(remoteURL, {
     mode: 'cors',
-    credentials: 'omit',
+    credentials: 'include',
     signal: NET.controller ? NET.controller.signal : null
   })
     // why so many? this catches connection errors

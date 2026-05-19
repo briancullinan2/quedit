@@ -43,7 +43,10 @@ let ctx2d;
 
 const apiOptions = {
   async readBuffer(filename) {
-    const response = await fetch(filename);
+    const response = await fetch(filename, {
+      mode: 'cors',
+      credentials: 'include'
+    });
     return response.arrayBuffer();
   },
   async compileStreaming(filename) {
@@ -53,10 +56,18 @@ const apiOptions = {
       }
 
       const targetUrl = filename.startsWith('/') ? filename : ('/' + filename);
-      const response = await fetch(targetUrl, {
-        mode: 'cors',
-        credentials: 'omit'
-      });
+      let response
+      if (targetUrl.includes('github.com')) {
+        response = await fetch(targetUrl, {
+          mode: 'cors',
+          credentials: 'omit'
+        })
+      } else {
+        response = await fetch(targetUrl, {
+          mode: 'cors',
+          credentials: 'include'
+        })
+      }
 
       if (!response.ok) throw new Error('Response code: ' + response.status);
 

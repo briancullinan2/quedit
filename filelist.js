@@ -144,7 +144,7 @@ async function untarFrontent() {
     PREAMBLE = TAR_PREAMBLE
     const response = await fetch('/sysroot.tar', {
         mode: 'cors',
-        credentials: 'omit',
+        credentials: 'include',
     });
     const tar = new API.Tar(await response.arrayBuffer(), log);
     const count = await tar.untar(this.memfs);
@@ -298,15 +298,10 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     await initializeFiletrees();
     forceFit();
     updateMaxLines()
+    updatePainter()
 
+    // TODO: the exact same as above but later
     resizeDebouncer()
-
-    // do way after terminal loads
-    setTimeout(() => {
-        performSharedBufferScanInternal(searchTerminal.value)
-        //window.GUI.render_main_gui()
-        window.Layers.render();
-    }, 1000);
 
     setTimeout(() => {
         if (window.AppConfig) {
@@ -321,11 +316,6 @@ document.addEventListener('DOMContentLoaded', async (event) => {
         }
 
         setTerminalAceTheme()
-        term.write(loadedLog.map(l => l.text || l).join(''))
-        if (loadedLog.length > 0)
-            writePrompt()
-        // Initial prompt
-        terminalLoaded = true
 
         renderHashCommand(window.location.hash.substring(1), true)
 
@@ -537,7 +527,10 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     let content = await cacheFile(repoOwner, repoName, filePath, sha, true);
     if (!content || content.length === 0) {
         try {
-            let response = await fetch(filePath)
+            let response = await fetch(filePath, {
+                mode: 'cors',
+                credentials: 'include',
+            })
             if (response.ok)
                 content = await response.arrayBuffer()
         } catch (e) {
@@ -545,7 +538,10 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     }
     if (!content || content.length === 0) {
         try {
-            let response = await fetch('https://quake.games/' + filePath)
+            let response = await fetch('https://quake.games/' + filePath, {
+                mode: 'cors',
+                credentials: 'include',
+            })
             if (response.ok)
                 content = await response.arrayBuffer()
         } catch (e) {
@@ -553,7 +549,10 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     }
     if (!content || content.length === 0) {
         try {
-            let response = await fetch('https://quake.games/' + filePath.replace('docs/', ''))
+            let response = await fetch('https://quake.games/' + filePath.replace('docs/', ''), {
+                mode: 'cors',
+                credentials: 'include',
+            })
             if (response.ok)
                 content = await response.arrayBuffer()
         } catch (e) {
@@ -736,7 +735,7 @@ function getDocumentPanelFromClickId(panelId) {
     )
         panelDocumentId = 'viewport-frame'
     if (panelId === 'compile' || panelId === 'build')
-        panelDocumentId = 'terminal'
+        panelDocumentId = 'terminal-container'
     if (panelId === 'new' || panelId === 'filename' || panelId === 'settings')
         panelDocumentId = 'editor'
 
@@ -772,11 +771,11 @@ const DOESNT_AFFECT_UI = [
 ]
 
 let toolbarTabDebounce = null
-let latestPanelId = null
+let latestPanelId = 'editor'
 let previousPanelId = null
 let debouncedPanelId = null
 let previousFilelistId = null
-let notFilelist = null
+let notFilelist = 'editor'
 
 function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
 
@@ -799,35 +798,6 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
     const [reasignedPanelId, panelDocumentId] = getDocumentPanelFromClickId(panelId)
     const panel = document.getElementById(panelDocumentId)
 
-    // react repo and owner controls to selected filelist
-    if (panel) {
-        let newRepo = panel.dataset['repository']
-        if (panelId === 'filelist')
-            newRepo = engineRepo || localStorage.getItem('engine_repository') || newRepo
-        if (panelId === 'gamelist')
-            newRepo = gameRepo || localStorage.getItem('game_repository') || newRepo
-        if (panelId === 'assetlist')
-            newRepo = assetRepo || localStorage.getItem('asset_repository') || newRepo
-
-        if (newRepo)
-            setRepository(newRepo || database)
-    }
-
-    if (panelId === 'terminal-container'
-        || panelId === 'terminal'
-        || panelId === 'compile'
-    ) {
-        setTimeout(() => {
-            performSharedBufferScanInternal(searchTerminal.value)
-        }, 1000);
-    }
-
-    if (panelId === 'database')
-        showDatabases()
-
-    if (panelId === 'viewport-frame'
-        && !GL.canvas
-    ) runTojiEngine()
 
     let changedClass = false
     if (!DOESNT_AFFECT_UI.includes(panelId)) {
@@ -852,7 +822,13 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
     ) {
         let hadOpen = false
         if (hidePanels) {
-            hadOpen = hideOpenPanels(FILELIST_IDS.includes(panelId) /* hide all if we are switching files lists */)
+            // hide all if we are switching files lists
+            if (FILELIST_IDS.includes(panelId)) {
+                hadOpen = hideOpenPanels(true)
+            }
+            else
+                // or if the user manually changed pages and the new page is not a file list
+                hadOpen = hideOpenPanels(changedClass)
         }
 
         if (panel) {
@@ -860,30 +836,32 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
             panel.classList.add('not-hidden')
         }
 
-        let previousNone = true
-        let latestNone = true
-        for (let filelistId of FILELIST_IDS) {
-            if (previousPanelId === filelistId) {
-                previousFilelistId = filelistId
-                previousNone = false
-            } else if (latestPanelId === filelistId) {
-                previousFilelistId = filelistId
-                latestNone = false
-            }
+
+        let latestNotFilelist = true
+        let previousNotFilelist = true
+        if (FILELIST_IDS.includes(latestPanelId)) {
+            previousFilelistId = latestPanelId
+            latestNotFilelist = false
+        }
+        if (FILELIST_IDS.includes(previousPanelId)) {
+            previousFilelistId = previousPanelId
+            previousNotFilelist = false
         }
 
+
+
         // defect from over compensating for class names not changing latestPanelId above created a defect here
-        if (latestNone) {
+        if (latestNotFilelist) {
             notFilelist = latestPanelId
         }
-        else if (previousNone) {
+        else if (previousNotFilelist) {
             notFilelist = previousPanelId
         }
 
 
         if (panelId === 'collapse'
             // nice side effect if they click the same list it also toggles
-            || (panelId === previousFilelistId) // && !changedClass)
+            || (panelId === previousPanelId) // && !changedClass)
         ) {
 
             if (!hadOpen) {
@@ -914,7 +892,41 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
         document.querySelector(`#tabs [href="#${panelDocumentId}"]`)?.classList.add('active')
     }
 
+
+
+    // finally do reactive stuff
+
     resizeDebouncer()
+
+    // react repo and owner controls to selected filelist
+    if (panel) {
+        let newRepo = panel.dataset['repository']
+        if (panelId === 'filelist')
+            newRepo = engineRepo || localStorage.getItem('engine_repository') || newRepo
+        if (panelId === 'gamelist')
+            newRepo = gameRepo || localStorage.getItem('game_repository') || newRepo
+        if (panelId === 'assetlist')
+            newRepo = assetRepo || localStorage.getItem('asset_repository') || newRepo
+
+        if (newRepo)
+            setRepository(newRepo || database)
+    }
+
+    if (panelId === 'terminal-container'
+        || panelId === 'terminal'
+        || panelId === 'compile'
+    ) {
+        setTimeout(() => {
+            performSharedBufferScanInternal(searchTerminal.value)
+        }, 1000);
+    }
+
+    if (panelId === 'database')
+        showDatabases()
+
+    if (panelId === 'viewport-frame'
+        && !GL.canvas
+    ) runTojiEngine()
 }
 
 

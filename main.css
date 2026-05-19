@@ -1,3 +1,5 @@
+
+
 html,
 body {
     margin: 0;
@@ -50,10 +52,14 @@ body {
     position: absolute;
 }
 
+
+#terminal,
+#paint,
 #viewport-frame {
     margin-trim: block;
     font-size: 0;
-    /*position: absolute;*/
+    display: block;
+    position: absolute;
     top: 0;
     left: 0;
     bottom: 0;
@@ -64,12 +70,18 @@ body {
     background-position: center;
     background-size: 24em;
     z-index: 1;
-    display: flex;
     /* padding-top:22px; */
     flex-direction: row;
     perspective: 1000px;
-    gap: 0
+    gap: 0;
+    width: 100%;
+    height: 100%;
+    white-space: collapse;
+    z-index: -1;
+    visibility: hidden;
+    flex-basis: calc(100% - 54px);
 }
+
 
 #viewport-frame canvas {
     background-color: var(--ace-background);
@@ -206,8 +218,8 @@ body {
 
 
 #tabs {
-    max-width: 54px;
-    flex-basis: 54px;
+    max-width: 60px;
+    flex-basis: 60px;
 }
 
 #statusbar,
@@ -386,6 +398,7 @@ select:not(:has(option[value=""]:checked)),
 
 #main_menu>ul.menu_bar>li>a {
     font-size: unset !important;
+    border: 2px solid transparent;
 }
 
 
@@ -495,10 +508,6 @@ select:not(:has(option[value=""]:checked)),
 
 #paint .sidebar_left .item {
     padding: 2px !important;
-}
-
-#paint .sidebar_left .item:after {
-    background: none !important;
 }
 
 
@@ -819,23 +828,6 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
-#terminal .xterm .xterm-scrollable-element>.scrollbar.vertical {
-    height: 100%;
-    top: 40px !important;
-}
-
-
-#terminal .xterm .xterm-scrollable-element>.scrollbar.horizontal {
-    width: 100%;
-}
-
-#terminal .xterm .xterm-scrollable-element>.scrollbar>.slider,
-#terminal .xterm .xterm-scrollable-element>.scrollbar {
-    z-index: 1000;
-    opacity: 1;
-    pointer-events: all;
-}
-
 #terminal .xterm .xterm-screen {
     z-index: 0;
     pointer-events: none;
@@ -912,13 +904,15 @@ input[type="number"]::-webkit-inner-spin-button {
     padding: 5px 10px;
     font-size: 32px;
     border-left: 2px solid transparent;
+    border: 2px solid transparent;
 }
 
 #toolbar a:empty {
     text-decoration: none;
     padding: 3px 5px;
     font-size: 24px;
-    color: var(--ace-foreground)
+    color: var(--ace-foreground);
+    border: 2px solid transparent;
 }
 
 
@@ -1052,10 +1046,63 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 */
 
-[placeholder]:not([type="checkbox"])::after,
-[alt]::after,
-[data-tooltip]::after {
-    content: attr(data-tooltip);
+/*
+#global-tooltip,
+#global-tooltip:popover-open {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+
+    position: fixed;
+    inset: unset;
+    display: block;
+    top: 0;
+    left: 0;
+}
+
+
+#global-tooltip::after {
+    content: var(--tip, "Default Tooltip");
+    display: block;
+}
+*/
+
+#main:has([placeholder][popovertarget]:hover) ~ #global-tooltip
+{
+  opacity: 1;
+}
+
+#main:has([placeholder][popovertarget]:hover) ~ #global-tooltip::after {
+}
+
+#global-tooltip:popover-open::after {
+    content: var(--tip, "Default Tooltip");
+    display: block;
+}
+
+#global-tooltip::backdrop {
+    background: transparent;
+}
+
+[placeholder][popovertarget]:not([type="checkbox"]):hover {
+    --tip: attr(placeholder);
+}
+
+[alt][popovertarget]:hover {
+    --tip: attr(alt);
+}
+
+[data-tooltip][popovertarget]:hover {
+    --tip: attr(data-tooltip);
+}
+
+
+#global-tooltip,
+[placeholder]:not([popovertarget]):not([type="checkbox"])::after,
+[alt]:not([popovertarget])::after,
+[data-tooltip]:not([popovertarget])::after {
     position: absolute;
     cursor: pointer;
     top: 100%;
@@ -1071,23 +1118,34 @@ input[type="number"]::-webkit-inner-spin-button {
     transition: opacity 0.2s;
     font-size: 16px;
     z-index: 9999;
+    margin: 0;
 }
 
-[data-tooltip]::after {
+
+[data-tooltip]:not([popovertarget])::after {
     content: attr(data-tooltip);
 }
 
-[placeholder]:not([type="checkbox"])::after {
+[placeholder]:not([popovertarget]):not([type="checkbox"])::after {
     content: attr(placeholder);
 }
 
-[alt]::after {
+[alt]:not([popovertarget])::after {
     content: attr(alt);
 }
 
-[placeholder]:hover::after,
-[alt]:hover::after,
-[data-tooltip]:hover::after {
+
+#paint .sidebar_left .item:hover,
+[placeholder]:not([popovertarget]):hover,
+[alt]:not([popovertarget]):hover,
+[data-tooltip]:not([popovertarget]):hover {
+    overflow: visible;
+}
+
+
+[placeholder]:not([popovertarget]):hover::after,
+[alt]:not([popovertarget]):hover::after,
+[data-tooltip]:not([popovertarget]):hover::after {
     opacity: 1;
 }
 
@@ -1279,28 +1337,13 @@ input[type="number"]::-webkit-inner-spin-button {
     visibility: collapse;
 }
 
-#paint,
-#viewport-frame {
-    display: block;
-    position: absolute;
-    z-index: -1;
-    visibility: hidden;
-    flex-basis: calc(100% - 54px);
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    height: 100%;
-    white-space: collapse;
-}
 
-
+#terminal-container.not-hidden #terminal,
 #paint.not-hidden,
 #editor-container:not(:has(.not-hidden))~#paint:not(.hidden) {
     visibility: visible;
     position: relative;
-    z-index: 100;
+    z-index: 10;
 }
 
 

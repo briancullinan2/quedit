@@ -322,6 +322,9 @@ q3glshader.loadTextureUrlImg = function (gl, stage, url, onload) {
                 return;
             }
 
+            if (!q3bsp_base_folder.includes('github.com')) {
+                image.crossOrigin = 'include'
+            }
             // Cycle the image source cleanly to the next valid format target
             image.src = q3bsp_base_folder + '/' + baseName + nextExt;
         } else {
@@ -335,6 +338,9 @@ q3glshader.loadTextureUrlImg = function (gl, stage, url, onload) {
     const foundIndex = extensions.indexOf(currentExt);
     if (foundIndex !== -1) attemptIndex = foundIndex;
 
+    if (!q3bsp_base_folder.includes('github.com')) {
+        image.crossOrigin = 'include'
+    }
     // Trigger the initial network request loop
     image.src = q3bsp_base_folder + '/' + baseName + extensions[attemptIndex];
 };

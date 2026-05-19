@@ -5,6 +5,7 @@ const LINES_TO_SCROLLBACK = 5000
 const MAX_HISTORY_LENGTH = 20
 const SCROLLBAR_WIDTH = 15
 let terminalLoaded = false
+const terminalWrapper = document.getElementById('terminal-container')
 const terminalContainer = document.getElementById('terminal')
 const term = new Terminal({
     allowProposedApi: true,
@@ -25,10 +26,19 @@ function resizeDebouncer() {
     resizeDebounce = setTimeout(() => {
         forceFit();
         updateMaxLines()
-        if (imageEditor.classList.contains('not-hidden')) {
-            window.Layers.render();
-        }
+        updatePainter()
+
         resizeDebounce = null
+
+        if (terminalWrapper.classList.contains('not-hidden')) {
+            if (!terminalLoaded) {
+                term.write(loadedLog.map(l => l.text || l).join(''))
+                if (!terminalLoaded && loadedLog.length > 0)
+                    writePrompt()
+                terminalLoaded = true
+            }
+            performSharedBufferScanInternal(searchTerminal.value)
+        }
 
     }, 500);
 }
@@ -76,7 +86,7 @@ function terminalWrite(message, source, skipActualWrite = false) {
         return
     }
 
-    if (!skipActualWrite)
+    if (!skipActualWrite && terminalWrapper.classList.contains('not-hidden'))
         term.write(message)
 }
 
@@ -471,14 +481,14 @@ terminalContainer.addEventListener('focus', refreshBlinker);
 // 3. Handle the 'stuck' blinker when focus shifts to other UI elements (like Ace)
 // We use a slight delay to allow the focus transition to complete
 //window.addEventListener('blur', () => {
-    //setTimeout(() => {
-        //if (document.visibilityState === 'visible') {
-            // If we are still visible, we want the cursor to keep blinking 
-            // even if the terminal technically lost focus to a sidebar
-        //    refreshBlinker();
-        //    term.clearSelection();
-        //}
-    //}, 100);
+//setTimeout(() => {
+//if (document.visibilityState === 'visible') {
+// If we are still visible, we want the cursor to keep blinking 
+// even if the terminal technically lost focus to a sidebar
+//    refreshBlinker();
+//    term.clearSelection();
+//}
+//}, 100);
 //});
 
 
@@ -802,6 +812,10 @@ const formatBytes = (bytes) => {
 
 
 function forceFit() {
+
+    if (!terminalWrapper.classList.contains('not-hidden'))
+        return
+
     // 1. Get the internal dimension service (where Xterm 5 stores sizing)
     const core = term._core;
     const dims = core._renderService.dimensions;
@@ -815,7 +829,7 @@ function forceFit() {
     const isFull = fullScreenLayout()
     let width = isFull
         ? window.document.body.clientWidth - SCROLLBAR_WIDTH - 60
-        : document.getElementById('terminal-container').clientWidth - SCROLLBAR_WIDTH;
+        : terminalWrapper.clientWidth - SCROLLBAR_WIDTH;
     const cols = Math.max(2, Math.floor(width / dims.css.cell.width), 120);
     //if (isFull) {
     //    term.resize(cols, term.buffer.active.baseY + term.rows);
@@ -1034,8 +1048,9 @@ function updateTerminalStatus(event, x, y, activeRow, col, row, lineText, filePa
 
 }
 
-terminalContainer.addEventListener('mousemove', debounceTerminalStatus);
 
+
+terminalContainer.addEventListener('mousemove', debounceTerminalStatus);
 
 
 

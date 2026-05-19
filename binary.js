@@ -98,6 +98,14 @@ const BINARY_DETECTOR = {
         description: "Ogg Vorbis Audio Container",
         match: (b) => checkMagic(b, 0, [0x4F, 0x67, 0x67, 0x53]) // "OggS"
     },
+    woff2: {
+        description: "Web Open Font Format 2",
+        match: (b) => checkMagic(b, 0, [0x77, 0x4F, 0x46, 0x32]) // "wOF2"
+    },
+    otf: {
+        description: "OpenType Font File",
+        match: (b) => checkMagic(b, 0, [0x4F, 0x54, 0x54, 0x4F]) // "OTTO"
+    }
 };
 
 /**

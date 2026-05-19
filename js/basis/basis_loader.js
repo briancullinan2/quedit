@@ -164,15 +164,15 @@ if (!IN_WORKER) {
 
         // Upload the image data returned by the worker.
         pendingTexture.texture = pendingTexture.uploadImageData(
-            msg.data.webglFormat,
-            msg.data.buffer,
-            msg.data.mipLevels);
+          msg.data.webglFormat,
+          msg.data.buffer,
+          msg.data.mipLevels);
 
         if (msg.data.alphaBuffer) {
           pendingTexture.alphaTexture = pendingTexture.uploadImageData(
-              msg.data.webglFormat,
-              msg.data.alphaBuffer,
-              msg.data.mipLevels);
+            msg.data.webglFormat,
+            msg.data.alphaBuffer,
+            msg.data.mipLevels);
         }
 
         pendingTexture.resolve({
@@ -272,7 +272,7 @@ if (!IN_WORKER) {
   // http://www.khronos.org/registry/webgl/extensions/
 
   // https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_s3tc/
-  const COMPRESSED_RGB_S3TC_DXT1_EXT  = 0x83F0;
+  const COMPRESSED_RGB_S3TC_DXT1_EXT = 0x83F0;
   const COMPRESSED_RGBA_S3TC_DXT1_EXT = 0x83F1;
   const COMPRESSED_RGBA_S3TC_DXT3_EXT = 0x83F2;
   const COMPRESSED_RGBA_S3TC_DXT5_EXT = 0x83F3;
@@ -281,23 +281,23 @@ if (!IN_WORKER) {
   const COMPRESSED_RGB_ETC1_WEBGL = 0x8D64
 
   // https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_etc/
-  const COMPRESSED_R11_EAC                        = 0x9270;
-  const COMPRESSED_SIGNED_R11_EAC                 = 0x9271;
-  const COMPRESSED_RG11_EAC                       = 0x9272;
-  const COMPRESSED_SIGNED_RG11_EAC                = 0x9273;
-  const COMPRESSED_RGB8_ETC2                      = 0x9274;
-  const COMPRESSED_SRGB8_ETC2                     = 0x9275;
-  const COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2  = 0x9276;
+  const COMPRESSED_R11_EAC = 0x9270;
+  const COMPRESSED_SIGNED_R11_EAC = 0x9271;
+  const COMPRESSED_RG11_EAC = 0x9272;
+  const COMPRESSED_SIGNED_RG11_EAC = 0x9273;
+  const COMPRESSED_RGB8_ETC2 = 0x9274;
+  const COMPRESSED_SRGB8_ETC2 = 0x9275;
+  const COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 = 0x9276;
   const COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2 = 0x9277;
-  const COMPRESSED_RGBA8_ETC2_EAC                 = 0x9278;
-  const COMPRESSED_SRGB8_ALPHA8_ETC2_EAC          = 0x9279;
+  const COMPRESSED_RGBA8_ETC2_EAC = 0x9278;
+  const COMPRESSED_SRGB8_ALPHA8_ETC2_EAC = 0x9279;
 
   // https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_astc/
   const COMPRESSED_RGBA_ASTC_4x4_KHR = 0x93B0;
 
   // https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_pvrtc/
   const COMPRESSED_RGB_PVRTC_4BPPV1_IMG = 0x8C00;
-  const COMPRESSED_RGB_PVRTC_2BPPV1_IMG  = 0x8C01;
+  const COMPRESSED_RGB_PVRTC_2BPPV1_IMG = 0x8C01;
   const COMPRESSED_RGBA_PVRTC_4BPPV1_IMG = 0x8C02;
   const COMPRESSED_RGBA_PVRTC_2BPPV1_IMG = 0x8C03;
 
@@ -484,7 +484,10 @@ if (!IN_WORKER) {
 
     if (url) {
       // Make the call to fetch the basis texture data
-      fetch(url).then(function(response) {
+      fetch(url, {
+        mode: 'cors',
+        credentials: 'include'
+      }).then(function (response) {
         if (response.ok) {
           response.arrayBuffer().then((arrayBuffer) => {
             if (BasisFile) {

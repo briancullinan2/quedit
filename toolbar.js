@@ -153,7 +153,7 @@ repo.value = localStorage.getItem('default_repository') || repos[0]
 async function renderToolbarCommand(buttonId) {
     let engineRepo = localStorage.getItem('engine_repository') || document.getElementById('filelist').dataset['repository'] || 'briancullinan2/Quake3e'
 
-    if(!buttonId) return
+    if (!buttonId) return
     if (buttonId.startsWith('main_menu'))
         return true
 
@@ -383,4 +383,38 @@ function saveSettings(content) {
 
 }
 
+
+const globalTooltip = document.getElementById('global-tooltip')
+window.addEventListener('mousemove', e => {
+    if (!e.target) return
+
+    let targetEl = null
+    let targetText = ""
+    targetText ||= e.target.getAttribute('placeholder')
+    targetText ||= e.target.getAttribute('alt')
+    targetText ||= e.target.getAttribute('data-tooltip')
+    targetText ||= e.target.getAttribute('title')
+
+    if (!targetText && e.target.parentElement) {
+        targetText ||= e.target.parentElement.getAttribute('placeholder')
+        targetText ||= e.target.parentElement.getAttribute('alt')
+        targetText ||= e.target.parentElement.getAttribute('data-tooltip')
+        targetText ||= e.target.parentElement.getAttribute('title')
+    }
+
+    if (e.target.getAttribute('popovertarget')) {
+        targetEl = e.target
+    }
+    if (e.target.parentElement && e.target.parentElement.getAttribute('popovertarget'))
+        targetEl = e.target.parentElement
+
+    globalTooltip.innerText = targetText
+
+    if (!targetEl || !targetText) return
+
+    const rect = targetEl.getBoundingClientRect();
+    globalTooltip.style.top = (rect.top + targetEl.clientHeight) + 'px'
+    globalTooltip.style.left = (rect.left + targetEl.clientWidth) + 'px'
+
+})
 

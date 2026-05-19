@@ -370,8 +370,10 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
         if (filePath.includes('tmp/')
             || filePath.includes('build/release-')
             || filePath.includes('build/debug-')) {
-            if (FS.virtual[filePath])
+            if (FS.virtual[filePath]) {
+                writeLog(`Already compiled (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
                 return FS.virtual[filePath].contents
+            }
             else {
                 writeLog('Skipping output: ' + filePath)
                 return null
@@ -396,7 +398,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
 
         // TODO: use this to indicate whether we should update against file change time
-        if (!forceReload) {
+        if (!forceReload && FS.virtual[filePath]) {
             writeLog(`Skipping important (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
             return
         } else {

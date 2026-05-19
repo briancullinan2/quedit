@@ -1400,6 +1400,25 @@ body {
 }
 
 
+
+#terminal .xterm .xterm-scrollable-element>.scrollbar.vertical {
+    height: 100%;
+    top: 40px !important;
+}
+
+
+#terminal .xterm .xterm-scrollable-element>.scrollbar.horizontal {
+    width: 100%;
+}
+
+#terminal .xterm .xterm-scrollable-element>.scrollbar>.slider,
+#terminal .xterm .xterm-scrollable-element>.scrollbar {
+    z-index: 1000;
+    opacity: 1;
+    pointer-events: all;
+}
+
+#main_menu>ul.menu_dropdown::-webkit-scrollbar,
 ::-webkit-scrollbar,
 .xterm-viewport ::-webkit-scrollbar,
 .xterm-scrollable-element::-webkit-scrollbar,
@@ -1415,6 +1434,7 @@ body {
 }
 
 
+#main_menu>ul.menu_dropdown::-webkit-scrollbar-track,
 ::-webkit-scrollbar-track,
 .xterm-viewport ::-webkit-scrollbar-track,
 .ace_editor ::-webkit-scrollbar-track,
@@ -1433,6 +1453,7 @@ body {
 }
 
 
+#main_menu>ul.menu_dropdown::-webkit-scrollbar-thumb,
 ::-webkit-scrollbar-thumb,
 .xterm-scrollable-element::-webkit-scrollbar-thumb,
 .xterm-viewport ::-webkit-scrollbar-thumb,
@@ -1596,11 +1617,11 @@ body {
 }
 
 
-#main-body:not(:has(#filelist.not-hidden)):not(:has(#gamelist.not-hidden)):not(:has(#assetlist.not-hidden)):not(:has(#database.not-hidden)) a[href="#collapse"]:before {
+#main-body:not(:has(#filelist.not-hidden)):not(:has(#gamelist.not-hidden)):not(:has(#assetlist.not-hidden)):not(:has(#database.not-hidden)) a[href="#collapse"]::before {
     content: "\f16e";
 }
 
-#main-body:not(:has(#filelist.not-hidden)):not(:has(#gamelist.not-hidden)):not(:has(#assetlist.not-hidden)):not(:has(#database.not-hidden)) [alt]::after {
+#main-body:not(:has(#filelist.not-hidden)):not(:has(#gamelist.not-hidden)):not(:has(#assetlist.not-hidden)):not(:has(#database.not-hidden)) a[href="#collapse"]::after {
     content: "Expand";
 }
 
@@ -1616,30 +1637,52 @@ body {
 #toolbar a:active,
 #tabs a:hover,
 #toolbar a:hover {
-    background: rgb(from var(--ace-foreground) r g b / 20%);
+    background: var(--ace-selection-bg);
+    border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
 }
 
 
 #terminals a.active,
-#terminals a:active {
-    border-top-color: rgb(from var(--ace-blue) r g b / 50%);
+#tabs a.active,
+#toolbar a.active {
+    background-color: var(--ace-blue);
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
 }
 
-#tabs a.active,
-#toolbar a.active,
+#terminals a:hover:active,
+#tabs a:hover:active,
+#toolbar a:hover:active,
+#terminals a:active,
 #tabs a:active,
 #toolbar a:active {
-    border-left-color: rgb(from var(--ace-blue) r g b / 50%);
+    background-color: var(--ace-bg);
+    border-color: 2px solid var(--ace-blue);
 }
 
 
-[placeholder]:not([type="checkbox"])::after,
-[alt]::after,
-[data-tooltip]::after {
-    background: var(--ace-gutter-bg);
+/* Use the pseudo-element to extract the text and style the bubble */
+#global-tooltip::before {
+    background: #222;
+    color: green;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+
+.tooltip,
+.ace_doc-tooltip,
+.ace_tooltip,
+.minipaint-tooltip,
+#global-tooltip,
+[placeholder]:not([popovertarget]):not([type="checkbox"])::after,
+[alt]:not([popovertarget])::after,
+[data-tooltip]:not([popovertarget])::after {
+    background: var(--ace-gutter-bg) !important;
     /* Use your Monokai variables! */
     color: var(--ace-foreground);
-    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+    border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
     font-family:
         /* 1. MacOS/iOS: The gold standard for modern screens */
         "SF Mono",
@@ -1657,6 +1700,7 @@ body {
         monospace;
     line-height: var(--global-height);
     font-size: var(--default-size);
+    z-index: 1000;
 }
 
 

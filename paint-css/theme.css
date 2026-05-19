@@ -98,8 +98,7 @@
 }
 
 .ui_number_input>.increase_number,
-.ui_number_input>.decrease_number
-{
+.ui_number_input>.decrease_number {
     border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
 }
 
@@ -112,15 +111,14 @@
 
 
 
-.ui_number_input>.increase_number
-{
-    margin-top:-2px;
-    margin-right:-2px;
+.ui_number_input>.increase_number {
+    margin-top: -2px;
+    margin-right: -2px;
 }
-.ui_number_input>.decrease_number
-{
-    margin-bottom:-2px;
-    margin-right:-2px;
+
+.ui_number_input>.decrease_number {
+    margin-bottom: -2px;
+    margin-right: -2px;
 }
 
 .ui_number_input>input {
@@ -150,7 +148,7 @@
     font-size: unset;
 }
 
-#popups  h3 {
+#popups h3 {
     color: var(--ace-foreground);
     border-bottom: 2px solid var(--ace-gutter-bg);
 }
@@ -161,7 +159,7 @@
 
 
 #paint .canvas_preview_details .details {
-    display:flex;
+    display: flex;
     justify-content: space-evenly;
 }
 
@@ -275,6 +273,14 @@
     color: var(--ace-foreground);
 }
 
+#paint .sidebar_right input[type="text"],
+#paint .sidebar_right select,
+#paint .sidebar_right input[type="number"],
+#paint .sidebar_right textarea {
+    border: 2px solid rgb(from var(--ace-bg) r g b / 50%);
+    background: var(--ace-bg);
+}
+
 #paint input[type="text"]:hover,
 #paint select:hover,
 #paint input[type="number"]:hover,
@@ -339,8 +345,8 @@
 
 #paint button[aria-pressed="true"],
 #paint input[type="button"][aria-pressed="true"] {
-    background-color: var(--button-background-color-active);
-    color: var(--button-text-color-active);
+    background-color: var(--ace-blue);
+    color: var(--ace-foreground);
     box-shadow: 0 1px 2px 0 var(--button-shadow-color), 0 1px 1px 1.5px rgba(58, 40, 40, 0.1) inset, 0 -1px 0 0 var(--button-text-color-active) inset;
 }
 
@@ -396,10 +402,10 @@
 }
 
 /* Floating Window List Containers */
-.main_menu>ul.menu_dropdown {
-    border: 2px solid var(--menu-dropdown-border-color);
-    background: var(--menu-dropdown-background-color);
-    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.15);
+#main_menu>ul.menu_dropdown {
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+    background: var(--ace-gutter-bg);
+    box-shadow: 4px 4px 0px 0px rgb(from var(--ace-foreground) r g b / 25%);
     /* Replaces rounding with a retro-block accent drop */
 }
 
@@ -435,20 +441,17 @@
     border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
 }
 
-#paint .sidebar_left .item:hover {
-}
+#paint .sidebar_left .item:hover {}
 
-#paint .sidebar_left .item.active {
-}
+#paint .sidebar_left .item.active {}
 
-#paint .block.details button.reset
-{
+#paint .block.details button.reset {
     transition: opacity ease-in-out 0.3s;
 }
 
 #paint .block.details button.reset:hover,
 #paint .sidebar_left .item:hover {
-	background-color: var(--ace-selection-bg);
+    background-color: var(--ace-selection-bg);
     border-color: rgb(from var(--ace-blue) r g b / 50%);
     opacity: 1;
 }
@@ -460,12 +463,12 @@
 #paint .block.details button.reset:hover:active,
 #paint .sidebar_left .item:hover:active,
 #paint .sidebar_left .item:active {
-	background-color: var(--ace-bg);
+    background-color: var(--ace-bg);
     border: 2px solid var(--ace-blue);
 }
 
 #paint .sidebar_left .item.active {
-	color: var(--ace-foreground);
+    color: var(--ace-foreground);
     background-color: var(--ace-blue);
     border-color: rgb(from var(--ace-selection-bg) r g b / 50%);
 }
@@ -494,8 +497,31 @@
     margin: 0;
 }
 
-.ui_input_group> :first-child
-{
+.ui_input_group> :first-child {
     border-radius: none !important;
     border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+}
+
+#main_menu>ul.menu_dropdown>li>a {}
+
+#paint .details.block {}
+
+#paint .details-content {
+    height: unset;
+    max-height: none;
+}
+
+#main_menu>ul.menu_dropdown>li>hr {
+    border: 1px solid var(--ace-bg);
+    height: 2px;
+}
+
+#main_menu>ul.menu_dropdown>li>a {
+    border: 2px solid transparent;
+}
+
+#main_menu>ul.menu_dropdown>li>a:hover {
+    background: var(--ace-selection-bg);
+    border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+
 }

@@ -6913,8 +6913,11 @@
                                     else
                                         a = this.Helper.ucfirst(r.name).replace(/_/, " ");
                                     var i = document.createElement("span");
+                                    i.setAttribute('placeholder', a)
+                                    i.setAttribute('popovertarget', 'global-tooltip')
+                                    i.setAttribute('style', `--tip: "${a}";`)
                                     i.id = r.name,
-                                        i.title = a,
+                                        //i.title = a,
                                         r.name == this.active_tool ? i.className = "item trn active " + r.name : i.className = "item trn " + r.name,
                                         !1 === r.visible && (i.style.display = "none"),
                                         i.addEventListener("click", function (t) {
@@ -14714,7 +14717,10 @@
                             value: function (e) {
                                 var t = this;
                                 if (e.toLowerCase().indexOf(".json") == e.length - 5)
-                                    window.fetch(e).then(function (e) {
+                                    window.fetch(e, {
+                                        mode: 'cors',
+                                        credentials: 'include'
+                                    }).then(function (e) {
                                         return e.json()
                                     }).then(function (e) {
                                         t.load_json(e, !1)
@@ -43129,84 +43135,84 @@
 )();
 
 
-function open_image(image){
-	if(image == undefined)
-		image = document.getElementById('testImage');
-	if(typeof image == 'string'){
-		image = document.getElementById(image);
-	}
-	var Layers = document.getElementById('myFrame').contentWindow.Layers;
-	var name = image.src.replace(/^.*[\\\/]/, '');
-	var new_layer = {
-		name: name,
-		type: 'image',
-		data: image,
-		width: image.naturalWidth || image.width,
-		height: image.naturalHeight || image.height,
-		width_original: image.naturalWidth || image.width,
-		height_original: image.naturalHeight || image.height,
-	};
-	Layers.insert(new_layer);
+function open_image(image) {
+    if (image == undefined)
+        image = document.getElementById('testImage');
+    if (typeof image == 'string') {
+        image = document.getElementById(image);
+    }
+    var Layers = document.getElementById('myFrame').contentWindow.Layers;
+    var name = image.src.replace(/^.*[\\\/]/, '');
+    var new_layer = {
+        name: name,
+        type: 'image',
+        data: image,
+        width: image.naturalWidth || image.width,
+        height: image.naturalHeight || image.height,
+        width_original: image.naturalWidth || image.width,
+        height_original: image.naturalHeight || image.height,
+    };
+    Layers.insert(new_layer);
 }
 
-function open_json(){
-	var miniPaint = document.getElementById('myFrame').contentWindow;
-	var miniPaint_FileOpen = miniPaint.FileOpen;
+function open_json() {
+    var miniPaint = document.getElementById('myFrame').contentWindow;
+    var miniPaint_FileOpen = miniPaint.FileOpen;
 
-	window.fetch("../images/test-collection.json").then(function(response) {
-		return response.json();
-	}).then(function(json) {
-		miniPaint_FileOpen.load_json(json, false);
-	}).catch(function(ex) {
-		alert('Sorry, image could not be loaded.');
-	});
+    window.fetch("../images/test-collection.json").then(function (response) {
+        return response.json();
+    }).then(function (json) {
+        miniPaint_FileOpen.load_json(json, false);
+    }).catch(function (ex) {
+        alert('Sorry, image could not be loaded.');
+    });
 }
 
-function save_image(){
-	var Layers = document.getElementById('myFrame').contentWindow.Layers;
-	var tempCanvas = document.createElement("canvas");
-	var tempCtx = tempCanvas.getContext("2d");
-	var dim = Layers.get_dimensions();
-	tempCanvas.width = dim.width;
-	tempCanvas.height = dim.height;
-	Layers.convert_layers_to_canvas(tempCtx);
-	
-	if(is_edge_or_ie() == false){
-		//update image using blob (faster)
-		tempCanvas.toBlob(function (blob) {
-			alert('Data length: ' + blob.size);
-			console.log(blob);
-		}, 'image/png');
-	}
-	else{
-		//slow way for IE, Edge
-		var data = tempCanvas.toDataURL();
-		alert('Data length: ' + data.length);
-		console.log(data);
-	}
+function save_image() {
+    var Layers = document.getElementById('myFrame').contentWindow.Layers;
+    var tempCanvas = document.createElement("canvas");
+    var tempCtx = tempCanvas.getContext("2d");
+    var dim = Layers.get_dimensions();
+    tempCanvas.width = dim.width;
+    tempCanvas.height = dim.height;
+    Layers.convert_layers_to_canvas(tempCtx);
+
+    if (is_edge_or_ie() == false) {
+        //update image using blob (faster)
+        tempCanvas.toBlob(function (blob) {
+            alert('Data length: ' + blob.size);
+            console.log(blob);
+        }, 'image/png');
+    }
+    else {
+        //slow way for IE, Edge
+        var data = tempCanvas.toDataURL();
+        alert('Data length: ' + data.length);
+        console.log(data);
+    }
 }
 
-function save_json(){
-	var miniPaint = document.getElementById('myFrame').contentWindow;
-	var miniPaint_FileSave = miniPaint.FileSave;
+function save_json() {
+    var miniPaint = document.getElementById('myFrame').contentWindow;
+    var miniPaint_FileSave = miniPaint.FileSave;
 
-	var data_json = miniPaint_FileSave.export_as_json();
+    var data_json = miniPaint_FileSave.export_as_json();
 
-	document.getElementById('testJson').value = data_json;
+    document.getElementById('testJson').value = data_json;
 }
 
-function update_image(){
-	var target = document.getElementById('testImage');
-	
-	var Layers = document.getElementById('myFrame').contentWindow.Layers;
-	var tempCanvas = document.createElement("canvas");
-	var tempCtx = tempCanvas.getContext("2d");
-	var dim = Layers.get_dimensions();
-	tempCanvas.width = dim.width;
-	tempCanvas.height = dim.height;
-	Layers.convert_layers_to_canvas(tempCtx);
-	
-	target.width = dim.width;
-	target.height = dim.height;
-	target.src = tempCanvas.toDataURL();
+function update_image() {
+    var target = document.getElementById('testImage');
+
+    var Layers = document.getElementById('myFrame').contentWindow.Layers;
+    var tempCanvas = document.createElement("canvas");
+    var tempCtx = tempCanvas.getContext("2d");
+    var dim = Layers.get_dimensions();
+    tempCanvas.width = dim.width;
+    tempCanvas.height = dim.height;
+    Layers.convert_layers_to_canvas(tempCtx);
+
+    target.width = dim.width;
+    target.height = dim.height;
+    target.src = tempCanvas.toDataURL();
 }

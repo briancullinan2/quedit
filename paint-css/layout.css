@@ -306,7 +306,7 @@
 	background-color: var(--section-background-color);
 	padding: 0 5px 5px 0;
 	margin-right: 5px;
-	overflow: hidden;
+	overflow: visible;
 	align-self: start;
 	width: 40px;
 	overflow-y: auto;
@@ -324,7 +324,7 @@
 	cursor: pointer;
 }
 
-#paint .sidebar_left .item:after {
+#paint .sidebar_left .item:not([placeholder]):after {
 	position: absolute;
 	content: '';
 	left: 0;

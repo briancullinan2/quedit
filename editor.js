@@ -556,7 +556,7 @@ const getModeByFilename = (filePath) => {
 
     // makefile accomadation
     let filenameAsType = filePath.split('/').pop().toLowerCase()
-    if(!modes[ext] && modes[filenameAsType])
+    if (!modes[ext] && modes[filenameAsType])
         return `ace/mode/${modes[filenameAsType]}`
     return `ace/mode/${modes[ext] || 'text'}`;
 };
@@ -578,6 +578,10 @@ function getFullScreenFit(defaultFactor = 0.25) {
 
 
 function updateMaxLines() {
+
+    if (editorContainer.classList.contains('not-hidden'))
+        return
+
     const lineHeight = editor.renderer.lineHeight;
     //const availableHeight = editorWrapper.clientHeight;
 
@@ -598,6 +602,18 @@ function updateMaxLines() {
     editorContainer.style.height = `${realHeight}px`;
     editor.resize();
     editor.renderer.updateFull();
+
+}
+
+
+function updatePainter() {
+    if (imageEditor.classList.contains('not-hidden') && typeof window.GUI !== 'undefined') {
+        const height = getFullScreenFit(1)
+        window.GUI.set_size(window.innerWidth - 60, height);
+        window.Layers.render();
+        window.GUI.prepare_canvas()
+        //window.GUI.render_main_gui()
+    }
 
 }
 
