@@ -26,7 +26,7 @@ body {
     }
 }
 
-
+body,
 .theme-monokai {
     /* Main Backgrounds */
     --ace-bg: #272822;
@@ -1466,7 +1466,8 @@ body {
 .xterm-scrollable-element::-webkit-scrollbar-thumb,
 .xterm-viewport ::-webkit-scrollbar-thumb,
 .xterm .xterm-scrollable-element>.scrollbar>.slider,
-#terminal .xterm-viewport::-webkit-scrollbar-thumb,
+#terminal-container .scrollbar>.slider,
+#terminal-container .xterm-viewport::-webkit-scrollbar-thumb,
 .ace_editor ::-webkit-scrollbar-thumb {
     width: 10px !important;
 
@@ -1481,12 +1482,301 @@ body {
     background-color: rgb(from var(--ace-selection-bg) r g b / 50%) !important;
 }
 
-/*.xterm .xterm-selection div,*/
+.xterm .xterm-screen {
+    /*background-color: var(--ace-bg) !important;*/
+}
+
+.xterm .xterm-rows {
+    color: var(--ace-foreground) !important;
+    font-family: inherit !important;
+}
+
+/* --- FOREGROUND COLORS (ANSI 0 - 15) --- */
+
+/* Normal Block (0 - 7) */
+.xterm .xterm-fg-0 {
+    color: var(--ace-bg) !important;
+}
+
+/* Black (Inverse Fallback) */
+.xterm .xterm-fg-1 {
+    color: var(--ace-pink) !important;
+}
+
+/* Red */
+.xterm .xterm-fg-2 {
+    color: var(--ace-green) !important;
+}
+
+/* Green */
+.xterm .xterm-fg-3 {
+    color: var(--ace-yellow) !important;
+}
+
+/* Yellow */
+.xterm .xterm-fg-4 {
+    color: var(--ace-blue) !important;
+}
+
+/* Blue */
+.xterm .xterm-fg-5 {
+    color: var(--ace-pink) !important;
+}
+
+/* Magenta */
+.xterm .xterm-fg-6 {
+    color: var(--ace-purple) !important;
+}
+
+/* Cyan */
+.xterm .xterm-fg-7 {
+    color: var(--ace-foreground) !important;
+}
+
+/* White */
+
+/* Bright/Bold Block (8 - 15) */
+.xterm .xterm-fg-8 {
+    color: var(--ace-gutter-bg) !important;
+}
+
+/* Bright Black (Dark Gray / Gutter) */
+.xterm .xterm-fg-9 {
+    color: var(--ace-orange) !important;
+}
+
+/* Bright Red */
+.xterm .xterm-fg-10 {
+    color: rgb(from var(--ace-green) r g b) !important;
+}
+
+/* Bright Green */
+.xterm .xterm-fg-11 {
+    color: var(--ace-orange) !important;
+}
+
+/* Bright Yellow */
+.xterm .xterm-fg-12 {
+    color: rgb(from var(--ace-blue) r g b) !important;
+}
+
+/* Bright Blue */
+.xterm .xterm-fg-13 {
+    color: var(--ace-purple) !important;
+}
+
+/* Bright Magenta */
+.xterm .xterm-fg-14 {
+    color: var(--ace-blue) !important;
+}
+
+/* Bright Cyan */
+.xterm .xterm-fg-15 {
+    color: var(--ace-white, #ffffff) !important;
+}
+
+/* Bright White */
+
+
+/* --- BACKGROUND COLORS (ANSI 0 - 15) --- */
+
+/* Normal Block (0 - 7) */
+.xterm .xterm-bg-0 {
+    background-color: var(--ace-bg) !important;
+}
+
+.xterm .xterm-bg-1 {
+    background-color: var(--ace-pink) !important;
+}
+
+.xterm .xterm-bg-2 {
+    background-color: var(--ace-green) !important;
+}
+
+.xterm .xterm-bg-3 {
+    background-color: var(--ace-yellow) !important;
+}
+
+.xterm .xterm-bg-4 {
+    background-color: var(--ace-blue) !important;
+}
+
+.xterm .xterm-bg-5 {
+    background-color: var(--ace-pink) !important;
+}
+
+.xterm .xterm-bg-6 {
+    background-color: var(--ace-purple) !important;
+}
+
+.xterm .xterm-bg-7 {
+    background-color: var(--ace-foreground) !important;
+}
+
+/* Bright/Bold Block (8 - 15) */
+.xterm .xterm-bg-8 {
+    background-color: var(--ace-gutter-bg) !important;
+}
+
+.xterm .xterm-bg-9 {
+    background-color: var(--ace-orange) !important;
+}
+
+.xterm .xterm-bg-10 {
+    background-color: var(--ace-green) !important;
+}
+
+.xterm .xterm-bg-11 {
+    background-color: var(--ace-orange) !important;
+}
+
+.xterm .xterm-bg-12 {
+    background-color: var(--ace-blue) !important;
+}
+
+.xterm .xterm-bg-13 {
+    background-color: var(--ace-purple) !important;
+}
+
+.xterm .xterm-bg-14 {
+    background-color: var(--ace-blue) !important;
+}
+
+.xterm .xterm-bg-15 {
+    background-color: var(--ace-white, #ffffff) !important;
+}
+
+/* ==========================================================================
+   EXTENDED 256-COLOR ANSI OVERRIDES (MAPPED TO EXTRACTED LOG PREAMBLES)
+   ========================================================================== */
+
+/* --- BLUES & CYANS --- */
+.xterm .xterm-fg-27 {
+    color: var(--ace-blue) !important;
+}
+
+/* GITHUB */
+.xterm .xterm-fg-32 {
+    color: var(--ace-blue) !important;
+}
+
+/* LOG */
+.xterm .xterm-fg-33 {
+    color: var(--ace-blue) !important;
+}
+
+/* WARN */
+.xterm .xterm-fg-39 {
+    color: var(--ace-blue) !important;
+}
+
+/* FETCH */
+.xterm .xterm-fg-45 {
+    color: var(--ace-blue) !important;
+}
+
+/* API_RUN */
+
+/* --- GREENS & TEALS --- */
+.xterm .xterm-fg-36 {
+    color: var(--ace-green) !important;
+}
+
+/* INFO, ENGINE (Quake3e) */
+.xterm .xterm-fg-76 {
+    color: var(--ace-green) !important;
+}
+
+/* API_BUILD */
+.xterm .xterm-fg-118 {
+    color: var(--ace-green) !important;
+}
+
+/* API_LINK, BUILD */
+.xterm .xterm-fg-121 {
+    color: var(--ace-green) !important;
+}
+
+/* TOOLS */
+
+/* --- PURPLES & MAGENTAS --- */
+.xterm .xterm-fg-134 {
+    color: var(--ace-purple) !important;
+}
+
+/* UNZIP */
+.xterm .xterm-fg-165 {
+    color: var(--ace-purple) !important;
+}
+
+/* QVM */
+
+/* --- TAN & YELLOWS --- */
+.xterm .xterm-fg-179 {
+    color: var(--ace-yellow) !important;
+}
+
+/* TAR (Falls back cleanly if orange fails) */
+.xterm .xterm-fg-221 {
+    color: var(--ace-yellow) !important;
+}
+
+/* API_HEADER */
+
+/* --- ORANGES --- */
+.xterm .xterm-fg-202 {
+    color: var(--ace-orange) !important;
+}
+
+/* QVMERR */
+.xterm .xterm-fg-208 {
+    color: var(--ace-orange) !important;
+}
+
+/* API_COMPILE */
+.xterm .xterm-fg-214 {
+    color: var(--ace-orange) !important;
+}
+
+/* API_PREAMBLE */
+
+/* --- PINKS & REDS --- */
+.xterm .xterm-fg-196 {
+    color: var(--ace-pink) !important;
+}
+
+/* CMD_PREAMBLE, ERROR */
+.xterm .xterm-fg-201 {
+    color: var(--ace-pink) !important;
+}
+
+/* EDITOR */
+.xterm .xterm-fg-203 {
+    color: var(--ace-pink) !important;
+}
+
+/* TOOLERR */
+
+/* --- MUTED SYSTEM CONTROLS --- */
+.xterm .xterm-fg-244 {
+    color: var(--ace-comment) !important;
+}
+
+/* API_REMOVE (Slate Gray) */
+
+/* --- SELECTION & DECORATION TRAPS --- */
+
+/* Dynamic Selection Background with alpha generation */
+.xterm .xterm-selection div {
+    background-color: rgb(from var(--ace-selection-bg) r g b / 30%) !important;
+}
+
+/* Match your custom selection hacks safely */
 .xterm-decoration-top[style*="#DEADBEEF"],
 .xterm-decoration-top[style*="#DEADBE"],
+.xterm-decoration-top[style*="#deadbe"],
 .xterm-decoration-top[style*="rgb(222, 173, 190)"] {
     background-color: rgb(from var(--ace-selection-bg) r g b / 10%) !important;
-    /* Semi-transparent orange */
 }
 
 /* Optional: Customize the color of selected text if using the DOM backend */
@@ -1555,6 +1845,35 @@ body {
     visibility: visible !important;
 }
 
+#terminal .xterm {
+    --xterm-internal-padding: 50px;
+}
+
+#terminal-container .scrollbar.vertical {
+    position: absolute !important;
+
+    /* Lock it strictly to the right side of the layout screen */
+    top: 40px !important;
+    bottom: 0px !important;
+    right: 0px !important;
+
+    /* Fix the sizing collapse */
+    width: 14px !important;
+    max-height: inherit !important;
+    /* Forces it to match parent terminal bounding box height */
+
+    /* Ensure it floats on top of passing code text blocks */
+    z-index: 100 !important;
+}
+
+#terminal {
+    position: relative;
+    /* THE TRICK: Forces any internal position: fixed element to clip 
+       strictly to this wrapper, ignoring the rest of the web page */
+    transform: translateZ(0);
+}
+
+
 /*
 
 #terminal .xterm {
@@ -1591,13 +1910,14 @@ body {
     pointer-events: none;
 }
 
-.xterm-scrollable-element {
-    overflow: visible;
-    min-width: fit-content;
-    position: static !important;
-}
 
 */
+
+.xterm,
+.xterm-scrollable-element {
+    min-width: fit-content;
+}
+
 
 .xterm-scrollable-element,
 .xterm-viewport {

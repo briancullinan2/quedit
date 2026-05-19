@@ -886,7 +886,7 @@ function forceFit() {
     //    term.resize(cols, term.buffer.active.baseY + term.rows);
     //    return
     //}
-    const height = getFullScreenFit(1.01)
+    const height = getFullScreenFit(0.99)
         // isFull ? 0.99 : 0.25)
         - document.getElementById('terminals').clientHeight
     const rows = Math.max(1, Math.floor(height / dims.css.cell.height));
