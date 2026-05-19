@@ -4,9 +4,6 @@
 <head>
     <title>Quake 3 Editor</title>
     <link href='/boxicons.min.css' rel='stylesheet'>
-    <link href="/main.css" rel="stylesheet" />
-    <link href="/xterm.css" rel="stylesheet" />
-    <link href="/theme.css" rel="stylesheet" />
     <link href="/paint-css/alertify.css" rel="stylesheet" />
     <link href="/paint-css/component.css" rel="stylesheet" />
     <link href="/paint-css/layout.css" rel="stylesheet" />
@@ -16,6 +13,9 @@
     <link href="/paint-css/reset.css" rel="stylesheet" />
     <link href="/paint-css/utility.css" rel="stylesheet" />
     <link href="/paint-css/theme.css" rel="stylesheet" />
+    <link href="/main.css" rel="stylesheet" />
+    <link href="/xterm.css" rel="stylesheet" />
+    <link href="/theme.css" rel="stylesheet" />
     <link rel="icon" type="image/png" href="/quakejs-bnw.png">
     <script type="text/javascript">
         if (typeof window.preFS == 'undefined') window.preFS = {};
@@ -341,7 +341,7 @@ int main() {
                             </button>
                         </div>
                         <div class="hidden" id="tmp"></div>
-                        <div id="popups"></div>
+                        
                     </div>
                 </div>
                 <div id="viewport-frame">
@@ -416,7 +416,7 @@ int main() {
         </div>
     </div>
 
-
+    <div id="popups"></div>
     
     <script src="/jszip.min.js" type="text/javascript" defer></script>
     <script src="/ace/ace.js" type="text/javascript" charset="utf-8" defer></script>

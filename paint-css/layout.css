@@ -337,19 +337,6 @@
 	background-size: 20px 20px;
 }
 
-#paint .sidebar_left .item:hover {
-	background-color: var(--background-color-hover);
-}
-
-#paint .sidebar_left .item.active {
-	background-color: var(--background-color-active);
-	color: var(--text-color-active);
-}
-
-#paint .sidebar_left .item.active:after {
-	filter: var(--menu-icons-filter-active);
-}
-
 /*
 IMPORTANT: any new icon should also must be added on /service-worker.js + its version should be updated - FEATURE DISABLED
  */
@@ -925,25 +912,25 @@ IMPORTANT: any new icon should also must be added on /service-worker.js + its ve
 
 /* ========== dialogs ======================================================= */
 
-#paint #dialog_color_picker_group {
+#dialog_color_picker_group {
 	width: 60%;
 }
 
-#paint #dialog_color_channel_group {
+#dialog_color_channel_group {
 	width: 40%;
 	margin-left: 1rem;
 }
 
 @media screen and (max-width: 450px) {
-	#paint #dialog_color_picker .ui_flex_group {
+	#dialog_color_picker .ui_flex_group {
 		flex-wrap: wrap;
 	}
 
-	#paint #dialog_color_picker_group {
+	#dialog_color_picker_group {
 		width: 100%;
 	}
 
-	#paint #dialog_color_channel_group {
+	#dialog_color_channel_group {
 		width: 100%;
 		margin-left: 0;
 		margin-top: 1rem;

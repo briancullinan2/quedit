@@ -66,9 +66,162 @@
 }
 
 
-#paint .ui_toggle_button[aria-pressed="true"]:before {
-    color: var(--ace-background);
-    content: "\f2d2" !important;
+
+#paint button.ui_toggle_button:before {
+    content: "\f859";
+    background-image: none !important;
+}
+
+#paint button.ui_toggle_button:hover {
+    background-color: var(--ace-selection-bg);
+    color: var(--ace-foreground);
+    border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+}
+
+#paint button.ui_toggle_button:hover:before {
+    background: var(--ace-blue);
+    content: "\f2d2";
+    color: var(--ace-green);
+}
+
+.ui_swatches .swatch:hover:after,
+.ui_swatches .swatch.active {
+    box-shadow: 0 0 0 3px rgb(from var(--ace-blue) r g b / 100%) inset
+}
+
+.ui_number_input {
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+}
+
+.ui_number_input:hover {
+    border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+}
+
+.ui_number_input>.increase_number,
+.ui_number_input>.decrease_number
+{
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+}
+
+.ui_number_input>.increase_number:hover,
+.ui_number_input>.decrease_number:hover {
+    background-color: var(--ace-blue);
+    font-size: 0px;
+    min-height: 10px;
+}
+
+
+
+.ui_number_input>.increase_number
+{
+    margin-top:-2px;
+    margin-right:-2px;
+}
+.ui_number_input>.decrease_number
+{
+    margin-bottom:-2px;
+    margin-right:-2px;
+}
+
+.ui_number_input>input {
+    border: none !important;
+}
+
+#paint .ui_button_group>button>svg {
+    display: none;
+}
+
+#paint .ui_icon_button {
+    height: unset !important;
+    line-height: unset !important;
+}
+
+#popups:not(:empty) {
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.85);
+
+}
+
+#popups .popup {
+    background: rgb(from var(--ace-gutter-bg) r g b / 80%);
+    color: var(--ace-foreground);
+    border: 2px solid var(--ace-gutter-bg);
+    font-size: unset;
+}
+
+#popups  h3 {
+    color: var(--ace-foreground);
+    border-bottom: 2px solid var(--ace-gutter-bg);
+}
+
+#popups p {
+    color: var(--ace-foreground);
+}
+
+
+#paint .canvas_preview_details .details {
+    display:flex;
+    justify-content: space-evenly;
+}
+
+#paint .block h2 {
+    font-size: unset !important;
+}
+
+.ui_range {
+    border: 2px solid rgb(from var(--ace-gutter-bg) r g b / 50%);
+}
+
+#popups .popup .buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 1.5rem;
+    justify-content: flex-end;
+}
+
+#paint #toggle_color_swatches_section_button,
+#paint #toggle_color_channels_section_button,
+#paint #toggle_color_picker_section_button {
+    line-height: var(--global-height) !important;
+    padding: 2px;
+}
+
+
+#paint #toggle_color_swatches_section_button::before,
+#paint #toggle_color_channels_section_button::before,
+#paint #toggle_color_picker_section_button::before {
+    padding: 2px;
+    font-family: boxicons !important;
+    font-size: 24px;
+    content: "\f60b";
+    vertical-align: middle;
+}
+
+#paint #toggle_color_channels_section_button::before {
+    content: "\f534";
+}
+
+#paint #toggle_color_swatches_section_button::before {
+    content: "\f798";
+}
+
+#paint button.ui_toggle_button[aria-pressed="true"]:before {
+    background: var(--ace-blue);
+    color: var(--ace-green);
+    content: "\f2d2";
+}
+
+#paint button.ui_toggle_button[aria-pressed="true"]:hover::before {
+    background-color: var(--ace-blue);
+    content: "\f859";
+    color: var(--ace-pink);
+}
+
+#paint button.ui_toggle_button[aria-pressed="true"]:active,
+#paint button.ui_toggle_button:active {
+    background-color: var(--ace-blue);
+    color: var(--ace-foreground);
 }
 
 /* ==========================================================================
@@ -77,7 +230,7 @@
 #paint .block,
 #paint .block h2,
 #paint .layers_list .layer_name,
-#paint .ui_input_grid,
+.ui_input_grid,
 #paint input,
 #paint select,
 #paint button {
@@ -117,16 +270,29 @@
 #paint select,
 #paint input[type="number"],
 #paint textarea {
-    background: var(--input-background-color);
-    border: 2px solid var(--input-border-color);
-    color: var(--input-text-color);
+    background: var(--ace-gutter-bg);
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+    color: var(--ace-foreground);
 }
 
+#paint input[type="text"]:hover,
+#paint select:hover,
+#paint input[type="number"]:hover,
+#paint textarea:hover {
+    border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+    background: var(--ace-selection-bg);
+}
+
+#paint input[type="text"]:active,
+#paint select:active,
+#paint input[type="number"]:active,
+#paint textarea:active,
 #paint input[type="text"]:focus,
 #paint select:focus,
 #paint input[type="number"]:focus,
 #paint textarea:focus {
-    border-color: var(--input-border-color-active);
+    background: var(--ace-bg);
+    border-color: var(--ace-blue);
     outline: none;
 }
 
@@ -139,8 +305,28 @@
 
 #paint button:hover,
 #paint input[type="button"]:hover {
-    background-color: var(--button-background-color-hover);
+    border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+    background-color: var(--ace-selection-bg);
     color: var(--theme-comment);
+}
+
+
+.ui_range .handle {
+    background: var(--ace-selection-bg);
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+}
+
+#paint .sidebar_right h2.toggle.toggled {
+    border-bottom: none;
+}
+
+
+#paint button:hover:active,
+#paint input[type="button"]:hover:active,
+#paint button:active,
+#paint input[type="button"]:active {
+    border: 2px solid var(--ace-blue);
+    background-color: var(--ace-bg);
 }
 
 #paint button[aria-pressed="true"],
@@ -149,6 +335,22 @@
     color: var(--button-text-color-active);
     border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
 }
+
+
+#paint button[aria-pressed="true"],
+#paint input[type="button"][aria-pressed="true"] {
+    background-color: var(--button-background-color-active);
+    color: var(--button-text-color-active);
+    box-shadow: 0 1px 2px 0 var(--button-shadow-color), 0 1px 1px 1.5px rgba(58, 40, 40, 0.1) inset, 0 -1px 0 0 var(--button-text-color-active) inset;
+}
+
+#paint button[aria-pressed="true"]:hover,
+#paint input[type="button"][aria-pressed="true"]:hover {
+    border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+    background-color: var(--button-background-color-hover);
+    color: var(--ace-foreground)
+}
+
 
 /* Custom layout sizing for details inspector forms */
 #paint .block.details button {
@@ -234,13 +436,46 @@
 }
 
 #paint .sidebar_left .item:hover {
-    background-color: var(--ace-blue);
 }
 
 #paint .sidebar_left .item.active {
-    background-color: var(--background-color-active);
-    border-color: var(--input-border-color-active);
 }
+
+#paint .block.details button.reset
+{
+    transition: opacity ease-in-out 0.3s;
+}
+
+#paint .block.details button.reset:hover,
+#paint .sidebar_left .item:hover {
+	background-color: var(--ace-selection-bg);
+    border-color: rgb(from var(--ace-blue) r g b / 50%);
+    opacity: 1;
+}
+
+
+
+
+#paint .block.details button.reset:active,
+#paint .block.details button.reset:hover:active,
+#paint .sidebar_left .item:hover:active,
+#paint .sidebar_left .item:active {
+	background-color: var(--ace-bg);
+    border: 2px solid var(--ace-blue);
+}
+
+#paint .sidebar_left .item.active {
+	color: var(--ace-foreground);
+    background-color: var(--ace-blue);
+    border-color: rgb(from var(--ace-selection-bg) r g b / 50%);
+}
+
+/*
+#paint .sidebar_left .item.active:after {
+	filter: var(--menu-icons-filter-active);
+}
+*/
+
 
 #paint .layers_list .item.active .layer_name {
     background-color: var(--background-color-active);
@@ -251,4 +486,16 @@
 #paint .attributes {
     background-color: var(--area-background-color);
     border-bottom: 2px solid var(--border-color);
+}
+
+
+.ui_swatches .swatch {
+    border: 1px solid var(--ace-bg);
+    margin: 0;
+}
+
+.ui_input_group> :first-child
+{
+    border-radius: none !important;
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
 }

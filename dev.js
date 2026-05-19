@@ -35,7 +35,7 @@ const params = {
     open: true,
     logLevel: 2,
     fullReload: true,
-    watch: ['./*'],
+    watch: ['./**'],
     middleware: [middleware]
 };
 

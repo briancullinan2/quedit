@@ -470,16 +470,16 @@ terminalContainer.addEventListener('focus', refreshBlinker);
 
 // 3. Handle the 'stuck' blinker when focus shifts to other UI elements (like Ace)
 // We use a slight delay to allow the focus transition to complete
-window.addEventListener('blur', () => {
-    setTimeout(() => {
-        if (document.visibilityState === 'visible') {
+//window.addEventListener('blur', () => {
+    //setTimeout(() => {
+        //if (document.visibilityState === 'visible') {
             // If we are still visible, we want the cursor to keep blinking 
             // even if the terminal technically lost focus to a sidebar
-            refreshBlinker();
-            term.clearSelection();
-        }
-    }, 100);
-});
+        //    refreshBlinker();
+        //    term.clearSelection();
+        //}
+    //}, 100);
+//});
 
 
 

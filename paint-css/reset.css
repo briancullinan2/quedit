@@ -173,7 +173,6 @@ body.theme-green {
 	border-radius: var(--input-border-radius);
 	color: var(--input-text-color);
 	padding: 3px 5px;
-	font-size: 13px;
 }
 
 #paint input:disabled {
@@ -209,27 +208,10 @@ body.theme-green {
 	visibility: hidden;
 }
 
-#paint button[aria-pressed="true"],
-#paint input[type="button"][aria-pressed="true"] {
-	background-color: var(--button-background-color-active);
-	color: var(--button-text-color-active);
-	box-shadow: 0 1px 2px 0 var(--button-shadow-color), 0 1px 1px 1.5px rgba(58, 40, 40, 0.1) inset, 0 -1px 0 0 var(--button-text-color-active) inset;
-}
-
-#paint button[aria-pressed="true"]:hover,
-#paint input[type="button"][aria-pressed="true"]:hover {
-	background-color: var(--button-background-color-hover);
-}
-
-#paint button.ui_toggle_button:hover {
-	background-color: var(--button-toggle-background-color-hover);
-	color: var(--ace-foreground);
-}
 
 #paint label {
 	display: inline-block;
 	vertical-align: top;
-	margin-top: 7px;
 }
 
 #paint ::-webkit-scrollbar {

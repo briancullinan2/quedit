@@ -87,13 +87,13 @@
 | UI Color Picker Gradient |
 \**************************/
 
-#paint .ui_color_picker_gradient {
+.ui_color_picker_gradient {
     padding: 0 0 80% 0;
     position: relative;
     width: 100%;
 }
 
-#paint .ui_color_picker_gradient .primary_pick {
+.ui_color_picker_gradient .primary_pick {
     position: absolute;
     left: 86%;
     right: 0;
@@ -102,7 +102,7 @@
     background: white;
 }
 
-#paint .ui_color_picker_gradient .secondary_pick {
+.ui_color_picker_gradient .secondary_pick {
     position: absolute;
     left: 0;
     right: 17%;
@@ -112,12 +112,12 @@
     background: green;
 }
 
-#paint .ui_color_picker_gradient .secondary_pick:focus {
+.ui_color_picker_gradient .secondary_pick:focus {
     outline: 0;
     border: 1px solid var(--input-border-color-active);
 }
 
-#paint .ui_color_picker_gradient .secondary_pick .saturation_gradient {
+.ui_color_picker_gradient .secondary_pick .saturation_gradient {
     position: absolute;
     left: 0;
     right: 0;
@@ -126,7 +126,7 @@
     background: linear-gradient(to right, #fff, rgba(204, 154, 129, 0));
 }
 
-#paint .ui_color_picker_gradient .secondary_pick .value_gradient {
+.ui_color_picker_gradient .secondary_pick .value_gradient {
     position: absolute;
     left: 0;
     right: 0;
@@ -135,7 +135,7 @@
     background: linear-gradient(to top, #000, rgba(204, 154, 129, 0));
 }
 
-#paint .ui_color_picker_gradient .secondary_pick .handle {
+.ui_color_picker_gradient .secondary_pick .handle {
     position: absolute;
     left: 0;
     right: auto;
@@ -144,7 +144,7 @@
     pointer-events: none;
 }
 
-#paint .ui_color_picker_gradient .secondary_pick .handle:before {
+.ui_color_picker_gradient .secondary_pick .handle:before {
     content: '';
     display: block;
     position: absolute;
@@ -156,7 +156,7 @@
     border-radius: 1000px;
 }
 
-#paint .ui_color_picker_gradient .secondary_pick .handle:after {
+.ui_color_picker_gradient .secondary_pick .handle:after {
     content: '';
     display: block;
     position: absolute;
@@ -168,11 +168,11 @@
     border-radius: 1000px;
 }
 
-#paint .ui_color_picker_gradient .primary_pick .ui_range {
+.ui_color_picker_gradient .primary_pick .ui_range {
     border-color: rgba(1, 1, 1, 0.1);
 }
 
-#paint .ui_color_picker_gradient .primary_pick .ui_range:focus {
+.ui_color_picker_gradient .primary_pick .ui_range:focus {
     border-color: var(--input-border-color-active);
 }
 
@@ -192,64 +192,64 @@
 | UI Flex Group |
 \***************/
 
-#paint .ui_flex_group {
+.ui_flex_group {
     display: flex;
     flex-direction: row;
 }
 
-#paint .ui_flex_group.stacked {
+.ui_flex_group.stacked {
     margin: .75rem 0;
 }
 
-#paint .ui_flex_group.stacked:first-child {
+.ui_flex_group.stacked:first-child {
     margin-top: 0;
 }
 
-#paint .ui_flex_group.stacked:last-child {
+.ui_flex_group.stacked:last-child {
     margin-bottom: 0;
 }
 
-#paint .ui_flex_group.column {
+.ui_flex_group.column {
     flex-direction: column;
 }
 
-#paint .ui_flex_group.justify_content_center {
+.ui_flex_group.justify_content_center {
     justify-content: center;
 }
 
-#paint .ui_flex_group.justify_content_start {
+.ui_flex_group.justify_content_start {
     justify-content: flex-start;
 }
 
-#paint .ui_flex_group.justify_content_end {
+.ui_flex_group.justify_content_end {
     justify-content: flex-end;
 }
 
-#paint .ui_flex_group.justify_content_space_around {
+.ui_flex_group.justify_content_space_around {
     justify-content: space-around;
 }
 
-#paint .ui_flex_group.justify_content_space_between {
+.ui_flex_group.justify_content_space_between {
     justify-content: space-between;
 }
 
-#paint .ui_flex_group.align_items_baseline {
+.ui_flex_group.align_items_baseline {
     align-items: baseline;
 }
 
-#paint .ui_flex_group.align_items_center {
+.ui_flex_group.align_items_center {
     align-items: center;
 }
 
-#paint .ui_flex_group.align_items_start {
+.ui_flex_group.align_items_start {
     align-items: flex-start;
 }
 
-#paint .ui_flex_group.align_items_end {
+.ui_flex_group.align_items_end {
     align-items: flex-end;
 }
 
-#paint .ui_flex_group.align_items_stretch {
+.ui_flex_group.align_items_stretch {
     align-items: stretch;
 }
 
@@ -285,48 +285,48 @@
 | UI Input Group |
 \****************/
 
-#paint .ui_input_group {
+.ui_input_group {
     display: flex;
     flex-direction: row;
     min-height: 2.4rem;
     width: 100%;
 }
 
-#paint .ui_input_group.stacked {
+.ui_input_group.stacked {
     margin: .75rem 0;
 }
 
-#paint .ui_input_group.stacked:first-child {
+.ui_input_group.stacked:first-child {
     margin-top: 0;
 }
 
-#paint .ui_input_group.stacked:last-child {
+.ui_input_group.stacked:last-child {
     margin-bottom: 0;
 }
 
-#paint .ui_input_group>input,
-#paint .ui_input_group>.ui_number_input,
-#paint .ui_input_group>.ui_range,
-#paint .ui_input_group>.ui_color_sample {
+.ui_input_group>input,
+.ui_input_group>.ui_number_input,
+.ui_input_group>.ui_range,
+.ui_input_group>.ui_color_sample {
     border-radius: 0;
     height: auto;
     min-width: 0;
 }
 
-#paint .ui_input_group>.ui_color_sample {
+.ui_input_group>.ui_color_sample {
     border: none;
     width: 100%;
 }
 
-#paint .ui_input_group> :first-child {
+.ui_input_group> :first-child {
     border-radius: var(--input-border-radius) 0 0 var(--input-border-radius);
 }
 
-#paint .ui_input_group> :last-child {
+.ui_input_group> :last-child {
     border-radius: 0 var(--input-border-radius) var(--input-border-radius) 0;
 }
 
-#paint .ui_input_group>label {
+.ui_input_group>label {
     display: flex;
     align-items: center;
     border: 1px solid var(--input-group-border-color);
@@ -335,63 +335,63 @@
     padding: 0 .75rem;
 }
 
-#paint .ui_input_group>.ui_range+input,
-#paint .ui_input_group>.ui_range+.ui_number_input {
+.ui_input_group>.ui_range+input,
+.ui_input_group>.ui_range+.ui_number_input {
     margin-left: -1px;
 }
 
-#paint .ui_input_grid {
+.ui_input_grid {
     border-radius: var(--input-border-radius);
     box-shadow: 0 1px 0 0 rgba(1, 1, 1, 0.1);
 }
 
-#paint .ui_input_grid.stacked {
+.ui_input_grid.stacked {
     margin: .75rem 0;
 }
 
-#paint .ui_input_grid.stacked:first-child {
+.ui_input_grid.stacked:first-child {
     margin-top: 0;
 }
 
-#paint .ui_input_grid.stacked:last-child {
+.ui_input_grid.stacked:last-child {
     margin-bottom: 0;
 }
 
-#paint :not(.ui_input_grid)>.ui_input_group {
+:not(.ui_input_grid)>.ui_input_group {
     border-radius: var(--input-border-radius);
     box-shadow: 0 1px 0 0 rgba(1, 1, 1, 0.1);
 }
 
-#paint .ui_input_grid>.ui_input_group {
+.ui_input_grid>.ui_input_group {
     margin: -1px 0;
 }
 
-#paint .ui_input_grid>.ui_input_group> :first-child,
-#paint .ui_input_grid>.ui_input_group> :last-child {
+.ui_input_grid>.ui_input_group> :first-child,
+.ui_input_grid>.ui_input_group> :last-child {
     border-radius: 0;
 }
 
-#paint .ui_input_grid>.ui_input_group:first-child {
+.ui_input_grid>.ui_input_group:first-child {
     margin-top: 0;
 }
 
-#paint .ui_input_grid>.ui_input_group:first-child> :first-child {
+.ui_input_grid>.ui_input_group:first-child> :first-child {
     border-radius: var(--input-border-radius) 0 0 0;
 }
 
-#paint .ui_input_grid>.ui_input_group:first-child> :last-child {
+.ui_input_grid>.ui_input_group:first-child> :last-child {
     border-radius: 0 var(--input-border-radius) 0 0;
 }
 
-#paint .ui_input_grid>.ui_input_group:last-child {
+.ui_input_grid>.ui_input_group:last-child {
     margin-bottom: 0;
 }
 
-#paint .ui_input_grid>.ui_input_group:last-child> :first-child {
+.ui_input_grid>.ui_input_group:last-child> :first-child {
     border-radius: 0 0 0 var(--input-border-radius);
 }
 
-#paint .ui_input_grid>.ui_input_group:last-child> :last-child {
+.ui_input_grid>.ui_input_group:last-child> :last-child {
     border-radius: 0 0 var(--input-border-radius) 0;
 }
 
@@ -399,7 +399,7 @@
 | UI Number Input |
 \*****************/
 
-#paint .ui_number_input {
+.ui_number_input {
     border: 1px solid var(--input-border-color);
     border-radius: var(--input-border-radius);
     display: inline-block;
@@ -410,13 +410,13 @@
     vertical-align: middle;
 }
 
-#paint .ui_number_input>input[type="number"]::-webkit-outer-spin-button,
-#paint .ui_number_input>input[type="number"]::-webkit-inner-spin-button {
+.ui_number_input>input[type="number"]::-webkit-outer-spin-button,
+.ui_number_input>input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
-#paint .ui_number_input>input[type="number"] {
+.ui_number_input>input[type="number"] {
     border: none;
     border-radius: 0;
     -moz-appearance: textfield;
@@ -426,8 +426,8 @@
     width: 100%;
 }
 
-#paint .ui_number_input>.increase_number,
-#paint .ui_number_input>.decrease_number {
+.ui_number_input>.increase_number,
+.ui_number_input>.decrease_number {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -441,23 +441,23 @@
     margin: 0;
 }
 
-#paint .ui_number_input> ::-moz-focus-inner {
+.ui_number_input> ::-moz-focus-inner {
     border: 0;
 }
 
-#paint .ui_number_input>.increase_number:focus,
-#paint .ui_number_input>.decrease_number:focus {
+.ui_number_input>.increase_number:focus,
+.ui_number_input>.decrease_number:focus {
     outline: 0;
 }
 
-#paint .ui_number_input>.increase_number {
+.ui_number_input>.increase_number {
     right: 0;
     top: 0;
     bottom: 50%;
     border-top: none;
 }
 
-#paint .ui_number_input>.increase_number::after {
+.ui_number_input>.increase_number::after {
     content: '';
     display: block;
     width: 0;
@@ -467,14 +467,14 @@
     border-bottom: 3px solid var(--input-text-color);
 }
 
-#paint .ui_number_input>.decrease_number {
+.ui_number_input>.decrease_number {
     right: 0;
     top: calc(50% - 1px);
     bottom: 0;
     border-bottom: none;
 }
 
-#paint .ui_number_input>.decrease_number::after {
+.ui_number_input>.decrease_number::after {
     content: '';
     display: block;
     width: 0;
@@ -492,7 +492,7 @@
     --range-handle-width: 18px;
 }
 
-#paint .ui_range {
+.ui_range {
     display: flex;
     flex-direction: row;
     background: var(--input-background-color);
@@ -506,16 +506,16 @@
     width: 100%;
 }
 
-#paint .ui_range:focus {
+.ui_range:focus {
     border-color: var(--input-border-color-active);
     z-index: 1;
 }
 
-#paint .ui_range.active {
+.ui_range.active {
     cursor: col-resize;
 }
 
-#paint .ui_range .padded_track {
+.ui_range .padded_track {
     position: absolute;
     left: calc(var(--range-handle-width) / 2);
     right: calc(var(--range-handle-width) / 2);
@@ -523,13 +523,13 @@
     bottom: 0;
 }
 
-#paint .ui_range .bar {
+.ui_range .bar {
     overflow: visible;
     position: relative;
     width: 0%;
 }
 
-#paint .ui_range .handle {
+.ui_range .handle {
     background: var(--input-text-color);
     border: 1px solid var(--border-color);
     border-radius: 1000px;
@@ -544,7 +544,7 @@
     transform: translate(50%, -50%);
 }
 
-#paint .ui_range.color_picker .handle {
+.ui_range.color_picker .handle {
     background: none;
     border: none;
     border-radius: 0;
@@ -558,7 +558,7 @@
     transform: translateX(50%);
 }
 
-#paint .ui_range.color_picker .handle::before {
+.ui_range.color_picker .handle::before {
     content: '';
     display: block;
     width: 0;
@@ -568,7 +568,7 @@
     border-top: .7rem solid white;
 }
 
-#paint .ui_range.color_picker .handle::after {
+.ui_range.color_picker .handle::after {
     content: '';
     display: block;
     width: 0;
@@ -578,15 +578,15 @@
     border-bottom: .7rem solid black;
 }
 
-#paint .ui_range.color_picker .handle:hover::before {
+.ui_range.color_picker .handle:hover::before {
     border-top-color: #eaeaea;
 }
 
-#paint .ui_range.color_picker .handle:hover::after {
+.ui_range.color_picker .handle:hover::after {
     border-bottom-color: #222;
 }
 
-#paint .ui_range.vertical {
+.ui_range.vertical {
     flex-direction: column;
     justify-content: flex-end;
     height: 100%;
@@ -594,41 +594,41 @@
     padding: calc(var(--range-handle-width) / 2) 0;
 }
 
-#paint .ui_range.vertical.active {
+.ui_range.vertical.active {
     cursor: row-resize;
 }
 
-#paint .ui_range.vertical .padded_track {
+.ui_range.vertical .padded_track {
     left: 0;
     right: 0;
     top: calc(var(--range-handle-width) / 2);
     bottom: calc(var(--range-handle-width) / 2);
 }
 
-#paint .ui_range.vertical .bar {
+.ui_range.vertical .bar {
     width: 100%;
     height: 0%;
 }
 
-#paint .ui_range.vertical .handle {
+.ui_range.vertical .handle {
     transform: translate(50%, -50%);
     top: 0;
     right: 50%;
     cursor: row-resize;
 }
 
-#paint .ui_range.vertical.color_picker_thin {
+.ui_range.vertical.color_picker_thin {
     padding: 1px 0;
     border-radius: 0;
     width: 100%;
 }
 
-#paint .ui_range.vertical.color_picker_thin .padded_track {
+.ui_range.vertical.color_picker_thin .padded_track {
     top: 0;
     bottom: 0;
 }
 
-#paint .ui_range.vertical.color_picker_thin .handle {
+.ui_range.vertical.color_picker_thin .handle {
     border-radius: 0;
     width: 100%;
     height: .5rem;
@@ -638,12 +638,12 @@
 | UI Swatches |
 \*************/
 
-#paint .ui_swatches {
+.ui_swatches {
     display: flex;
     justify-content: center;
 }
 
-#paint .ui_swatches .swatch_group {
+.ui_swatches .swatch_group {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -656,52 +656,52 @@
     max-height: calc(2.3rem);
 }
 
-#paint .ui_swatches .swatch_group:focus {
+.ui_swatches .swatch_group:focus {
     outline: 0;
     box-shadow: 0 0 0 1px var(--input-border-color-active);
 }
 
-#paint .ui_swatches .swatch_group.rows_2 {
+.ui_swatches .swatch_group.rows_2 {
     max-height: calc(4.6rem - 1px);
 }
 
-#paint .ui_swatches .swatch_group.rows_3 {
+.ui_swatches .swatch_group.rows_3 {
     max-height: calc(6.9rem - 2px);
 }
 
-#paint .ui_swatches .swatch_group.cols_1 .swatch {
+.ui_swatches .swatch_group.cols_1 .swatch {
     width: 100%;
 }
 
-#paint .ui_swatches .swatch_group.cols_2 .swatch {
+.ui_swatches .swatch_group.cols_2 .swatch {
     width: 50%;
 }
 
-#paint .ui_swatches .swatch_group.cols_3 .swatch {
+.ui_swatches .swatch_group.cols_3 .swatch {
     width: 33.33%;
 }
 
-#paint .ui_swatches .swatch_group.cols_4 .swatch {
+.ui_swatches .swatch_group.cols_4 .swatch {
     width: 25%;
 }
 
-#paint .ui_swatches .swatch_group.cols_5 .swatch {
+.ui_swatches .swatch_group.cols_5 .swatch {
     width: 20%;
 }
 
-#paint .ui_swatches .swatch_group.cols_6 .swatch {
+.ui_swatches .swatch_group.cols_6 .swatch {
     width: 16.66%;
 }
 
-#paint .ui_swatches .swatch_group.cols_7 .swatch {
+.ui_swatches .swatch_group.cols_7 .swatch {
     width: 14.29%;
 }
 
-#paint .ui_swatches .swatch_group.cols_8 .swatch {
+.ui_swatches .swatch_group.cols_8 .swatch {
     width: 12.5%;
 }
 
-#paint .ui_swatches .swatch {
+.ui_swatches .swatch {
     background: white;
     display: inline-block;
     position: relative;
@@ -715,13 +715,13 @@
     flex-grow: 1;
 }
 
-#paint .ui_swatches .swatch:hover,
-#paint .ui_swatches .swatch:focus {
+.ui_swatches .swatch:hover,
+.ui_swatches .swatch:focus {
     background: white;
     box-shadow: 0 0 0 2px white inset, 0 0 0 3px var(--border-color) inset;
 }
 
-#paint .ui_swatches .swatch:hover:after {
+.ui_swatches .swatch:hover:after {
     content: '';
     position: absolute;
     top: 0;
@@ -731,7 +731,7 @@
     background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.2) 50%, rgba(0, 0, 0, 0.1) 51%, rgba(0, 0, 0, 0.1) 100%);
 }
 
-#paint .ui_swatches .swatch.active {
+.ui_swatches .swatch.active {
     box-shadow: 0 0 0 3px var(--button-text-color-active) inset, 0 0 0 4px var(--border-color) inset;
 }
 

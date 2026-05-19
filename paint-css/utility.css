@@ -1,37 +1,37 @@
 /* Common input label sizes */
-#paint .label_width_character {
+.label_width_character {
     width: 100%;
     max-width: 2.88rem;
     overflow: hidden;
     flex-shrink: 0;
 }
 
-#paint .label_width_small {
+.label_width_small {
     width: 100%;
     max-width: 6.4rem;
     overflow: hidden;
 }
 
-#paint .label_width_medium {
+.label_width_medium {
     width: 100%;
     max-width: 10.4rem;
     overflow: hidden;
 }
 
 /* Font color utility */
-#paint .text_red {
+.text_red {
     color: var(--text-color-red);
 }
 
-#paint .text_green {
+.text_green {
     color: var(--text-color-green);
 }
 
-#paint .text_blue {
+.text_blue {
     color: var(--text-color-blue);
 }
 
-#paint .text_muted {
+.text_muted {
     color: var(--text-color-muted);
 }
 
@@ -178,62 +178,62 @@
     max-width: 18.25rem;
 }
 
-#paint .ui_number_input.input_cw_1 {
+.ui_number_input.input_cw_1 {
     max-width: calc(2.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_2 {
+.ui_number_input.input_cw_2 {
     max-width: calc(3.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_3 {
+.ui_number_input.input_cw_3 {
     max-width: calc(4.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_4 {
+.ui_number_input.input_cw_4 {
     max-width: calc(5.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_5 {
+.ui_number_input.input_cw_5 {
     max-width: calc(6.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_6 {
+.ui_number_input.input_cw_6 {
     max-width: calc(7.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_7 {
+.ui_number_input.input_cw_7 {
     max-width: calc(8.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_8 {
+.ui_number_input.input_cw_8 {
     max-width: calc(9.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_9 {
+.ui_number_input.input_cw_9 {
     max-width: calc(10.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_10 {
+.ui_number_input.input_cw_10 {
     max-width: calc(11.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_11 {
+.ui_number_input.input_cw_11 {
     max-width: calc(12.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_12 {
+.ui_number_input.input_cw_12 {
     max-width: calc(13.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_13 {
+.ui_number_input.input_cw_13 {
     max-width: calc(14.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_14 {
+.ui_number_input.input_cw_14 {
     max-width: calc(15.25rem + var(--number-input-arrow-width));
 }
 
-#paint .ui_number_input.input_cw_15 {
+.ui_number_input.input_cw_15 {
     max-width: calc(16.25rem + var(--number-input-arrow-width));
 }

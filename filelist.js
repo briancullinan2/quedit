@@ -883,7 +883,7 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
 
         if (panelId === 'collapse'
             // nice side effect if they click the same list it also toggles
-            || (panelId === previousFilelistId && !changedClass)
+            || (panelId === previousFilelistId) // && !changedClass)
         ) {
 
             if (!hadOpen) {
@@ -971,15 +971,10 @@ function hideOpenPanels(all = true) {
 
         if (!panel.classList.contains('hidden')) {
             if (FILELIST_IDS.includes(panel.id)) {
-                if (!all && !hadOpen) {
-                    hadOpen = true
-                    continue
-                } else if (!all) {
-                    debugger
-                }
                 hadOpen = true
             }
-
+            if (!all && !hadOpen)
+                continue
         }
 
         if (latestPanelId === panel) continue

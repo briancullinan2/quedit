@@ -245,6 +245,11 @@ body {
     padding-right: 4px;
 }
 
+
+#popups .popup .buttons button,
+#popups select,
+#popups *:not(.ui_number_input)>button,
+#popups input,
 #token-modal input,
 #token-modal button,
 #search-terminal,
@@ -285,6 +290,7 @@ body {
     width: 140px;
 }
 
+#popups .popup input:placeholder-shown,
 select:has(option[value=""]:checked),
 #search-terminal input:placeholder-shown,
 #token-modal input:placeholder-shown,
@@ -294,6 +300,8 @@ select:has(option[value=""]:checked),
     color: var(--ace-foreground);
 }
 
+#popups .popup input:hover,
+#popups .popup .buttons button:hover,
 #token-modal input:hover,
 #search-terminal:hover,
 #toolbar input:not([type="checkbox"]):hover,
@@ -304,13 +312,16 @@ select:has(option[value=""]:checked),
     cursor: pointer;
 }
 
-#token-modal button:hover,
+
+#token-modal .actions button:hover,
 #toolbar button:hover {
     background: var(--ace-selection-bg);
     border-color: var(--ace-blue);
     cursor: pointer;
 }
 
+#popups .popup input:focus,
+#popups .popup .buttons button:focus,
 #token-modal input:focus,
 #search-terminal:focus,
 #toolbar input:focus,
@@ -319,6 +330,7 @@ select:has(option[value=""]:checked),
     background: var(--ace-bg);
 }
 
+#popups .popup input:not(:placeholder-shown),
 select:not(:has(option[value=""]:checked)),
 #token-modal input:not(:placeholder-shown),
 #toolbar input:not(:placeholder-shown),
@@ -338,6 +350,7 @@ select:not(:has(option[value=""]:checked)),
 }
 
 
+#popups .popup input::placeholder,
 #gh-token-input::placeholder,
 #search-terminal::placeholder,
 #token-modal input::placeholder,
@@ -351,9 +364,10 @@ select:not(:has(option[value=""]:checked)),
 
 
 
+#popups .popup button:active,
 #token-modal button:active,
 #toolbar button:active {
-    background: var(--ace-active-line-bg);
+    background: var(--ace-bg);
 }
 
 
@@ -389,12 +403,7 @@ select:not(:has(option[value=""]:checked)),
     min-width: min-content;
 }
 
-#paint {
-    position: relative;
-    padding-top: 0 !important;
-}
-
-#paint .ui_range .padded_track {
+.ui_range .padded_track {
     width: 100% !important;
 }
 
@@ -410,6 +419,10 @@ select:not(:has(option[value=""]:checked)),
 #paint button,
 #paint input[type="button"] {
     box-shadow: none !important;
+}
+
+#paint button:hover {
+    z-index: 10;
 }
 
 #paint .sidebar_left .item {
@@ -432,14 +445,8 @@ select:not(:has(option[value=""]:checked)),
     bottom: 100%;
 }
 
-#paint .sidebar_left .item::before
-{
+#paint .sidebar_left .item::before {
     border-color: var(--ace-blue);
-}
-
-#paint .ui_icon_button {
-    height: unset !important;
-    line-height: var(--global-height) !important;
 }
 
 #paint .sidebar_left {
@@ -448,8 +455,11 @@ select:not(:has(option[value=""]:checked)),
 }
 
 #paint {
+    position: relative;
+    padding-top: 0 !important;
+    font-size: unset !important;
     background: transparent !important;
-    color: inherit;
+    color: var(--ace-foreground) !important;
 }
 
 #paint .submenu {
@@ -481,20 +491,6 @@ select:not(:has(option[value=""]:checked)),
     -moz-osx-font-smoothing: grayscale;
     display: inline-block;
     font-size: 20px;
-}
-
-#paint .ui_toggle_button[aria-pressed="true"]:before {
-    color: var(--ace-foreground);
-    background: var(--ace-blue) !important;
-}
-
-#paint .ui_toggle_button[aria-pressed="true"]:hover:before {
-    background-color: var(--ace-blue);
-}
-
-#paint .ui_toggle_button:before {
-    content: "\f859" !important;
-    background-image: none !important;
 }
 
 #paint .sidebar_left .item {
@@ -927,6 +923,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 
 
+#paint button.ui_toggle_button::before,
 #paint .sidebar_left .item:before,
 #paint .sidebar_left .item,
 #tabs a:empty,
@@ -1120,24 +1117,47 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
+#popups .popup .close,
 #token-modal .close-btn {
     position: absolute;
     top: 0;
     right: 0;
     background: none;
     border: none;
-    color: #888;
+    color: transparent;
     font-size: 24px;
     cursor: pointer;
     transition: color 0.2s, transform 0.2s;
     width: var(--global-height);
+    margin: 0;
+    line-height: var(--global-height);
+    height: var(--global-height);
+    width: var(--global-height);
+    vertical-align: middle;
+    align-content: center;
+    font-size: 1;
+    font-family: boxicons !important;
     /*border-radius: 0 8px 0 0;*/
 }
 
+
+#popups .popup .close:before,
+#token-modal .close-btn:before {
+    font-family: boxicons !important;
+    content: "\f859";
+    color: rgb(from var(--ace-foreground) r g b / 50%);
+    font-size: 24px;
+}
+
+#popups .popup .close:hover:before,
+#token-modal .close-btn:hover:before {
+    color: var(--ace-pink);
+}
+
+#popups .popup .close:hover,
 #token-modal .close-btn:hover {
-    color: #d9230f;
-    /* Glows with Apache Red when hovered */
     transform: scale(1.1);
+    background-color: var(--ace-selection-bg);
 }
 
 /* The actual box */
@@ -1212,7 +1232,7 @@ input[type="number"]::-webkit-inner-spin-button {
     background-color: white;
     border-radius: 50%;
     transition: transform 0.3s ease;
-    box-shadow: -1px -2px 5px inset 1px 2px 3px rgb(from var(--ace-gutter-bg) r g b / 50%);
+    box-shadow: -1px -2px 5px inset rgb(from var(--ace-gutter-bg) r g b / 50%);
 }
 
 #toolbar input[type="checkbox"]::after {
