@@ -1339,10 +1339,14 @@ input[type="number"]::-webkit-inner-spin-button {
 
     /* :not(:has(.not-hidden ~ .not-hidden)) */
     [class*="previous-"] #editor-container:has(.not-hidden),
-    [class*="previous-"] #editor-container:has(~.not-hidden) {
+    [class*="previous-"] #editor-container:has(.not-hidden):has(~.not-hidden) {
         flex-basis: 50%;
-        display: block;
+        display: flex;
         visibility: visible;
+    }
+
+    .previous-viewport-frame #editor-container:not(:has(.not-hidden))~.not-hidden {
+        flex-basis: 50%;
     }
 
     .previous-editor #editor.hidden {
@@ -1359,11 +1363,40 @@ input[type="number"]::-webkit-inner-spin-button {
         display: block;
     }
 
+
+    .previous-terminal-container #terminal-container {
+        display: flex;
+        min-width: 200px;
+        visibility: visible;
+        flex-basis: 50%;
+    }
+
     .previous-viewport-frame #viewport-frame.hidden {
         visibility: visible;
         position: relative;
         z-index: 100;
         display: block;
+    }
+
+    .previous-terminal-container #terminal-container #terminal {
+        visibility: visible;
+        position: relative;
+        z-index: 10;
+    }
+
+    #editor-container:not(:has(.not-hidden ~ .not-hidden)) #paint,
+    #editor-container:not(:has(.not-hidden ~ .not-hidden)) #editor {
+        flex-basis: 50%;
+        width: 50%;
+    }
+
+
+    .previous-terminal-container #editor-container:not(:has(> :not(.hidden))),
+    .previous-editor #editor-container:not(:has(> :not(.hidden))),
+    .previous-paint #editor-container:not(:has(> :not(.hidden))) {
+        display: flex;
+        visibility: visible;
+        flex-basis: 50%;
     }
 
     .previous-paint #viewport-frame,
@@ -1431,7 +1464,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 */
 
-#viewport-frame.hidden~#terminal-container,
+#viewport-frame.hidden~.not-hidden,
 #terminal-container.not-hidden {
     flex-basis: 100%;
 }

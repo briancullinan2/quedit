@@ -423,6 +423,8 @@ function initEvents() {
     let viewport = document.getElementById("viewport");
     let viewportFrame = document.getElementById("viewport-frame");
 
+    viewportFrame.addEventListener('click', runTojiEngine)
+
     document.addEventListener("keydown", function (event) {
         if (event.keyCode == 32 && !pressed[32]) {
             playerMover.jump();
@@ -610,15 +612,18 @@ function onRequestedFrame(gl, stats, t, frame) {
 
 let tojiEngineRunning = false
 let tojiRendererRunning = false
+let notRunningFrameCount = 0
 function runTojiEngine() {
 
     let viewportFrame = document.getElementById("viewport-frame");
-    if (!viewportFrame.classList.contains('not-hidden'))
+    if (!viewportFrame.classList.contains('not-hidden')
+    && (!document.body.classList.contains('previous-viewport-frame') || window.innerWidth < 1200))
         return
 
     if (tojiEngineRunning) {
         // restart renderer
         if (!tojiRendererRunning) {
+            notRunningFrameCount = 0
             tojiFrameLimiter.requestFrameUpdate()
         }
         return
@@ -665,8 +670,11 @@ function runTojiEngine() {
 
         window.tojiFrameLimiter = createFrameRater(25, (e, t, frame) => {
             if (!viewportFrame.classList.contains('not-hidden')) {
-                tojiRendererRunning = false;
-                return
+                notRunningFrameCount++
+                if (notRunningFrameCount > 25) {
+                    tojiRendererRunning = false;
+                    return
+                }
             }
             tojiRendererRunning = true
             onRequestedFrame(gl, stats, t, frame);

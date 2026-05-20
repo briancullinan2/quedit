@@ -739,7 +739,7 @@ function getDocumentPanelFromClickId(panelId) {
         || panelId === 'spawn' || panelId === 'map'
     )
         panelDocumentId = 'viewport-frame'
-    if (panelId === 'compile' || panelId === 'build')
+    if (panelId === 'compile' || panelId === 'build' || panelId === 'terminal')
         panelDocumentId = 'terminal-container'
     if (panelId === 'new' || panelId === 'filename' || panelId === 'settings')
         panelDocumentId = 'editor'
@@ -935,9 +935,10 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
     if (panelId === 'database')
         showDatabases()
 
-    if (panelId === 'viewport-frame'
+    if ((panelId === 'viewport-frame'
+        || panelId === 'play')
         && !GL.canvas
-    ) runTojiEngine()
+    ) setTimeout(runTojiEngine, 100)
 }
 
 

@@ -169,11 +169,13 @@ async function renderToolbarCommand(buttonId) {
     if (buttonId === 'github')
         updatePlaceholder()
 
-    if (buttonId === 'play')
+    // DO THIS IN renderTabsCommand because it has panel class/view controls already
+   // if (buttonId === 'play')
         //runEngine()
+        //setTimeout(runTojiEngine, 100)
 
-        if (buttonId === 'back')
-            NavHistory.back()
+    if (buttonId === 'back')
+        NavHistory.back()
 
     if (buttonId === 'next')
         NavHistory.forward()
@@ -206,7 +208,7 @@ async function renderToolbarCommand(buttonId) {
 
         // don't change a repo if it's already set to one of
         //   defined repos, just let filelist display it
-        
+
     }
 
     if (buttonId === 'fullscreen') {

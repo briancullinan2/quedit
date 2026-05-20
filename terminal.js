@@ -28,6 +28,8 @@ function resizeDebouncer() {
         updateMaxLines()
         updatePainter()
         isDevToolsOpen()
+        if(window.onResize)
+            window.onResize()
 
         resizeDebounce = null
 
