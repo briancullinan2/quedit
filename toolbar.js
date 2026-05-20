@@ -206,7 +206,7 @@ async function renderToolbarCommand(buttonId) {
 
         // don't change a repo if it's already set to one of
         //   defined repos, just let filelist display it
-
+        
     }
 
     if (buttonId === 'fullscreen') {
@@ -414,7 +414,7 @@ window.addEventListener('mousemove', e => {
 
     const rect = targetEl.getBoundingClientRect();
     globalTooltip.style.top = (rect.top + targetEl.clientHeight) + 'px'
-    globalTooltip.style.left = (rect.left + targetEl.clientWidth) + 'px'
+    globalTooltip.style.left = Math.min(rect.left + targetEl.clientWidth, window.clientWidth - e.clientWidth) + 'px'
 
 })
 

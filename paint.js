@@ -4079,9 +4079,7 @@
                                             this.View_ruler.render_ruler(),
                                             !1 === this.render_success && v().error("Rendered with errors.")
                                     }
-                                    requestAnimationFrame(function () {
-                                        n.render(e)
-                                    })
+                                    window.paintFrameLimiter.requestFrameUpdate(e);
                                 } else
                                     u.A.need_render = !0
                             }
@@ -42835,6 +42833,7 @@
                                                             r = e.catch(10),
                                                             console.log(r),
                                                             requestAnimationFrame(function () {
+                                                                debugger
                                                                 v.A.State.free(0, s.database_estimate || 1)
                                                             });
                                                     case 17:
@@ -43216,3 +43215,17 @@ function update_image() {
     target.height = dim.height;
     target.src = tempCanvas.toDataURL();
 }
+
+
+// --- Hooking it into miniPaint ---
+// Instantiate globally, passing 25 FPS and the custom render callback
+window.paintFrameLimiter = createFrameRater(25, (e, t, frame) => {
+  if (window.Layers) {
+    // Pass the event along, or utilize t and frame if miniPaint needs them
+    window.Layers.render(e); 
+  }
+  
+  // Optional: tracking in your console to verify parameters are passing
+  // console.log(`Frame: ${frame} | Time: ${t.toFixed(1)}ms`);
+});
+

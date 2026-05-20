@@ -33,7 +33,7 @@
                 <p>Required for API access</p>
                 <div placeholder="Enter ghp your token here...">
                     <input placeholder="Enter ghp your token here..." type="password" id="gh-token-input"
-                        name="gh-token-input" />
+                        name="gh-token-input" autocomplete="one-time-code" />
                 </div>
                 <div class="actions">
                     <button onclick="saveToken(); return false;">Save Token</button>
@@ -299,8 +299,11 @@ int main() {
                         <div class="wrapper">
 
                             <div class="submenu">
+                                <button popovertarget="global-popup" placeholder="Toggle Menu" class="left_mobile_menu" id="left_mobile_menu_button" type="button"></button>
                                 <div class="block attributes" id="action_attributes"></div>
                                 <button placeholder="Undo" class="undo_button" id="undo_button" type="button"></button>
+                                <span class="mobile_menu_spacer"></span>
+                                <button popovertarget="global-popup" placeholder="Toggle Menu" class="right_mobile_menu" id="mobile_menu_button" type="button"></button>
                             </div>
                             
                             <div class="sidebar_left" id="tools_container"></div>
@@ -350,10 +353,6 @@ int main() {
                                     <div class="content" id="layers_base"></div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="mobile_menu">
-                            <button placeholder="Toggle Menu" class="left_mobile_menu" id="left_mobile_menu_button" type="button"></button>
-                            <button placeholder="Toggle Menu" class="right_mobile_menu" id="mobile_menu_button" type="button"></button>
                         </div>
                         <div class="hidden" id="tmp"></div>
                         
@@ -417,6 +416,7 @@ int main() {
     <script src="/jszip.min.js" type="text/javascript" defer></script>
     <script src="/ace/ace.js" type="text/javascript" charset="utf-8" defer></script>
     <script src="/xterm.js" type="text/javascript" defer></script>
+    <script src="/commands.js" type="text/javascript" defer></script>
     <script src="/terminal.js" type="text/javascript" defer></script>
     <script src="/editor.js" type="text/javascript" defer></script>
     <script src="/local.js" type="text/javascript" defer></script>
@@ -430,7 +430,6 @@ int main() {
     <script src="/filelist.js" type="text/javascript" defer></script>
     <script src="/compiler.js" type="text/javascript" defer></script>
     <script src="/unzip.js" type="text/javascript" defer></script>
-    <script src="/commands.js" type="text/javascript" defer></script>
     <script src="/shared.js" type="text/javascript" defer></script>
     <script src="/paint.js" type="text/javascript" defer></script>
     <script defer type="text/javascript" src="nipplejs.js"></script>

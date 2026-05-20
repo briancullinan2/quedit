@@ -781,6 +781,7 @@ let previousPanelId = null
 let debouncedPanelId = null
 let previousFilelistId = null
 let notFilelist = 'editor'
+let previousNotFilelist = null
 
 function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
 
@@ -861,6 +862,11 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
         }
         else if (previousNotFilelist) {
             notFilelist = previousPanelId
+        }
+
+        // save previous not file list also
+        if(notFilelist !== previousNotFilelist) {
+            previousNotFilelist = notFilelist
         }
 
 
@@ -953,7 +959,7 @@ function updateBodyPanelIds() {
 
 
     if (previousPanelId)
-        document.body.classList.add('previous-' + previousPanelId)
+        document.body.classList.add('previous-' + (previousNotFilelist || previousPanelId))
     if (latestPanelId)
         document.body.classList.add('panel-' + latestPanelId)
 

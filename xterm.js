@@ -2098,6 +2098,7 @@
                     this._shouldUpdateDimensions = e || this._shouldUpdateDimensions,
                     this._shouldUpdateAnchor = t || this._shouldUpdateAnchor,
                     void 0 === this._animationFrame && (this._animationFrame = this._coreBrowserService.window.requestAnimationFrame(( () => {
+                        debugger;
                         this._refreshDecorations(),
                         this._animationFrame = void 0
                     }

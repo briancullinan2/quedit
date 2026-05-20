@@ -568,51 +568,63 @@ function getAvailableContext(canvas, contextList) {
 
 let rafCallback = null;
 
-function renderLoop(gl, stats) {
-    let startTime = new Date().getTime();
-    let lastTimestamp = startTime;
-    let lastFps = startTime;
 
-    let frameId = 0;
+let startTime = new Date().getTime();
+let lastTimestamp = startTime;
+let lastFps = startTime;
 
-    function onRequestedFrame(t, frame) {
-        timestamp = new Date().getTime();
+let frameId = 0;
 
-        if (xrSession) {
-            xrSession.requestAnimationFrame(onRequestedFrame);
-        } else {
-            window.requestAnimationFrame(onRequestedFrame);
-        }
+function onRequestedFrame(gl, stats, t, frame) {
+    timestamp = new Date().getTime();
 
-        if (xrSession && frame) {
-            xrPose = frame.getViewerPose(xrReferenceSpace);
-        } else {
-            xrPose = null;
-        }
+    //if (xrSession) {
+    //    xrSession.requestAnimationFrame(onRequestedFrame);
+    //} else {
+    //    window.requestAnimationFrame(onRequestedFrame);
+    //}
 
-        frameId++;
-        if (SKIP_FRAMES != 0 && frameId % SKIP_FRAMES != 0)
-            return;
-
-        stats.begin();
-
-        onFrame(gl, {
-            timestamp: timestamp,
-            elapsed: timestamp - startTime,
-            frameTime: timestamp - lastTimestamp
-        });
-
-        stats.end();
+    if (xrSession && frame) {
+        xrPose = frame.getViewerPose(xrReferenceSpace);
+    } else {
+        xrPose = null;
     }
-    window.requestAnimationFrame(onRequestedFrame);
-    rafCallback = onRequestedFrame;
+
+    frameId++;
+    if (SKIP_FRAMES != 0 && frameId % SKIP_FRAMES != 0)
+        return;
+
+    stats.begin();
+
+    onFrame(gl, {
+        timestamp: timestamp,
+        elapsed: timestamp - startTime,
+        frameTime: timestamp - lastTimestamp
+    });
+
+    stats.end();
+
+    tojiFrameLimiter.requestFrameUpdate()
 }
 
+
+let tojiEngineRunning = false
+let tojiRendererRunning = false
 function runTojiEngine() {
 
     let viewportFrame = document.getElementById("viewport-frame");
-    if(!viewportFrame.classList.contains('not-hidden'))
-        return 
+    if (!viewportFrame.classList.contains('not-hidden'))
+        return
+
+    if (tojiEngineRunning) {
+        // restart renderer
+        if (!tojiRendererRunning) {
+            tojiFrameLimiter.requestFrameUpdate()
+        }
+        return
+    }
+
+    tojiEngineRunning = true
 
     let stats = new Stats();
     viewportFrame.appendChild(stats.domElement);
@@ -646,7 +658,23 @@ function runTojiEngine() {
         //document.getElementById('viewport-info').style.display = 'block';
         initEvents();
         initGL(gl, viewport);
-        renderLoop(gl, stats);
+        startTime = new Date().getTime()
+        frameId = 0
+        lastTimestamp = startTime;
+        lastFps = startTime;
+
+        window.tojiFrameLimiter = createFrameRater(25, (e, t, frame) => {
+            if (!viewportFrame.classList.contains('not-hidden')) {
+                tojiRendererRunning = false;
+                return
+            }
+            tojiRendererRunning = true
+            onRequestedFrame(gl, stats, t, frame);
+        });
+
+        tojiFrameLimiter.requestFrameUpdate()
+        // TODO: make this lazy with a seperate function
+        rafCallback = onRequestedFrame.bind(null, gl, stats);
     }
 
     onResize();

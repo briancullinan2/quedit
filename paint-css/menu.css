@@ -193,6 +193,7 @@
 
 .left_mobile_menu,
 .right_mobile_menu {
+	display: none;
 	position: absolute;
 	width: 50px;
 	height: 50px;
@@ -226,10 +227,15 @@
 	right: 0;
 }
 
-@media screen and (max-width:700px) {
+@media screen and (max-width:800px) {
 	.mobile_menu {
 		display: flex;
 		justify-content: space-between;
+	}
+
+	#paint .left_mobile_menu,
+	#paint .right_mobile_menu {
+		display: inline-block;
 	}
 
 	#main_menu>ul.menu_bar {

@@ -245,9 +245,14 @@ const NavHistory = {
 
 function updateModifierPressed(e) {
     isModifierPressed = e.ctrlKey || e.metaKey;
-    if (!isModifierPressed && document.body.classList.contains('modifier'))
+
+    const hasClass = document.body.classList.contains('modifier')
+
+    // TODO: set engine to 1 FPS if debugger is open, not only because it runs
+    //   slower but the nature of debugging is seeing the frames
+    if (!isModifierPressed && hasClass)
         document.body.classList.remove('modifier')
-    if (isModifierPressed && !document.body.classList.contains('modifier'))
+    if (isModifierPressed && !hasClass)
         document.body.classList.add('modifier')
 }
 
@@ -372,6 +377,8 @@ const getModeByFilename = (filePath) => {
         'gcode': 'gcode',
         'gitignore': 'ini',
         'glsl': 'glsl',
+        'vlsl': 'glsl',
+        'hlsl': 'glsl',
         'go': 'golang',
         'gql': 'graphql',
         'graphql': 'graphql',

@@ -230,7 +230,7 @@
 	background-color: transparent;
 }
 
-@media screen and (max-width: 700px) {
+@media screen and (max-width: 800px) {
 	.undo_button {
 		display: block;
 	}
@@ -714,7 +714,7 @@ IMPORTANT: any new icon should also must be added on /service-worker.js + its ve
 	overflow-y: auto;
 }
 
-@media screen and (max-width:700px) {
+@media screen and (max-width: 800px) {
 	#paint body {
 		padding-top: 50px;
 	}

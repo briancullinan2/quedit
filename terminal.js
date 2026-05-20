@@ -27,6 +27,7 @@ function resizeDebouncer() {
         forceFit();
         updateMaxLines()
         updatePainter()
+        isDevToolsOpen()
 
         resizeDebounce = null
 
@@ -44,6 +45,23 @@ function resizeDebouncer() {
     }, 500);
 }
 
+
+function isDevToolsOpen() {
+    const threshold = 160; // Cushion for window borders
+
+    const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+    const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+
+    const hasClass = document.body.classList.contains('debugger')
+
+    const debuggerIsOpen = widthThreshold || heightThreshold
+    if (debuggerIsOpen && !hasClass)
+        document.body.classList.add('debugger')
+    else if (!debuggerIsOpen && hasClass)
+        document.body.classList.remove('debugger')
+
+    return widthThreshold || heightThreshold;
+}
 
 
 window.addEventListener('resize', resizeDebouncer);
@@ -1135,7 +1153,7 @@ terminalContainer.addEventListener('mousedown', async (event) => {
         historyIndex = history
         updateLineFromHistory()
     } else if (filePath && !isFallback) {
-        await clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber)
+        await clickTerminalFile(filePath, lineNumber)
     }
 
     return false
@@ -1172,7 +1190,6 @@ async function findTestFilepath(filePath) {
         if (dbFile) {
             trees[engineRepo].values = [dbFile.sha];
             selected = engineRepo
-            renderTabsCommand('filelist', true, false)
         }
     }
     if (!dbFile && files[gameRepo]) {
@@ -1180,7 +1197,6 @@ async function findTestFilepath(filePath) {
         if (dbFile) {
             trees[gameRepo].values = [dbFile.sha];
             selected = gameRepo
-            renderTabsCommand('gamelist', true, false)
         }
     }
     if (!dbFile && files[assetRepo]) {
@@ -1188,7 +1204,6 @@ async function findTestFilepath(filePath) {
         if (dbFile) {
             trees[assetRepo].values = [dbFile.sha];
             selected = assetRepo
-            renderTabsCommand('assetlist', true, false)
         }
     }
 
@@ -1251,7 +1266,6 @@ async function findTestFilepath(filePath) {
 
 
         if (dbFile) {
-            renderTabsCommand('database', true, false)
             trees['#database'].values = [item.key];
         }
 
@@ -1265,13 +1279,13 @@ const TEST_LOCATIONS = ['', 'docs/demoq3/pak0.pk3dir']
 
 let terminalClickDebouncer = null
 
-async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, noBounce = false) {
+async function clickTerminalFile(filePath, lineNumber, noBounce = false) {
 
     if (terminalClickDebouncer) {
         clearTimeout(terminalClickDebouncer)
     }
     if (!noBounce) {
-        terminalClickDebouncer = setTimeout(() => clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, true), 500)
+        terminalClickDebouncer = setTimeout(() => clickTerminalFile(filePath, lineNumber, true), 500)
         return
     }
 
@@ -1299,6 +1313,17 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
     // do this once now to full reset
     hideOpenPanels()
     latestPanelId = previousPanelId = 'editor' // switch from terminal automatically
+
+    if (selected === engineRepo)
+        renderTabsCommand('filelist', true, false)
+    if (selected === gameRepo)
+        renderTabsCommand('gamelist', true, false)
+    if (selected === assetRepo)
+        renderTabsCommand('assetlist', true, false)
+    if (selected === toolsRepo)
+        renderTabsCommand('database', true, false)
+    if (selected === toolsRepo2)
+        renderTabsCommand('database', true, false)
 
 
     let parts = selected.split('/')

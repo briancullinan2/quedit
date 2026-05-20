@@ -17,6 +17,30 @@ cgame state, with only the input branches computed on front end
 this could shave off another 10% in compute, leaving more room
 for S_Spatialize
 
+7) More of a general TODO item, make the filelist open anything in the assets pane
+VS Code allows you to add multiple directories to a project.
+
+8) More importantly, add custom build configurations, basically commit a Make.js
+file to your IDB store or Github and then the build configuration evals the JS
+code to build whatever .wasm the user wants straight from source. i.e. make my
+default Ace9 text that pops up actually runable. also merge in the rest of 
+binjis demo for posterity.
+
+9) Minor UX bugs, not to lose track, remove keyboard listener from miniPaint 
+until the tab is selected and refire. Similarly, override Open File and 
+Open Directory to upload to our IDB storage instead of directly into paint
+Maybe a new database for temporary junk until it gets an official save function?
+Override multiple full screen modes for editor, paint, engine, so they all have
+a "zen" layout.
+
+10) Just thought of this one today with Iga, have a 3D printer in game when you 
+activate it with an in game search UI you select a model from SketchFab or 
+somewhere and download the model and process it with my blender script and
+then import it into the game while players are connected.
+
+11) major - componentize. build a tool inside the browser that can run an ANTLR 
+script to show every global variable thats used NOT in the file that it's defined in.
+that way i have a list of exactly how my app could break if i only move files around.
 
 
 ## So far

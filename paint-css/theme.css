@@ -146,6 +146,7 @@
     color: var(--ace-foreground);
     border: 2px solid var(--ace-gutter-bg);
     font-size: unset;
+    box-shadow: 0 10px 30px rgb(from var(--ace-bg) r g b / 80%)
 }
 
 #popups h3 {
@@ -544,9 +545,18 @@
     width: unset;
     font-size: 24px;
     padding: 3px 5px;
-    filter:none;
+    filter: none;
+    display: none;
+
 }
 
+@media all and (max-width: 800px) {
+
+    #paint .left_mobile_menu,
+    #paint .right_mobile_menu {
+        display: inline-block;
+    }
+}
 
 #undo_button::before,
 .right_mobile_menu::before,
@@ -598,7 +608,6 @@
 
 
 #paint .sidebar_right,
-#paint .sidebar_left
-{
+#paint .sidebar_left {
     box-shadow: none !important;
 }

@@ -779,10 +779,7 @@ function openCommand(argv, database) {
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
     let fileName = argv[0]
-    const fileId = files[selected][fileName].sha
-    currentOpenFileId = fileId;
-    trees[selected].values = [fileId];
-    openFile(ownerName, repoName, filePath, fileId, true);
+    clickTerminalFile(fileName, null)
 
 }
 function edit(argv) {
@@ -1104,3 +1101,68 @@ function kill() {
     api.terminate()
     //api.worker.terminate()
 }
+
+
+/**
+ * Creates a functional frame rate limiter with a callback.
+ * @param {number} targetFps - The desired frames per second.
+ * @param {function} callback - Function called on render: (event, t, frame) => {}
+ * @returns {object} An interface containing the requestFrameUpdate function.
+ */
+function createFrameRater(targetFps, callback) {
+  const fpsInterval = 1000 / targetFps;
+  
+  // State variables held securely in the closure scope
+  let lastDrawTime = performance.now();
+  let needsRender = false;
+  let currentEvent = null;
+  let frameCount = 0;
+  let startTime = lastDrawTime;
+
+  // The looping tick function
+  function tick(currentTime) {
+    requestAnimationFrame(tick);
+
+    const elapsed = currentTime - lastDrawTime;
+
+    if (needsRender && elapsed >= fpsInterval) {
+      // Keep timing consistent over long periods
+      lastDrawTime = currentTime - (elapsed % fpsInterval);
+      needsRender = false;
+      frameCount++;
+
+      // Calculate total elapsed time 't' since the rater started
+      const t = currentTime - startTime;
+
+      // Execute the user-provided callback with the requested parameters
+      if (typeof callback === 'function') {
+        callback(currentEvent, t, frameCount);
+      }
+    }
+  }
+
+  // Kick off the loop immediately
+  requestAnimationFrame(tick);
+
+  // Return only the public API method needed by external tools/mouse events
+  return {
+    requestFrameUpdate(e) {
+      needsRender = true;
+      currentEvent = e;
+    }
+  };
+}
+
+// --- Hooking it into miniPaint ---
+// Instantiate globally, passing 25 FPS and the custom render callback
+window.paintFrameLimiter = createFrameRater(25, (e, t, frame) => {
+  if (window.Layers) {
+    // Pass the event along, or utilize t and frame if miniPaint needs them
+    window.Layers.render(e); 
+  }
+  
+  // Optional: tracking in your console to verify parameters are passing
+  // console.log(`Frame: ${frame} | Time: ${t.toFixed(1)}ms`);
+});
+
+

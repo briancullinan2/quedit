@@ -286,8 +286,7 @@ body,
 }
 
 #popups input[type="radio"],
-#popups input[type="checkbox"]
-{
+#popups input[type="checkbox"] {
     width: min-content;
 }
 
@@ -494,7 +493,7 @@ select:not(:has(option[value=""]:checked)),
 
 #paint .sidebar_right .block {
     box-shadow: none !important;
-    border-bottom: 2px solid var(--ace-selection-bg) !important;
+    border-bottom: 2px solid var(--border-color) !important;
 }
 
 #paint #mouse.circle {
@@ -789,7 +788,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 #toolbar>ul>li>ul>li:has(select),
-#toolbar>ul>li:has(select) {
+#toolbar>ul>li:has(>select) {
     min-width: 100px;
     padding: 2px 5px;
 }
@@ -917,7 +916,9 @@ input[type="number"]::-webkit-inner-spin-button {
 
 #paint [class*="menu"] button:empty,
 [class*="menu"] button:empty,
-[class^="bx"], [class*=" bx"], .bx,
+[class^="bx"],
+[class*=" bx"],
+.bx,
 #toolbar a:empty {
     text-decoration: none;
     padding: 3px 5px;
@@ -935,8 +936,12 @@ input[type="number"]::-webkit-inner-spin-button {
 [class*="menu"] button:empty,
 #paint [class*="menu"] button:empty::before,
 [class*="menu"] button:empty::before,
-[class^="bx"], [class*=" bx"], .bx,
-[class^="bx"]::before, [class*=" bx"]::before, .bx::before,
+[class^="bx"],
+[class*=" bx"],
+.bx,
+[class^="bx"]::before,
+[class*=" bx"]::before,
+.bx::before,
 #paint button.ui_toggle_button::before,
 #paint .sidebar_left .item:before,
 #paint .sidebar_left .item,
@@ -1035,35 +1040,7 @@ input[type="number"]::-webkit-inner-spin-button {
     opacity: 1;
 }
 
-/*
-#toolbar [placeholder]:has(:empty)::after
-{
-    opacity: 1;
-}
-*/
 
-/*
-#global-tooltip,
-#global-tooltip:popover-open {
-    background: transparent;
-    border: none;
-    padding: 0;
-    margin: 0;
-    overflow: visible;
-
-    position: fixed;
-    inset: unset;
-    display: block;
-    top: 0;
-    left: 0;
-}
-
-
-#global-tooltip::after {
-    content: var(--tip, "Default Tooltip");
-    display: block;
-}
-*/
 
 #main:has([placeholder][popovertarget]:hover)~#global-tooltip {
     opacity: 1;
@@ -1271,12 +1248,17 @@ input[type="number"]::-webkit-inner-spin-button {
     font-weight: bold;
 }
 
+.mobile_menu_spacer {
+    width: max-content;
+    flex-basis: max-content;
+}
+
 /* The sliding dot (thumb) */
 #toolbar input[type="checkbox"]::before {
     content: "";
     position: absolute;
     top: 2px;
-    left: 2px;
+    left: 3px;
     width: 20px;
     height: 20px;
     width: calc(1.6em - 4px);
@@ -1348,8 +1330,46 @@ input[type="number"]::-webkit-inner-spin-button {
     width: 100%;
 }
 
-@media all and (min-width: 2000px) {
-    #editor-container:not(:has(.not-hidden ~ .not-hidden)) {
+@media all and (min-width: 1200px) {
+
+
+    #editor-container:not(:has(.not-hidden ~ .not-hidden)) .not-hidden {
+        flex-basis: 50%;
+    }
+
+    /* :not(:has(.not-hidden ~ .not-hidden)) */
+    [class*="previous-"] #editor-container:has(.not-hidden),
+    [class*="previous-"] #editor-container:has(~.not-hidden) {
+        flex-basis: 50%;
+        display: block;
+        visibility: visible;
+    }
+
+    .previous-editor #editor.hidden {
+        display: block;
+        min-width: 200px;
+        visibility: visible;
+    }
+
+
+    .previous-paint #paint.hidden {
+        visibility: visible;
+        position: relative;
+        z-index: 10;
+        display: block;
+    }
+
+    .previous-viewport-frame #viewport-frame.hidden {
+        visibility: visible;
+        position: relative;
+        z-index: 100;
+        display: block;
+    }
+
+    .previous-paint #viewport-frame,
+    .previous-editor #viewport-frame,
+    .previous-viewport-frame #viewport-frame,
+    [class*="previous-"] #editor-container:has(~.not-hidden)~.not-hidden {
         flex-basis: 50%;
     }
 }
@@ -1469,7 +1489,7 @@ input[type="number"]::-webkit-inner-spin-button {
         /* overflow: visible; */
     }
 
-    
+
     #editor-container:has(~ .not-hidden) {
         display: none;
     }
