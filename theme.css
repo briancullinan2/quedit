@@ -1482,13 +1482,9 @@ body {
     background-color: rgb(from var(--ace-selection-bg) r g b / 50%) !important;
 }
 
-.xterm .xterm-screen {
-    /*background-color: var(--ace-bg) !important;*/
-}
 
 .xterm .xterm-rows {
     color: var(--ace-foreground) !important;
-    font-family: inherit !important;
 }
 
 /* --- FOREGROUND COLORS (ANSI 0 - 15) --- */
@@ -1845,10 +1841,6 @@ body {
     visibility: visible !important;
 }
 
-#terminal .xterm {
-    --xterm-internal-padding: 50px;
-}
-
 #terminal-container .scrollbar.vertical {
     position: absolute !important;
 
@@ -1866,57 +1858,6 @@ body {
     z-index: 100 !important;
 }
 
-#terminal {
-    position: relative;
-    /* THE TRICK: Forces any internal position: fixed element to clip 
-       strictly to this wrapper, ignoring the rest of the web page */
-    transform: translateZ(0);
-}
-
-
-/*
-
-#terminal .xterm {
-    padding-bottom: 60px;
-    --xterm-internal-padding: 50px;
-    width: max-content !important;
-    position: static !important;
-}
-
-#terminal .xterm-viewport {
-    overflow-y: scroll !important;
-}
-
-#terminal .xterm-viewport .xterm-scroll-area {
-    padding-bottom: 200px !important;
-}
-*/
-
-/* Ensure the visible container layer doesn't aggressively clip it out */
-/*
-
-*/
-
-/* Force the horizontal scroll layer wrapper into absolute view bounds */
-/*
-#terminal .xterm .xterm-viewport {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    bottom: 0 !important;
-    height: 100% !important;
-    padding-bottom: 16px !important;
-    overflow-x: auto !important;
-    pointer-events: none;
-}
-
-
-*/
-
-.xterm,
-.xterm-scrollable-element {
-    min-width: fit-content;
-}
 
 
 .xterm-scrollable-element,
@@ -1947,6 +1888,15 @@ body {
     background-color: transparent;
     border-bottom: 2px dashed var(--ace-blue) !important;
     cursor: pointer !important;
+}
+/*
+.xterm .xterm-viewport {
+    z-index: -1;
+}
+*/
+
+body.modifier .terminal-file-underline {
+    pointer-events: all !important;
 }
 
 #statusbar {

@@ -285,6 +285,16 @@ body,
     line-height: var(--global-height);
 }
 
+#popups input[type="radio"],
+#popups input[type="checkbox"]
+{
+    width: min-content;
+}
+
+#popup-group-type {
+    white-space: nowrap;
+}
+
 
 #toolbar input:not([type="checkbox"]),
 #toolbar select,
@@ -1322,13 +1332,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
-#terminal-container.not-hidden #terminal
-{
-    visibility: visible;
-    position: static;
-    z-index: 10;
-}
-
+#terminal-container.not-hidden #terminal,
 #paint.not-hidden,
 #editor-container:not(:has(.not-hidden))~#paint:not(.hidden) {
     visibility: visible;

@@ -38,6 +38,7 @@ function resizeDebouncer() {
                 terminalLoaded = true
             }
             performSharedBufferScanInternal(searchTerminal.value)
+            //performFilenameSearch()
         }
 
     }, 500);
@@ -248,6 +249,7 @@ async function triggerIncrementalSave() {
     incrementalDebouncer = setTimeout(() => {
         debounceTerminalStatus()
         performSharedBufferScanInternal(searchTerminal.value)
+        //performFilenameSearch()
         const lines = loadedLog.slice(-LINES_TO_SAVE)
         //const last1000 = DIFFERENTIATE_SAVED 
         //? getInternalTerminalLog() : getInternalTerminalLogColored();
@@ -337,10 +339,11 @@ function triggerFind(e) {
     }, 250);
 }
 
+
+
 // Shared Global Decoration Tracking Repositories
 let searchAddonMarkers = [];
 let fileUnderlineMarkers = [];
-let globalScanDebounceTimer = null;
 
 
 function performSharedBufferScanInternal(termToSearch, caseSensitive = false) {
@@ -362,7 +365,7 @@ function performSharedBufferScanInternal(termToSearch, caseSensitive = false) {
     }
 
     // Your working file pattern logic
-    const fileRegex = /([\w\d\._\-\/]+\.\w+)\b(?::(\d+))?(?::(\d+))?/g;
+    const fileRegex = /(?:[\w\d\._\-\/]+\/[\w\d\._\-]+\.\w+|[\w\d\._\-]+\.(?:pk3|tar|pk3|zip|ttf|ttf2|otf|woff|wav|bsp|map|md3|mdc|mdx|ase|obj|tga|jpg|jpeg|png|pcx|wav|ogg|cfg|shader|menu|bot|arena|rc))\b(?::(\d+))?(?::(\d+))?/gi;
 
     // 3. Scan Entire Active Terminal Buffer Length Row-by-Row
     for (let i = 0; i < buffer.length; i++) {
@@ -438,6 +441,7 @@ function performSharedBufferScanInternal(termToSearch, caseSensitive = false) {
         }
     }
 }
+
 
 
 function setTerminalAceTheme() {
@@ -569,7 +573,7 @@ term.attachCustomKeyEventHandler((arg) => {
     debounceTerminalStatus()
 
     if (arg.type === "keydown" || arg.type === "keyup")
-        isModifierPressed = arg.ctrlKey || arg.metaKey;
+        updateModifierPressed(arg)
 
     if (arg.type === "keydown") {
         // Check for Ctrl (Windows/Linux) or Cmd (Mac)
@@ -1156,25 +1160,12 @@ function changeCursorPosition(event, x, y, activeRow, col, row, lineText, filePa
 }
 
 
-let terminalClickDebouncer = null
-
-async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, noBounce = false) {
+async function findTestFilepath(filePath) {
 
     let selected
     let dbFile
 
-    if (terminalClickDebouncer) {
-        clearTimeout(terminalClickDebouncer)
-    }
-    if (!noBounce) {
-        terminalClickDebouncer = setTimeout(() => clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, true), 500)
-        return
-    }
 
-
-    // do this once now to full reset
-    hideOpenPanels()
-    latestPanelId = previousPanelId = 'editor' // switch from terminal automatically
 
     if (!dbFile && files[engineRepo]) {
         dbFile = files[engineRepo][filePath]
@@ -1236,24 +1227,28 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
     if (!dbFile) {
 
         dbFile = FS.virtual[filePath]
+        // TODO: make this a kind of API setting thing
         let databases = await getDatabaseMetadata()
         let item
-        for (item of databases) {
 
-            if (trees['#database'].nodesById[item.key + '/' + filePath]) {
-                dbFile = trees['#database'].nodesById[item.key + '/' + filePath]
+        for (item of databases) {
+            const testFile = item.key + '/' + filePath
+
+            if (trees['#database'].nodesById[testFile]) {
+                dbFile = trees['#database'].nodesById[testFile]
                 selected = item.key
                 break;
             }
 
             let record = await getRecord(DB_STORE_NAME, filePath, item.key)
             if (record) {
-                dbFile = trees['#database'].nodesById[item.key + '/' + filePath]
+                dbFile = trees['#database'].nodesById[testFile]
                     = FS.virtual[filePath] = record
                 selected = item.key
                 break;
             }
         }
+
 
         if (dbFile) {
             renderTabsCommand('database', true, false)
@@ -1262,10 +1257,49 @@ async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, fil
 
     }
 
+    return [selected, dbFile]
+}
+
+
+const TEST_LOCATIONS = ['', 'docs/demoq3/pak0.pk3dir']
+
+let terminalClickDebouncer = null
+
+async function clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, noBounce = false) {
+
+    if (terminalClickDebouncer) {
+        clearTimeout(terminalClickDebouncer)
+    }
+    if (!noBounce) {
+        terminalClickDebouncer = setTimeout(() => clickTerminalFile(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, true), 500)
+        return
+    }
+
+    let selected
+    let dbFile
+
+
+    for (let location of TEST_LOCATIONS) {
+        let rewrittenPath = location + (location.length > 0 && !location.endsWith('/') ? '/' : '') + filePath
+        let [selected2, dbFile2] = await findTestFilepath(rewrittenPath)
+        selected = selected2
+        dbFile = dbFile2
+        if (dbFile) {
+            filePath = rewrittenPath
+            break
+        }
+    }
+
+
     if (!dbFile || !selected) {
         writeLog('File not found: ' + filePath)
         return
     }
+
+    // do this once now to full reset
+    hideOpenPanels()
+    latestPanelId = previousPanelId = 'editor' // switch from terminal automatically
+
 
     let parts = selected.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value

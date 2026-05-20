@@ -575,6 +575,11 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         // Optionally fall back to text hexDump or return early so Ace Editor doesn't choke
         str = "[Binary Image Layer Inserted]";
     } else if (hasSequentialBinaryRegex.test(sampleStr)) {
+        if(filePath.endsWith('.bsp')) {
+            // TODO: also open toji bsp viewer like the image editor
+        }
+
+
         str = hexDump(sampleBytes, content, filePath)
     } else {
         // Standard plain text file path

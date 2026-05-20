@@ -243,6 +243,15 @@ const NavHistory = {
     }
 };
 
+function updateModifierPressed(e) {
+    isModifierPressed = e.ctrlKey || e.metaKey;
+    if (!isModifierPressed && document.body.classList.contains('modifier'))
+        document.body.classList.remove('modifier')
+    if (isModifierPressed && !document.body.classList.contains('modifier'))
+        document.body.classList.add('modifier')
+}
+
+
 window.addEventListener('keydown', (e) => {
     if (e.altKey && e.key === 'ArrowLeft') NavHistory.back();
     if (e.altKey && e.key === 'ArrowRight') NavHistory.forward();
@@ -253,12 +262,12 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         modal.classList.add('hidden')
     }
-    isModifierPressed = e.ctrlKey || e.metaKey;
+    updateModifierPressed(e)
 });
 
 
 window.addEventListener('keyup', (e) => {
-    isModifierPressed = e.ctrlKey || e.metaKey;
+    updateModifierPressed(e)
 })
 
 async function newFile() {
