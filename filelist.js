@@ -575,6 +575,8 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
 
     if (hidePanels)
         hideOpenPanels(image)
+    
+    updateBodyPanelIds()
 
     editorContainer.classList.remove('hidden')
     editorContainer.classList.add('not-hidden')
