@@ -51,6 +51,15 @@ networked players, like a GOD mode terrain editor that the dungeon master can ch
 while the players are connected in VR. welcome to my f**ked up reality, it already
 exists, we all know the name lucifer.
 
+13) Need to figure out whats wrong with QVM writing from q3lcc, i remember there being
+some really obvious file system bug where the CWD has to the output directory or 
+something. Gemini also suggested I try using a FD stack for fd_renumber to => 0
+to make it more compatible with posix but i don't know what my .asm output doesn't
+include line information like the native compiler does, i wonder if it would like if 
+i opened the whole directory of .asm files inside the worker and then tried to link
+the premanufactured ones, then i know its a bug in q3rcc.
+
+
 ## So far
 
 #### 5/16/2026

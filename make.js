@@ -3,8 +3,6 @@
  */
 
 
-let TERMINATE = false
-
 // 1. Implementation of path.join for the browser
 const path = {
     join: (...parts) => {

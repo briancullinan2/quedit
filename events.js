@@ -45,11 +45,11 @@ function onLoadTerminal() {
 
         setTerminalAceTheme()
         forceFit()
-        if (!terminalLoaded) {
+        if (!window.terminalLoaded) {
             term.write(terminalLog.map(l => l.text || l).join(''))
             if (!terminalLoaded && terminalLog.length > 0)
                 writePrompt()
-            terminalLoaded = true
+            window.terminalLoaded = true
         }
 
     }, 200)
@@ -99,7 +99,7 @@ function hasChangesBuilder() {
 
 function onLoadEngine() {
     // Contextual renderer engine picker from localStorage
-    const preferredRenderer = SettingsManager.get('q3', 'preferredRendeer');
+    const preferredRenderer = SettingsManager.get('quake3e', 'preferredRendeer');
     if (preferredRenderer !== 'quake3e') {
         setTimeout(window.runTojiEngine, 100);
     } else {

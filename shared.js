@@ -1714,7 +1714,7 @@ const API = (function () {
 
       if (this.database) {
 
-        for (let filePath of obj instanceof Array ? obj : [obj]) {
+        for (let filePath of Array.isArray(obj) ? obj : [obj]) {
           if (!filePath) continue
           await this.header(filePath, true)
           loadedObjs.push(filePath)

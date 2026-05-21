@@ -106,7 +106,7 @@ const DependencyLoader = {
 
 async function switchToQuakeEngine() {
     // Displays loader UI element if necessary
-    await DependencyLoader.loadModule('q3');
+    await DependencyLoader.loadModule('quake3e');
     // Safe to call functions inside sys_wasm.js or start toji's WebGL map loops now
 }
 

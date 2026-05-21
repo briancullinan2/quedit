@@ -862,7 +862,7 @@
           li.classList.add('treejs-node__open');
         }
 
-        let hasChildren = node.children && (node.children instanceof Array || node.children.length);
+        let hasChildren = node.children && (Array.isArray(node.children) || node.children.length);
         if (hasChildren) {
           let switcher = document.createElement('span');
           switcher.classList.add('treejs-switcher');

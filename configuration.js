@@ -1,5 +1,7 @@
 const SCROLLBAR_WIDTH = 15
 
+let TERMINATE = false
+
 
 function updateSelectOptions(elementId, items, selectedValue = 'main') {
     const selector = elementId instanceof Element ? elementId : document.getElementById(elementId);

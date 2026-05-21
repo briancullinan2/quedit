@@ -135,12 +135,13 @@ const IMPORT_SETTINGS = {
         commandHistory: {
             key: 'history',
             default: [],
-            type: 'json',
+            type: 'array',
             set: (val) => {
+                const newValue = val.slice(0)
                 if (!window.commandHistory) window.commandHistory = [];
                 window.commandHistory.length = 0;
-                if (Array.isArray(val)) {
-                    val.forEach(cmd => { if (cmd.trim()) window.commandHistory.push(cmd); });
+                if (Array.isArray(newValue)) {
+                    newValue.forEach(cmd => { if (cmd.trim()) window.commandHistory.push(cmd); });
                 }
             }
         },
@@ -195,12 +196,16 @@ const SettingsManager = {
                     finalValue = config.default;
                 } else if (config.type === 'boolean') {
                     finalValue = raw === 'true';
-                } else if (config.type === 'json') {
+                } else if (config.type === 'json' || config.type === 'array') {
                     try {
                         finalValue = JSON.parse(raw);
-                        if (config.type === 'array' && !(finalValue instanceof Array))
+                        if (config.type === 'array' && !(Array.isArray(finalValue))) {
+                            debugger
                             finalValue = []
-                    } catch {
+                        }
+                    } catch (e) {
+                        debugger
+                        console.error(e)
                         finalValue = config.default;
                     }
                 } else if (config.type === 'csv') {
@@ -280,10 +285,15 @@ const SettingsManager = {
                 // return default because threes no form element for json?
                 try {
                     let parsed = JSON.parse(stored);
-                    if (config.type === 'array')
-                        return parsed instanceof Array ? parsed : []
+                    if (config.type === 'array') {
+                        return Array.isArray(parsed) ? parsed : []
+                    }
                     return parsed
-                } catch { return config.default; }
+                } catch (e) { 
+                    console.error(e)
+                    debugger
+                    return config.default; 
+                }
             }
         }
 

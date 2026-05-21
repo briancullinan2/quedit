@@ -11,7 +11,7 @@ window.terminalFrameLimiter = createFrameRater(25, (e, t, frame) => {
 const LINES_TO_SAVE = 1000
 const LINES_TO_SCROLLBACK = 5000
 const MAX_HISTORY_LENGTH = 20
-let terminalLoaded = false
+window.terminalLoaded = false
 const terminalWrapper = document.getElementById('terminal-container')
 const terminalContainer = document.getElementById('terminal')
 const term = new Terminal({
@@ -25,87 +25,6 @@ const term = new Terminal({
     //}
 });
 term.open(terminalContainer);
-
-
-let lineCount = 0;
-let lastPartialLine = ''
-
-function terminalWrite(message, source, skipActualWrite = false) {
-    if (!message) {
-        debugger
-        return
-    }
-    let render = message
-    if (!message.endsWith('\n\r') && !message.endsWith('\n')) {
-        let parts = message.split(/\n\r*/)
-        lastPartialLine = parts.pop()
-        render = parts.join('\n\r')
-    }
-
-    if (lastPartialLine) {
-        lastPartialLine = ''
-        render = lastPartialLine + render
-    }
-
-    window.lineCount += (message.match(/\n/g) || []).length
-    window.terminalLog.push({ render: render.includes('\n') ? forceLineWrap(render, term.cols) : '', source: source, text: message, index: terminalLog.length, line: lineCount })
-
-    if (!window.terminalLoaded) {
-        return
-    }
-
-    if (!skipActualWrite && terminalWrapper.classList.contains('not-hidden'))
-        term.write(message)
-
-    triggerIncrementalSave()
-}
-
-
-function forceLineWrap(text, maxCharsPerRow = 80) {
-    const rows = [];
-    let currentLine = '';
-    let visibleCount = 0;
-
-    // Tokenize text into individual printable characters vs ANSI sequences
-    // Matches standard ANSI codes: \x1b[...m
-    const tokenRegex = /(\x1b\[[0-9;]*[a-zA-Z])|([\s\S])/g;
-    let match;
-
-    while ((match = tokenRegex.exec(text)) !== null) {
-        const [token, ansiCode, printableChar] = match;
-
-        if (ansiCode) {
-            // Invisible color tag—pass it into the line buffer for free
-            currentLine += ansiCode;
-        } else {
-            // Printable text character
-            if (printableChar === '\n') {
-                // Hard break found naturally in stream, push and reset
-                rows.push(currentLine);
-                currentLine = '';
-                visibleCount = 0;
-            } else {
-                currentLine += printableChar;
-                visibleCount++;
-
-                if (visibleCount >= maxCharsPerRow) {
-                    // Artificial limit hit! Wrap to next segment line
-                    rows.push(currentLine);
-                    currentLine = '';
-                    visibleCount = 0;
-                }
-            }
-        }
-    }
-
-    // Flush remaining stray items in the text buffer
-    if (currentLine.length > 0) {
-        rows.push(currentLine);
-    }
-
-    return rows.join('\n\r');
-}
-
 
 
 if (window.terminalLog.length === 0)

@@ -1034,7 +1034,7 @@ var emscriptenWebGLGet = (name_, p, type) => {
         } else if (result instanceof Float32Array ||
                    result instanceof Uint32Array ||
                    result instanceof Int32Array ||
-                   result instanceof Array) {
+                   Array.isArray(result)) {
           for (var i = 0; i < result.length; ++i) {
             switch (type) {
               case 0: HEAP32[(((p)+(i*4))>>2)] = result[i]; break;

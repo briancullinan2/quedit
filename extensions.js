@@ -89,7 +89,7 @@ const IMPORT_JS = {
     ],
 
     // Quake 3 WebGL & Native WASM Runtime Subsystems
-    q3: [
+    quake3e: [
 
         // Low-Level WASM / Native Execution Layer
         '/nipplejs.js',
@@ -136,9 +136,9 @@ const IMPORT_MODULES = {
         hasChanges: hasChangesBuilder
     },
 
-    q3: {
+    quake3e: {
         panelId: 'viewport-frame',
-        js: IMPORT_JS['q3'],
+        js: IMPORT_JS['quake3e'],
         onLoad: onLoadEngine
     },
 

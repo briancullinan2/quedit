@@ -29381,7 +29381,7 @@
                         28 === s.getUint8(c) && 2 === s.getUint8(c + 1) && (o = s.getUint8(c + 2))in p && (i = s.getInt16(c + 3),
                         a = p[o],
                         r = g(s, c + 5, i),
-                        l.hasOwnProperty(a) ? l[a]instanceof Array ? l[a].push(r) : l[a] = [l[a], r] : l[a] = r),
+                        l.hasOwnProperty(a) ? Array.isArray(l[a]) ? l[a].push(r) : l[a] = [l[a], r] : l[a] = r),
                         c++;
                     return l
                 }

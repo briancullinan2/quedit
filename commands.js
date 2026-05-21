@@ -6,8 +6,10 @@ const ARG_TYPES = {
     STRING: 'string',      // Plain text argument
     NUMERIC: 'number'
 };
+
 const COMMAND_SCHEMA = {
     help: {
+        execute: help,
         description: "Display structured manual lookups for all available engine commands.",
         args: [{ name: "command", type: ARG_TYPES.STRING, description: "Target command manual to profile" }],
         flags: {},
@@ -17,18 +19,22 @@ const COMMAND_SCHEMA = {
         ]
     },
     clear: {
+        execute: clear,
         description: "Clear active terminal screen scrollback history layers.",
         args: [],
         flags: {},
         demos: [{ cmd: "clear", desc: "Flush terminal screen scrollback" }]
     },
     reset: {
+        execute: reset,
         description: "Hard reset terminal terminal display state engine.",
         args: [],
         flags: {},
         demos: [{ cmd: "reset", desc: "Reinitialize active graphic canvas streams and terminals" }]
     },
     mount: {
+        execute: mount,
+        prereqs: ['build'],
         description: "Mount a target workspace repository branch directory structure.",
         args: [
             { name: "repo_path", type: ARG_TYPES.DATABASE, description: "Target repository identifier string" }
@@ -40,6 +46,7 @@ const COMMAND_SCHEMA = {
         ]
     },
     ls: {
+        execute: ls,
         description: "List workspace data entries within the current execution path.",
         args: [],
         flags: {
@@ -55,6 +62,8 @@ const COMMAND_SCHEMA = {
         ]
     },
     build: {
+        execute: buildCommand,
+        prereqs: ['build'],
         description: "Execute compilation procedures across targeted project modules.",
         args: [
             {
@@ -73,6 +82,7 @@ const COMMAND_SCHEMA = {
         ]
     },
     remove: {
+        execute: remove,
         description: "Purge targeted structural documents from persistent storage matrices.",
         args: [
             { name: "filename", type: ARG_TYPES.FILE, description: "File path targeted for deletion" }
@@ -83,6 +93,8 @@ const COMMAND_SCHEMA = {
         ]
     },
     open: {
+        execute: openCommand,
+        prereqs: ['editor'],
         description: "Load a specified document directly into the active editing layout space.",
         args: [
             { name: "filename", type: ARG_TYPES.FILE, description: "Target file path to parse" },
@@ -95,6 +107,8 @@ const COMMAND_SCHEMA = {
         ]
     },
     compile: {
+        execute: compileWorker,
+        prereqs: ['build'],
         description: "Trigger compiler pipelines on target code assets.",
         args: [
             { name: "filename", type: ARG_TYPES.FILE, description: "Source document targeted for evaluation" },
@@ -106,6 +120,8 @@ const COMMAND_SCHEMA = {
         ]
     },
     run: {
+        execute: runWorker,
+        prereqs: ['build'],
         description: "Invoke binary runtime tasks or specialized compiler utility tools.",
         args: [
             { name: "tool", type: ARG_TYPES.FILE, description: "WASM engine target binary element filename" }
@@ -117,6 +133,8 @@ const COMMAND_SCHEMA = {
         ]
     },
     lburg: {
+        execute: lburg,
+        prereqs: ['build'],
         description: "Run code generator bottom-up rewrite system compilation tools.",
         args: [
             { name: "input_md", type: ARG_TYPES.FILE, description: "DAG description source ruleset" },
@@ -128,6 +146,7 @@ const COMMAND_SCHEMA = {
         ]
     },
     clone: {
+        execute: clone,
         description: "Clone external structures down into local indexed DB instances.",
         args: [
             { name: "repo_path", type: ARG_TYPES.DATABASE, description: "Target remote owner/repository pathway" },
@@ -140,12 +159,112 @@ const COMMAND_SCHEMA = {
         ]
     },
     kill: {
+        execute: kill,
         description: "Terminate all running workers or low-level application processes immediately.",
         args: [],
         flags: {},
         demos: [{ cmd: "kill", desc: "Force stop all active asynchronous layout thread routines" }]
     },
 
+    hello: {
+        execute: hello,
+        description: "Initialize environment greeting routines and log terminal session handshake diagnostic parameters.",
+        args: [],
+        flags: {},
+        demos: [
+            { cmd: "hello", desc: "Trigger console connection banner state check" }
+        ]
+    },
+    header: {
+        execute: header,
+        description: "Upload header files to the background worker before trying to compile code that includes them.",
+        args: [
+            { name: "filename", type: ARG_TYPES.FILE, description: "Target include header file structure context" }
+        ],
+        flags: {},
+        demos: [
+            { cmd: "header code/game/g_local.h", desc: "Profile include links and structural offsets for target header definitions" }
+        ]
+    },
+    link: {
+        execute: link,
+        prereqs: ['build'],
+        description: "Link compiled sandbox application object segments or virtual image fragments into unified module payloads.",
+        args: [
+            {
+                name: "mode",
+                type: ['release', 'debug', 'tools', 'qvms', 'client', 'engine', 'server', 'shaders', 'stringify', 'q3lcc', 'q3rcc', 'q3asm', 'lburg', 'game', 'cgame', 'ui'],
+                description: "Target build execution configuration profile"
+            },
+            { name: "target_db", type: ARG_TYPES.DATABASE, description: "Override execution repository target" }
+        ],
+        flags: {},
+        demos: [
+            { cmd: "link game", desc: "Skip any already built objects and run lld.wasm on code/game files." }
+        ]
+    },
+    load: {
+        execute: loadCommand,
+        description: "Load a specific predefined module into the app, bypassing the laziness of the menus.",
+        args: [
+            {
+                name: "module",
+                type: Object.keys(IMPORT_MODULES),
+                description: "Load the specified module by name"
+            }
+        ],
+        flags: {},
+        demos: [
+            { cmd: "load editor", desc: "Immediately loads the " }
+        ]
+    },
+    clang: {
+        execute: clang,
+        prereqs: ['build'],
+        description: "Direct compiler frontend interface for raw wasm32-wasi compilation.",
+        args: [
+            { name: "source_file", type: ARG_TYPES.FILE, description: "Source document (.c, .cpp) to compile" }
+        ],
+        flags: {
+            '-cc1': { description: "Invoke core compiler frontend directly, bypassing standard driver wrappers" },
+            '-emit-obj': { description: "Force emit compiled binary relocatable object code (.o file matrix)" },
+            '-triple=wasm32-wasi': { description: "Target core WASI interface platform architecture footprint" },
+            '-fcolor-diagnostics': { description: "Enable ANSI color mapping codes inside IDE compiler log outputs" },
+            '-ferror-limit': { description: "Truncate macro expansion/diagnostic error reporting logs [Default: 100]" },
+            '-O0': { description: "Disable optimization passes for rapid debugging, explicit stack tracing, and rapid generation" },
+            '-O3': { description: "Enable aggressive compiler optimization passes for maximum execution performance limits" },
+            '-fno-rtti': { description: "Disable C++ Run-Time Type Information structures to minimize output sizing footprints" },
+            '-fno-threadsafe-statics': { description: "Omit synchronization locks around local static initializations inside single-threaded loops" },
+            '-D__WASM__=1': { description: "Inject explicit target macro conditioning parameters into preprocessor environments" },
+            '-I': { description: "Append a specific directory tracking path directly into system header include matrices" }
+        },
+        demos: [
+            { cmd: "clang -cc1 -emit-obj -triple wasm32-wasi code/game/g_main.c", desc: "Compile raw engine gameplay core down to an unlinked relocatable object file" },
+            { cmd: "clang -cc1 -O3 -I/code/qcommon code/client/cl_main.c", desc: "Execute an optimized parsing iteration over target client source trees" }
+        ]
+    },
+    wasm: {
+        execute: wasm,
+        prereqs: ['build'],
+        description: "Direct LLVM static linker (wasm-ld) and diagnostic utility wrapper engine.",
+        args: [
+            { name: "object_files", type: ARG_TYPES.FILE, description: "Compiled relocatable object components (.o) to link" }
+        ],
+        flags: {
+            '--no-entry': { description: "Allow linking compilation blobs lacking a traditional primary main() entry sequence" },
+            '--export-all': { description: "Force expose all internal compilation symbols out directly into the browser's JS loop" },
+            '--export': { description: "Explicitly append a named function/symbol structure into the module export tracking array" },
+            '--allow-undefined': { description: "Allow compilation maps to contain dangling external symbol hooks to link at runtime" },
+            '--import-memory': { description: "Instruct module to ingest WebAssembly.Memory provided explicitly by browser host script wrappers" },
+            '--initial-memory': { description: "Set native initialization footprint requirements for linear allocation arenas [Bytes]" },
+            '--max-memory': { description: "Set hard-boundary thresholds for memory growth before triggering buffer expansion drops" },
+            '-o': { description: "Define output path target destination filename for finished binary payload (.wasm)" }
+        },
+        demos: [
+            { cmd: "wasm-ld --no-entry --export-all -o quake3e.wasm code/game/g_main.o code/game/bg_lib.o", desc: "Link independent local runtime object fragments into a single executable system file" },
+            { cmd: "wasm-ld --import-memory --initial-memory=67108864 -o q3asm.wasm code/tools/asm.o", desc: "Link assembly generator mapping tool with a fixed 64MB baseline allocation pool" }
+        ]
+    },
     // ==========================================
     // Symbolic Alias/Redirect Mapping Matrix
     // ==========================================
@@ -154,17 +273,24 @@ const COMMAND_SCHEMA = {
     delete: { alias: "remove" },
     make: { alias: "build" },
     edit: { alias: "open" },
-    clang: { alias: "compile" },
-    lcc: { alias: "compile" },
-    rcc: { alias: "compile" },
-    ld: { alias: "compile" },
-    cc1: { alias: "compile" },
-    as: { alias: "compile" },
-    cpp: { alias: "compile" },
-    'clang++': { alias: "compile" },
-    wasm: { alias: "compile" },
-    'wasm-ld': { alias: "compile" },
-    'ldd': { alias: "compile" },
+    lcc: { alias: "clang" },
+    rcc: { alias: "clang" },
+    ld: { alias: "wasm" },
+    terminal: { alias: "load" },
+    editor: { alias: "load" },
+    build: { alias: "load" },
+    q3: { alias: "load" },
+    toji: { alias: "load" },
+    paint: { alias: "load" },
+    engine: { alias: "load" },
+    client: { alias: "load" },
+    quake3e: { alias: "load" },
+    cc1: { alias: "clang" },
+    as: { alias: "clang" },
+    cpp: { alias: "clang" },
+    'clang++': { alias: "clang" },
+    'wasm-ld': { alias: "wasm" },
+    'lld': { alias: "wasm" },
     terminate: { alias: "kill" },
     stop: { alias: "kill" },
     start: { alias: "run" },
@@ -226,6 +352,41 @@ function writeCommandHelp(targetCommand, argv) {
 
 }
 
+
+async function loadCommand(argv) {
+
+    let moduleToLoad = argv[0]
+    if (!argv[0] || argv[0].trim().length === 0
+        || argv === 'q3'
+        // TODO: remove conflict down below by running engine and dedicated in a worker
+        || argv[0].includes('engine')
+        || argv[0].includes('client')
+    )
+        moduleToLoad = 'quake3e'
+
+    if (!IMPORT_MODULES[moduleToLoad]) {
+        console.log('Invalid module specified: ' + argv[0])
+        console.log('Valid options:')
+        writeCommandHelp('load')
+        return
+    }
+
+    await DependencyLoader.loadModule(moduleToLoad);
+
+    if (moduleToLoad === 'quake3e' || moduleToLoad === 'toji') {
+        renderTabsCommand('viewport-container')
+    }
+
+    if (moduleToLoad === 'editor') {
+        renderTabsCommand('editor')
+    }
+    if (moduleToLoad === 'terminal') {
+        renderTabsCommand('terminal-container')
+    }
+    if (moduleToLoad === 'paint') {
+        renderTabsCommand('paint')
+    }
+}
 
 
 async function help(argv) {
@@ -290,29 +451,6 @@ async function handleCommand(input) {
     runningCommand = true;
     const [commandName, ...args] = tokens;
 
-    // Hard function link index matching your execution files
-    const executableFunctions = {
-        remove: remove,
-        mount: mount,
-        ls: ls,
-        help: help,
-        hello: hello,
-        build: buildCommand,
-        header: header,
-        open: openCommand,
-        compile: compileWorker,
-        clang: clang,
-        run: runWorker,
-        lburg: lburg,
-        clone: clone,
-        wasm: wasm,
-        reset: reset,
-        clear: clear,
-        link: link,
-        kill: kill
-    };
-
-    // 1. Resolve Command Aliases safely by checking schema redirect records
     let resolvedCommandKey = commandName;
     const schemaMatch = COMMAND_SCHEMA[commandName];
 
@@ -320,12 +458,18 @@ async function handleCommand(input) {
         resolvedCommandKey = schemaMatch.alias;
     }
 
-    // 2. Route directly to execution blocks
-    const targetExecutionRoute = executableFunctions[resolvedCommandKey];
+
+    if (schemaMatch.prereqs) {
+        for (let importFirst of schemaMatch.prereqs) {
+            await DependencyLoader.loadModule(importFirst);
+        }
+    }
+
+    const targetExecutionRoute = COMMAND_SCHEMA[resolvedCommandKey].execute;
 
     if (targetExecutionRoute) {
         try {
-            await targetExecutionRoute(args, database);
+            await targetExecutionRoute(args, database, commandName);
         } catch (execError) {
             if (typeof originalConsole !== 'undefined')
                 originalConsole.error(execError)
@@ -773,18 +917,22 @@ async function header(argv, database) {
     }
 }
 
+
 function openCommand(argv, database) {
     let selected = toolsRepository || argv[1] || database
     let parts = selected.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
     let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
     let fileName = argv[0]
+    // TODO: I did this backwards, i should have had the terminal click execute the command, and put it in history
     clickTerminalFile(fileName, null)
 
 }
+
 function edit(argv) {
     return open(argv)
 }
+
 async function compileWorker(argv, database) {
     let file = argv[0] || currentSession()
     let selected = argv[1] || engineRepository || database
@@ -998,8 +1146,10 @@ async function runWorker(argv, database) {
         // TODO: remove conflict down below by running engine and dedicated in a worker
         || argv[0].includes('engine')
         || argv[0].includes('client')
-    )
-        return await run()
+        || argv[0].includes('q3')
+    ) {
+        return loadCommand(argv[0])
+    }
 
     let thisDatabase = database
     if (argv[0].includes('lburg')
@@ -1010,7 +1160,8 @@ async function runWorker(argv, database) {
     )
         thisDatabase = toolsRepository
     if (argv[0].includes('stringify')
-        || argv[0].includes('quake3e'))
+        || argv[0].includes('quake3e')
+        || argv === 'dedicated')
         thisDatabase = engineRepository
 
     return await api.run({

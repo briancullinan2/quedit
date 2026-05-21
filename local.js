@@ -350,14 +350,14 @@ async function queryIndexInternal(storeName, indexName, exactIndex = null, lower
 
     let range = null
     if (exactIndex !== null) {
-        range = IDBKeyRange.only(index.keyPath instanceof Array && !(exactIndex instanceof Array) ? [exactIndex] : exactIndex)
+        range = IDBKeyRange.only(Array.isArray(index.keyPath) && !(Array.isArray(exactIndex)) ? [exactIndex] : exactIndex)
     } else if (upper !== null && lower !== null) {
-        range = IDBKeyRange.bound(index.keyPath instanceof Array && !(lower instanceof Array) ? [lower] : lower,
-            index.keyPath instanceof Array && !(upper instanceof Array) ? [upper] : upper)
+        range = IDBKeyRange.bound(Array.isArray(index.keyPath) && !(Array.isArray(lower)) ? [lower] : lower,
+            Array.isArray(index.keyPath) && !(Array.isArray(upper)) ? [upper] : upper)
     } else if (upper !== null) {
-        range = IDBKeyRange.upperBound(index.keyPath instanceof Array && !(upper instanceof Array) ? [upper] : upper)
+        range = IDBKeyRange.upperBound(Array.isArray(index.keyPath) && !(Array.isArray(upper)) ? [upper] : upper)
     } else if (lower !== null) {
-        range = IDBKeyRange.lowerBound(index.keyPath instanceof Array && !(lower instanceof Array) ? [lower] : lower)
+        range = IDBKeyRange.lowerBound(Array.isArray(index.keyPath) && !(Array.isArray(lower)) ? [lower] : lower)
     } else {
         range = null // Get all records
     }
