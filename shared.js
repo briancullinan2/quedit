@@ -542,10 +542,13 @@ const API = (function () {
       let needMemfs = module.name.includes('lld')
         || module.name.includes('clang')
 
+      this.previousFd = FS.pointers[0][2].rewrite
+      this.previousContents = FS.pointers[0][2].contents
       this.previousExports = Module.exports
       this.previousErrno = Module.errno.value
       this.previousMemory = ENV.memory || Module.memory
       this.previousHeap = window.STD.sharedMemory || Module.__heap_base
+      this.previousPid = this.api.pid
       if (this.api.memfs) {
         this.previousHostMem = this.api.memfs.hostMem
       }
@@ -591,7 +594,7 @@ const API = (function () {
         */
 
         //Object.assign(wasi_unstable, this.api.memfs.exports);
-        Object.assign(wasi_unstable, FS);
+        Object.assign(wasi_unstable, FILED);
       }
       else {
         Object.assign(wasi_unstable, this.api.memfs.exports);
@@ -661,7 +664,9 @@ const API = (function () {
           if (this.api.memfs) {
             this.api.memfs.hostMem = this.previousHostMem;
           }
-
+          this.api.pid = this.previousPid
+          FS.pointers[0][2].rewrite = this.previousFd
+          FS.pointers[0][2].contents = this.previousContents
           updateGlobalBufferAndViews()
         }
       }
@@ -669,7 +674,6 @@ const API = (function () {
 
 
     runInternal() {
-      let previousPid = this.api.pid
       try {
         ++this.api.pid
         this.output = this.exports._start();
@@ -723,8 +727,6 @@ const API = (function () {
 
         // Propagate error.
         throw exn;
-      } finally {
-        this.api.pid = previousPid
       }
     }
 
@@ -1614,6 +1616,9 @@ const API = (function () {
         debugger
         console.error('Input file empty: ' + input)
       }
+
+      mkdirp(config.TEMPDIR, this.database)
+
       if (input && this.memfs) {
         this.memfs.mkdirp(input.substring(0, input.lastIndexOf('/')))
         this.memfs.mkdirp(obj.substring(0, obj.lastIndexOf('/')))
@@ -1741,6 +1746,8 @@ const API = (function () {
           mkdirp(dirPath)
       }
 
+      mkdirp(config.TEMPDIR, this.database)
+
 
       const loadedObjs = []
       const lld = await this.getModule(this.lldFilename);
@@ -1853,7 +1860,7 @@ const API = (function () {
       if (typeof module == 'string' || !module)
         throw new Error('Cannot load module: ' + name)
 
-      mkdirp('/tmp')
+      mkdirp(config.TEMPDIR, this.database)
 
       /*
       if (args) {
@@ -1902,6 +1909,8 @@ const API = (function () {
       if (typeof module == 'string' || !module)
         throw new Error('Cannot load module: ' + name)
 
+
+      mkdirp(config.TEMPDIR, this.database)
 
       /*
       if (args) {

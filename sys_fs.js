@@ -1,14 +1,13 @@
 // ZERO DEPENDENCY BARE-BONES JAVASCRIPT FILE-SYSTEM FOR 
 //   POSIX WEB-ASSEMBLY
-
-const VFS_NOW = 3
-const ST_FILE = 8
-const ST_DIR = 4
+const VFS_NOW = 3;
+const ST_FILE = 8;
+const ST_DIR = 4;
 
 // 438 = 0o666
-const FS_DEFAULT = (6 << 3) + (6 << 6) + (6)
-const FS_FILE = (ST_FILE << 12) + FS_DEFAULT
-const FS_DIR = (ST_DIR << 12) + FS_DEFAULT
+const FS_DEFAULT = (6 << 3) + (6 << 6) + (6);
+const FS_FILE = (ST_FILE << 12) + FS_DEFAULT;
+const FS_DIR = (ST_DIR << 12) + FS_DEFAULT;
 
 // (33206 & (((1 << 3) - 1) << 3) >> 3 = 6
 const S_IRGRP = ((1 << 3) - 1) << 3
@@ -22,179 +21,198 @@ const X_OK = 3
 const F_OK = 4
 
 
-function Sys_Mkdir(filename) {
 
-	let fileStr = addressToString(filename)
-	let localName = fileStr
-	if (localName.startsWith('//'))
-		localName = localName.substring(1)
-	if (localName[0] != '/')
-		localName = '/' + localName
-	if (!localName.startsWith('/base')
-		&& !localName.startsWith('/home'))
-		localName = '/base' + localName
-	// check if parent directory has been created, TODO: POSIX errno?
-	let parentDirectory = localName.substring(0, localName.lastIndexOf('/'))
-	if (parentDirectory && !FS.virtual[parentDirectory]) {
-		throw new Error('ENOENT')
-	}
-	FS.virtual[localName] = {
-		timestamp: new Date(),
-		mode: FS_DIR,
-		size: 4096,
-		path: localName,
-		parent: localName.substring(0, localName.lastIndexOf('/'))
-	}
-	// async to filesystem
-	// does it REALLY matter if it makes it? wont it just redownload?
-	Sys_notify(FS.virtual[localName], localName)
-	return 0
-}
+/**
+ * Centered Helper to enforce 100% path string consistency across all operations
+ */
+function normalizeVfsPath(path) {
+	if (!path) return "";
+	let localName = path.trim();
 
-function Sys_GetFileStats(filename, size, mtime, ctime) {
+	// Convert duplicate backslashes/slashes
+	localName = localName.replace(/\\/g, '/').replace(/\/+/g, '/');
 
-	let fileStr = addressToString(filename)
-	let localName = fileStr
-	if (localName.startsWith('//'))
-		localName = localName.substring(1)
-	if (localName[0] != '/')
-		localName = '/' + localName
-	if (!localName.startsWith('/base')
-		&& !localName.startsWith('/home'))
-		localName = '/base' + localName
-	if (typeof FS.virtual[localName] != 'undefined') {
-		HEAPU32[size >> 2] = (FS.virtual[localName].contents || []).length
-		HEAPU32[mtime >> 2] = FS.virtual[localName].timestamp.getTime()
-		HEAPU32[ctime >> 2] = FS.virtual[localName].timestamp.getTime()
-		return 1
-	} else {
-		HEAPU32[size >> 2] = 0
-		HEAPU32[mtime >> 2] = 0
-		HEAPU32[ctime >> 2] = 0
-		return 0
-	}
-}
-
-
-const REMOTE_MODELS = {}
-
-
-function Sys_FOpen(filename, mode) {
-
-	// now we don't have to do the indexing crap here because it's built into the engine already
-	let fileStr = addressToString(filename)
-	let extName
-	if (fileStr.includes('.')) {
-		extName = fileStr.substring(fileStr.lastIndexOf('.')).toLowerCase()
-	}
-	let modeStr = addressToString(mode)
-	let localName = fileStr.trim()
-
-	//writeLog(localName)
-	if (localName.startsWith('/')) localName = localName.substring('/');
+	// Strip trailing or helper roots to align with lookups
+	if (localName.startsWith('/')) localName = localName.substring(1);
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
 
+	return localName;
+}
 
-	let createFP = function () {
-		FS.filePointer++
-		FS.pointers[FS.filePointer] = [
-			0, // seek/tell
-			modeStr, // r/w/rw string
-			FS.virtual[localName], // internal virtual filesystem, path, contents, timestamp, mode === FS_DIR/FS_FILE, 
-			localName, // file name
-			FS.filePointer // self index reference
-		]
-		Sys_notify(FS.virtual[localName], localName)
-		return FS.filePointer // not zero
-	}
+function path_openNew(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, rights_inheriting, fdflags, openedFdPtr) {
+	const buffer = Module.memory.buffer;
+	const rawPath = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
 
-	// check if parent directory has been created, TODO: POSIX errno?
-	let parentDirectory = localName.substring(0, localName.lastIndexOf('/'))
-	// TODO: check mode?
-	if (typeof FS.virtual[localName] != 'undefined'
-		&& (FS.virtual[localName].mode >> 12) == ST_FILE) {
-		// open the file successfully
-		return createFP()
-	} else
-		// only write+ files after they have all been loaded, so we don't accidentally overwrite
-		if (/* !FS.isSyncing && */ modeStr.includes('w')
-			&& (typeof FS.virtual[parentDirectory] != 'undefined'
-				// allow writing to root path
-				|| parentDirectory.length == 0)
-		) {
-			// create the file for write because the parent directory exists
+	// Resolve clean key mapping context
+	const localName = normalizeVfsPath(rawPath);
+
+	const O_CREAT = 1;
+	const O_DIRECTORY = 2;
+	const O_EXCL = 4;
+	const O_TRUNC = 8;
+
+	const exists = typeof FS.virtual[localName] !== 'undefined' && FS.virtual[localName] !== null;
+
+	if (!exists) {
+		if (oflags & O_CREAT) {
 			FS.virtual[localName] = {
-				timestamp: new Date(),
-				mode: FS_FILE,
 				contents: new Uint8Array(0),
+				timestamp: new Date(),
+				mode: (oflags & O_DIRECTORY) ? FS_DIR : FS_FILE,
+				size: 0,
 				path: localName,
-				parent: localName.substring(0, localName.lastIndexOf('/'))
-			}
-			return createFP()
-		} else if (typeof FS_GetCurrentGameDir != 'undefined') {
-			let gamedir = addressToString(FS_GetCurrentGameDir())
-			if (localName.startsWith(gamedir + '/'))
-				localName = localName.substring(gamedir.length + 1)
-
-			// TODO: if MD3/IQM try to load remotely
-			if (typeof REMOTE_MODELS[localName] == 'undefined'
-				&& typeof REMOTE_MODELS[localName.replace(extName, '')] == 'undefined'
-				&& (extName == '.md3' || extName == '.iqm')) {
-				// ?alt will redirect to the correct extension and `ui_breadCrumb` will pick it up regardless
-				REMOTE_MODELS[localName.replace(extName, '')] = REMOTE_MODELS[localName] = true
-
-				let remoteFile = 'pak0.pk3dir/' + localName
-				Promise.resolve(Com_DL_Begin(gamedir + '/' + remoteFile, '/' + gamedir + '/' + remoteFile + '?alt')
-					.then(function (responseData) {
-						Com_DL_Perform(gamedir + '/' + remoteFile, remoteFile, responseData)
-						Cvar_Set(stringToAddress('ui_breadCrumb'), stringToAddress(localName))
-						if (responseData)
-							FS_RecordFile(stringToAddress(localName))
-					}))
-			}
-
-			return 0 // POSIX
+				parent: localName.includes('/') ? localName.substring(0, localName.lastIndexOf('/')) : ''
+			};
+		} else {
+			return 44; // WASI_ENOENT
 		}
-}
-
-function Sys_FTell(pointer) {
-	if (typeof FS.pointers[pointer] == 'undefined') {
-		throw new Error('File IO Error') // TODO: POSIX
-	}
-	return FS.pointers[pointer][0]
-}
-
-function Sys_llseek(pointer, position, mode) {
-	debugger
-	if (typeof FS.pointers[pointer] === 'undefined') {
-		throw new Error('EBADF');
-	}
-
-	// Convert everything to BigInt for the calculation to be safe
-	let currentPos = BigInt(FS.pointers[pointer][0]);
-	let offset = BigInt(position);
-	let fileSize = BigInt(FS.pointers[pointer][2].contents.length);
-
-	let newPos;
-	if (mode === 0 /* SEEK_SET */) {
-		newPos = offset;
-	} else if (mode === 1 /* SEEK_CUR */) {
-		newPos = currentPos + offset;
-	} else if (mode === 2 /* SEEK_END */) {
-		newPos = fileSize + offset;
 	} else {
-		return -1;
+		if ((oflags & O_CREAT) && (oflags & O_EXCL)) return 20; // WASI_EEXIST
+		if (oflags & O_TRUNC) {
+			FS.virtual[localName].contents = new Uint8Array(0);
+		}
 	}
 
-	// Update the pointer (store back as Number if your VFS prefers it, 
-	// but BigInt is safer for large files)
-	FS.pointers[pointer][0] = Number(newPos);
+	const rb = BigInt(rights_base);
+	const canRead = (rb & 2n) !== 0n;
+	const canWrite = (rb & 64n) !== 0n;
+	const modeStr = (canRead ? 'r' : '') + (canWrite ? 'w' : '');
+	const view = new DataView(Module.memory.buffer);
 
-	// llseek / fd_seek usually returns the new position, not just 0
-	return newPos;
+	FS.filePointer++;
+	const currentFd = FS.filePointer;
+
+	FS.pointers[currentFd] = [
+		0, // Position seek tracking index
+		modeStr,
+		FS.virtual[localName],
+		localName,
+		currentFd,
+		api?.pid || 42
+	];
+
+	view.setUint32(openedFdPtr, currentFd, true);
+	return 0; // WASI_ESUCCESS
 }
+
+function path_filestat_getNew(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
+	const buffer = Module.memory.buffer;
+	const rawPath = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
+	const localName = normalizeVfsPath(rawPath);
+
+	const file = FS.virtual[localName];
+	if (!file) return 44; // WASI_ENOENT
+
+	const view = new DataView(buffer);
+	new Uint8Array(buffer, bufPtr, 64).fill(0);
+
+	view.setBigUint64(bufPtr + 0, BigInt(dirfd), true);
+
+	const myNode = FS.pointers.find(p => p && p[3] === localName);
+	const inodeIndex = myNode ? myNode[4] : 999;
+	view.setBigUint64(bufPtr + 8, BigInt(inodeIndex), true);
+
+	const isDir = (file.mode >> 12) === 4;
+	view.setUint8(bufPtr + 16, isDir ? ST_UNSTABLE_DIR : ST_UNSTABLE_FILE);
+	view.setUint32(bufPtr + 20, 1, true);
+
+	const size = isDir ? 0n : BigInt(file.contents?.length || 0);
+	view.setBigUint64(bufPtr + 24, size, true);
+
+	const timeNs = BigInt(file.timestamp.getTime()) * 1000000n;
+	view.setBigUint64(bufPtr + 32, timeNs, true);
+	view.setBigUint64(bufPtr + 40, timeNs, true);
+	view.setBigUint64(bufPtr + 48, timeNs, true);
+
+	return 0; // WASI_ESUCCESS
+}
+
+function path_unlink_fileNew(dirfd, pathPtr, pathLen) {
+	const buffer = Module.memory.buffer;
+	const rawPath = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
+	const localName = normalizeVfsPath(rawPath);
+
+	debugger
+	const file = FS.virtual[localName];
+	if (!file) return 44; // WASI_ENOENT
+
+	if ((file.mode >> 12) === 4) return 31; // WASI_EISDIR
+
+	delete FS.virtual[localName];
+
+	if (typeof Sys_notify !== 'undefined') {
+		Sys_notify(false, localName);
+	}
+	return 0;
+}
+
+const FILED = {
+
+	//setModuleInstance : setModuleInstance,
+	fputs: fd_fputs,
+
+	environ_sizes_get: environ_sizes_get,
+	args_sizes_get: args_sizes_get,
+	fd_fdstat_set_flags: function () { debugger },
+	fd_prestat_get: fd_prestat_get,
+	fd_fdstat_get: fd_fdstat_get,
+	fd_write: fd_write,
+	fd_prestat_dir_name: fd_prestat_dir_name,
+	environ_get: environ_get,
+	args_get: args_get,
+	fd_advise: function () { debugger },
+	fd_allocate: function () { debugger },
+	fd_datasync: function () { debugger },
+	path_open: path_openNew,
+	fd_fdstat_set_rights: function () { debugger },
+	fd_filestat_set_size: function () { debugger },
+	fd_filestat_set_times: function () { debugger },
+	fd_pread: fd_pread,
+	fd_seek: fd_seek,
+	fd_read: fd_read,
+	fd_close: _fd_close,
+	fd_pwrite: function () { debugger },
+	fd_readdir: fd_readdir,
+	fd_renumber: fd_renumber,
+	fd_sync: function () { debugger },
+	fd_tell: function () { debugger },
+	path_filestat_get: path_filestat_getNew,
+	path_filestat_set_times: function () { debugger },
+	path_link: function () { debugger },
+	path_readlink: path_readlink,
+	path_symlink: path_symlink,
+	path_unlink_file: path_unlink_fileNew,
+	proc_raise: function () { debugger },
+	sched_yield: function () { debugger },
+	random_get: random_get,
+	sock_recv: function () { debugger },
+	sock_send: function () { debugger },
+	sock_shutdown: function () { debugger },
+	AddDirectoryNode: AddDirectoryNode,
+	AddFileNode: AddFileNode,
+	FindNode: function FindNode() { debugger },
+	GetFileNodeAddress: function GetFileNodeAddress() { debugger },
+	GetFileNodeSize: function GetFileNodeSize() { debugger },
+	GetPathBuf: function GetPathBuf() { debugger },
+	GetPathBufLen: function GetPathBufLen() { debugger },
+	fd_allocate: function fd_allocate() { debugger },
+	fd_fdstat_set_flags: function fd_fdstat_set_flags() { debugger },
+	fd_filestat_get: fd_filestat_get,
+	fd_filestat_set_size: function fd_filestat_set_size() { debugger },
+	init: function init() { debugger },
+	path_create_directory: path_create_directory,
+	path_remove_directory: path_remove_directory,
+	path_rename: path_rename,
+	clock_time_get: clock_gettime,
+	poll_oneoff: poll_oneoff,
+	proc_exit: proc_exit,
+	getpid: getpid,
+	callsys: callsys,
+	//getStringsFromArgv: getStringsFromArgv
+}
+
 
 /**
  * WASI fd_seek(fd, offset_low, offset_high, whence, new_offset_ptr)
@@ -208,8 +226,8 @@ function fd_seek(fd, offset, whence, newOffsetPtr) {
 		debugger
 
 	}
-	if (stream[2].rewrite) {
-		stream = FS.pointers[stream[2].rewrite]
+	if (stream[2].rewrite && stream[2].rewrite.length > 0) {
+		stream = FS.pointers[stream[2].rewrite[stream[2].rewrite.length - 1]]
 	}
 	//writeLog(stream[3])
 
@@ -247,340 +265,38 @@ function fd_seek(fd, offset, whence, newOffsetPtr) {
 	return 0; // WASI_ESUCCESS
 }
 
-function Sys_FClose(pointer) {
-	if (typeof FS.pointers[pointer] == 'undefined') {
-		throw new Error('File IO Error') // TODO: POSIX
-	}
-	Sys_notify(FS.pointers[pointer][2], FS.pointers[pointer][3], FS.pointers[pointer][4])
-	FS.pointers[pointer] = void 0
-	return 0
-}
-
-
-function Sys_FFlush(pointer) {
-	if (typeof FS.pointers[pointer] == 'undefined') {
-		throw new Error('File IO Error') // TODO: POSIX
-	}
-	Sys_notify(FS.pointers[pointer][2], FS.pointers[pointer][3], FS.pointers[pointer][4])
-	return 0
-}
-
-function Sys_Remove(file) {
-	let fileStr = addressToString(file)
-	let localName = fileStr
-	if (localName.startsWith('//'))
-		localName = localName.substring(1)
-	if (localName[0] != '/')
-		localName = '/' + localName
-	if (!localName.startsWith('/base')
-		&& !localName.startsWith('/home'))
-		localName = '/base' + localName
-	if (typeof FS.virtual[localName] != 'undefined') {
-		delete FS.virtual[localName]
-		// remove from IDB
-		Sys_notify(false, localName)
-	}
-	return 0
-}
-
-function Sys_Rename(src, dest) {
-	let strStr = addressToString(src)
-	let srcName = strStr
-	if (srcName.startsWith('//'))
-		srcName = srcName.substring(1)
-	if (srcName.startsWith('/base')
-		|| srcName.startsWith('/home'))
-		srcName = srcName.substring('/base'.length)
-	if (srcName[0] == '/')
-		srcName = srcName.substring(1)
-	let fileStr = addressToString(dest)
-	let destName = fileStr
-	if (destName.startsWith('//'))
-		destName = destName.substring(1)
-	if (destName.startsWith('/base')
-		|| destName.startsWith('/home'))
-		destName = destName.substring('/base'.length)
-	if (destName[0] == '/')
-		destName = destName.substring(1)
-	if (typeof window.updateFilelist != 'undefined') {
-		Sys_notify(FS.virtual[srcName], srcName)
-		Sys_notify(FS.virtual[destName], destName)
-	}
-	return 0
-}
-
-
-function Sys_ListFiles(directory, extension, filter, numfiles, wantsubs) {
-	let dironly = wantsubs
-	// TODO: don't combine /home and /base?
-	let localName = addressToString(directory)
-	if (localName.startsWith('//'))
-		localName = localName.substring(1)
-	if (localName[0] != '/')
-		localName = '/' + localName
-	if (!localName.startsWith('/base')
-		&& !localName.startsWith('/home'))
-		localName = '/base' + localName
-	let extensionStr = addressToString(extension)
-	//let matches = []
-	// can't use utility because FS_* frees and moves stuff around
-	let matches = Object.keys(FS.virtual).filter(function (key) {
-		let subdirI = key.substring(localName.length + 1).indexOf('/')
-		return (!extensionStr || key.endsWith(extensionStr)
-			|| (extensionStr == '/' && (FS.virtual[key].mode >> 12) === ST_DIR))
-			// TODO: match directory 
-			&& (key[localName.length] == '/')
-			&& (wantsubs || subdirI == -1 || subdirI == key.length - 1)
-			&& (!localName || key.startsWith(localName))
-			&& (!dironly || (FS.virtual[key].mode >> 12) === ST_DIR)
-	})
-	// return a copy!
-	let listInMemory
-	if (typeof Z_Malloc != 'undefined') {
-		listInMemory = Z_Malloc((matches.length + 1) * 4)
-	} else {
-		listInMemory = malloc((matches.length + 1) * 4)
-	}
-	for (let i = 0; i < matches.length; i++) {
-		let relativeName = matches[i]
-		if (localName && relativeName.startsWith(localName)) {
-			relativeName = relativeName.substring(localName.length)
-		}
-		if (relativeName[0] == '/')
-			relativeName = relativeName.substring(1)
-		//matches.push(files[i])
-		HEAPU32[(listInMemory + i * 4) >> 2] = FS_CopyString(stringToAddress(relativeName));
-	}
-	HEAPU32[(listInMemory >> 2) + matches.length] = 0
-	HEAPU32[numfiles >> 2] = matches.length
-	// skip address-list because for-loop counts \0 with numfiles
-	return listInMemory
-}
-
-
-function Sys_stat(filename) {
-	debugger
-	let fileStr = addressToString(filename)
-	let localName = fileStr
-	if (localName.startsWith('//'))
-		localName = localName.substring(1)
-	if (localName.startsWith('/base')
-		|| localName.startsWith('/home'))
-		localName = localName.substring('/base'.length)
-	if (localName[0] == '/')
-		localName = localName.substring(1)
-	//if(typeof FS.virtual[localName] != 'undefined') {
-	//  localName = localName
-	//}
-	if (typeof FS.virtual[localName] != 'undefined') {
-		HEAPU32[(stat >> 2) + 0] = FS.virtual[localName].mode
-		HEAPU32[(stat >> 2) + 1] = (FS.virtual[localName].contents || []).length
-		HEAPU32[(stat >> 2) + 2] = FS.virtual[localName].timestamp.getTime()
-		HEAPU32[(stat >> 2) + 3] = FS.virtual[localName].timestamp.getTime()
-		HEAPU32[(stat >> 2) + 4] = FS.virtual[localName].timestamp.getTime()
-		return 0
-	} else {
-		HEAPU32[(stat >> 2) + 0] = 0
-		HEAPU32[(stat >> 2) + 1] = 0
-		HEAPU32[(stat >> 2) + 2] = 0
-		HEAPU32[(stat >> 2) + 3] = 0
-		HEAPU32[(stat >> 2) + 4] = 0
-		return 1
-	}
-}
-
-
-function Sys_Mkdirp(pathname) {
-	let localName = addressToString(pathname)
-	try {
-		if (localName.startsWith('//'))
-			localName = localName.substring(1)
-		if (localName[0] != '/')
-			localName = '/' + localName
-		if (!localName.startsWith('/base')
-			&& !localName.startsWith('/home'))
-			localName = '/base' + localName
-		Sys_Mkdir(pathname, FS_DIR);
-	} catch (e) {
-		// make the subdirectory and then retry
-		if (e.message === 'ENOENT') {
-			let parentDirectory = localName.substring(0, localName.lastIndexOf('/'))
-			if (!parentDirectory) {
-				throw e
-			}
-			Sys_Mkdirp(stringToAddress(parentDirectory));
-			Sys_Mkdir(pathname);
-			return 0;
-		}
-
-		// if we got any other error, let's see if the directory already exists
-		if (Sys_stat(pathname)) {
-			throw e
-		}
-	}
-	return 0
-}
-
-function Sys_FRead(bufferAddress, byteSize, count, pointer) {
-	if (typeof FS.pointers[pointer] == 'undefined') {
-		throw new Error('File IO Error') // TODO: POSIX
-	}
-	let i = 0
-	for (; i < count * byteSize; i++) {
-		if (FS.pointers[pointer][0] >= FS.pointers[pointer][2].contents.length) {
-			break
-		}
-		HEAPU8[bufferAddress + i] = FS.pointers[pointer][2].contents[FS.pointers[pointer][0]]
-		FS.pointers[pointer][0]++
-	}
-
-	return (i - (i % byteSize)) / byteSize
-}
-
-
-function Sys_fprintf(fp, fmt, args) {
-	debugger
-	let formatted = stringToAddress('DEADBEEF')
-	let length = sprintf(formatted, fmt, args)
-	if (length < 1 || !HEAPU32[formatted >> 2]) {
-		formatted = fmt
-	}
-	Sys_fputs(formatted, fp)
-}
-
-
-function Sys_fgetc(fp) {
-	debugger
-	let c = stringToAddress('DEADBEEF')
-	HEAPU32[c >> 2] = 0
-	if (Sys_FRead(c, 1, 1, fp) != 1) {
-		return -1
-	}
-	return HEAPU32[c >> 2]
-}
-
-
-function Sys_fgets(buf, size, fp) {
-	if (typeof FS.pointers[fp] == 'undefined') {
-		throw new Error('File IO Error') // TODO: POSIX
-	}
-	let dataView = FS.pointers[fp][2].contents
-		.slice(FS.pointers[fp][0], FS.pointers[fp][0] + size)
-	let line = dataView.indexOf('\n'.charCodeAt(0))
-	let length
-	if (line <= 1) {  // <- TODO: WTF IS THIS?
-		//length = Sys_FRead(buf, 1, size - 1, fp)
-		length = Sys_FRead(buf, 1, size, fp)
-		//HEAPU8[buf + length] = 0 // FILL THE BUFFER COMPLETELY?
-		return length ? buf : 0
-	} else {
-		length = Sys_FRead(buf, 1, line + 1, fp) // DO I INCLUDE THE \n IN THE BUFFER?
-		HEAPU8[buf + length] = 0
-		return length ? buf : 0
-	}
-}
-
-function Sys_FWrite(buf, size, nmemb, pointer) {
-	// something wrong with breaking inside `node -e`
-	//   maybe someone at Google saw my stream because they made it even worse.
-	//   now it shows Nodejs system code all the time instead of only when I 
-	//   click on it like resharper. LOL!
-	if (typeof FS.pointers[pointer] == 'undefined') {
-		throw new Error('File IO Error') // TODO: POSIX
-	}
-	let tmp = FS.pointers[pointer][2].contents
-	if (FS.pointers[pointer][0] + size * nmemb > FS.pointers[pointer][2].contents.length) {
-		tmp = new Uint8Array(FS.pointers[pointer][2].contents.length + size * nmemb);
-		tmp.set(FS.pointers[pointer][2].contents, 0);
-	}
-	tmp.set(HEAPU8.slice(buf, buf + size * nmemb), FS.pointers[pointer][0]);
-	FS.pointers[pointer][0] += size * nmemb
-	// WE DON'T NEED FILE LOCKING BECAUSE IT'S SINGLE THREADED IN NATURE
-	//   IT WOULD BE IMPOSSIBLE FOR ANOTHER PROCESS TO COME ALONG AND
-	//   OVERWRITE OUR TMP CONTENTS MID FUNCTION.
-	FS.pointers[pointer][2].contents = tmp
-	Sys_notify(FS.pointers[pointer][2], FS.pointers[pointer][3], FS.pointers[pointer][4])
-	return nmemb // k==size*nmemb ? nmemb : k/size;
-}
-
-
-// WHY ADD THIS INSTEAD OF FWRITE DIRECTLY? 
-//   TO MAKE IT EASIER TO DROP INFRONT OF WASI BS.
-function Sys_fputs(s, f) {
-	let l = addressToString(s).length;
-	return Sys_FWrite(s, 1, l, f) == l ? 0 : -1;
-}
-
-function Sys_fputc(c, f) {
-	let s = stringToAddress(String.fromCharCode(c))
-	return Sys_FWrite(s, 1, 1, f) == 1 ? 0 : -1;
-}
-
-
-function Sys_access(filename, i) {
-	if (i != F_OK) {
-		throw new Error('Not implemented!')
-	}
-	let fileStr = addressToString(filename)
-	let localName = fileStr
-	if (localName.startsWith('//'))
-		localName = localName.substring(1)
-	if (localName.startsWith('/base')
-		|| localName.startsWith('/home'))
-		localName = localName.substring('/base'.length)
-	if (localName[0] == '/')
-		localName = localName.substring(1)
-
-	if (FS.virtual[localName]) {
-		return 0
-	} else {
-		debugger
-		if (Module.errno.value) {
-			HEAPU32[Module.errno.value >> 2] = ENOENT
-		}
-		return 1
-	}
-}
-
-
-function Sys_feof(fp) {
-	if (typeof FS.pointers[fp] == 'undefined') {
-		return 1
-	}
-	if (FS.pointers[fp][0] >= FS.pointers[fp][2].contents.length) {
-		return 1
-	}
-	return 0
-}
-
 const virtual = {
 	'/': {
 		timestamp: new Date(),
 		mode: FS_DIR,
 		size: 4096,
 		path: '/',
-		parent: ''
+		parent: '',
+		default: true
 	},
 	'.': {
 		timestamp: new Date(),
 		mode: FS_DIR,
 		size: 4096,
 		path: '.',
-		parent: ''
+		parent: '',
+		default: true
 	},
 	'/home': {
 		timestamp: new Date(),
 		mode: FS_DIR,
 		size: 4096,
 		path: '/home',
-		parent: '/'
+		parent: '/',
+		default: true
 	},
 	'/tmp': {
 		timestamp: new Date(),
 		mode: FS_DIR, // ST_DIR + standard permissions
 		size: 4096,
 		path: '/tmp',
-		parent: '/'
+		parent: '/',
+		default: true
 	},
 	'/dev/stdin': {
 		timestamp: new Date(),
@@ -588,23 +304,26 @@ const virtual = {
 		size: 0,
 		contents: new Uint8Array(),
 		path: '/dev/stdin',
-		parent: '/dev'
+		parent: '/dev',
+		default: true
 	},
 	'/dev/stdout': {
 		timestamp: new Date(),
 		mode: FS_FILE,
 		size: 0,
 		contents: new Uint8Array(),
-		path: '/dev/stdin',
-		parent: '/dev'
+		path: '/dev/stdout',
+		parent: '/dev',
+		default: true
 	},
 	'/dev/stderr': {
 		timestamp: new Date(),
 		mode: FS_FILE,
 		size: 0,
 		contents: new Uint8Array(),
-		path: '/dev/stdin',
-		parent: '/dev'
+		path: '/dev/stderr',
+		parent: '/dev',
+		default: true
 	}
 }
 
@@ -617,85 +336,14 @@ const FS = {
 	modeToStr: ['r', 'w', 'rw'],
 	filePointer: 3,
 	virtual: virtual, // temporarily store items as they go in and out of memory
-	pointers: {
-		0: [0, 'r', virtual['/dev/stdin'], '/dev/stdin', 0],
-		1: [0, 'w', virtual['/dev/stdout'], '/dev/stdout', 1],
-		2: [0, 'w', virtual['/dev/stderr'], '/dev/stderr', 2],
-		3: [0, 'rw', virtual['/'], '/', 3],
-	},
+	pointers: [
+		[0, 'r', virtual['/dev/stdin'], '/dev/stdin', 0, 0],
+		[0, 'w', virtual['/dev/stdout'], '/dev/stdout', 1, 0],
+		[0, 'w', virtual['/dev/stderr'], '/dev/stderr', 2, 0],
+		[0, 'rw', virtual['/'], '/', 3, 0],
+	],
 
-	Sys_ListFiles: Sys_ListFiles,
-	Sys_FTell: Sys_FTell,
-	Sys_FSeek: fd_seek,
-	Sys_llseek: Sys_llseek,
-	Sys_FClose: Sys_FClose,
-	Sys_FWrite: Sys_FWrite,
-	Sys_FFlush: Sys_FFlush,
-	Sys_FRead: Sys_FRead,
-	Sys_FOpen: Sys_FOpen,
-	Sys_Remove: Sys_Remove,
-	Sys_Rename: Sys_Rename,
-	Sys_GetFileStats: Sys_GetFileStats,
-	Sys_Mkdir: Sys_Mkdir,
-	Sys_Mkdirp: Sys_Mkdirp,
-	Sys_FOpen: Sys_FOpen,
-	fopen: Sys_FOpen,
-	fd_open: Sys_FOpen,
-	Sys_Mkdir: Sys_Mkdir,
-	Sys_fgets: Sys_fgets,
-	Sys_fputs: Sys_fputs,
-	Sys_vfprintf: Sys_fprintf,
-	Sys_fprintf: Sys_fprintf,
-	Sys_fputc: Sys_fputc,
-	Sys_putc: Sys_fputc,
-	Sys_getc: Sys_fgetc,
-	Sys_fgetc: Sys_fgetc,
-	Sys_feof: Sys_feof,
-	Sys_access: Sys_access,
-	Sys_umask: function () { },
-	getStreamChecked: getStreamChecked,
-
-	// --- Low-Level IO (Unistd.h) ---
-	open: Sys_FOpen,
-	read: Sys_FRead,
-	write: Sys_FWrite,
-	lseek: Sys_llseek,
-	close: Sys_FClose,
-	unlink: Sys_Remove,
-	access: Sys_access,
-	rmdir: Sys_Remove, // Simplified for your VFS
-	mkdir: Sys_Mkdir,
-	umask: function () { return 0; },
-	getpid: getpid,
-
-	// --- Stream IO (Stdio.h) ---
-	fopen: Sys_FOpen,
-	fclose: Sys_FClose,
-	fread: Sys_FRead,
-	fwrite: Sys_FWrite,
-	fseek: fd_seek,
-	ftell: Sys_FTell,
-	fflush: Sys_FFlush,
-	fgets: Sys_fgets,
-	fputs: Sys_fputs,
-	fprintf: Sys_fprintf,
-	vfprintf: Sys_fprintf,
-	fputc: Sys_fputc,
-	putc: Sys_fputc,
-	fgetc: Sys_fgetc,
-	getc: Sys_fgetc,
-	feof: Sys_feof,
-
-	// --- Directory & Metadata ---
-	opendir: Sys_ListFiles, // Closest match for your readdir logic
-	stat: Sys_stat,
-	fstat: fd_filestat_get,
-	rename: Sys_Rename,
-
-	// --- Extensions / Internal ---
-	mkdirp: Sys_Mkdirp,
 }
-
 
 
 
@@ -1005,7 +653,11 @@ function fd_write(fd, iovs, iovsLen, nwritten) {
 		}
 
 		if (typeof Module.hostWrite !== 'undefined') {
-			Module.hostWrite(String.fromCharCode.apply(null, totalBuf));
+			const msg = String.fromCharCode.apply(null, totalBuf)
+			//if (msg.includes('$Id$')) {
+			//	debugger
+			//}
+			Module.hostWrite(msg);
 		}
 		view.setUint32(nwritten, written, true);
 		return 0;
@@ -1128,7 +780,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	// 2. Resolve Full Path relative to dirfd
 	let localName = path.trim();
 	//writeLog(localName)
-	if (localName.startsWith('/')) localName = localName.substring('/');
+	if (localName.startsWith('/')) localName = localName.substring(1);
 	if (localName.startsWith('base/')) localName = localName.substring(5);
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
@@ -1187,11 +839,15 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 				modeStr,
 				FS.virtual[localName],
 				localName,
-				localPointer
+				localPointer,
+				api?.pid || 42
 			]
-			if (!FS.pointers[0][2].rewrite)
-				FS.pointers[0][2].rewrite = localPointer
-			// DO THIS ON OPEN SO WE CAN CHANGE ICONS
+			//if (!FS.pointers[0][2].rewrite)
+			//	FS.pointers[fd][2].rewrite = []
+
+			//if(FS.pointers[fd][2].rewrite.length === 0)
+			debugger
+			//FS.pointers[0][2].rewrite.push(localPointer)
 			//if (!(oflags & O_TRUNC))
 			//	Sys_notify(FS.virtual[localName], localName)
 		}
@@ -1199,8 +855,6 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	}
 
 	else {
-
-		// 4. Create File Descriptor (Stream)
 		// Layout: [position, path, node]
 		if (!FS.virtual[localName]) {
 			debugger
@@ -1212,13 +866,13 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 				modeStr,
 				FS.virtual[localName],
 				localName,
-				FS.filePointer
+				FS.filePointer,
+				api?.pid || 42
 			]
 			//if (!FS.pointers[0][2].rewrite)
 			//	FS.pointers[0][2].rewrite = FS.filePointer
 			//else
 			//	debugger
-			// DO THIS ON OPEN SO WE CAN CHANGE ICONS
 			//if (!(oflags & O_TRUNC))
 			//	Sys_notify(FS.virtual[localName], localName)
 			return FS.filePointer // not zero
@@ -1236,8 +890,18 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 
 function _fd_close(fd) {
 	try {
-		if(fd === 0) debugger
-		if(FS.pointers[fd] && FS.pointers[fd][2].rewrite)
+		if (fd === 0) debugger
+		//if(fd < 4) debugger
+		if (fd < 4) {
+			if(!FS.pointers[fd]) {
+				debugger
+				return 0
+			}
+			FS.pointers[fd][0] = 0
+			FS.pointers[fd][2].contents = new Uint8Array(0)
+			return 0
+		}
+		if (FS.pointers[fd] && FS.pointers[fd][2].rewrite)
 			debugger
 		if (!FS.pointers[fd]) return 8; // WASI_EBADF
 		//let stream = SYSCALLS.getStreamFromFD(fd);
@@ -1567,8 +1231,8 @@ function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
 function fd_renumber(fd, to) {
 
 
-	if(to === 0) {
-		debugger
+	if (to === 0) {
+		//debugger
 	}
 
 
@@ -1610,75 +1274,9 @@ function fd_renumber(fd, to) {
 	return 0; // WASI_ESUCCESS
 }
 
-const FILED = {
-
-	//setModuleInstance : setModuleInstance,
-	fputs: Sys_fputs,
-
-	environ_sizes_get: environ_sizes_get,
-	args_sizes_get: args_sizes_get,
-	fd_fdstat_set_flags: function () { debugger },
-	fd_prestat_get: fd_prestat_get,
-	fd_fdstat_get: fd_fdstat_get,
-	fd_write: fd_write,
-	fd_prestat_dir_name: fd_prestat_dir_name,
-	environ_get: environ_get,
-	args_get: args_get,
-	fd_advise: function () { debugger },
-	fd_allocate: function () { debugger },
-	fd_datasync: function () { debugger },
-	path_open: path_open,
-	fd_fdstat_set_rights: function () { debugger },
-	fd_filestat_set_size: function () { debugger },
-	fd_filestat_set_times: function () { debugger },
-	fd_pread: fd_pread,
-	fd_seek: fd_seek,
-	Sys_FSeek: fd_seek,
-	fd_read: fd_read,
-	fd_close: _fd_close,
-	fd_pwrite: function () { debugger },
-	fd_readdir: fd_readdir,
-	fd_renumber: fd_renumber,
-	fd_sync: function () { debugger },
-	fd_tell: function () { debugger },
-	path_filestat_get: path_filestat_get,
-	path_filestat_set_times: function () { debugger },
-	path_link: function () { debugger },
-	path_readlink: path_readlink,
-	path_symlink: path_symlink,
-	path_unlink_file: path_unlink_file,
-	proc_raise: function () { debugger },
-	sched_yield: function () { debugger },
-	random_get: random_get,
-	sock_recv: function () { debugger },
-	sock_send: function () { debugger },
-	sock_shutdown: function () { debugger },
-	AddDirectoryNode: AddDirectoryNode,
-	AddFileNode: AddFileNode,
-	FindNode: function FindNode() { debugger },
-	GetFileNodeAddress: function GetFileNodeAddress() { debugger },
-	GetFileNodeSize: function GetFileNodeSize() { debugger },
-	GetPathBuf: function GetPathBuf() { debugger },
-	GetPathBufLen: function GetPathBufLen() { debugger },
-	fd_allocate: function fd_allocate() { debugger },
-	fd_fdstat_set_flags: function fd_fdstat_set_flags() { debugger },
-	fd_filestat_get: fd_filestat_get,
-	fd_filestat_set_size: function fd_filestat_set_size() { debugger },
-	init: function init() { debugger },
-	path_create_directory: path_create_directory,
-	path_remove_directory: path_remove_directory,
-	path_rename: path_rename,
-	Sys_gettime: clock_gettime,
-	clock_time_get: clock_gettime,
-	poll_oneoff: poll_oneoff,
-	proc_exit: proc_exit,
-	getpid: getpid,
-	fork: fork,
-	wait: wait,
-	execv: execv,
-	_spawnvp: _spawnvp,
-	callsys: callsys,
-	//getStringsFromArgv: getStringsFromArgv
+function fd_fputs(s, f) {
+	let l = addressToString(s).length;
+	return Sys_FWrite(s, 1, l, f) == l ? 0 : -1;
 }
 
 function path_symlink(oldPathPtr, oldPathLen, dirfd, newPathPtr, newPathLen) {
@@ -1810,89 +1408,13 @@ function callsys(argvPtr) {
 }
 
 
-function _spawnvp(mode, cmdnamePtr, argvPtr) {
-	const u8 = new Uint8Array(Module.memory.buffer);
-	const path = readStr(u8, cmdnamePtr);
-	try {
-		const cmdArgs = getStringsFromArgv(argvPtr)
-		const targetKey = path || cmdArgs[0];
-
-		// Await the execution of the WASM tool
-		let result = api.runSync(targetKey, ...cmdArgs);
-		writeLog('Process resulted in: ' + result);
-
-		return result;
-	} catch (e) {
-		console.error(`Execution failed for ${path}:`, e);
-		return 100; // Standard error exit for LCC
-	}
-}
-
-
-
 // Global tracking state for our simulated single-threaded process table
 let virtualChildExitCode = 0;
 let forkToggle = false;
 
 function getpid() {
-	return 42;
+	return api?.pid || 42;
 }
-
-function fork() {
-	// Alternating state machine behavior:
-	// First call inside _spawnvp returns 0 (Run the Child code block)
-	// Second call inside _spawnvp returns 42 (Run the Parent code block)
-	forkToggle = !forkToggle;
-	if (forkToggle) {
-		return 0; // Trigger case 0: execvp()
-	} else {
-		return 42; // Skip to parent wait() block
-	}
-}
-
-function execv(pathPtr, argvPtr) {
-	const u8 = new Uint8Array(Module.memory.buffer);
-	const path = readStr(u8, pathPtr);
-	const cmdArgs = getStringsFromArgv(argvPtr);
-	const targetKey = path || cmdArgs[0];
-
-	if (api && api.moduleCache[targetKey]) {
-		// 1. Run the target compiler module synchronously RIGHT NOW
-		let result = api.runSync(targetKey, ...cmdArgs);
-		writeLog('Process resulted in: ' + result);
-
-		// 2. Save the real exit code in our global virtual tracking state
-		virtualChildExitCode = result;
-
-		// 3. FORCE a loop mutation: We recall _spawnvp dynamically to trigger the parent pass
-		// This forces fork() to toggle and return 42 next, skipping straight to wait()
-		Module.exports._spawnvp(0, pathPtr, argvPtr);
-
-		// 4. Clean exit from the child fork branch
-		return 0;
-	}
-	else {
-		writeLog('Would have run: ' + [path, ...cmdArgs].join(' '));
-		Module.errno = 1; // EPERM / EINVAL
-		return -1;
-	}
-}
-
-function wait(statusPtr) {
-	// If a status memory pointer was passed by C, write our captured child status into it
-	// C expects the exit code to be shifted left by 8 bits: (status >> 8) & 0377
-	if (statusPtr && Module.memory) {
-		const view = new DataView(Module.memory.buffer);
-		view.setInt32(Number(statusPtr), (virtualChildExitCode << 8), true);
-	}
-
-	// Reset our fork toggle tracking flag for the next compilation pass command
-	forkToggle = false;
-
-	// Return the fake PID (42) to signify the child process successfully reaped
-	return 42;
-}
-
 
 function readStr(u8, o, len = -1) {
 	let str = '';
@@ -1922,6 +1444,7 @@ function path_unlink_file(dirfd, pathPtr, pathLen) {
 		return 44; // WASI_ENOENT
 	}
 
+	debugger
 	// 3. Check type
 	// In WASI, path_unlink_file is strictly for files.
 	// If it's a directory, return EPERM (1) or EISDIR (31)
@@ -2125,3 +1648,184 @@ if (typeof module != 'undefined') {
 	// SOMETHING SOMETHING fs.writeFile
 	module.exports = FS
 }
+
+/*
+
+function callsysNew(argvPtr) {
+	const cmdArgs = getStringsFromArgv(argvPtr);
+	const targetKey = cmdArgs[0];
+    
+	try {
+		const parentPid = api.pid;
+		const childPid = parentPid + 1;
+
+		// 1. Initialize the POSIX File Actions Table
+		// By default, POSIX inherits all descriptors unless explicitly closed or rearranged.
+		// We initialize a map of Child FD -> Parent FD
+		const fdMap = {
+			0: 0, // Child Stdin  <- Parent Stdin
+			1: 1, // Child Stdout <- Parent Stdout
+			2: 2  // Child Stderr <- Parent Stderr
+		};
+
+		// 2. PARSE REDIRECTIONS (Emulating posix_spawn_file_actions)
+		// If your driver intercepts explicit layout rules, map them here.
+		// Example: If a tool requests a closed stream or a file redirection:
+		// To Close (Node 'ignore'): delete fdMap[fd]
+		// To Pipe/Redirect:         fdMap[childFd] = parentFd
+
+		// 3. EXECUTE PRE-SPAWN HOUSEKEEPING (Isolate Child Descriptor Space)
+		// We generate a clean slate array for the child pointers based on the map
+		const childPointers = [];
+	    
+		Object.keys(fdMap).forEach((childFdStr) => {
+			const childFd = parseInt(childFdStr, 10);
+			const parentFd = fdMap[childFd];
+		    
+			if (FS.pointers[parentFd]) {
+				// Clone the pointer descriptor array structure:
+				// [position, mode, node, path, fd, pid]
+				const parentPointer = FS.pointers[parentFd];
+			    
+				childPointers[childFd] = [
+					parentPointer[0], // Inherit seek position
+					parentPointer[1], // Inherit access mode
+					parentPointer[2], // Inherit raw memory VFS Node object reference
+					parentPointer[3], // Inherit file path string
+					childFd,          // Assign the new target Child FD index
+					childPid          // Assign ownership to the child execution thread
+				];
+			}
+		});
+
+		// 4. SWAP RUNTIME CONTEXT
+		// Back up parent descriptors, and inject our child actions array layout
+		const parentPointersBackup = [...FS.pointers];
+		FS.pointers = childPointers;
+
+		writeLog(`[POSIX Spawn] Initializing Child Process ${childPid} file descriptor table.`);
+
+		// 5. EXECUTE CHILD ENGINE PASS
+		// Because FS.pointers now ONLY holds the mapped files, the child's internal 
+		// read/write routines are fully contained or isolated according to your setup.
+		const result = api.runSync(targetKey, ...cmdArgs);
+	    
+		// 6. CAPTURE CHILD ACTIONS & RESTORE PARENT
+		// If the child opened or modified files (like generating an assembly block), 
+		// propagate those newly added virtual file descriptors back into the parent space.
+		for (let i = 0; i < FS.pointers.length; i++) {
+			if (FS.pointers[i] && i > 2) {
+				// If the child allocated a fresh descriptor, restore it to the parent pool
+				parentPointersBackup[i] = FS.pointers[i];
+				parentPointersBackup[i][5] = parentPid; // Re-assign ownership to driver
+			}
+		}
+
+		// Restore the full pointer array context back to the parent compiler driver
+		FS.pointers = parentPointersBackup;
+
+		return result;
+	} catch (e) {
+		writeLog(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack}`);
+		return 100;
+	}
+}
+
+[RUN] q3lcc -v -v -Wf-g -S -Icode/game -Icode/cgame -Icode/q3_ui -DGAME code/game/g_main.c -o build/release-wasm-js/code/game/g_main.asm
+q3lcc $Id$
+[1:42:28 PM][RUN] q3cpp -D__STDC__=1 -D__STRICT_ANSI__ -D__signed__=signed -DQ3_VM -D__LCC__ -Icode/game -Icode/cgame -Icode/q3_ui -DGAME code/game/g_main.c /tmp/lcc10.i
+cpp: code/game/bg_public.h:508 code/game/g_local.h:6 code/game/g_main.c:4 No newline at end of file
+[1:42:33 PM][RUN] Allowing rAF after exit.
+[1:42:33 PM][RUN] q3rcc -target=bytecode -v -g /tmp/lcc10.i build/release-wasm-js/code/game/g_main.asm
+q3rcc $Name$($Id$)
+0: warning: empty input file
+rm /tmp/lcc10.i
+[1:42:34 PM][RUN] Run succeeded: code/game/g_main.c
+
+
+function callsysNew2(argvPtr) {
+	const cmdArgs = getStringsFromArgv(argvPtr);
+	const targetKey = cmdArgs[0];
+    
+	try {
+		const parentPid = api.pid;
+		const childPid = parentPid + 1;
+
+		// Ensure our standard slots exist so freopen can safely read them
+		if (!FS.pointers[0]) FS.pointers[0] = [0, 'r', { contents: new Uint8Array(0) }, '/dev/stdin', 0, parentPid];
+		if (!FS.pointers[1]) FS.pointers[1] = [0, 'w', { contents: new Uint8Array(0) }, '/dev/stdout', 1, parentPid];
+		if (!FS.pointers[2]) FS.pointers[2] = [0, 'w', { contents: new Uint8Array(0) }, '/dev/stderr', 2, parentPid];
+
+		// Backup positions and tracks instead of stripping references out
+		const parentFpState = FS.pointers.map(p => p ? [...p] : null);
+
+		// Assign active PID contexts down the tree layout
+		for (let i = 0; i < FS.pointers.length; i++) {
+			if (FS.pointers[i]) {
+				FS.pointers[i][5] = childPid; 
+			}
+		}
+
+		// Run the synchronized compilation pass
+		const result = api.runSync(targetKey, ...cmdArgs);
+
+		// Restore file tracking contexts cleanly back to the driver engine
+		for (let i = 0; i < parentFpState.length; i++) {
+			if (parentFpState[i]) {
+				// Keep file content updates made by the child, but restore parent descriptors
+				if (FS.pointers[i]) {
+					parentFpState[i][0] = FS.pointers[i][0]; // Sync look position
+				}
+				FS.pointers[i] = parentFpState[i];
+				FS.pointers[i][5] = parentPid; // Re-own
+			}
+		}
+
+		return result;
+	} catch (e) {
+		writeLog(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack}`);
+		return 100;
+	}
+}
+
+function callsys(argvPtr) {
+	const cmdArgs = getStringsFromArgv(argvPtr);
+	const targetKey = cmdArgs[0];
+    
+	try {
+		// Track tracking dimensions across the POSIX bridge
+		const startingFp = FS.pointers.length;
+		const currentPid = api.pid;
+		const targetChildPid = currentPid + 1; // Anticipate the next internal PID sequence
+
+		// Run the child tool (e.g., q3cpp). It reads and writes directly to our shared VFS
+		const result = api.runSync(targetKey, ...cmdArgs);
+	    
+		const endingFp = FS.pointers.length;
+		const opened = endingFp - startingFp;
+		let leftOpen = 0;
+	    
+		for (let i = startingFp + 1; i < endingFp; i++) {
+			if (FS.pointers[i]) leftOpen++;
+		}
+	    
+		if (leftOpen > 0) {
+			writeLog(`[callsys] Process resulted in: ${result}. Releasing ${leftOpen} shared child file handles.`);
+		    
+			for (let i = endingFp; i > startingFp; i--) {
+				if (!FS.pointers[i]) continue;
+			    
+				// If the handle belongs to our child pass execution loop, close it out clean
+				if (FS.pointers[i][5] === targetChildPid || !FS.pointers[i][5]) {
+					Sys_FClose(i);
+				}
+			}
+		}
+
+		return result;
+	} catch (e) {
+		writeLog(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack}`);
+		return 100; // Return clean error limits to lcc driver loop
+	}
+}
+*/

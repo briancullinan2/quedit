@@ -700,8 +700,8 @@ function mkdirp(path, database) {
         accumulated = accumulated === "" ? part : `${accumulated}/${part}`;
 
         try {
-            let hadnt = !FS.virtual[accumulated]
-            if (!FS.virtual[accumulated])
+            let hadnt = !FS.virtual[accumulated] || FS.virtual[accumulated].default === true
+            if (hadnt)
                 FS.virtual[accumulated] = {
                     timestamp: new Date(),
                     mode: FS_DIR,
@@ -712,8 +712,11 @@ function mkdirp(path, database) {
             FS.virtual[accumulated + '/.'] = FS.virtual[accumulated]
             if (previousPath)
                 FS.virtual[accumulated + '/..'] = FS.virtual[previousPath]
-            if (database && hadnt)
+            if (database && hadnt) // TODO: good for checking build times?
                 putRecord(DB_STORE_NAME, FS.virtual[accumulated], database)
+            if(FS.virtual[accumulated].default) {
+                FS.virtual[accumulated].default = false
+            }
         } catch (e) {
             // Log only if it's a real crash, not just an "already exists" error
             if (!e.message.includes("exists")) {
@@ -738,9 +741,9 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
 
 
     if (makeDirs && !FS.virtual['/tmp'])
-        mkdirp('tmp')
+        mkdirp('tmp', database)
     if (makeDirs && !FS.virtual['/home'])
-        mkdirp('home')
+        mkdirp('home', database)
 
 
     if (api.memfs) {

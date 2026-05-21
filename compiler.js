@@ -163,7 +163,7 @@ function specialWrite(msg) {
         needsHeaders = true
     }
     if(msg.includes('$Id$')) {
-        debugger
+        //debugger
     }
 
 

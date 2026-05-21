@@ -1126,7 +1126,7 @@ rm /tmp/lcc420.i
         await api.run({
             tool: 'q3lcc.js.wasm',
             args: [
-                'q3lcc', '-v', '-v', '-Wf-g', '-S',
+                'q3lcc', '-S','-Wf-g',  //  '-v', '-v', '-Wf-g', '-S',
                 ...QVM_CFLAGS,
                 ...DEFINE,
                 srcPath,
