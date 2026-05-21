@@ -1,4 +1,12 @@
 
+
+window.terminalFrameLimiter = createFrameRater(25, (e, t, frame) => {
+    // all of xterms request use the standard callback as the e parameter with nothing else
+    e(t, frame) // doesn't even use these parameters
+});
+
+
+
 //const DIFFERENTIATE_SAVED = false
 const LINES_TO_SAVE = 1000
 const LINES_TO_SCROLLBACK = 5000
@@ -813,8 +821,6 @@ const formatBytes = (bytes) => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + sizes[i];
 };
-
-
 
 function forceFit() {
 

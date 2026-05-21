@@ -1483,7 +1483,7 @@
                 }
                 addRefreshCallback(e) {
                     return this._refreshCallbacks.push(e),
-                    this._animationFrame || (this._animationFrame = this._coreBrowserService.window.requestAnimationFrame(( () => this._innerRefresh()))),
+                    this._animationFrame || (this._animationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => this._innerRefresh()))),
                     this._animationFrame
                 }
                 refresh(e, t, i) {
@@ -1492,7 +1492,7 @@
                     t = void 0 !== t ? t : this._rowCount - 1,
                     this._rowStart = void 0 !== this._rowStart ? Math.min(this._rowStart, e) : e,
                     this._rowEnd = void 0 !== this._rowEnd ? Math.max(this._rowEnd, t) : t,
-                    this._animationFrame || (this._animationFrame = this._coreBrowserService.window.requestAnimationFrame(( () => this._innerRefresh())))
+                    this._animationFrame || (this._animationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => this._innerRefresh())))
                 }
                 _innerRefresh() {
                     if (this._animationFrame = void 0,
@@ -2097,7 +2097,7 @@
                 _queueRefresh(e, t) {
                     this._shouldUpdateDimensions = e || this._shouldUpdateDimensions,
                     this._shouldUpdateAnchor = t || this._shouldUpdateAnchor,
-                    void 0 === this._animationFrame && (this._animationFrame = this._coreBrowserService.window.requestAnimationFrame(( () => {
+                    void 0 === this._animationFrame && (this._animationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => {
                         debugger;
                         this._refreshDecorations(),
                         this._animationFrame = void 0
@@ -3996,7 +3996,7 @@
                     this._onSelectionChange.fire()
                 }
                 refresh(e) {
-                    this._refreshAnimationFrame || (this._refreshAnimationFrame = this._coreBrowserService.window.requestAnimationFrame(( () => this._refresh()))),
+                    this._refreshAnimationFrame || (this._refreshAnimationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => this._refresh()))),
                     c.isLinux && e && this.selectionText.length && this._onLinuxMouseSelection.fire(this.selectionText)
                 }
                 _refresh() {
@@ -12084,7 +12084,7 @@
                     e.set(l, c)),
                     c.push(h),
                     s.get(l) || (s.set(l, !0),
-                    n.requestAnimationFrame(( () => (t => {
+                    window.terminalFrameLimiter.requestFrameUpdate(( () => (t => {
                         s.set(t, !1);
                         const n = e.get(t) ?? [];
                         for (i.set(t, n),

@@ -637,7 +637,11 @@ function renderHashCommand(fileName, noBounce = false) {
 
     if (document.getElementById('terminals')
         .querySelector(`[href="#${fileName}"]`)) {
-        renderTerminalsCommand(fileName)
+        // give UX time to adjust to class change
+        setTimeout(() => {
+            if(window.renderTerminalsCommand)
+                renderTerminalsCommand(fileName)
+        }, 200)
     }
 }
 
