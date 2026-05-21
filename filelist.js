@@ -543,7 +543,8 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         }, 200);
 
         // Optionally fall back to text hexDump or return early so Ace Editor doesn't choke
-        previousNotFilelist = 'editor'
+        latestPanelId = latestNotFilelist = 'paint'
+        previousNotFilelistId = 'editor'
         str = "[Binary Image Layer Inserted]";
     } else if (hasSequentialBinaryRegex.test(sampleStr)) {
         if (filePath.endsWith('.bsp')) {
@@ -554,10 +555,11 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
                 let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
                 initMap(gl, mapFile)
             }, 200)
+            latestPanelId = latestNotFilelist = 'viewport-frame'
         }
 
 
-        previousNotFilelist = 'editor'
+        previousNotFilelistId = 'editor'
         str = hexDump(sampleBytes, content, filePath)
     } else {
         // Standard plain text file path
@@ -794,7 +796,7 @@ let previousPanelId = null
 let debouncedPanelId = null
 let previousFilelistId = null
 let notFilelist = 'editor'
-let previousNotFilelist = null
+let previousNotFilelistId = null
 
 async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
 
@@ -878,8 +880,8 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
         }
 
         // save previous not file list also
-        if (notFilelist !== previousNotFilelist) {
-            previousNotFilelist = notFilelist
+        if (notFilelist !== latestPanelId) {
+            previousNotFilelistId = notFilelist
         }
 
 
@@ -983,7 +985,7 @@ function updateBodyPanelIds() {
 
 
     if (previousPanelId)
-        document.body.classList.add('previous-' + (previousNotFilelist || previousPanelId))
+        document.body.classList.add('previous-' + (previousNotFilelistId || previousPanelId))
     if (latestPanelId)
         document.body.classList.add('panel-' + latestPanelId)
 
