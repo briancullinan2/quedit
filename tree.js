@@ -1222,7 +1222,7 @@
               domStyle.parts.push(addStyle(item.parts[j], options));
             }
           } else {
-            let parts = [];
+            const parts = [];
 
             for (let j = 0; j < item.parts.length; j++) {
               parts.push(addStyle(item.parts[j], options));

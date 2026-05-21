@@ -1372,9 +1372,9 @@ const API = (function () {
           for (let selected of tryDatabases) {
             if (!selected) continue
             try {
-              let parts = selected.split('/')
-              let ownerName = parts.length == 2 ? parts[0] : owner.value
-              let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+              const parts = selected.split('/')
+              const ownerName = parts.length == 2 ? parts[0] : owner.value
+              const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
               // because this also creates the database with setupDatabase
               if (!files[selected]) {
                 let branch = await getDefaultBranch(ownerName, repoName)

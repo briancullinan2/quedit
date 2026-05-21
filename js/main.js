@@ -33,7 +33,7 @@ let polyfill = new WebXRPolyfill();
 let mapName = 'q3tourney2';
 
 // If you're running from your own copy of Quake 3, you'll want to use these shaders
-/*let mapShaders = [
+let mapShaders = [
     'scripts/base.shader', 'scripts/base_button.shader', 'scripts/base_floor.shader',
     'scripts/base_light.shader', 'scripts/base_object.shader', 'scripts/base_support.shader',
     'scripts/base_trim.shader', 'scripts/base_wall.shader', 'scripts/common.shader',
@@ -43,10 +43,10 @@ let mapName = 'q3tourney2';
     'scripts/liquid.shader', 'scripts/menu.shader', 'scripts/models.shader',
     'scripts/organics.shader', 'scripts/sfx.shader', 'scripts/shrine.shader',
     'scripts/skin.shader', 'scripts/sky.shader', 'scripts/test.shader'
-];*/
+];
 
 // For my demo, I compiled only the shaders the map used into a single file for performance reasons
-let mapShaders = ['scripts/common.shader'];
+//let mapShaders = ['scripts/common.shader'];
 
 // ===========================================
 // Everything below here is common to all maps
@@ -113,7 +113,7 @@ function initGL(gl, canvas) {
 }
 
 // Load the map
-function initMap(gl) {
+function initMap(gl, mapFile) {
     //let titleEl = document.getElementById("mapTitle");
     //titleEl.innerHtml = mapName.toUpperCase();
 
@@ -126,6 +126,12 @@ function initMap(gl) {
     if (xrMode) {
         xrDrawMode = parseInt(xrMode, 10);
     }
+
+
+    if (mapName === mapFile) {
+        return // already loaded
+    }
+    mapName = mapFile || mapName
 
     map = new q3bsp(gl);
     map.onentitiesloaded = initMapEntities;
@@ -617,7 +623,7 @@ function runTojiEngine() {
 
     let viewportFrame = document.getElementById("viewport-frame");
     if (!viewportFrame.classList.contains('not-hidden')
-    && (!document.body.classList.contains('previous-viewport-frame') || window.innerWidth < 1200))
+        && (!document.body.classList.contains('previous-viewport-frame') || window.innerWidth < 1200))
         return
 
     if (tojiEngineRunning) {
@@ -669,7 +675,8 @@ function runTojiEngine() {
         lastFps = startTime;
 
         window.tojiFrameLimiter = createFrameRater(25, (e, t, frame) => {
-            if (!viewportFrame.classList.contains('not-hidden')) {
+            if (!viewportFrame.classList.contains('not-hidden')
+                && (!document.body.classList.contains('previous-viewport-frame') || window.innerWidth < 1200)) {
                 notRunningFrameCount++
                 if (notRunningFrameCount > 25) {
                     tojiRendererRunning = false;

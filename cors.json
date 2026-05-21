@@ -1,8 +1,15 @@
 [
   {
-    "origin": ["http://127.0.0.1:8080", "http://localhost:8080", "https://quake.games"],
+    "origin": ["*"],
     "method": ["GET", "HEAD", "OPTIONS"],
-    "responseHeader": ["Content-Type"],
+    "responseHeader": [
+      "Content-Type", 
+      "Content-Length", 
+      "Content-MD5", 
+      "ETag", 
+      "Accept-Ranges", 
+      "Range"
+    ],
     "maxAgeSeconds": 3600
   }
 ]

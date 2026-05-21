@@ -60,6 +60,8 @@ async function renderToolbarCommand(buttonId) {
         case 'reload':
         case 'repository':
         case 'owner':
+            localStorage.setItem('default_repository', owner.value + '/' + repository.value);
+            break
         case 'configuration':
         case 'theme':
             // Automatically identify the config field from the element interaction and apply it
@@ -78,7 +80,10 @@ async function renderToolbarCommand(buttonId) {
     }
 
     // Auto-save setting file shifts if active view config targets modify variables
-    const interactiveStateKeys = ['configuration', 'wasi', 'theme', 'spawn', 'map', 'branch', 'repository', 'owner', 'keybinding', 'filename', 'reload'];
+    const interactiveStateKeys = [
+        'configuration', 'wasi', 'theme', 'spawn', 'map', 'branch', 
+        'repository', 'owner', 'keybinding', 'filename', 'reload'
+    ];
     if (interactiveStateKeys.includes(buttonId)) {
         let filename = currentSession();
         if (filename?.includes('settings.json')) {
@@ -99,6 +104,8 @@ document.getElementById('toolbar').addEventListener('change', async (e) => {
 
 
 document.getElementById('toolbar').addEventListener('click', async (e) => {
+    if (e.target.nodeName.toUpperCase() === 'SELECT')
+        return
     return renderToolbarCommand(
         e.target.id || e.target.href?.split('#').pop())
 

@@ -1337,13 +1337,10 @@ input[type="number"]::-webkit-inner-spin-button {
 @media all and (min-width: 1200px) {
 
 
-    #editor-container:not(:has(.not-hidden ~ .not-hidden)) .not-hidden {
-        flex-basis: 50%;
-    }
 
-    /* :not(:has(.not-hidden ~ .not-hidden)) */
-    [class*="previous-"] #editor-container:has(.not-hidden),
-    [class*="previous-"] #editor-container:has(.not-hidden):has(~.not-hidden) {
+    /* :not(:has(.not-hidden ~ .not-hidden))
+    [class*="previous-"] #editor-container:has(.not-hidden), */
+    [class*="previous-"]:not(.panel-filelist):not(.panel-gamelist):not(.panel-assetlist):not(.panel-serchlist):not(.panel-database) #editor-container:has(.not-hidden) {
         flex-basis: 50%;
         display: flex;
         visibility: visible;
@@ -1388,14 +1385,10 @@ input[type="number"]::-webkit-inner-spin-button {
         z-index: 10;
     }
 
-    #editor-container:not(:has(.not-hidden ~ .not-hidden)) #paint,
-    #editor-container:not(:has(.not-hidden ~ .not-hidden)) #editor {
-        flex-basis: 50%;
-        width: 50%;
-    }
 
 
-    .previous-terminal-container #editor-container:not(:has(> :not(.hidden))),
+    .previous-terminal-container:not(.panel-viewport-frame) #editor-container:not(:has(> :not(.hidden))),
+    .previous-viewport-frame:not(.panel-terminal-container) #editor-container:not(:has(> :not(.hidden))),
     .previous-editor #editor-container:not(:has(> :not(.hidden))),
     .previous-paint #editor-container:not(:has(> :not(.hidden))) {
         display: flex;
@@ -1403,11 +1396,35 @@ input[type="number"]::-webkit-inner-spin-button {
         flex-basis: 50%;
     }
 
+    /*
+    .previous-editor #editor-container:not(:has(> :not(.hidden))):has(~.not-hidden),
+    .previous-paint #editor-container:not(:has(> :not(.hidden))):has(~.not-hidden) {
+        flex-basis: 100%;
+    }
+    */
+
     .previous-paint #viewport-frame,
     .previous-editor #viewport-frame,
     .previous-viewport-frame #viewport-frame,
-    [class*="previous-"] #editor-container:has(~.not-hidden)~.not-hidden {
+    [class*="previous-"]:not(.panel-filelist):not(.panel-gamelist):not(.panel-assetlist):not(.panel-serchlist):not(.panel-database) #editor-container:has(~.not-hidden)~.not-hidden {
         flex-basis: 50%;
+    }
+
+    .previous-paint.panel-filelist #viewport-frame,
+    .previous-editor.panel-filelist #viewport-frame,
+    .previous-viewport-frame.panel-filelist #viewport-frame,
+    .previous-paint.panel-gamelist #viewport-frame,
+    .previous-editor.panel-gamelist #viewport-frame,
+    .previous-viewport-frame.panel-gamelist #viewport-frame,
+    .previous-paint.panel-assetlist #viewport-frame,
+    .previous-editor.panel-assetlist #viewport-frame,
+    .previous-viewport-frame.panel-searchlist #viewport-frame,
+    .previous-paint.panel-searchlist #viewport-frame,
+    .previous-editor.panel-searchlist #viewport-frame,
+    .previous-viewport-frame.panel-database #viewport-frame,
+    .previous-paint.panel-database #viewport-frame,
+    .previous-editor.panel-database #viewport-frame {
+        flex-basis: 100%;
     }
 }
 

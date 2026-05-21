@@ -1476,6 +1476,7 @@ body {
     border-radius: 4px !important;
     opacity: 1 !important;
     visibility: visible !important;
+    box-shadow: 1px 2px 3px rgb(from var(--ace-gutter-bg) r g b / 100%) !important;
 }
 
 .xterm .xterm-selection div {

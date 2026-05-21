@@ -147,9 +147,9 @@ const toolLdFlags = [
 
 async function buildLBurg(database = null, forceChanged = false, noLinking = false) {
     if (!database) database = toolsRepository || api.database;
-    let parts = database.split('/');
-    let ownerName = parts.length == 2 ? parts[0] : owner.value;
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+    const parts = database.split('/');
+    const ownerName = parts.length == 2 ? parts[0] : owner.value;
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
 
     let CONFIGURATION = api.configuration == 'release'
@@ -260,9 +260,9 @@ let FILELIST
 async function compileToolFile(src, obj, includeDir, database, extraFlags = [], forceChanged = false) {
     try {
         if (!database) database = toolsRepository || api.database;
-        let parts = database.split('/');
-        let ownerName = parts.length == 2 ? parts[0] : owner.value;
-        let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+        const parts = database.split('/');
+        const ownerName = parts.length == 2 ? parts[0] : owner.value;
+        const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
         PREAMBLE = TOOLS_PREAMBLE
 
@@ -332,9 +332,9 @@ let needsHeaders = true
 
 async function buildRCC(database = null, skipTool = false, forceChanged = false, noLinking = false) {
     if (!database) database = toolsRepository || api.database;
-    let parts = database.split('/');
-    let ownerName = parts.length == 2 ? parts[0] : owner.value;
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+    const parts = database.split('/');
+    const ownerName = parts.length == 2 ? parts[0] : owner.value;
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
 
     let CONFIGURATION = api.configuration == 'release'
@@ -486,9 +486,9 @@ async function linkRCC(database = null, forceChanged = false, noBuild = false) {
 
 async function buildCPP(database = null, forceChanged = false, noLinking = false) {
     if (!database) database = toolsRepository || api.database;
-    let parts = database.split('/');
-    let ownerName = parts.length == 2 ? parts[0] : owner.value;
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+    const parts = database.split('/');
+    const ownerName = parts.length == 2 ? parts[0] : owner.value;
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
@@ -583,9 +583,9 @@ async function linkCPP(database = null, forceChanged = false, noBuild = false) {
 
 async function buildLCC(database = null, forceChanged = false, noLinking = false) {
     if (!database) database = toolsRepository || api.database;
-    let parts = database.split('/');
-    let ownerName = parts.length == 2 ? parts[0] : owner.value;
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+    const parts = database.split('/');
+    const ownerName = parts.length == 2 ? parts[0] : owner.value;
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
 
     let CONFIGURATION = api.configuration == 'release'
@@ -791,9 +791,9 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 
 
     if (!database) database = tools2Repository || api.toolsRepo2 || api.database;
-    let parts = database.split('/');
-    let ownerName = parts.length == 2 ? parts[0] : owner.value;
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+    const parts = database.split('/');
+    const ownerName = parts.length == 2 ? parts[0] : owner.value;
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
 
     let CONFIGURATION = api.configuration == 'release'

@@ -486,7 +486,7 @@ if (!IN_WORKER) {
       // Make the call to fetch the basis texture data
       fetch(url, {
         mode: 'cors',
-        credentials: 'include'
+        credentials: 'omit'
       }).then(function (response) {
         if (response.ok) {
           response.arrayBuffer().then((arrayBuffer) => {

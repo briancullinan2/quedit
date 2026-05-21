@@ -59,8 +59,29 @@ include line information like the native compiler does, i wonder if it would lik
 i opened the whole directory of .asm files inside the worker and then tried to link
 the premanufactured ones, then i know its a bug in q3rcc.
 
+14) Compile cgame movement code to wasm and import into Toji renderer
 
 ## So far
+
+
+#### 5/21/2026
+
+[https://quedit.quake.games/#docs/demoq3/pak0.pk3dir/maps/q3dm1.bsp]
+
+
+![TOJI](./Screenshot%202026-05-21%20005134.png)
+
+
+
+Connected miniPaint, still need to override the menu it generates and lookup IDs already on the page.
+need to connect https://tentone.github.io/nunuStudio/editor/index.html
+and https://github.com/pkalogiros/audiomass
+Then I can prompt AI from the terminal and ask it to convert voice recording to demonic announcer sounds.
+Need to tackle QVM building again and figure out whats wrong with fd_read interactions or simply change 
+functions in q3lcc. If that doesn't work, i need to try and build with SHLIB parameters and link QVMs
+like independent modules with publicized functions in between, slower, but might work.
+
+
 
 #### 5/16/2026
 

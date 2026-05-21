@@ -203,9 +203,9 @@ async function queryIndex(storeName, indexName, exactIndex = null, lower = null,
 
 function debounceRecords(storeName, indexName, record, lower, upper, dbName, MODE = 'get', noBounce = false) {
     const path = record.path;
-    let parts = dbName.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = dbName.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     // 1. If bypass flag is explicit, execute immediate persistence pass
     if (noBounce) {

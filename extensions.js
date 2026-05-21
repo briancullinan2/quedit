@@ -43,7 +43,7 @@ const IMPORT_JS = {
         '/configuration.js',
         '/settings.js',
         '/toolbar.js',
-        //'/binary.js',
+        '/binary.js',
         '/github.js',
         '/filelist.js',
         //'/unzip.js'

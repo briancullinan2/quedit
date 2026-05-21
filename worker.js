@@ -47,7 +47,7 @@ const apiOptions = {
   async readBuffer(filename) {
     const response = await fetch(filename, {
       mode: 'cors',
-      credentials: 'include'
+      credentials: 'omit'
     });
     return response.arrayBuffer();
   },
@@ -67,7 +67,7 @@ const apiOptions = {
       } else {
         response = await fetch(targetUrl, {
           mode: 'cors',
-          credentials: 'include'
+          credentials: 'omit'
         })
       }
 

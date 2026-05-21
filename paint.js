@@ -14717,7 +14717,7 @@
                                 if (e.toLowerCase().indexOf(".json") == e.length - 5)
                                     window.fetch(e, {
                                         mode: 'cors',
-                                        credentials: 'include'
+                                        credentials: 'omit'
                                     }).then(function (e) {
                                         return e.json()
                                     }).then(function (e) {

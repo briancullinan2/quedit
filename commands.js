@@ -374,7 +374,7 @@ async function loadCommand(argv) {
     await DependencyLoader.loadModule(moduleToLoad);
 
     if (moduleToLoad === 'quake3e' || moduleToLoad === 'toji') {
-        renderTabsCommand('viewport-container')
+        renderTabsCommand('viewport-frame')
     }
 
     if (moduleToLoad === 'editor') {
@@ -487,9 +487,9 @@ async function handleCommand(input) {
 
 async function mount(argv, database) {
     let selected = argv[0] || database
-    let parts = selected.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = selected.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     let branch = await getDefaultBranch(ownerName, repoName)
     await loadGitHubTree(ownerName, repoName, branch)
@@ -499,9 +499,9 @@ async function mount(argv, database) {
 
 async function ls(argv, database) {
     let selected = toolsRepository || database
-    let parts = selected.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = selected.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     if (!files[selected]) {
         let branch = await getDefaultBranch(ownerName, repoName)
@@ -605,9 +605,9 @@ async function buildCommand(argv, database) {
     )
         selected = argv[1] || gameRepository
 
-    let parts = selected.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = selected.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
     if (selected && !files[selected]) {
         let branch = await getDefaultBranch(ownerName, repoName)
         await loadGitHubTree(ownerName, repoName, branch)
@@ -794,9 +794,9 @@ async function link(argv, database) {
         selected = argv[1] || gameRepository
 
 
-    let parts = selected.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = selected.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
     if (selected && !files[selected]) {
         let branch = await getDefaultBranch(ownerName, repoName)
         await loadGitHubTree(ownerName, repoName, branch)
@@ -896,9 +896,9 @@ async function link(argv, database) {
 
 async function header(argv, database) {
     let selected = toolsRepository || argv[1] || database
-    let parts = selected.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = selected.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
     let headers = [argv[0]]
 
     if (!argv[0])
@@ -920,12 +920,12 @@ async function header(argv, database) {
 
 function openCommand(argv, database) {
     let selected = toolsRepository || argv[1] || database
-    let parts = selected.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = selected.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
     let fileName = argv[0]
     // TODO: I did this backwards, i should have had the terminal click execute the command, and put it in history
-    clickTerminalFile(fileName, null)
+    navigateFile(fileName, null)
 
 }
 
@@ -970,9 +970,9 @@ async function compileWorker(argv, database) {
     }
 
 
-    let parts = selected.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = selected.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     if (!files[selected]) {
         let branch = await getDefaultBranch(ownerName, repoName)
@@ -1173,9 +1173,9 @@ async function runWorker(argv, database) {
 }
 async function lburg(argv, database) {
     let selected = toolsRepository || argv[1] || database
-    let parts = selected.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = selected.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     if (!files.selected) {
         let branch = await getDefaultBranch(ownerName, repoName)

@@ -60,16 +60,22 @@ const loadedDatabases = {}
 
 
 async function initializeFiletrees() {
-    if (window.location.pathname) {
-        await setRepository(window.location.pathname.trim().replace(/\/$|^\//, ''))
+    const newRepository = window.location.pathname?.trim().replace(/\/$|^\//, '')
+    if (newRepository.length > 0) {
+        await setRepository(newRepository)
+    } else if (window.location.hash.includes('/')
+        // TODO: make a caveat for #database??
+        && !window.location.hash.includes('.') // don't try this on filenames
+    ) {
+        await setRepository(window.location.hash.substring(1))
     }
 
 
     engineRepository = SettingsManager.get('core', 'engineRepository')
 
-    let parts = engineRepository?.split('/') || document.getElementById('filelist').dataset['repository']?.split('/')
+    const parts = engineRepository?.split('/') || document.getElementById('filelist').dataset['repository']?.split('/')
 
-    if (parts) {
+    if (parts && parts[0]) {
         let newRepo = parts.length == 2 ? parts[1] : parts[0] || repository.value
         let newOwner = parts.length == 2 ? parts[0] : owner.value
         let branches = await getBranches(newOwner, newRepo)
@@ -80,8 +86,8 @@ async function initializeFiletrees() {
 
     gameRepository = SettingsManager.get('core', 'gameRepository')
 
-    let parts2 = gameRepository?.split('/') || document.getElementById('gamelist').dataset['repository']?.split('/')
-    if (parts2) {
+    const parts2 = gameRepository?.split('/') || document.getElementById('gamelist').dataset['repository']?.split('/')
+    if (parts2 && parts2[0]) {
 
         let newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repository.value
         let newOwner2 = parts2.length == 2 ? parts2[0] : owner.value
@@ -94,9 +100,9 @@ async function initializeFiletrees() {
 
     assetRepository = SettingsManager.get('core', 'assetRepository')
 
-    let parts3 = assetRepository?.split('/') || document.getElementById('assetlist').dataset['repository']?.split('/')
+    const parts3 = assetRepository?.split('/') || document.getElementById('assetlist').dataset['repository']?.split('/')
 
-    if (parts3) {
+    if (parts3 && parts3[0]) {
 
         let newRepo3 = parts3.length == 2 ? parts3[1] : parts3[0] || repository.value
         let newOwner3 = parts3.length == 2 ? parts3[0] : owner.value
@@ -140,7 +146,7 @@ async function untarFrontent() {
     PREAMBLE = TAR_PREAMBLE
     const response = await fetch('/sysroot.tar', {
         mode: 'cors',
-        credentials: 'include',
+        credentials: 'omit',
     });
     const tar = new API.Tar(await response.arrayBuffer(), log);
     const count = await tar.untar(this.memfs);
@@ -177,9 +183,9 @@ async function expandDatabaseTree(target, folderId) {
         }
 
         if (!files[database]) {
-            let parts = database.split('/')
-            let ownerName = parts.length == 2 ? parts[0] : owner.value
-            let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+            const parts = database.split('/')
+            const ownerName = parts.length == 2 ? parts[0] : owner.value
+            const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
             let branch = await getDefaultBranch(ownerName, repoName)
             await loadGitHubTree(ownerName, repoName, branch)
         }
@@ -493,7 +499,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         try {
             let response = await fetch(filePath, {
                 mode: 'cors',
-                credentials: 'include',
+                credentials: 'omit',
             })
             if (response.ok)
                 content = await response.arrayBuffer()
@@ -504,7 +510,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         try {
             let response = await fetch('https://quake.games/' + filePath, {
                 mode: 'cors',
-                credentials: 'include',
+                credentials: 'omit',
             })
             if (response.ok)
                 content = await response.arrayBuffer()
@@ -515,7 +521,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         try {
             let response = await fetch('https://quake.games/' + filePath.replace('docs/', ''), {
                 mode: 'cors',
-                credentials: 'include',
+                credentials: 'omit',
             })
             if (response.ok)
                 content = await response.arrayBuffer()
@@ -531,18 +537,27 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     let str
     let image = isImage(filePath)
     if (image) {
-        setTimeout(() => {
+        setTimeout(async () => {
+            await DependencyLoader.loadModule('paint');
             openImage(content, filePath)
-        }, 500);
+        }, 200);
 
         // Optionally fall back to text hexDump or return early so Ace Editor doesn't choke
+        previousNotFilelist = 'editor'
         str = "[Binary Image Layer Inserted]";
     } else if (hasSequentialBinaryRegex.test(sampleStr)) {
         if (filePath.endsWith('.bsp')) {
             // TODO: also open toji bsp viewer like the image editor
+            setTimeout(async () => {
+                await DependencyLoader.loadModule('toji');
+                let mapFile = filePath.split('/').pop().split('.')[0]
+                let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
+                initMap(gl, mapFile)
+            }, 200)
         }
 
 
+        previousNotFilelist = 'editor'
         str = hexDump(sampleBytes, content, filePath)
     } else {
         // Standard plain text file path
@@ -569,6 +584,11 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         imageEditor.classList.add('not-hidden')
     }
 
+    if (filePath.endsWith('.bsp')) {
+        const viewportWrapper = document.getElementById('viewport-frame')
+        viewportWrapper.classList.remove('hidden')
+        viewportWrapper.classList.add('not-hidden')
+    }
     resizeDebouncer()
 
     // 3. Record it in history if this isn't a "Back/Forward" action
@@ -604,7 +624,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
 
 
 let hashDebounce = null
-function renderHashCommand(fileName, noBounce = false) {
+async function renderHashCommand(fileName, noBounce = false) {
 
     if (hashDebounce) {
         clearTimeout(hashDebounce)
@@ -614,40 +634,64 @@ function renderHashCommand(fileName, noBounce = false) {
         return
     }
 
-    let database = owner.value + '/' + repository.value
-    if (files[database]) {
-        const filePath = files[database][fileName]?.path
-        if (filePath) {
-            const fileId = files[database][fileName].sha
-            currentOpenFileId = fileId;
-            trees[database].values = [fileId];
-            openFile(owner.value, repository.value, filePath, fileId, false);
-        }
-    }
-
     if (document.getElementById('toolbar')
         .querySelector(`[href="#${fileName}"]`)) {
         renderToolbarCommand(fileName)
+        return
     }
     // ALREADY CALLED BY renderToolbarCommand
     else if (document.getElementById('tabs')
         .querySelector(`[href="#${fileName}"]`)) {
         renderTabsCommand(fileName || 'filelist')
+        return
     }
 
     if (document.getElementById('terminals')
         .querySelector(`[href="#${fileName}"]`)) {
         // give UX time to adjust to class change
         setTimeout(() => {
-            if(window.renderTerminalsCommand)
+            if (window.renderTerminalsCommand)
                 renderTerminalsCommand(fileName)
         }, 200)
+        return
     }
+
+
+    let selected
+    let dbFile
+    let filePath
+    let lineNumer
+    for (filePath of [window.location.hash?.substring(1), window.location.pathname.substring(1)]) {
+        if (!filePath || filePath.length === 0) continue
+
+        for (let location of TEST_LOCATIONS) {
+            let rewrittenPath = location + (location.length > 0 && !location.endsWith('/') ? '/' : '') + filePath.split(':')[0]
+            let [selected2, dbFile2] = await findTestFilepath(rewrittenPath)
+            selected = selected2 || selected
+            dbFile = dbFile2
+            if (dbFile) {
+                filePath = rewrittenPath
+                lineNumer = filePath.split(':').pop()
+                break
+            }
+        }
+        if (dbFile) break
+    }
+
+    if (selected && !filePath)
+        navigateFile(selected, lineNumer, true)
+    else
+        navigateFile(filePath, lineNumer, true)
+
 }
 
 
 window.addEventListener('popstate', (event) => {
     renderHashCommand(window.location.hash.substring(1))
+});
+
+window.addEventListener('hashchange', (event) => {
+    //renderHashCommand(window.location.hash.substring(1))
 });
 
 
@@ -839,7 +883,7 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
 
         if (panelId === 'collapse'
             // nice side effect if they click the same list it also toggles
-            || (panelId === previousPanelId) // && !changedClass)
+            || (panelId === previousFilelistId) // && !changedClass)
         ) {
 
             if (!hadOpen) {

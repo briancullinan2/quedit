@@ -9,18 +9,29 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
     const fullUrl = `https://api.github.com/repos/${ownerName}/${repoName}`
         + (url.startsWith('/') || url.trim().length == 0 ? '' : '/') + url
     try {
+        const headers = {
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        };
+
+        // Only add auth if explicitly requested AND we have a token
+        if (authorize && api.github_token) {
+            // Using 'token ' works universally for both classic and fine-grained PATs
+            headers['Authorization'] = `Bearer ${api.github_token}`;
+        } else if (!api.github_token) {
+            debugger
+        }
+
         const response = await fetch(fullUrl, {
             method: 'GET',
-            headers: authorize && api.github_token ? {
-                'Authorization': `Bearer ${api.github_token}`,
-                'Accept': 'application/vnd.github+json',
-                'X-GitHub-Api-Version': '2022-11-28'
-            } : {
-            }
+            cors: 'omit',
+            headers: headers
         });
 
         if (!response.ok) {
-            if (response.status === 401) {
+            if (response.status === 401
+                || response.status === 403
+            ) {
                 throw new Error('UNAUTHORIZED_ACCESS');
             }
             throw new Error(`HTTP_ERROR: ${response.status}`);
@@ -32,6 +43,7 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
     } catch (up) {
         if (authorize && up.message === 'UNAUTHORIZED_ACCESS') {
             return await githubRequest(ownerName, repoName, url, false, buffer)
+        } else if (up.message === 'UNAUTHORIZED_ACCESS') {
         }
         PREAMBLE = ERROR_PREAMBLE
         writeLog("Failed to github: " + fullUrl, up);
@@ -290,6 +302,7 @@ async function loadFileTree(repoOwner, repoName, branch, selector) {
 
         files[selector] = await loadGitHubTree(repoOwner, repoName, branch)
 
+        if (!files[selector]) return
         // Initialize Tree.js with the transformed data
         // Note: Use 'data' property instead of 'url' to provide the object directly
         trees[selector] = trees[database] = new Tree(selector, {

@@ -115,7 +115,7 @@ function terminalWrite(message, source, skipActualWrite = false) {
     }
     let render = message
     if (!message.endsWith('\n\r') && !message.endsWith('\n')) {
-        let parts = message.split(/\n\r*/)
+        const parts = message.split(/\n\r*/)
         lastPartialLine = parts.pop()
         render = parts.join('\n\r')
     }

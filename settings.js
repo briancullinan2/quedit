@@ -4,9 +4,9 @@ const IMPORT_SETTINGS = {
             key: 'github_token',
             default: '',
             set: (val) => {
+                modal.classList.add('hidden');
                 if (!window.api) return
                 window.api.github_token = val; // share with worker
-                modal.classList.add('hidden');
             }
         },
         ownersList: {
@@ -27,65 +27,39 @@ const IMPORT_SETTINGS = {
                 updateSelectOptions('repository', val);
             }
         },
-        defaultOwner: {
-            key: 'default_owner',
-            default: 'briancullinan2',
-            elementId: 'owner'
-        },
         defaultRepository: {
             key: 'default_repository',
             default: 'Quake3e',
-            elementId: 'repository'
+            elementId: 'repository',
+            get: (storage, defaultRepo) => owner.value && repository.value
+                ? owner.value + '/' + repository.value
+                : storage || defaultRepo,
+            set: setRepository
         },
         engineRepository: {
             key: 'engine_repository',
             default: 'briancullinan2/Quake3e',
-            set: (val) => {
-                const list = document.getElementById('filelist');
-                if (list && !list.classList.contains('hidden') && typeof setRepository === 'function') {
-                    setRepository(val);
-                }
-            }
+            set: configureRepository
         },
         gameRepository: {
             key: 'game_repository',
             default: 'ec-/baseq3a',
-            set: (val) => {
-                const list = document.getElementById('filelist');
-                if (list && !list.classList.contains('hidden') && typeof setRepository === 'function') {
-                    setRepository(val);
-                }
-            }
+            set: configureRepository
         },
         assetRepository: {
             key: 'asset_repository',
             default: '',
-            set: (val) => {
-                const list = document.getElementById('filelist');
-                if (list && !list.classList.contains('hidden') && typeof setRepository === 'function') {
-                    setRepository(val);
-                }
-            }
+            set: configureRepository
         },
         toolsRepository: {
             key: 'tools_repository',
             default: 'briancullinan2/q3lcc',
-            set: (val) => {
-                const list = document.getElementById('database');
-                if (list && !list.classList.contains('hidden') && typeof setRepository === 'function') {
-                    setRepository(val);
-                }
-            }
+            set: configureRepository
         },
         tools2Repository: {
             key: 'tools_repository',
             default: 'ec-/q3asm',
-            set: (val) => {
-                const list = document.getElementById('database');
-                if (list && !list.classList.contains('hidden') && typeof setRepository === 'function') {
-                    setRepository(val);
-                }
-            }
+            set: configureRepository
         },
         workspaceDefault: {
             key: 'workspace_default',
@@ -146,6 +120,7 @@ const IMPORT_SETTINGS = {
             }
         },
         terminalLog: {
+            edit: false,
             key: 'terminal_log',
             default: [],
             type: 'json'
@@ -167,7 +142,7 @@ const IMPORT_SETTINGS = {
         quickSaveData: { key: 'quicksave_data', default: '' }
     },
 
-    q3: {
+    quake3e: {
         preferredRenderer: {
             key: 'renderer_preference',
             default: 'toji'
@@ -244,41 +219,77 @@ const SettingsManager = {
         }
     },
 
-    // 3. Generates the runtime values payload for your JSON editor
     exportPayload() {
         const payload = {};
+
+        // 1. Gather all valid configs into a flat list
+        const flatConfigs = [];
         for (const [moduleKey, settings] of Object.entries(IMPORT_SETTINGS)) {
             for (const [camelKey, config] of Object.entries(settings)) {
-                if (typeof config.get === 'function') {
-                    payload[config.key] = config.get();
-                } else if (config.elementId) {
-                    const el = document.getElementById(config.elementId);
-                    if (el) {
-                        payload[config.key] = (config.type === 'boolean' || el.type === 'checkbox') ? el.checked : el.value;
-                    }
-                } else {
-                    // Fallback reading directly from storage state
-                    const currentVal = localStorage.getItem(config.key);
-                    payload[config.key] = currentVal !== null ? currentVal : config.default;
-                }
+                if (config.edit === false) continue;
+                flatConfigs.push(config);
             }
         }
+
+        // 2. Alphabetize the configs up front by their payload key
+        flatConfigs.sort((a, b) => a.key.localeCompare(b.key));
+
+        // 3. Process the sorted configs to build the ordered payload
+        for (const config of flatConfigs) {
+            let currentVal;
+            if (typeof config.get === 'function') {
+                currentVal = config.get(localStorage.getItem(config.key), config.default, config);
+            } else if (config.elementId) {
+                const el = document.getElementById(config.elementId);
+                if (el) {
+                    if (config.type === 'csv' && el.nodeName === 'SELECT') {
+                        currentVal = Array.from(el.children).map(c => c.value).join(';')
+                    }
+                    else {
+                        currentVal = (config.type === 'boolean' || el.type === 'checkbox') ? el.checked : el.value;
+                    }
+                }
+            } else {
+                // Fallback reading directly from storage state
+                currentVal = localStorage.getItem(config.key);
+            }
+
+            if (config.type === 'csv') {
+                currentVal = currentVal.split(';')
+            }
+            if (config.type === 'array' || config.type === 'json') {
+                try {
+                    currentVal = JSON.parse(currentVal);
+                } catch (e) {
+                    currentVal = config.type === 'array' ? [] : {};
+                }
+            }
+            currentVal = currentVal !== null ? currentVal : config.default;
+            payload[config.key] = currentVal
+        }
+
         return payload;
     },
 
     get(moduleKey, settingKey) {
-        const config = IMPORT_SETTINGS[moduleKey]?.[settingKey];
+        let config = IMPORT_SETTINGS[moduleKey]?.[settingKey];
         if (!config) {
-            Object.values(IMPORT_SETTINGS[moduleKey] || {}).find(x =>
-                settingKey instanceof Element && x.elementId === settingKey.name
-                || x.key === settingKey || x.elementId === settingKey)
-            return null;
+            config = Object.values(IMPORT_SETTINGS[moduleKey] || {})
+                .find(config => config.key === settingKey)
+                || Object.values(IMPORT_SETTINGS[moduleKey] || {})
+                    .find(c => settingKey instanceof Element
+                        && c.elementId === settingKey.name
+                        || c.elementId === settingKey)
+            if(!config)
+                return null;
         }
+
 
         // If it has a custom getter, use it
         //if (typeof config.get === 'function') return config.get();
         const stored = localStorage.getItem(config.key);
         if (stored) {
+            if (!config.type) return stored
             if (config.type === 'boolean') return stored === 'true';
             if (config.type === 'csv') return stored.split(';').filter(Boolean);
             if (config.type === 'json' || config.type === 'array') {
@@ -289,10 +300,10 @@ const SettingsManager = {
                         return Array.isArray(parsed) ? parsed : []
                     }
                     return parsed
-                } catch (e) { 
+                } catch (e) {
                     console.error(e)
                     debugger
-                    return config.default; 
+                    return stored || config.default;
                 }
             }
         }
@@ -361,15 +372,23 @@ function saveSettings(content) {
                     if (config.type === 'array') {
                         localStorage.setItem(config.key, JSON.stringify(value));
                     } else if (config.type === 'csv') {
-                        localStorage.setItem(config.key, value.join(';'));
+                        if (typeof value === 'string')
+                            localStorage.setItem(config.key, value);
+                        else if (Array.isArray(value))
+                            localStorage.setItem(config.key, value.join(';'));
+                        else
+                            localStorage.setItem(config.key, value.toString());
                     } else if (config.type === 'json' || Array.isArray(value)) {
-                        localStorage.setItem(config.key, JSON.stringify(value));
+                        if (!Array.isArray(value))
+                            localStorage.setItem(config.key, JSON.stringify([value]));
+                        else
+                            localStorage.setItem(config.key, JSON.stringify(value));
                     } else {
                         localStorage.setItem(config.key, value);
                     }
 
                     // Force DOM / Runtime Engine update
-                    if(value !== previousSettings[moduleKey][camelKey].currentValue)
+                    if (value !== previousSettings[config.key].currentValue)
                         SettingsManager.applyValue(config, value);
                 }
             }

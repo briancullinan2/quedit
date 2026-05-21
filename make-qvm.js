@@ -181,9 +181,9 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
         if (!database) database = gameRepo || api.database;
-        let parts = database.split('/')
-        let ownerName = parts.length == 2 ? parts[0] : owner.value
-        let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+        const parts = database.split('/')
+        const ownerName = parts.length == 2 ? parts[0] : owner.value
+        const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
 
         if (needsHeaders) {
@@ -371,9 +371,9 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 async function linkModule(database, name, sourceDir, filesList, forceChanged = false, noModule = false /* from buildModule */, noBounce = false) {
     if (!database) database = gameRepo || api.database;
-    let parts = database.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = database.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
 
     if (buildDebounce) {
@@ -541,9 +541,9 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
 async function buildGame(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
-    let parts = database.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = database.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     
 
@@ -555,9 +555,9 @@ async function buildGame(database = null, forceChanged = true) {
 
 async function buildCGame(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
-    let parts = database.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = database.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     
 
@@ -570,9 +570,9 @@ async function buildCGame(database = null, forceChanged = true) {
 
 async function buildUI(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
-    let parts = database.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = database.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     
 
@@ -602,9 +602,9 @@ async function buildUI(database = null, forceChanged = true) {
 
 async function buildQVM(database = null, forceChanged = false, noBounce = false) {
     if (!database) database = gameRepo || api.database;
-    let parts = database.split('/')
-    let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const parts = database.split('/')
+    const ownerName = parts.length == 2 ? parts[0] : owner.value
+    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     
     PREAMBLE = QVM_PREAMBLE
