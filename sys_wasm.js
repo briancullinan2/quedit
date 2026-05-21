@@ -190,7 +190,7 @@ async function runEngine(database = null, noBounce = false) {
         return
 
     if (!database)
-        database = owner.value + '/' + repo.value
+        database = owner.value + '/' + repository.value
 
     api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
 
@@ -343,7 +343,7 @@ async function readPreFS() {
         path: '/home',
         parent: ''
     }
-    //putRecord(DB_STORE_NAME, FS.virtual['/home'], owner.value + '/' + repo.value)
+    //putRecord(DB_STORE_NAME, FS.virtual['/home'], owner.value + '/' + repository.value)
 
 
     // TODO: check for cl_dlURL
@@ -368,7 +368,7 @@ async function readPreFS() {
         path: nameStr,
         parent: nameStr.substring(0, nameStr.lastIndexOf('/'))
     }
-    putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repo.value)
+    putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repository.value)
 
     // write it in multiple places because of async startup
     nameStr = '/base/' + MODNAME + '/pak2.pk3dir/description.txt'
@@ -380,7 +380,7 @@ async function readPreFS() {
         path: nameStr,
         parent: nameStr.substring(0, nameStr.lastIndexOf('/'))
     }
-    putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repo.value)
+    putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repository.value)
 
 
 }

@@ -1,8 +1,8 @@
 
 
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false) {
-    if (typeof localStorage != 'undefined')
-        api.github_token = localStorage.getItem('github_token');
+    if (typeof SettingsManager != 'undefined' && window.api)
+        window.api.github_token = SettingsManager.get('core', 'githubToken');
 
     PREAMBLE = GITHUB_PREAMBLE
 
@@ -72,8 +72,8 @@ async function getBranches(repoOwner, repoName) {
 }
 
 async function githubGraphQL(query, variables = {}) {
-    if (typeof localStorage != 'undefined')
-        api.github_token = localStorage.getItem('github_token');
+    if (typeof SettingsManager != 'undefined' && window.api)
+        window.api.github_token = SettingsManager.get('core', 'githubToken');
 
     const response = await fetch('https://api.github.com/graphql', {
         method: 'POST',
@@ -545,7 +545,7 @@ async function listReleases(owner, repo) {
 }
 
 async function getAuthenticatedUser() {
-    const token = localStorage.getItem('github_token');
+    const token = SettingsManager.get('core', 'githubToken');
     if (!token) return null;
 
 

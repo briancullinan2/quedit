@@ -567,7 +567,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
     if (!database) database = api.database
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     if (needsHeaders) {
 
@@ -729,7 +729,7 @@ const loadedDirectories = []
 async function prepInputOutput(file, obj, database, makeDirs = false) {
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     let buildDir = file.substring(0, file.lastIndexOf('/'))
     let outDir
@@ -879,7 +879,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
         if (!database) database = api.database
         let parts = database.split('/')
         let ownerName = parts.length == 2 ? parts[0] : owner.value
-        let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+        let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
         let CONFIGURATION = api.configuration == 'release'
             ? dirs.ENGINE_RELEASE
@@ -1046,7 +1046,7 @@ async function buildShaders(database = null, forceChanged = false) {
     if (!database) database = api.database
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     if (needsHeaders) {
 
@@ -1124,7 +1124,7 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
         database = api.database
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     // Process in chunks to avoid slamming the network/API
     for (let i = 0; i < headers.length; i += batchSize) {

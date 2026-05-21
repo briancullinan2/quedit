@@ -612,7 +612,7 @@ function Com_DL_Perform(nameStr, localName, responseData) {
     }
     // async to filesystem
     // does it REALLY matter if it makes it? wont it just redownload?
-    putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repo.value)
+    putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repository.value)
     //Sys_FileReady(stringToAddress(localName), stringToAddress(nameStr));
   }
 
@@ -620,7 +620,7 @@ function Com_DL_Perform(nameStr, localName, responseData) {
 
 function CL_Download(cmd, name, auto) {
   if (!FS.database) {
-    FS.database = getDB(owner.value + '/' + repo.value)
+    FS.database = getDB(owner.value + '/' + repository.value)
   }
   //if(NET.downloadCount > 5) {
   //  return 0 // delay like cl_curl does

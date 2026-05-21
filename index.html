@@ -4,17 +4,7 @@
 <head>
     <title>Quake 3 Editor</title>
     <link href='/boxicons.min.css' rel='stylesheet'>
-    <link href="/paint-css/alertify.css" rel="stylesheet" />
-    <link href="/paint-css/component.css" rel="stylesheet" />
-    <link href="/paint-css/layout.css" rel="stylesheet" />
-    <link href="/paint-css/menu.css" rel="stylesheet" />
-    <link href="/paint-css/popup.css" rel="stylesheet" />
-    <link href="/paint-css/print.css" rel="stylesheet" />
-    <link href="/paint-css/reset.css" rel="stylesheet" />
-    <link href="/paint-css/utility.css" rel="stylesheet" />
-    <link href="/paint-css/theme.css" rel="stylesheet" />
     <link href="/main.css" rel="stylesheet" />
-    <link href="/xterm.css" rel="stylesheet" />
     <link href="/theme.css" rel="stylesheet" />
     <link rel="icon" type="image/png" href="/quakejs-bnw.png">
     <script type="text/javascript">
@@ -24,7 +14,7 @@
 </head>
 
 <body class="theme-monokai">
-    
+
     <div id="token-modal" class="hidden">
         <div class="modal-content">
             <form onsubmit="saveToken(); return false;" action="#">
@@ -44,15 +34,17 @@
     </div>
 
     <div id="popups"></div>
-    
+
     <div id="main" class="panel-column">
         <div id="toolbar">
             <ul>
-                <li><nav aria-label="Main Menu" class="main_menu" id="main_menu"></nav></li>
+                <li>
+                    <nav aria-label="Main Menu" class="main_menu" id="main_menu"></nav>
+                </li>
                 <li>
                     <ul>
-                        <li><a id="github" alt="Github login" class="bx bx-arrow-in-right-square-half"
-                                target="_new" href="https://github.com/settings/tokens?type=beta"></a></li>
+                        <li><a id="github" alt="Github login" class="bx bx-arrow-in-right-square-half" target="_new"
+                                href="https://github.com/settings/tokens?type=beta"></a></li>
                         <li><a alt="Console" href="#terminal-container" class="bx bx-terminal"></a></li>
                         <li><a alt="Edit settings" href="#settings" class="bx bx-gear"></a></li>
                         <li><a alt="Sharable game link" href="#share" class="bx bx-share"></a></li>
@@ -118,7 +110,7 @@
                 <li class="setting" placeholder="Current theme">
                     <select required name="theme" id="theme">
                         <option value="" selected disabled>Current theme</option>
-                        
+
                         <optgroup label="The Coders' Heritage">
                             <option value="ace/theme/monokai" selected>Monokai (OG High Contrast)</option>
                             <option value="ace/theme/textmate">TextMate (The Standard)</option>
@@ -285,27 +277,29 @@
                     <div id="github" class="hidden">
 
                     </div>
-<div id="editor">
-#include &lt;stdio.h&gt;
+                    <div id="editor">
+                        #include &lt;stdio.h&gt;
 
-int main() {
-    printf("Hello World!\n");
-    printf("WASI Compiler Check: SUCCESS\n");
-    return 0;
-}
+                        int main() {
+                        printf("Hello World!\n");
+                        printf("WASI Compiler Check: SUCCESS\n");
+                        return 0;
+                        }
 
-</div>
+                    </div>
                     <div id="paint">
                         <div class="wrapper">
 
                             <div class="submenu">
-                                <button popovertarget="global-popup" placeholder="Toggle Menu" class="left_mobile_menu" id="left_mobile_menu_button" type="button"></button>
+                                <button popovertarget="global-popup" placeholder="Toggle Menu" class="left_mobile_menu"
+                                    id="left_mobile_menu_button" type="button"></button>
                                 <div class="block attributes" id="action_attributes"></div>
                                 <button placeholder="Undo" class="undo_button" id="undo_button" type="button"></button>
                                 <span class="mobile_menu_spacer"></span>
-                                <button popovertarget="global-popup" placeholder="Toggle Menu" class="right_mobile_menu" id="mobile_menu_button" type="button"></button>
+                                <button popovertarget="global-popup" placeholder="Toggle Menu" class="right_mobile_menu"
+                                    id="mobile_menu_button" type="button"></button>
                             </div>
-                            
+
                             <div class="sidebar_left" id="tools_container"></div>
 
 
@@ -332,22 +326,22 @@ int main() {
                                     <h2 class="trn toggle" data-target="toggle_preview">Preview</h2>
                                     <div id="toggle_preview"></div>
                                 </div>
-                                
+
                                 <div class="colors block">
                                     <h2 class="trn toggle" data-target="toggle_colors">Colors</h2>
                                     <div class="content" id="toggle_colors"></div>
                                 </div>
-                                
+
                                 <div class="block" id="info_base">
                                     <h2 class="trn toggle toggle-full" data-target="toggle_info">Information</h2>
                                     <div class="content" id="toggle_info"></div>
                                 </div>
-                                
+
                                 <div class="details block" id="details_base">
                                     <h2 class="trn toggle toggle-full" data-target="toggle_details">Layer details</h2>
                                     <div class="content details-content" id="toggle_details"></div>
                                 </div>
-                                
+
                                 <div class="layers block">
                                     <h2 class="trn">Layers</h2>
                                     <div class="content" id="layers_base"></div>
@@ -355,7 +349,7 @@ int main() {
                             </div>
                         </div>
                         <div class="hidden" id="tmp"></div>
-                        
+
                     </div>
                 </div>
                 <div id="viewport-frame">
@@ -375,14 +369,14 @@ int main() {
                     <div id="right-joystick"></div>
                     <canvas id="viewport">
                         Sorry, but your browser does not support WebGL or does not have it enabled.
-                        To get a WebGL-enabled browser, please see:<br/>
+                        To get a WebGL-enabled browser, please see:<br />
                         <a href="http://get.webgl.org/" target="_blank">
                             http://get.webgl.org/
                         </a>
                     </canvas>
                 </div>
                 <canvas id="scratch"></canvas>
-                
+
                 <div id="terminal-container" class="panel-column">
                     <div id="terminals">
                         <ul>
@@ -413,45 +407,10 @@ int main() {
     </div>
     <div id="global-tooltip" class="tooltip-box" popover></div>
 
-    <script src="/jszip.min.js" type="text/javascript" defer></script>
-    <script src="/ace/ace.js" type="text/javascript" charset="utf-8" defer></script>
-    <script src="/xterm.js" type="text/javascript" defer></script>
-    <script src="/commands.js" type="text/javascript" defer></script>
-    <script src="/terminal.js" type="text/javascript" defer></script>
-    <script src="/editor.js" type="text/javascript" defer></script>
-    <script src="/local.js" type="text/javascript" defer></script>
-    <script src="/make.js" type="text/javascript" defer></script>
-    <script src="/make-tools.js" type="text/javascript" defer></script>
-    <script src="/make-qvm.js" type="text/javascript" defer></script>
-    <script src="/github.js" type="text/javascript" defer></script>
-    <script src="/tree.js" type="text/javascript" defer></script>
-    <script src="/toolbar.js" type="text/javascript" defer></script>
-    <script src="/binary.js" type="text/javascript" defer></script>
-    <script src="/filelist.js" type="text/javascript" defer></script>
-    <script src="/compiler.js" type="text/javascript" defer></script>
-    <script src="/unzip.js" type="text/javascript" defer></script>
-    <script src="/shared.js" type="text/javascript" defer></script>
-    <script src="/paint.js" type="text/javascript" defer></script>
-    <script defer type="text/javascript" src="nipplejs.js"></script>
-    <script defer type="text/javascript" src="sys_emgl.js"></script>
-    <script defer type="text/javascript" src="sys_fs.js"></script>
-    <script defer type="text/javascript" src="sys_in.js"></script>
-    <script defer type="text/javascript" src="sys_net.js"></script>
-    <script defer type="text/javascript" src="sys_std.js"></script>
-    <script defer type="text/javascript" src="sys_web.js"></script>
-    <script defer type="text/javascript" src="sys_snd.js"></script>
-    <script defer type="text/javascript" src="sys_wasm.js"></script>
-    <!-- toji map viewer -->
-    <script type="text/javascript" src="js/util/webxr-polyfill.min.js"></script>
-    <script type="text/javascript" src="js/util/game-shim.js"></script>
-    <script type="text/javascript" src="js/util/gl-matrix-min.js"></script>
-    <script type="text/javascript" src="js/util/stats.min.js"></script>
-    <script type="text/javascript" src="js/basis/basis-basics.js"></script>
-    <script type="text/javascript" src="js/main.js"></script>
-    <script type="text/javascript" src="js/q3bsp.js"></script>
-    <script type="text/javascript" src="js/q3shader.js"></script>
-    <script type="text/javascript" src="js/q3glshader.js"></script>
-    <script type="text/javascript" src="js/q3movement.js"></script>
+
+    <script src="/events.js" type="text/javascript" defer></script>
+    <script src="/extensions.js" type="text/javascript" defer></script>
+    <script src="/modules.js" type="text/javascript" defer></script>
 </body>
 
 </html>

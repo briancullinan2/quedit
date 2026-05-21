@@ -28,27 +28,18 @@ function getOrCreateAceSession(fileId, content) {
 
 
 function currentSession() {
-    return Object.keys(sessionCache).find(k => sessionCache[k] === editor.getSession())
+    return Object.keys(sessionCache).find(k => sessionCache[k] === aceEditor.getSession())
 }
 
 
-const theme = document.getElementById('theme')
-let savedTheme = localStorage.getItem('theme') || theme.value || 'ace/theme/monokai'
-if (document.querySelector(`#theme [value*="${savedTheme}"]`))
-    theme.value = savedTheme
-else
-    theme.value = theme.value || 'ace/theme/monokai'
-let themeName = savedTheme.split('/').pop()
-document.body.classList.remove('theme-monokai')
-document.body.classList.add(`theme-${themeName.replace(/_/g, '-')}`);
 const editorWrapper = document.getElementById('editor-container')
 const editorContainer = document.getElementById('editor')
-let editor = ace.edit("editor");
-editor.setTheme(savedTheme);
-editor.renderer.setShowGutter(true);
-editor.renderer.$gutterLayer.setShowLineNumbers(true)
-editor.renderer.$loop.schedule(editor.renderer.CHANGE_GUTTER);
-editor.setOptions({
+let aceEditor = ace.edit("editor");
+aceEditor.setTheme(window.savedTheme);
+aceEditor.renderer.setShowGutter(true);
+aceEditor.renderer.$gutterLayer.setShowLineNumbers(true)
+aceEditor.renderer.$loop.schedule(aceEditor.renderer.CHANGE_GUTTER);
+aceEditor.setOptions({
     // Core cursor placement optimizations
     scrollPastEnd: 0.9,       // Keeps cursor centered when adding new code at EOF
     showPrintMargin: true,
@@ -57,20 +48,10 @@ editor.setOptions({
     //animatedScroll: true,
     //autoScrollEditorIntoView: false,
 })
-const keybinding = document.getElementById('keybinding')
-let savedKeybinding = localStorage.getItem('keybinding') || keybinding.value || 'ace/keybinding/vim'
-if (!document.querySelector(`#keybinding [value*="${savedKeybinding}"]`))
-    savedKeybinding = keybinding.value || 'ace/keybinding/vim'
-else
-    keybinding.value = savedKeybinding
-if (!savedKeybinding || savedKeybinding == 'null')
-    editor.setKeyboardHandler(null);
-else
-    editor.setKeyboardHandler(savedKeybinding);
-editor.session.setUseWorker(false);
-editor.session.setMode("ace/mode/c_cpp");
+//aceEditor.session.setUseWorker(false);
+aceEditor.session.setMode("ace/mode/c_cpp");
 ; ++tempCount;
-sessionCache['temp' + (tempCount)] = editor.session
+sessionCache['temp' + (tempCount)] = aceEditor.session
 let currentOpenFileId = 'temp' + (tempCount)
 
 updateMaxLines()
@@ -86,15 +67,14 @@ function setTheme(theme) {
     }
 
     document.body.classList.add(`theme-${themeName.replace(/_/g, '-')}`);
-
-    localStorage.setItem('theme', theme)
     // Actually tell Ace to change its internal theme too
-    editor.setTheme(theme);
+    aceEditor.setTheme(theme);
     savedTheme = theme
     // wait for update on page so it can scan for colors out of css
-    setTimeout(() => {
-        setTerminalAceTheme()
-    }, 500);
+    if (window.setTerminalAceTheme)
+        setTimeout(() => {
+            setTerminalAceTheme()
+        }, 500);
 
 }
 
@@ -139,15 +119,15 @@ function parseToHex(colorStr, backgroundStr = null) {
 
 let navTimer;
 
-editor.on("changeSelection", function () {
+aceEditor.on("changeSelection", function () {
     // FIX: If the user is selecting a block of text, do not interrupt them
-    //if (!editor.selection.isEmpty()) return; 
+    //if (!aceEditor.selection.isEmpty()) return; 
 
     if (typeof NavHistory !== 'undefined' && NavHistory.isNavigating) return;
 
     clearTimeout(navTimer);
     navTimer = setTimeout(() => {
-        const pos = editor.getCursorPosition();
+        const pos = aceEditor.getCursorPosition();
         const currentFile = typeof currentOpenFileId !== 'undefined' ? currentOpenFileId : null;
 
         // Ground coordinates to human 1-based format inside tracking tables
@@ -161,7 +141,7 @@ editor.on("changeSelection", function () {
     }, 500);
 });
 
-editor.commands.addCommand({
+aceEditor.commands.addCommand({
     name: "save",
     bindKey: { win: "Ctrl-S", mac: "Command-S" },
     exec: function (editor) {
@@ -184,7 +164,7 @@ ace.config.loadModule("ace/keyboard/vim", function(m) {
     // Some versions of Ace require this manual attachment:
     
     // This tells Ace to pipe ":commands" and "INSERT/NORMAL" modes to your div
-    editor.setOption("showPrintMargin", false); // Optional cleanup
+    aceEditor.setOption("showPrintMargin", false); // Optional cleanup
     
     // If using the official status bar extension:
     // let StatusBar = ace.require("ace/ext/statusbar").StatusBar;
@@ -233,13 +213,13 @@ const NavHistory = {
 
     apply() {
         const point = this.stack[this.index];
-        let database = owner.value + '/' + repo.value
+        let database = owner.value + '/' + repository.value
         const filePath = trees[database].nodesById[point.fileId].path
         currentOpenFileId = point.fileId;
         trees[database].values = [point.fileId];
-        openFile(owner.value, repo.value, filePath, trees[database].nodesById[point.fileId].sha, false);
+        openFile(owner.value, repository.value, filePath, trees[database].nodesById[point.fileId].sha, false);
 
-        editor.gotoLine(point.row + 1, point.column);
+        aceEditor.gotoLine(point.row + 1, point.column);
     }
 };
 
@@ -277,7 +257,7 @@ window.addEventListener('keyup', (e) => {
 
 async function newFile() {
     const session = getOrCreateAceSession('temp' + (++tempCount), '');
-    editor.setSession(session);
+    aceEditor.setSession(session);
     hideOpenPanels()
     resizeDebouncer()
     editorContainer.classList.add('not-hidden')
@@ -287,11 +267,11 @@ async function newFile() {
 
 
 async function saveFile() {
-    const database = owner.value + '/' + repo.value
+    const database = owner.value + '/' + repository.value
     const filePath = currentSession()
     if (!filePath)
         filePath = trees[database].nodesById[currentOpenFileId].path
-    const content = editor.getValue()
+    const content = aceEditor.getValue()
     const newSha = await getGitShaBrowser(content)
     FS.virtual[filePath] = {
         timestamp: new Date(),
@@ -547,26 +527,26 @@ function updateMaxLines() {
     if (!editorContainer.classList.contains('not-hidden'))
         return
 
-    const lineHeight = editor.renderer.lineHeight;
+    const lineHeight = aceEditor.renderer.lineHeight;
     //const availableHeight = editorWrapper.clientHeight;
 
     // Calculate how many lines fit in that space
     const isFull = fullScreenLayout()
     const realHeight = getFullScreenFit(1.01)
     //const height = getFullScreenFit(1.01) // isFull ? 0.99 : 0.75) // opposite terminal 0.25
-    //let calculatedMax = editor.getValue().split('\n').length
+    //let calculatedMax = aceEditor.getValue().split('\n').length
     // add scroll to bottom of files
     //    + (height * 0.25 / lineHeight)
     //if (!isFull) {
     //calculatedMax = Math.floor(height / lineHeight);
     //}
-    //editor.setOptions({
+    //aceEditor.setOptions({
     //    maxLines: calculatedMax,
     //    minLines: calculatedMax
     //});
     editorContainer.style.height = `${realHeight}px`;
-    editor.resize();
-    editor.renderer.updateFull();
+    aceEditor.resize();
+    aceEditor.renderer.updateFull();
 
 }
 
@@ -598,7 +578,7 @@ let aceMoveDebounceTimer = null;
  * Converts screen positions into exact buffer coordinates.
  */
 function detectAceEditorEvents(event) {
-    if (!editor || !editor.renderer) return null;
+    if (!editor || !aceEditor.renderer) return null;
 
     // 1. GATEWAY: Only process calculations if Ctrl (Win/Linux) or Cmd (Mac) is held down
     //if (!event.ctrlKey && !event.metaKey) {
@@ -610,7 +590,7 @@ function detectAceEditorEvents(event) {
     const canvasY = event.clientY;
 
     // 2. Map mouse screen pixels directly to Ace internal character coordinates
-    const screenPos = editor.renderer.screenToTextCoordinates(canvasX, canvasY);
+    const screenPos = aceEditor.renderer.screenToTextCoordinates(canvasX, canvasY);
     const row = screenPos.row;
     const column = screenPos.column;
 
@@ -623,7 +603,7 @@ function detectAceEditorEvents(event) {
     lastTrackedColumn = column;
 
     // 3. Get the precise string token sitting under the mouse
-    const session = editor.getSession();
+    const session = aceEditor.getSession();
     const token = session.getTokenAt(row, column);
 
     // Extract the full raw text line for debugging context
@@ -649,7 +629,7 @@ function detectAceEditorEvents(event) {
     // Convert internal zero-based indices to human-readable 1-based indices (+1)
     const humanLine = row + 1;
     const humanCol = column + 1;
-    const database = owner.value + '/' + repo.value
+    const database = owner.value + '/' + repository.value
     const filePath = currentSession()
     if (!filePath)
         filePath = trees[database].nodesById[currentOpenFileId].path
@@ -680,7 +660,7 @@ function updateAceStatus(data) {
         statusBar.innerText = "Editor: Idle";
         return;
     }
-    const cursor = editor.getCursorPosition();
+    const cursor = aceEditor.getCursorPosition();
     const cursorLine = cursor.row + 1;
     const cursorCol = cursor.column + 1;
     const tokenInfo = data.tokenText
@@ -749,13 +729,13 @@ editorWrapper.addEventListener('mousedown', async (event) => {
     }
 });
 
-editor.commands.addCommand({
+aceEditor.commands.addCommand({
     name: "forceSystemCopy",
     bindKey: { win: "Ctrl-C", mac: "Command-C" },
     exec: function (editor) {
-        const range = editor.getSelectionRange();
+        const range = aceEditor.getSelectionRange();
         if (range && !range.isEmpty()) {
-            let selectedText = editor.session.getTextRange(range);
+            let selectedText = aceEditor.session.getTextRange(range);
 
             if (selectedText) {
                 // FIX: Strip out null bytes (\x00) and dangerous low-ASCII control characters (0-31)

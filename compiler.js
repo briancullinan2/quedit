@@ -27,15 +27,15 @@ class WorkerAPI {
 
     inject(options) {
         let currentConfig = options.configuration || configuration.value || this.configuration || 'release'
-        this.configuration = options.configuration = configuration.value === 'debug' ? 'debug' : 'release'
-        this.database = options.database = options.database || engineRepo || this.database
+        this.configuration = options.configuration = currentConfig === 'debug' ? 'debug' : 'release'
+        this.database = options.database = options.database || engineRepository || this.database
         this.width = options.width = options.width = term.cols
         this.github_token = options.github_token = options.github_token = this.github_token
-        this.toolsRepo = options.toolsRepo = options.toolsRepo || toolsRepo || this.toolsRepo
-        this.toolsRepo2 = options.toolsRepo2 = options.toolsRepo2 || toolsRepo2 || this.toolsRepo2
-        this.engineRepo = options.engineRepo = options.engineRepo || engineRepo || this.engineRepo
-        this.gameRepo = options.gameRepo = options.gameRepo || gameRepo || this.gameRepo
-        this.assetRepo = options.assetRepo = options.assetRepo || assetRepo || this.assetRepo
+        this.toolsRepo = options.toolsRepo = options.toolsRepo || toolsRepository || this.toolsRepo
+        this.toolsRepo2 = options.toolsRepo2 = options.toolsRepo2 || tools2Repository || this.toolsRepo2
+        this.engineRepo = options.engineRepo = options.engineRepo || engineRepository || this.engineRepo
+        this.gameRepo = options.gameRepo = options.gameRepo || gameRepository || this.gameRepo
+        this.assetRepo = options.assetRepo = options.assetRepo || assetRepository || this.assetRepo
     }
 
 
@@ -94,7 +94,7 @@ class WorkerAPI {
 
     async build(database, action = 'all') {
         let options = {
-            database: database || owner.value + '/' + repo.value || this.database,
+            database: database || owner.value + '/' + repository.value || this.database,
             action,
         }
         this.inject(options)
@@ -156,14 +156,33 @@ class WorkerAPI {
     }
 }
 
+function specialWrite(msg) {
+    if (!msg) return;
+    if (msg.includes('memory access out of bounds')) {
+        needsHeaders = true
+    }
+
+    if (!window.runningCommand && !window.detachedConsole && !window.alreadyWroteDetached) {
+        detachedConsole = true
+        PREAMBLE = WARN_PREAMBLE
+        console.warn('\n\rDetached console, awaiting terminate...')
+    }
+    let skipTerminal = false
+    if (msg.includes('Assertion failed: lookup.node')) {
+        skipTerminal = true
+    }
+    if(!skipTerminal && window.terminalWrite)
+         window.terminalWrite(msg)
+    
+}
+
 
 const api = new WorkerAPI({
     hostWrite: specialWrite
 });
-
-if (typeof localStorage !== 'undefined')
-    api.github_token = localStorage.getItem('github_token')
 window.api = api;
+window.api.github_token = window.githubToken
+
 
 // TODO: offline mode
 // ServiceWorker stuff

@@ -146,10 +146,10 @@ const toolLdFlags = [
 
 
 async function buildLBurg(database = null, forceChanged = false, noLinking = false) {
-    if (!database) database = toolsRepo || api.database;
+    if (!database) database = toolsRepository || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
 
     let CONFIGURATION = api.configuration == 'release'
@@ -203,7 +203,7 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
 
 
 async function linkLburg(database, forceChanged = false, noBuild = false) {
-    if (!database) database = toolsRepo || api.database;
+    if (!database) database = toolsRepository || api.database;
 
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
@@ -259,10 +259,10 @@ let FILELIST
 
 async function compileToolFile(src, obj, includeDir, database, extraFlags = [], forceChanged = false) {
     try {
-        if (!database) database = toolsRepo || api.database;
+        if (!database) database = toolsRepository || api.database;
         let parts = database.split('/');
         let ownerName = parts.length == 2 ? parts[0] : owner.value;
-        let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
+        let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
         PREAMBLE = TOOLS_PREAMBLE
 
@@ -327,163 +327,14 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
     }
 }
 
-const colors = {
-    reset: "\x1b[0m",
-    log: "\x1b[32m", // Green
-    warn: "\x1b[33m", // Yellow
-    error: "\x1b[31m", // Red
-    info: "\x1b[36m", // Cyan
-    gray: "\x1b[90m"  // Gray for timestamps/meta
-};
-
-
-const CMD_PREAMBLE = '\x1b[38;5;196m[RUNTIME ERROR]\x1b[0m';
-const API_PREAMBLE = '\x1b[38;5;214m[COMPILER]\x1b[0m ';      // Gold/Orange
-
-const TAR_PREAMBLE = '\x1b[38;5;179m[TAR]\x1b[0m ';           // Warm Tan
-
-const GITHUB_PREAMBLE = '\x1b[38;5;27m[GITHUB]\x1b[0m ';      // Deep Brand Blue
-const FETCH_PREAMBLE = '\x1b[38;5;39m[FETCH]\x1b[0m ';        // Vivid Cyan
-const ERROR_PREAMBLE = '\x1b[38;5;196m[ERROR]\x1b[0m ';       // Intense Crimson Red
-const WARN_PREAMBLE = '\x1b[38;5;33m[WARN]\x1b[0m ';
-const INFO_PREAMBLE = '\x1b[38;5;36m[INFO]\x1b[0m ';
-const LOG_PREAMBLE = '\x1b[38;5;32m[LOG]\x1b[0m ';
-
-const QVM_PREAMBLE = '\x1b[38;5;165m[QVM]\x1b[0m ';           // Electric Magenta
-const QVMERR_PREAMBLE = '\x1b[38;5;202m[QVM ERROR]\x1b[0m ';  // Deep Coral Orange
-
-//const BUILD_PREAMBLE = '\x1b[38;5;99m[TOOLS-BUILD]\x1b[0m '; // Soft Lavender
-const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m ';      // Bright Coral Red
-
-const API_HEADER_PREAMBLE = '\x1b[38;5;221m[HEADER]\x1b[0m ';    // Amber Yellow (Parsing)
-const API_COMPILE_PREAMBLE = '\x1b[38;5;208m[COMPILE]\x1b[0m ';  // Safety Orange (Compiling)
-const API_LINK_PREAMBLE = '\x1b[38;5;118m[LINK]\x1b[0m ';        // Neon Lime Green (Success)
-const API_RUN_PREAMBLE = '\x1b[38;5;45m[RUN]\x1b[0m ';           // Turquoise (Execution)
-const API_BUILD_PREAMBLE = '\x1b[38;5;76m[BUILD]\x1b[0m ';         // Forest Green mix
-const API_REMOVE_PREAMBLE = '\x1b[38;5;244m[REMOVE]\x1b[0m ';    // Muted Slate Gray
-
-const BUILD_PREAMBLE = '\x1b[38;5;118m[BUILD]\x1b[0m '; // Matches successful link color
-
-const EDITOR_PREAMBLE = '\x1b[38;5;201m[EDITOR]\x1b[0m ';    // Hot Pink
-
-const UNZIP_PREAMBLE = '\x1b[38;5;134m[UNZIP]\x1b[0m ';      // Orchid Purple
-
-const TOOLS_PREAMBLE = '\x1b[38;5;121m[TOOLS-BUILD]\x1b[0m '
-//const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m '
-const ENGINE_PREAMBLE = '\x1b[38;5;36m[QUAKE3E]\x1b[0m '
-
-
-
-let PREAMBLE = TOOLS_PREAMBLE
-function writeLog(msg, ...args) {
-    let skipTerminal = false
-    if (msg.includes('Assertion failed: lookup.node')) {
-        debugger
-        skipTerminal = true
-    }
-    if (!msg.includes) debugger
-    if (msg.includes && msg.includes('TypeError:')) debugger
-    let formatted = formatMessage(PREAMBLE, [msg, ...args])
-    if (typeof term !== 'undefined' && !skipTerminal) terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
-    if (typeof originalConsole != 'undefined') originalConsole.log(msg, ...args);
-    else console.log(msg, ...args)
-    if (typeof triggerIncrementalSave !== 'undefined')
-        triggerIncrementalSave()
-}
-
-function formatMessageItem(cache, arg) {
-    if (cache.has(arg)) return '[Circular]';
-    cache.add(arg);
-    // 1. Handle Errors (JSON.stringify ignores message/stack by default)
-    if (arg instanceof Error) {
-        return `${arg.name}: ${arg.message}\n\r${arg.stack || arg.stacktrace}\n\r${formatMessageItem(cache, { ...arg })}`;
-    }
-
-
-    if (typeof arg === 'string') {
-        return arg.trim()
-    }
-    if (typeof arg === 'object' && Object.keys(arg).length === 0) {
-        return (arg.name || arg.constructor.name || typeof arg) + ' ' + '{empty}'
-    }
-
-
-    return (arg.name || arg.constructor.name || typeof arg) + ' ' + JSON.stringify(arg, (key, value) => {
-        // 2. Prevent "Circular reference" crashes
-        if (typeof value === 'object' && value !== null) {
-            if (cache.has(value)) return '[Circular]';
-            cache.add(value);
-        }
-        return value;
-    }, 4);
-}
-// ANSI Escape Code Definitions
-
-const formatMessage = (level, args) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const LOCAL_PREAMBLE = level.includes('\x1b') ? level : `${colors[level] || colors.gray}[${level.toUpperCase()}]${colors.reset} `
-    const prefix = `${colors.gray}[${timestamp}]${LOCAL_PREAMBLE}${colors.reset}`;
-
-    const cache = new Set(); // To handle circular references
-
-    const processed = args.map(formatMessageItem.bind(null, cache));
-
-
-    return `${prefix}${processed.join('\n\r')}\r\n`;
-};
-
-const originalConsole = {
-    log: console.log,
-    warn: console.warn,
-    error: console.error,
-    info: console.info
-};
-
-self.console.log = (...args) => {
-    const formatted = formatMessage('log', args);
-    if (typeof term !== 'undefined') terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
-    if (typeof originalConsole != 'undefined') originalConsole.log(...args);
-    if (typeof triggerIncrementalSave !== 'undefined')
-        triggerIncrementalSave()
-};
-
-self.console.warn = (...args) => {
-    const formatted = formatMessage('warn', args);
-    if (typeof term !== 'undefined') terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
-    if (typeof originalConsole != 'undefined') originalConsole.warn(...args);
-    if (typeof triggerIncrementalSave !== 'undefined')
-        triggerIncrementalSave()
-};
-
-self.console.error = (...args) => {
-    const formatted = formatMessage('error', args);
-    if (typeof term !== 'undefined') terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
-    if (typeof originalConsole != 'undefined') originalConsole.error(...args);
-    if (typeof triggerIncrementalSave !== 'undefined')
-        triggerIncrementalSave()
-};
-
-self.console.info = (...args) => {
-    const formatted = formatMessage('info', args);
-    if (typeof term !== 'undefined') terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
-    if (typeof originalConsole != 'undefined') originalConsole.info(...args);
-    if (typeof triggerIncrementalSave !== 'undefined')
-        triggerIncrementalSave()
-};
-
 let needsHeaders = true
 
 
 async function buildRCC(database = null, skipTool = false, forceChanged = false, noLinking = false) {
-    if (!database) database = toolsRepo || api.database;
+    if (!database) database = toolsRepository || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
 
     let CONFIGURATION = api.configuration == 'release'
@@ -590,7 +441,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
 
 
 async function linkRCC(database = null, forceChanged = false, noBuild = false) {
-    if (!database) database = toolsRepo || api.database;
+    if (!database) database = toolsRepository || api.database;
 
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
@@ -634,10 +485,10 @@ async function linkRCC(database = null, forceChanged = false, noBuild = false) {
 
 
 async function buildCPP(database = null, forceChanged = false, noLinking = false) {
-    if (!database) database = toolsRepo || api.database;
+    if (!database) database = toolsRepository || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
@@ -684,7 +535,7 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
 
 
 async function linkCPP(database = null, forceChanged = false, noBuild = false) {
-    if (!database) database = toolsRepo || api.database;
+    if (!database) database = toolsRepository || api.database;
 
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
@@ -731,10 +582,10 @@ async function linkCPP(database = null, forceChanged = false, noBuild = false) {
 
 
 async function buildLCC(database = null, forceChanged = false, noLinking = false) {
-    if (!database) database = toolsRepo || api.database;
+    if (!database) database = toolsRepository || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
 
     let CONFIGURATION = api.configuration == 'release'
@@ -791,7 +642,7 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
 
 async function linkLCC(database = null, forceChanged = false, noBuild = false) {
 
-    if (!database) database = toolsRepo || api.database;
+    if (!database) database = toolsRepository || api.database;
 
     let CONFIGURATION = api.configuration == 'release'
         ? dirs.ENGINE_RELEASE
@@ -862,7 +713,7 @@ async function buildTools(database = null, toolName = 'all', forceChanged = fals
 
     try {
 
-        if (!database) database = toolsRepo || api.database;
+        if (!database) database = toolsRepository || api.database;
 
 
 
@@ -901,7 +752,7 @@ async function buildTools(database = null, toolName = 'all', forceChanged = fals
 
 
         if (toolName === 'q3asm' || toolName === 'all')
-            await buildAsmTool(toolsRepo2 || api.toolsRepo2 || api.database, forceChanged)
+            await buildAsmTool(tools2Repository || api.toolsRepo2 || api.database, forceChanged)
 
         if (TERMINATE) return
 
@@ -939,10 +790,10 @@ const Q3ASM_CFLAGS = [
 async function buildAsmTool(database = null, forceChanged = false, noLinking = false) {
 
 
-    if (!database) database = toolsRepo2 || api.toolsRepo2 || api.database;
+    if (!database) database = tools2Repository || api.toolsRepo2 || api.database;
     let parts = database.split('/');
     let ownerName = parts.length == 2 ? parts[0] : owner.value;
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value;
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
 
     let CONFIGURATION = api.configuration == 'release'
@@ -1019,7 +870,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 
 
 async function linkAsm(database = null, forceChanged = false, noBuild = false) {
-    if (!database) database = toolsRepo2 || api.toolsRepo2 || api.database;
+    if (!database) database = tools2Repository || api.toolsRepo2 || api.database;
 
 
     let CONFIGURATION = api.configuration == 'release'

@@ -3,7 +3,6 @@
 const LINES_TO_SAVE = 1000
 const LINES_TO_SCROLLBACK = 5000
 const MAX_HISTORY_LENGTH = 20
-const SCROLLBAR_WIDTH = 15
 let terminalLoaded = false
 const terminalWrapper = document.getElementById('terminal-container')
 const terminalContainer = document.getElementById('terminal')
@@ -20,67 +19,7 @@ const term = new Terminal({
 term.open(terminalContainer);
 
 
-let resizeDebounce = null
-function resizeDebouncer() {
-    if (resizeDebounce) return
-    resizeDebounce = setTimeout(() => {
-        forceFit();
-        updateMaxLines()
-        updatePainter()
-        isDevToolsOpen()
-        if(window.onResize)
-            window.onResize()
-
-        resizeDebounce = null
-
-        if (terminalWrapper.classList.contains('not-hidden')) {
-            if (!terminalLoaded) {
-                term.write(loadedLog.map(l => l.text || l).join(''))
-                if (!terminalLoaded && loadedLog.length > 0)
-                    writePrompt()
-                terminalLoaded = true
-            }
-            performSharedBufferScanInternal(searchTerminal.value)
-            //performFilenameSearch()
-        }
-
-    }, 500);
-}
-
-
-function isDevToolsOpen() {
-    const threshold = 160; // Cushion for window borders
-
-    const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-    const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-
-    const hasClass = document.body.classList.contains('debugger')
-
-    const debuggerIsOpen = widthThreshold || heightThreshold
-    if (debuggerIsOpen && !hasClass)
-        document.body.classList.add('debugger')
-    else if (!debuggerIsOpen && hasClass)
-        document.body.classList.remove('debugger')
-
-    return widthThreshold || heightThreshold;
-}
-
-
-window.addEventListener('resize', resizeDebouncer);
-
-
-const loadedHistory = JSON.parse(localStorage.getItem('history') || '[]')
-const commandHistory = loadedHistory instanceof Array ? loadedHistory : []
-const loadedLog = JSON.parse(localStorage.getItem('terminal_log') || '[]');
-if (loadedLog.length === 0)
-    writePrompt()
-
-let lineCount = loadedLog.reduce((sum, l) => {
-    const text = l.text || l; // handles both structured objects and raw strings
-    return sum + (text.match(/\n/g) || []).length;
-}, 0);
-
-
+let lineCount = 0;
 let lastPartialLine = ''
 
 function terminalWrite(message, source, skipActualWrite = false) {
@@ -100,16 +39,19 @@ function terminalWrite(message, source, skipActualWrite = false) {
         render = lastPartialLine + render
     }
 
-    lineCount += (message.match(/\n/g) || []).length
-    loadedLog.push({ render: render.includes('\n') ? forceLineWrap(render, term.cols) : '', source: source, text: message, index: loadedLog.length, line: lineCount })
+    window.lineCount += (message.match(/\n/g) || []).length
+    window.terminalLog.push({ render: render.includes('\n') ? forceLineWrap(render, term.cols) : '', source: source, text: message, index: terminalLog.length, line: lineCount })
 
-    if (!terminalLoaded) {
+    if (!window.terminalLoaded) {
         return
     }
 
     if (!skipActualWrite && terminalWrapper.classList.contains('not-hidden'))
         term.write(message)
+
+    triggerIncrementalSave()
 }
+
 
 function forceLineWrap(text, maxCharsPerRow = 80) {
     const rows = [];
@@ -155,6 +97,14 @@ function forceLineWrap(text, maxCharsPerRow = 80) {
 
     return rows.join('\n\r');
 }
+
+
+
+if (window.terminalLog.length === 0)
+    writePrompt()
+
+
+
 
 let historyIndex = -1;
 let currentLine = '';
@@ -270,7 +220,7 @@ async function triggerIncrementalSave() {
         debounceTerminalStatus()
         performSharedBufferScanInternal(searchTerminal.value)
         //performFilenameSearch()
-        const lines = loadedLog.slice(-LINES_TO_SAVE)
+        const lines = terminalLog.slice(-LINES_TO_SAVE)
         //const last1000 = DIFFERENTIATE_SAVED 
         //? getInternalTerminalLog() : getInternalTerminalLogColored();
         localStorage.setItem('terminal_log', JSON.stringify(lines));
@@ -693,26 +643,6 @@ term.attachCustomKeyEventHandler((arg) => {
 
 
 let alreadyWroteDetached = false;
-
-function specialWrite(msg) {
-    if (!msg) return;
-    if (msg.includes('memory access out of bounds')) {
-        needsHeaders = true
-    }
-
-    if (!runningCommand && !detachedConsole && !alreadyWroteDetached) {
-        detachedConsole = true
-        PREAMBLE = WARN_PREAMBLE
-        console.warn('\n\rDetached console, awaiting terminate...')
-    }
-    let skipTerminal = false
-    if (msg.includes('Assertion failed: lookup.node')) {
-        skipTerminal = true
-    }
-    if (!skipTerminal)
-        terminalWrite(msg)
-    triggerIncrementalSave()
-}
 
 
 term.onData(async data => {
@@ -1187,55 +1117,55 @@ async function findTestFilepath(filePath) {
 
 
 
-    if (!dbFile && files[engineRepo]) {
-        dbFile = files[engineRepo][filePath]
+    if (!dbFile && files[engineRepository]) {
+        dbFile = files[engineRepository][filePath]
         if (dbFile) {
-            trees[engineRepo].values = [dbFile.sha];
-            selected = engineRepo
+            trees[engineRepository].values = [dbFile.sha];
+            selected = engineRepository
         }
     }
-    if (!dbFile && files[gameRepo]) {
-        dbFile = files[gameRepo][filePath]
+    if (!dbFile && files[gameRepository]) {
+        dbFile = files[gameRepository][filePath]
         if (dbFile) {
-            trees[gameRepo].values = [dbFile.sha];
-            selected = gameRepo
+            trees[gameRepository].values = [dbFile.sha];
+            selected = gameRepository
         }
     }
-    if (!dbFile && files[assetRepo]) {
-        dbFile = files[assetRepo][filePath]
+    if (!dbFile && files[assetRepository]) {
+        dbFile = files[assetRepository][filePath]
         if (dbFile) {
-            trees[assetRepo].values = [dbFile.sha];
-            selected = assetRepo
+            trees[assetRepository].values = [dbFile.sha];
+            selected = assetRepository
         }
     }
 
     if (!dbFile) {
-        if (!files[toolsRepo]) {
-            let parts = toolsRepo.split('/')
+        if (!files[toolsRepository]) {
+            let parts = toolsRepository.split('/')
             let ownerName = parts.length == 2 ? parts[0] : owner.value
-            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
             let branch = await getDefaultBranch(ownerName, repoName)
             await loadGitHubTree(ownerName, repoName, branch)
         }
-        if (files[toolsRepo][filePath]) {
-            selected = toolsRepo
-            dbFile = files[toolsRepo][filePath]
+        if (files[toolsRepository][filePath]) {
+            selected = toolsRepository
+            dbFile = files[toolsRepository][filePath]
         }
     }
 
 
     if (!dbFile) {
-        if (!files[toolsRepo2]) {
-            let parts = toolsRepo2.split('/')
+        if (!files[tools2Repository]) {
+            let parts = tools2Repository.split('/')
             let ownerName = parts.length == 2 ? parts[0] : owner.value
-            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
             let branch = await getDefaultBranch(ownerName, repoName)
             await loadGitHubTree(ownerName, repoName, branch)
         }
-        if (files[toolsRepo2][filePath]) {
+        if (files[tools2Repository][filePath]) {
 
-            selected = toolsRepo2
-            dbFile = files[toolsRepo2][filePath]
+            selected = tools2Repository
+            dbFile = files[tools2Repository][filePath]
         }
     }
 
@@ -1316,21 +1246,21 @@ async function clickTerminalFile(filePath, lineNumber, noBounce = false) {
     hideOpenPanels()
     latestPanelId = previousPanelId = 'editor' // switch from terminal automatically
 
-    if (selected === engineRepo)
+    if (selected === engineRepository)
         renderTabsCommand('filelist', true, false)
-    if (selected === gameRepo)
+    if (selected === gameRepository)
         renderTabsCommand('gamelist', true, false)
-    if (selected === assetRepo)
+    if (selected === assetRepository)
         renderTabsCommand('assetlist', true, false)
-    if (selected === toolsRepo)
+    if (selected === toolsRepository)
         renderTabsCommand('database', true, false)
-    if (selected === toolsRepo2)
+    if (selected === tools2Repository)
         renderTabsCommand('database', true, false)
 
 
     let parts = selected.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     if (!dbFile) dbFile = files[selected][filePath]
 
@@ -1344,8 +1274,8 @@ async function clickTerminalFile(filePath, lineNumber, noBounce = false) {
         editorContainer.classList.add('not-hidden')
 
         if (lineNumber)
-            editor.gotoLine(lineNumber, 0, true);
-        editor.focus();
+            aceEditor.gotoLine(lineNumber, 0, true);
+        aceEditor.focus();
         latestPanelId = 'editor'
     }, 500)
     resizeDebouncer()

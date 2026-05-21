@@ -3749,10 +3749,10 @@
                                     }, !1),
                                     this.check_canvas_offset();
                                 var a = this.Tools_settings.get_setting("exit_confirm");
-                                window.addEventListener("beforeunload", function (e) {
+                                /*window.addEventListener("beforeunload", function (e) {
                                     a && (i.A.layers.length > 1 || 0 == t.Base_layers.is_layer_empty(i.A.layer.id)) && (e.preventDefault(),
                                         e.returnValue = "")
-                                }),
+                                }),*/
                                     document.getElementById("canvas_minipaint").addEventListener("contextmenu", function (e) {
                                         e.preventDefault()
                                     }, !1)
@@ -32285,6 +32285,7 @@
                         k.ready()
                 }
                 k.fn.ready = function (e) {
+                    debugger
                     return J.then(e).catch(function (e) {
                         k.readyException(e)
                     }),
@@ -43102,7 +43103,7 @@
                         }]);
                 var n, r
             }(F);
-            window.addEventListener("load", function (t) {
+            window.addEventListener("load", window.loadPaint = function (t) {
                 var n = new I.A
                     , r = new E.A(!0)
                     , a = new S.A
@@ -43220,12 +43221,12 @@ function update_image() {
 // --- Hooking it into miniPaint ---
 // Instantiate globally, passing 25 FPS and the custom render callback
 window.paintFrameLimiter = createFrameRater(25, (e, t, frame) => {
-  if (window.Layers) {
-    // Pass the event along, or utilize t and frame if miniPaint needs them
-    window.Layers.render(e); 
-  }
-  
-  // Optional: tracking in your console to verify parameters are passing
-  // console.log(`Frame: ${frame} | Time: ${t.toFixed(1)}ms`);
+    if (window.Layers) {
+        // Pass the event along, or utilize t and frame if miniPaint needs them
+        window.Layers.render(e);
+    }
+
+    // Optional: tracking in your console to verify parameters are passing
+    // console.log(`Frame: ${frame} | Time: ${t.toFixed(1)}ms`);
 });
 

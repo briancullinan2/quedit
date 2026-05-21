@@ -6,7 +6,7 @@
 
 async function unzipToVirtualFS(buffer, rootPath = 'baseq3', database = null) {
     if(!database)
-        database = owner.value + '/' + repo.value
+        database = owner.value + '/' + repository.value
     const zip = new JSZip();
     const contents = await zip.loadAsync(buffer);
     

@@ -344,7 +344,7 @@ function Sys_Frame() {
 }
 
 async function Sys_notify(ifile, path, fp) {
-	var database = Module.database || owner.value + '/' + repo.value
+	var database = Module.database || owner.value + '/' + repository.value
 	try {
 		if (ifile === false) {
 			getDB(database).then(function (db) {

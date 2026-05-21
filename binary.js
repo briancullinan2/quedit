@@ -4,6 +4,7 @@ const checkMagic = (bytes, offset, pattern) => {
     if (bytes.length < offset + pattern.length) return false;
     return pattern.every((byte, i) => bytes[offset + i] === byte);
 };
+    const isImage = filePath => /\.(png|jpe?g|gif|webp)$/i.test(filePath);
 
 const BINARY_DETECTOR = {
     wasm: {

@@ -1374,7 +1374,7 @@ const API = (function () {
             try {
               let parts = selected.split('/')
               let ownerName = parts.length == 2 ? parts[0] : owner.value
-              let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+              let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
               // because this also creates the database with setupDatabase
               if (!files[selected]) {
                 let branch = await getDefaultBranch(ownerName, repoName)

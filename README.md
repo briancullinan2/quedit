@@ -31,7 +31,9 @@ until the tab is selected and refire. Similarly, override Open File and
 Open Directory to upload to our IDB storage instead of directly into paint
 Maybe a new database for temporary junk until it gets an official save function?
 Override multiple full screen modes for editor, paint, engine, so they all have
-a "zen" layout.
+a "zen" layout. fix navigation back and next browser buttons to navigate code files
+and change in UX back and next buttons to be undo buttons and merge with miniPaints
+undo button, add redo?
 
 10) Just thought of this one today with Iga, have a 3D printer in game when you 
 activate it with an in game search UI you select a model from SketchFab or 
@@ -42,6 +44,12 @@ then import it into the game while players are connected.
 script to show every global variable thats used NOT in the file that it's defined in.
 that way i have a list of exactly how my app could break if i only move files around.
 
+12) add quake 3 .map format to https://tentone.github.io/nunuStudio/editor and add that
+as the map editor instead of trying to port Trench Broom to WebAssmebly. it would be 
+amazing to edit BSP/MAP files directly and have the geometry update in the engine for 
+networked players, like a GOD mode terrain editor that the dungeon master can change
+while the players are connected in VR. welcome to my f**ked up reality, it already
+exists, we all know the name lucifer.
 
 ## So far
 

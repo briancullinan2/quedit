@@ -183,7 +183,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
         if (!database) database = gameRepo || api.database;
         let parts = database.split('/')
         let ownerName = parts.length == 2 ? parts[0] : owner.value
-        let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+        let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
 
         if (needsHeaders) {
@@ -373,7 +373,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
 
     if (buildDebounce) {
@@ -543,7 +543,7 @@ async function buildGame(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     
 
@@ -557,7 +557,7 @@ async function buildCGame(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     
 
@@ -572,7 +572,7 @@ async function buildUI(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     
 
@@ -604,7 +604,7 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
     if (!database) database = gameRepo || api.database;
     let parts = database.split('/')
     let ownerName = parts.length == 2 ? parts[0] : owner.value
-    let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+    let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
     
     PREAMBLE = QVM_PREAMBLE

@@ -57,11 +57,7 @@ const sortNodes = (nodes) => {
 
 
 const loadedDatabases = {}
-let engineRepo = 'briancullinan2/Quake3e'
-let gameRepo = 'ec-/baseq3a'
-let assetRepo = null
-let toolsRepo = 'briancullinan2/q3lcc'
-let toolsRepo2 = 'ec-/q3asm'
+
 
 async function initializeFiletrees() {
     if (window.location.pathname) {
@@ -69,12 +65,12 @@ async function initializeFiletrees() {
     }
 
 
-    engineRepo = localStorage.getItem('engine_repository') || engineRepo;
+    engineRepository = SettingsManager.get('core', 'engineRepository')
 
-    let parts = engineRepo?.split('/') || document.getElementById('filelist').dataset['repository']?.split('/')
+    let parts = engineRepository?.split('/') || document.getElementById('filelist').dataset['repository']?.split('/')
 
     if (parts) {
-        let newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
+        let newRepo = parts.length == 2 ? parts[1] : parts[0] || repository.value
         let newOwner = parts.length == 2 ? parts[0] : owner.value
         let branches = await getBranches(newOwner, newRepo)
         updateSelectOptions('branch', branches)
@@ -82,12 +78,12 @@ async function initializeFiletrees() {
             await loadFileTree(newOwner, newRepo, branches[0]?.name || 'main', '#filelist')
     }
 
-    gameRepo = localStorage.getItem('game_repository') || gameRepo;
+    gameRepository = SettingsManager.get('core', 'gameRepository')
 
-    let parts2 = gameRepo?.split('/') || document.getElementById('gamelist').dataset['repository']?.split('/')
+    let parts2 = gameRepository?.split('/') || document.getElementById('gamelist').dataset['repository']?.split('/')
     if (parts2) {
 
-        let newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repo.value
+        let newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repository.value
         let newOwner2 = parts2.length == 2 ? parts2[0] : owner.value
         let branches2 = await getBranches(newOwner2, newRepo2)
 
@@ -96,13 +92,13 @@ async function initializeFiletrees() {
     }
 
 
-    assetRepo = localStorage.getItem('asset_repository') || assetRepo;
+    assetRepository = SettingsManager.get('core', 'assetRepository')
 
-    let parts3 = assetRepo?.split('/') || document.getElementById('assetlist').dataset['repository']?.split('/')
+    let parts3 = assetRepository?.split('/') || document.getElementById('assetlist').dataset['repository']?.split('/')
 
     if (parts3) {
 
-        let newRepo3 = parts3.length == 2 ? parts3[1] : parts3[0] || repo.value
+        let newRepo3 = parts3.length == 2 ? parts3[1] : parts3[0] || repository.value
         let newOwner3 = parts3.length == 2 ? parts3[0] : owner.value
         let branches3 = await getBranches(newOwner3, newRepo3)
 
@@ -183,7 +179,7 @@ async function expandDatabaseTree(target, folderId) {
         if (!files[database]) {
             let parts = database.split('/')
             let ownerName = parts.length == 2 ? parts[0] : owner.value
-            let repoName = parts.length == 2 ? parts[1] : parts[0] || repo.value
+            let repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
             let branch = await getDefaultBranch(ownerName, repoName)
             await loadGitHubTree(ownerName, repoName, branch)
         }
@@ -291,36 +287,6 @@ async function expandDatabaseTree(target, folderId) {
 }
 
 
-
-
-document.addEventListener('DOMContentLoaded', async (event) => {
-
-    await initializeFiletrees();
-    forceFit();
-    updateMaxLines()
-    updatePainter()
-
-    // TODO: the exact same as above but later
-    resizeDebouncer()
-
-    setTimeout(() => {
-        if (window.AppConfig) {
-            // 1. Force transparent grid background setting to true
-            window.AppConfig.TRANSPARENCY = true
-
-            // 2. Trigger a full canvas re-render to update the visual workspace layers
-            //if (window.Layers && typeof window.Layers.render === 'function') {
-            window.Layers.render();
-            //}
-            //window.GUI.render_main_gui()
-        }
-
-        setTerminalAceTheme()
-
-        renderHashCommand(window.location.hash.substring(1), true)
-
-    }, 200);
-});
 
 
 
@@ -522,8 +488,6 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         return
     }
 
-    api.github_token = localStorage.getItem('github_token');
-
     let content = await cacheFile(repoOwner, repoName, filePath, sha, true);
     if (!content || content.length === 0) {
         try {
@@ -565,9 +529,8 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     const sampleStr = decoder.decode(sampleBytes);
 
     let str
-    const isImage = /\.(png|jpe?g|gif|webp)$/i.test(filePath);
-
-    if (isImage) {
+    let image = isImage(filePath)
+    if (image) {
         setTimeout(() => {
             openImage(content, filePath)
         }, 500);
@@ -575,7 +538,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         // Optionally fall back to text hexDump or return early so Ace Editor doesn't choke
         str = "[Binary Image Layer Inserted]";
     } else if (hasSequentialBinaryRegex.test(sampleStr)) {
-        if(filePath.endsWith('.bsp')) {
+        if (filePath.endsWith('.bsp')) {
             // TODO: also open toji bsp viewer like the image editor
         }
 
@@ -592,16 +555,16 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     const session = getOrCreateAceSession(filePath, str);
     const mode = getModeByFilename(filePath);
     session.setMode(mode);
-    editor.setSession(session);
+    aceEditor.setSession(session);
 
 
     if (hidePanels)
-        hideOpenPanels(isImage)
+        hideOpenPanels(image)
 
     editorContainer.classList.remove('hidden')
     editorContainer.classList.add('not-hidden')
 
-    if (isImage) {
+    if (image) {
         imageEditor.classList.remove('hidden')
         imageEditor.classList.add('not-hidden')
     }
@@ -629,7 +592,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
             else
                 selector.appendChild(option);
         }
-        const pos = editor.getCursorPosition();
+        const pos = aceEditor.getCursorPosition();
         NavHistory.push(sha, pos.row, pos.column);
         history.pushState({ location: window.location.toString() }, filePath, '#' + filePath)
     }
@@ -651,14 +614,14 @@ function renderHashCommand(fileName, noBounce = false) {
         return
     }
 
-    let database = owner.value + '/' + repo.value
+    let database = owner.value + '/' + repository.value
     if (files[database]) {
         const filePath = files[database][fileName]?.path
         if (filePath) {
             const fileId = files[database][fileName].sha
             currentOpenFileId = fileId;
             trees[database].values = [fileId];
-            openFile(owner.value, repo.value, filePath, fileId, false);
+            openFile(owner.value, repository.value, filePath, fileId, false);
         }
     }
 
@@ -696,19 +659,19 @@ function treeHandler(selector, e) {
     if (node && node.classList.contains('treejs-placeholder')) {
         const filePath = trees[selector].nodesById[fileId].path
         currentOpenFileId = fileId;
-        let selected = owner.value + '/' + repo.value
+        let selected = owner.value + '/' + repository.value
         let nodeDB
         if (nodeDB = node.getAttribute('data-database')) {
             selected = nodeDB
         }
         if (node.closest('#filelist')) {
-            selected = engineRepo
+            selected = engineRepository
         }
         if (node.closest('#gamelist')) {
-            selected = gameRepo
+            selected = gameRepository
         }
         if (node.closest('#assetRepo')) {
-            selected = assetRepo
+            selected = assetRepository
         }
         if (node.closest('#database')) {
             let parent = node.closest('#database > div > ul > li[data-id]')
@@ -718,7 +681,7 @@ function treeHandler(selector, e) {
         }
 
         const parts = selected.split('/')
-        const newRepo = parts.length == 2 ? parts[1] : parts[0] || repo.value
+        const newRepo = parts.length == 2 ? parts[1] : parts[0] || repository.value
         const newOwner = parts.length == 2 ? parts[0] : owner.value
 
         openFile(newOwner, newRepo, filePath, trees[selector].nodesById[fileId].sha);
@@ -751,14 +714,14 @@ function getDocumentPanelFromClickId(panelId) {
     ) {
         // TODO: the opposite of below, match selected repos up with 
         //  their possible already set file tree
-        if (engineRepo === owner.value + '/' + repo.value)
+        if (engineRepository === owner.value + '/' + repository.value)
             panelId = 'filelist'
-        if (gameRepo === owner.value + '/' + repo.value)
+        if (gameRepository === owner.value + '/' + repository.value)
             panelId = 'gamelist'
-        if (assetRepo === owner.value + '/' + repo.value)
+        if (assetRepository === owner.value + '/' + repository.value)
             panelId = 'assetlist'
-        if (toolsRepo === owner.value + '/' + repo.value
-            || toolsRepo2 === owner.value + '/' + repo.value
+        if (toolsRepository === owner.value + '/' + repository.value
+            || tools2Repository === owner.value + '/' + repository.value
         )
             panelId = panelDocumentId = 'database'
     }
@@ -783,7 +746,7 @@ let previousFilelistId = null
 let notFilelist = 'editor'
 let previousNotFilelist = null
 
-function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
+async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
 
     if (!panelId) return
 
@@ -799,7 +762,7 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
         return
     }
 
-    let database = owner.value + '/' + repo.value
+    let database = owner.value + '/' + repository.value
 
     const [reasignedPanelId, panelDocumentId] = getDocumentPanelFromClickId(panelId)
     const panel = document.getElementById(panelDocumentId)
@@ -865,7 +828,7 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
         }
 
         // save previous not file list also
-        if(notFilelist !== previousNotFilelist) {
+        if (notFilelist !== previousNotFilelist) {
             previousNotFilelist = notFilelist
         }
 
@@ -913,32 +876,42 @@ function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
     if (panel) {
         let newRepo = panel.dataset['repository']
         if (panelId === 'filelist')
-            newRepo = engineRepo || localStorage.getItem('engine_repository') || newRepo
+            newRepo = SettingsManager.get('core', 'engineRepository')
         if (panelId === 'gamelist')
-            newRepo = gameRepo || localStorage.getItem('game_repository') || newRepo
+            newRepo = SettingsManager.get('core', 'gameRepository')
         if (panelId === 'assetlist')
-            newRepo = assetRepo || localStorage.getItem('asset_repository') || newRepo
+            newRepo = SettingsManager.get('core', 'assetRepository')
 
         if (newRepo)
             setRepository(newRepo || database)
     }
 
-    if (panelId === 'terminal-container'
-        || panelId === 'terminal'
-        || panelId === 'compile'
-    ) {
-        setTimeout(() => {
-            performSharedBufferScanInternal(searchTerminal.value)
-        }, 1000);
+    if (panelId === 'paint' || panelId === 'terminal' || panelId === 'compile') {
+        // Dynamically guarantee terminal dependencies are present, then trigger its scan
+        await DependencyLoader.loadModule('paint');
     }
 
-    if (panelId === 'database')
-        showDatabases()
+    if (panelId === 'terminal-container' || panelId === 'terminal' || panelId === 'compile') {
+        // Dynamically guarantee terminal dependencies are present, then trigger its scan
+        await DependencyLoader.loadModule('terminal');
+    }
 
-    if ((panelId === 'viewport-frame'
-        || panelId === 'play')
-        && !GL.canvas
-    ) setTimeout(runTojiEngine, 100)
+    // 5. Database presentation hook
+    if (panelId === 'database' && typeof showDatabases === 'function') {
+        showDatabases();
+    }
+
+    // 6. Direct Canvas engine engine boot check
+    if ((panelId === 'viewport-frame' || panelId === 'play') && !window.GL?.canvas) {
+        // Read the user preference to decide if we pull down Toji's WebGL files or the native WASM engine
+        const preferredRenderer = SettingsManager.get('core', 'preferredRenderer');
+
+        if (preferredRenderer !== 'quake3e') {
+            await DependencyLoader.loadModule('toji');
+        } else {
+            await DependencyLoader.loadModule('q3');
+        }
+    }
 }
 
 

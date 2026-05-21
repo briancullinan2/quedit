@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+self.importScripts('preambles.js');
+self.importScripts('logging.js');
 self.importScripts('shared.js');
 self.importScripts('local.js');
 self.importScripts('sys_fs.js');
-self.importScripts('sys_std.js');
-self.importScripts('sys_web.js');
+//self.importScripts('sys_std.js');
+//self.importScripts('sys_web.js');
 self.importScripts('github.js');
 self.importScripts('make.js');
 self.importScripts('make-tools.js');
@@ -34,7 +36,7 @@ const ENV = {
 ENV.ENV = ENV
 const window = self
 window.Module = Module
-window.STD = STD
+//window.STD = STD
 
 let api;
 let port;

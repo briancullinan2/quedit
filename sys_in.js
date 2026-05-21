@@ -545,7 +545,7 @@ function IN_Init() {
   window.addEventListener('keyup', InputPushKeyEvent, false)
   window.addEventListener('keypress', InputPushTextEvent, false)
   window.addEventListener('mouseout', InputPushMovedEvent, false)
-  window.addEventListener('resize', resizeViewport, false)
+  //window.addEventListener('resize', resizeViewport, false)
   //window.addEventListener('popstate', CL_ModifyMenu, false)
 
   /*
@@ -818,7 +818,7 @@ function SDL_ShowCursor() {
 }
 
 function GLimp_Shutdown(destroy) {
-  window.removeEventListener('resize', resizeViewport)
+  //window.removeEventListener('resize', resizeViewport)
   window.removeEventListener('keydown', InputPushKeyEvent)
   window.removeEventListener('keyup', InputPushKeyEvent)
   window.removeEventListener('keypress', InputPushTextEvent)
