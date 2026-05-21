@@ -293,11 +293,6 @@
         }
       }
 
-
-      /**
- * Renders only the children of a specific node.
- * Useful for hydrating "Lazy" folders or updating a branch after a file operation.
- */
       Tree.prototype.renderPartial = function (nodeId) {
         const node = this.nodesById[nodeId];
         if (!node) return;
@@ -312,33 +307,108 @@
         }
 
         // 2. Re-calculate if this node should have a switcher
-        // (In case children were added to a previously empty folder)
         const hasChildren = node.children && node.children.length;
         const currentSwitcher = liEle.querySelector('.treejs-switcher');
 
         if (hasChildren && !currentSwitcher) {
           liEle.classList.remove('treejs-placeholder');
           const switcher = document.createElement('span');
+          const checkboxEle = liEle.querySelector('.treejs-checkbox');
           switcher.classList.add('treejs-switcher');
-          // Insert switcher before the checkbox
-          liEle.insertBefore(switcher, liEle.querySelector('.treejs-checkbox'));
+
+          if (checkboxEle) {
+            liEle.insertBefore(switcher, checkboxEle);
+          } else {
+            liEle.appendChild(switcher);
+          }
         }
 
-        // 3. Rebuild the branch DOM using the internal buildTree method
+        // 3. Rebuild the branch DOM with a Recursion & Cycle Check
         if (hasChildren) {
-          // We use the same depth logic as buildTree to handle auto-open states
-          // Finding depth requires walking up the parent chain
           let depth = 0;
           let parent = node.parent;
-          while (parent) { depth++; parent = parent.parent; }
 
-          const newUlEle = this.buildTree(node.children, depth + 1);
-          liEle.appendChild(newUlEle);
+          // Use a Set to store reference points of ancestral nodes
+          const visitedAncestors = new Set([node]);
+
+          let isCircular = false;
+          while (parent) {
+            if (visitedAncestors.has(parent)) {
+              console.warn(`[Tree Warning] Circular reference detected at Node ID: ${nodeId}. Breaking up-walk.`);
+              isCircular = true;
+              break;
+            }
+            visitedAncestors.add(parent);
+            depth++;
+            parent = parent.parent;
+          }
+
+          if (!isCircular) {
+            const safeChildren = [];
+            const toxicChildren = [];
+
+            for (const child of node.children) {
+              if (visitedAncestors.has(child)) {
+                // 1. Clone the child reference to isolate mutations
+                const poisonedClone = {
+                  ...child,
+                  // SEVER THE LOOP: Force children empty so walkDown doesn't iterate infinitely
+                  children: [], 
+                  parent: child.parent
+                };
+
+                // 2. Poison the path parameters
+                poisonedClone.name = (poisonedClone.name || 'node') + '/[Recursive]';
+                poisonedClone.text = (poisonedClone.text || 'node') + '/[Recursive]';
+                poisonedClone.id = (poisonedClone.id || 'recursive-loop') + '/[Recursive]';
+                
+                if (poisonedClone.path) {
+                  poisonedClone.path += '/[Recursive]';
+                } else {
+                  poisonedClone.path = poisonedClone.id;
+                }
+
+                poisonedClone.disabled = false;
+                toxicChildren.push(poisonedClone);
+              } else {
+                safeChildren.push(child);
+              }
+            }
+
+            // Render safe branches cleanly via the standard recursive builder
+            if (safeChildren.length > 0) {
+              const newUlEle = this.buildTree(safeChildren, depth + 1);
+              liEle.appendChild(newUlEle);
+            }
+
+            // Append poisoned leaf objects using the actual Tree engine element builder API
+            if (toxicChildren.length > 0) {
+              const toxicUl = document.createElement('ul');
+              toxicUl.classList.add('treejs-nodes', 'treejs-nodes__poisoned');
+
+              toxicChildren.forEach(child => {
+                // Use the built-in factory layout so it receives checkboxes, tags, and data attributes
+                const toxicLi = Tree.createLiEle(child, true);
+                toxicLi.classList.add('treejs-node__toxic');
+                
+                // Track state references inside treejs maps to cleanly bypass downstream click errors
+                this.nodesById[child.id] = child;
+                this.liElementsById[child.id] = toxicLi;
+
+                toxicUl.appendChild(toxicLi);
+              });
+
+              liEle.appendChild(toxicUl);
+            }
+          }
         }
 
-        // 4. Update the visual state (ensure it shows as open if it has new children)
+        // 4. Update the visual state
         if (hasChildren && liEle.classList.contains('treejs-node__close')) {
-          this.onSwitcherClick(liEle.querySelector('.treejs-switcher'));
+          const switcherEle = liEle.querySelector('.treejs-switcher');
+          if (switcherEle) {
+            this.onSwitcherClick(switcherEle);
+          }
         }
       };
 
@@ -456,7 +526,7 @@
         let node = this.nodesById[value];
         if (!node) return;
         let prevStatus = node.status;
-        
+
         let status = prevStatus === 1 || prevStatus === 2 ? 0 : 2;
         //node.status = status;
         this.markWillUpdateNode(node);

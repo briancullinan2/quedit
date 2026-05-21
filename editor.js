@@ -34,7 +34,7 @@ function currentSession() {
 
 const editorWrapper = document.getElementById('editor-container')
 const editorContainer = document.getElementById('editor')
-let aceEditor = ace.edit("editor");
+let aceEditor = window.aceEditor = ace.edit("editor");
 aceEditor.setTheme(window.savedTheme);
 aceEditor.renderer.setShowGutter(true);
 aceEditor.renderer.$gutterLayer.setShowLineNumbers(true)
@@ -52,7 +52,9 @@ aceEditor.setOptions({
 aceEditor.session.setMode("ace/mode/c_cpp");
 ; ++tempCount;
 sessionCache['temp' + (tempCount)] = aceEditor.session
-let currentOpenFileId = 'temp' + (tempCount)
+getGitShaBrowser(aceEditor.getValue()).then(sha => {
+    window.initialTextSha = window.currentOpenFileId = sha
+})
 
 updateMaxLines()
 
@@ -128,7 +130,7 @@ aceEditor.on("changeSelection", function () {
     clearTimeout(navTimer);
     navTimer = setTimeout(() => {
         const pos = aceEditor.getCursorPosition();
-        const currentFile = typeof currentOpenFileId !== 'undefined' ? currentOpenFileId : null;
+        const currentFile = typeof window.currentOpenFileId !== 'undefined' ? window.currentOpenFileId : null;
 
         // Ground coordinates to human 1-based format inside tracking tables
         const humanRow = pos.row + 1;
@@ -141,6 +143,10 @@ aceEditor.on("changeSelection", function () {
     }, 500);
 });
 
+aceEditor.on('change', () => {
+    debounceFileChange(window.aceEditor);
+})
+
 aceEditor.commands.addCommand({
     name: "save",
     bindKey: { win: "Ctrl-S", mac: "Command-S" },
@@ -148,6 +154,27 @@ aceEditor.commands.addCommand({
         saveFile()
     }
 });
+
+
+let currentFileShaDebouncer = null
+function debounceFileChange(editor, delay = 1000) {
+    if (currentFileShaDebouncer) {
+        return
+    }
+
+    currentFileShaDebouncer = setTimeout(async () => {
+        if (!aceEditor) return;
+
+        try {
+            const currentContent = aceEditor.getValue();
+            // Calculate the SHA asynchronously in the background
+            window.currentFileChangesSha = await window.getGitShaBrowser(currentContent);
+            currentFileShaDebouncer = null
+        } catch (err) {
+            console.error("Failed to compute file SHA during debounce:", err);
+        }
+    }, delay);
+}
 
 /*
 ace.config.loadModule("ace/keybinding/vim", function(m) {
@@ -215,7 +242,7 @@ const NavHistory = {
         const point = this.stack[this.index];
         let database = owner.value + '/' + repository.value
         const filePath = trees[database].nodesById[point.fileId].path
-        currentOpenFileId = point.fileId;
+        window.currentOpenFileId = point.fileId; debugger
         trees[database].values = [point.fileId];
         openFile(owner.value, repository.value, filePath, trees[database].nodesById[point.fileId].sha, false);
 
@@ -270,7 +297,7 @@ async function saveFile() {
     const database = owner.value + '/' + repository.value
     const filePath = currentSession()
     if (!filePath)
-        filePath = trees[database].nodesById[currentOpenFileId].path
+        filePath = trees[database].nodesById[window.currentOpenFileId].path
     const content = aceEditor.getValue()
     const newSha = await getGitShaBrowser(content)
     FS.virtual[filePath] = {
@@ -281,7 +308,7 @@ async function saveFile() {
         sha: newSha,
         parent: filePath.substring(0, filePath.lastIndexOf('/'))
     }
-    currentOpenFileId = newSha
+    window.currentOpenFileId = newSha
     if (files[database]) {
         await putRecord(DB_STORE_NAME, FS.virtual[filePath], database)
         if (files[database][filePath])
@@ -630,9 +657,9 @@ function detectAceEditorEvents(event) {
     const humanLine = row + 1;
     const humanCol = column + 1;
     const database = owner.value + '/' + repository.value
-    const filePath = currentSession()
+    let filePath = currentSession()
     if (!filePath)
-        filePath = trees[database].nodesById[currentOpenFileId].path
+        filePath = trees[database].nodesById[window.currentOpenFileId]?.path
     const updatePayload = {
         event,
         row: humanLine,
@@ -641,7 +668,7 @@ function detectAceEditorEvents(event) {
         tokenText,
         tokenType,
         isFunctionCall,
-        id: typeof currentOpenFileId !== 'undefined' ? currentOpenFileId : 'unknown',
+        id: typeof window.currentOpenFileId !== 'undefined' && window.currentOpenFileId != null ? window.currentOpenFileId : 'unknown',
         file: filePath,
     };
 

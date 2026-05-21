@@ -3,6 +3,7 @@ const DB_VERSION = 1 // Increment this when you add new C# Entities!
 const LOCAL_DB_NAME = "Quedit" + DB_VERSION
 const DB_NAME = "QueditOffline"
 const DB_STORE_NAME = 'FILE_DATA';
+const DB_DEBOUNCE_INTERVAL = 50
 
 const DB_SCHEME = [
     {
@@ -85,7 +86,7 @@ async function needsInstall(dbName, expectedStores) {
 async function setupDatabase(dbName, stores) {
     let created = false
     let error = null
-    if (dbName.length < 4) {
+    if (dbName.length < 4 || dbName.startsWith('/')) {
         debugger
         console.error('how the fuck does this even happen?')
         throw new Error('how the fuck does this even happen?')
@@ -283,7 +284,7 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
                 delete getBounceRegistry[MODE][path];
             }
         }
-    }, 150);
+    }, DB_DEBOUNCE_INTERVAL);
 
     // Return the stable single tracking promise handler back up the execution chain
     return getBounceRegistry[MODE][path].promise;

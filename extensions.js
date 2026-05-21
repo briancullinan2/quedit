@@ -124,7 +124,7 @@ const IMPORT_MODULES = {
     },
 
     editor: {
-        panelId: 'editor-container',
+        panelId: 'editor',
         js: IMPORT_JS['editor'],
         // Dynamic SHA tracking for modifications
         onLoad: onLoadEditor,

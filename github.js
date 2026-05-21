@@ -388,7 +388,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
                 return FS.virtual[filePath].contents
             }
             else {
-                writeLog('Skipping output: ' + filePath)
+                writeLog(`Skipping output (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
                 return null
             }
         }

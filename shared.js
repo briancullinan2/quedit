@@ -638,9 +638,9 @@ const API = (function () {
 
     runSync() {
       try {
-        FS.virtual['/dev/stdin'].rewrite = 0
-        FS.virtual['/dev/stdout'].rewrite = 0
-        FS.virtual['/dev/stderr'].rewrite = 0
+        //FS.virtual['/dev/stdin'].rewrite = 0
+        //FS.virtual['/dev/stdout'].rewrite = 0
+        //FS.virtual['/dev/stderr'].rewrite = 0
         Module.exports = this.exports || this.instance.exports;
         Module.errno.value = (this.exports['___errno_location'])
           ? this.exports['___errno_location']()
@@ -669,7 +669,9 @@ const API = (function () {
 
 
     runInternal() {
+      let previousPid = this.api.pid
       try {
+        ++this.api.pid
         this.output = this.exports._start();
         return this.output || 0
       } catch (exn) {
@@ -721,6 +723,8 @@ const API = (function () {
 
         // Propagate error.
         throw exn;
+      } finally {
+        this.api.pid = previousPid
       }
     }
 
@@ -783,9 +787,9 @@ const API = (function () {
     async runAsync() {
       await this.ready;
 
-      FS.virtual['/dev/stdin'].rewrite = 0
-      FS.virtual['/dev/stdout'].rewrite = 0
-      FS.virtual['/dev/stderr'].rewrite = 0
+      //FS.virtual['/dev/stdin'].rewrite = 0
+      //FS.virtual['/dev/stdout'].rewrite = 0
+      //FS.virtual['/dev/stderr'].rewrite = 0
       Module.exports = this.exports || this.instance.exports;
       Module.errno.value = (this.exports['___errno_location'])
         ? this.exports['___errno_location']()
@@ -1282,6 +1286,7 @@ const API = (function () {
 
   class API {
     constructor(options) {
+      this.pid = 0
       this.options = options;
       this.moduleCache = {};
       this.readBuffer = options.readBuffer;
@@ -1361,7 +1366,7 @@ const API = (function () {
           'build/release-wasm-js/' + name + '.wasm',
           'build/debug-wasm-js/' + name + '.wasm')
       }
-      if(name.endsWith('.js.wasm')) {
+      if (name.endsWith('.js.wasm')) {
         result = result.concat(name.replace('.js.wasm', '.wasm'),
           'build/release-wasm-js/' + name.replace('.js.wasm', '.wasm'),
           'build/debug-wasm-js/' + name.replace('.js.wasm', '.wasm'))
@@ -1373,6 +1378,7 @@ const API = (function () {
 
       if (typeof name !== 'string') throw new Error('Module name must be a string: ' + typeof (name) + ' given. ' + new String(name))
       if (this.moduleCache[name]) return this.moduleCache[name];
+      let checkedPaths = []
 
       try {
         let module
@@ -1393,7 +1399,9 @@ const API = (function () {
                 let branch = await getDefaultBranch(ownerName, repoName)
                 await loadGitHubTree(ownerName, repoName, branch)
               }
+
               let record = await getRecord(DB_STORE_NAME, filePath, selected)
+              checkedPaths.push(filePath + ' on ' + selected)
               if (record) {
                 contents = record.contents
                 break
@@ -1437,19 +1445,25 @@ const API = (function () {
         this.moduleCache[name] = module;
 
         if (name.includes('q3lcc')) {
-          let q3cpp = await this.getModule('q3cpp', database || this.toolsRepo, true)
-          q3cpp.sync = true
-          let q3rcc = await this.getModule('q3rcc', database || this.toolsRepo, true)
-          q3rcc.sync = true
-          let q3asm = await this.getModule('q3asm', database || this.toolsRepo2, true)
-          q3asm.sync = true
+          try {
+            let q3cpp = await this.getModule('q3cpp', database || this.toolsRepo, false)
+            q3cpp.sync = true
+          } catch (e) { debugger }
+          try {
+            let q3rcc = await this.getModule('q3rcc', database || this.toolsRepo, false)
+            q3rcc.sync = true
+          } catch (e) { debugger }
+          try {
+            let q3asm = await this.getModule('q3asm', this.toolsRepo2 || database, false)
+            q3asm.sync = true
+          } catch (e) { debugger }
         }
 
         return module;
       }
       catch (up) {
 
-        this.hostWrite(name + ' not found at: \n\r' + this.commonPaths(name).join('\n\r')
+        this.hostWrite(name + ' not found at: \n\r' + checkedPaths.join('\n\r')
           + '\n\r' + window.location + '/' + name + '\n\r')
         console.error(up)
         if (
@@ -1470,7 +1484,6 @@ const API = (function () {
           if (name.includes('q3cpp'))
             await buildCPP(selected, false)
           if (name.includes('q3asm')) {
-            debugger
             await buildAsmTool(this.toolsRepo2 || selected, false)
           }
           if (name.includes('quake3e'))
@@ -1634,7 +1647,7 @@ const API = (function () {
           if (this.database)
             await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database)
 
-          writeLog('Succeeded: ' + obj + '\n\r')
+          writeLog('Compile succeeded: ' + obj + '\n\r')
         } catch (e) {
           debugger
           writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
@@ -1776,9 +1789,7 @@ const API = (function () {
               await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database)
 
           }
-        }
-
-        if (this.database && FS.virtual[wasm])
+        } else if (this.database && FS.virtual[wasm] && FS.virtual[wasm].contents)
           await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database)
 
       } catch (e) {
@@ -1786,7 +1797,7 @@ const API = (function () {
       }
 
       if (FS.virtual[wasm].contents.length > 1024)
-        writeLog('Succeeded: ' + wasm + '\n\r')
+        writeLog('Link succeeded: ' + wasm + '\n\r')
 
       return FS.virtual[wasm];
     }

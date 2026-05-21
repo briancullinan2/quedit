@@ -78,18 +78,24 @@ function onLoadEditor() {
     }
 }
 
-async function hasChangedEditor() {
+function hasChangedEditor() {
     if (!window.aceEditor) return false;
-    const currentContent = window.aceEditor.getValue();
-    const currentSha = await window.getGitShaBrowser(currentContent);
-    // Compare against the baseline SHA stored when the file was loaded
-    debugger
+    const session = currentSession()
+    let currentSha = window.currentOpenFileId
+    if (currentSha.length !== 40 && currentSha.length !== 64) {
+        currentSha = trees['#database'].nodesById[session]?.sha
+    }
+
     // TODO: currentFileId or getSession() file path
-    return currentSha !== window.currentFileBaselineSha;
+    return window.currentFileChangesSha !== window.initialTextSha
+        && window.currentFileChangesSha !== currentSha;
 }
 
 function hasChangesBuilder() {
     // TODO: check compiler state either from isCompiling? or something in worker API? i don't remember
+    if (window.runningCommand) {
+        return true
+    }
     if (window.api) {
         window.api.terminate()
     }
@@ -116,7 +122,7 @@ function onLoadPaint() {
     // TRICK WEBPACK MINI_PAINT: Intercept and force-resolve their internal Deferred initialization ready flag 
     // If miniPaint mapped its entry wrapper 'k' onto window scope:
     if (!window.GUI && typeof window.loadPaint === 'function') {
-       window.loadPaint()
+        window.loadPaint()
     }
 
     if (typeof window.hookMiniPaintIntercept === 'function') {
@@ -177,7 +183,7 @@ window.addEventListener('beforeunload', async (event) => {
     // Scan every defined module inside the runtime to see if it claims unwritten states
     for (const [key, module] of Object.entries(IMPORT_MODULES)) {
         if (typeof module.hasChanges === 'function') {
-            if (await module.hasChanges()) {
+            if (module.hasChanges()) {
                 workIsUnsaved = true;
                 blockingModuleKey = key;
                 break; // Stop scanning on first conflict
@@ -221,6 +227,7 @@ function resizeDebouncer() {
 
         resizeDebounce = null
 
+        debounceFileChange()
         // don't need to do this on resize because its fixed now at 120ch
         //if (terminalWrapper.classList.contains('not-hidden')) {
 

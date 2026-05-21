@@ -5,11 +5,11 @@
  */
 
 async function unzipToVirtualFS(buffer, rootPath = 'baseq3', database = null) {
-    if(!database)
+    if (!database)
         database = owner.value + '/' + repository.value
     const zip = new JSZip();
     const contents = await zip.loadAsync(buffer);
-    
+
     PREAMBLE = UNZIP_PREAMBLE
 
     writeLog(`Extracting files to ${rootPath}...`);
@@ -20,7 +20,7 @@ async function unzipToVirtualFS(buffer, rootPath = 'baseq3', database = null) {
         if (file.dir) return; // Skip directories, we handle them via path logic
 
         const fullPath = path.join(rootPath, relativePath);
-        
+
         const promise = file.async('uint8array').then(async data => {
             // Mapping to your existing FS.virtual structure
             FS.virtual[fullPath] = {
@@ -35,7 +35,7 @@ async function unzipToVirtualFS(buffer, rootPath = 'baseq3', database = null) {
             writeLog(`Extracted: ${relativePath}`);
             putRecord(DB_STORE_NAME, FS.virtual[fullPath], database)
         });
-        
+
         promises.push(promise);
     });
 

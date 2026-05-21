@@ -175,7 +175,7 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
                 && !forceChanged
             ) {
                 writeLog(`${obj} already up to date...`)
-                return obj
+                continue
             }
 
             hasChanged = true
@@ -385,7 +385,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
                     && !forceChanged
                 ) {
                     writeLog(obj + " already up to date...");
-                    return
+                    continue
                 }
 
                 hasChanged = true
@@ -415,7 +415,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
                     && !forceChanged
                 ) {
                     writeLog(obj + " already up to date...");
-                    return
+                    continue
                 }
 
                 hasChanged = true
@@ -515,7 +515,7 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
                 && !forceChanged
             ) {
                 writeLog(obj + " already up to date...");
-                return
+                continue
             }
 
             hasChanged = true
@@ -616,7 +616,7 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
                 && !forceChanged
             ) {
                 writeLog(obj + " already up to date...");
-                return
+                continue
             }
 
             hasChanged = true
@@ -841,7 +841,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
                 && !forceChanged
             ) {
                 writeLog(obj + " already up to date...");
-                return
+                continue
             }
 
             writeLog(`CC: ${file}`);
@@ -862,7 +862,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
         }
     }
 
-    if (noLinking) {
+    if (!noLinking) {
         await linkAsm(database, hasChanged, true)
     }
 
@@ -884,7 +884,6 @@ async function linkAsm(database = null, forceChanged = false, noBuild = false) {
     if (!noBuild) {
         await buildAsmTool(database, false, true)
     }
-
 
     const q3asmExe = path.join(CONFIGURATION, "q3asm" + config.BINEXT);
 

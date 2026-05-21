@@ -162,12 +162,13 @@ let refreshTree = null
 async function expandDatabaseTree(target, folderId) {
     const parts = folderId.split('/')
     const database = folderId.startsWith('Virtual Memory') ? 'Virtual Memory' : (parts[0] + '/' + parts[1])
-    const baseDir = parts.slice(2).join('/')
+    const baseDir = folderId.startsWith('Virtual Memory') ? parts.slice(1).join('/') : parts.slice(2).join('/')
     const dirPath = baseDir.substring(0, baseDir.lastIndexOf('/'));
     const parentDir = database + (dirPath.trim().length > 0 ? ('/' + dirPath) : '')
 
     if (!target.classList.contains('treejs-node__open')) return
     if (!trees['#database'].nodesById[folderId]) return
+    if(folderId.endsWith('[Recursive]')) return
     // if (loadedDatabases[folderId]) return
 
 
@@ -182,7 +183,7 @@ async function expandDatabaseTree(target, folderId) {
             //await untarFrontent()
         }
 
-        if (!files[database]) {
+        if (!files[database] && database !== 'Virtual Memory') {
             const parts = database.split('/')
             const ownerName = parts.length == 2 ? parts[0] : owner.value
             const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
@@ -195,6 +196,7 @@ async function expandDatabaseTree(target, folderId) {
         if (database === 'Virtual Memory') {
             resultSet = FS.virtual
             resultKeys = Object.keys(FS.virtual)
+            // TODO: query backend worker for IT's virtual memory, then ready it off the store or out of post message
         }
         else {
 
@@ -479,6 +481,24 @@ function getMimeTypeByExtension(filename) {
 
 const imageEditor = document.getElementById('paint')
 
+async function downloadFile(repoOwner, repoName, filename) {
+    ((d, s, k, n) => { 
+        let r = indexedDB.open(d); 
+        r.onsuccess = () => r.result.transaction(s).objectStore(s).get(k).onsuccess = e => { 
+            let d = e.target.result; 
+            if (!d) 
+                return console.error('Key not found'); 
+            let b = d instanceof Blob 
+            ? d 
+            : new Blob([typeof d === 'object' ? JSON.stringify(d, null, 2) : d], { type: 'application/octet-stream' }), 
+            a = document.createElement('a'); 
+            a.href = URL.createObjectURL(b); 
+            a.download = n; a.click() 
+        } 
+    })(repoOwner + '/' + repoName, DB_STORE_NAME, filename, filename.split('/').pop());
+}
+
+
 
 let openFileDebounce = null
 let latestOpenRequest = null
@@ -577,7 +597,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
 
     if (hidePanels)
         hideOpenPanels(image)
-    
+
     updateBodyPanelIds()
 
     editorContainer.classList.remove('hidden')
@@ -707,10 +727,14 @@ function treeHandler(selector, e) {
     const fileId = node.getAttribute('data-id'); // Assuming you set this
     //setTimeout(() => trees[selector].values = [fileId], 500)
 
+    if(fileId.endsWith['[Recursive]']) {
+        return
+    }
 
     if (node && node.classList.contains('treejs-placeholder')) {
         const filePath = trees[selector].nodesById[fileId].path
-        currentOpenFileId = fileId;
+        window.currentOpenFileId = trees[selector].nodesById[fileId].sha;
+
         let selected = owner.value + '/' + repository.value
         let nodeDB
         if (nodeDB = node.getAttribute('data-database')) {

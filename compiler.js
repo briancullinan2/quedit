@@ -8,8 +8,8 @@ class WorkerAPI {
         const channel = new MessageChannel();
         this.port = channel.port1;
         this.port.onmessage = this.onmessage.bind(this);
-        this.configuration = 
-        this.hostWrite = options.hostWrite
+        this.configuration =
+            this.hostWrite = options.hostWrite
 
         const remotePort = channel.port2;
         this.worker.postMessage({ id: 'constructor', data: remotePort },
@@ -40,7 +40,7 @@ class WorkerAPI {
 
 
     async runAsync(id, options) {
-        const responseId = this.nextResponseId++;
+        const responseId = ++this.nextResponseId;
 
         const responsePromise = new Promise((resolve, reject) => {
             // Create the timeout
@@ -134,15 +134,16 @@ class WorkerAPI {
                 this.hostWrite(event.data.data)
                 break;
 
+            case 'done':
+                window.detachedConsole = false
             case 'runAsync': {
                 const responseId = event.data.responseId;
                 const promise = this.responseCBs.get(responseId);
                 if (promise) {
                     this.responseCBs.delete(responseId);
-                    
-                    if(event.data.data instanceof Error)
-                    {
-                        if(event.data.data.message.includes('memory access out of bounds')) {
+
+                    if (event.data.data instanceof Error) {
+                        if (event.data.data.message.includes('memory access out of bounds')) {
                             needsHeaders = true
                         }
                         promise.reject(event.data.data)
@@ -161,19 +162,28 @@ function specialWrite(msg) {
     if (msg.includes('memory access out of bounds')) {
         needsHeaders = true
     }
-
-    if (!window.runningCommand && !window.detachedConsole && !window.alreadyWroteDetached) {
-        detachedConsole = true
-        PREAMBLE = WARN_PREAMBLE
-        console.warn('\n\rDetached console, awaiting terminate...')
+    if(msg.includes('$Id$')) {
+        debugger
     }
+
+
+    if (!window.runningCommand) {
+        window.runningCommand = true;
+
+        if (!window.detachedConsole && !window.alreadyWroteDetached) {
+            window.detachedConsole = true
+            PREAMBLE = WARN_PREAMBLE
+            console.warn('\n\rDetached console, awaiting terminate...')
+        }
+    }
+
     let skipTerminal = false
     if (msg.includes('Assertion failed: lookup.node')) {
         skipTerminal = true
     }
-    if(!skipTerminal && window.terminalWrite)
-         window.terminalWrite(msg)
-    
+    if (!skipTerminal && window.terminalWrite)
+        window.terminalWrite(msg)
+
 }
 
 

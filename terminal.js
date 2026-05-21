@@ -480,6 +480,7 @@ function highlightMatch(x, y, text) {
 term.attachCustomKeyEventHandler((arg) => {
 
     debounceTerminalStatus()
+    triggerIncrementalSave()
 
     if (arg.type === "keydown" || arg.type === "keyup")
         updateModifierPressed(arg)
@@ -505,7 +506,6 @@ term.attachCustomKeyEventHandler((arg) => {
                 navigator.clipboard.writeText(selection);
                 return false;
             }
-            triggerIncrementalSave()
             term.write('\n\rCTRL+C')
 
             TERMINATE = true

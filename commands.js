@@ -438,7 +438,7 @@ const CWD = ''
 const HISTORY = []
 
 
-let runningCommand = false
+window.runningCommand = false
 let detachedConsole = false
 async function handleCommand(input) {
     const database = owner.value + '/' + repository.value;
@@ -448,7 +448,13 @@ async function handleCommand(input) {
 
     if (tokens.length === 0) return;
 
-    runningCommand = true;
+    if (!runningCommand) {
+        TERMINATE = false
+        window.alreadyWroteDetached = false
+    }
+    window.runningCommand = true;
+
+
     const [commandName, ...args] = tokens;
 
     let resolvedCommandKey = commandName;
@@ -479,7 +485,10 @@ async function handleCommand(input) {
         terminalWrite(`Command not found: ${commandName}\n\r`);
     }
 
-    runningCommand = false;
+    // TODO: undetach the console by reporting "done" from the worker
+    if (!window.detachedConsole) {
+        window.runningCommand = false;
+    }
     triggerIncrementalSave();
 
 }
@@ -746,12 +755,16 @@ async function remove(argv, database) {
     for (let db of databases) {
         try {
             if (!db) continue
+            terminalWrite(`Removing ${filename} on ${db}\n\r`);
             await deleteRecord(DB_STORE_NAME, filename, db)
         } catch (e) {
 
         }
     }
-    delete FS.virtual[filename]
+    if (FS.virtual[filename]) {
+        delete FS.virtual[filename]
+        terminalWrite(`Removing ${filename} from memory\n\r`);
+    }
     try {
         api.remove(filename)
     } catch (e) {
@@ -979,6 +992,8 @@ async function compileWorker(argv, database) {
         await loadGitHubTree(ownerName, repoName, branch)
     }
 
+    if (TERMINATE) return
+
     if (selected === engineRepository
         || file.includes('code/client')
         || file.includes('code/server')
@@ -991,6 +1006,8 @@ async function compileWorker(argv, database) {
         await downloadHeaders(q3eCommonHeaders, 10, selected)
     }
 
+    if (TERMINATE) return
+
     if (selected === gameRepository || file.includes('code/game')
         || file.includes('code/cgame') || file.includes('code/ui')
         || file.includes('code/q3_ui')) // TODO: || file.includes('code/') && !file.includes('code/'))
@@ -998,15 +1015,21 @@ async function compileWorker(argv, database) {
         await downloadHeaders(qvmHeaders, 10, selected)
     }
 
+    if (TERMINATE) return
+
     if (selected === toolsRepository || file.includes('src/')
         || file.includes('cpp/') || file.includes('etc/')
         || file.includes('lburg/')) {
         await downloadHeaders(lccToolHeaders, 10, selected)
     }
 
+    if (TERMINATE) return
+
     if (selected === tools2Repository || q3asmFiles.indexOf(file) > -1) {
         await downloadHeaders(asmToolHeaders, 10, selected)
     }
+
+    if (TERMINATE) return
 
     //let sha = files[selected][file].sha
     let contents = await cacheFile(ownerName, repoName, file);
@@ -1021,6 +1044,10 @@ async function compileWorker(argv, database) {
     let srcPath = file.replace('.o', '.c')
     let obj = CONFIGURATION + '/' + file.replace('.c', '.o')
     let outPath = CONFIGURATION + '/' + file.replace('.c', '.asm')
+
+
+    if (TERMINATE) return
+
 
     if (selected === gameRepository
         || file.includes('code/cgame')
@@ -1099,7 +1126,7 @@ rm /tmp/lcc420.i
         await api.run({
             tool: 'q3lcc.js.wasm',
             args: [
-                'q3lcc', '-v', '-S', '-Wf-g',
+                'q3lcc', '-v', '-v', '-Wf-g', '-S',
                 ...QVM_CFLAGS,
                 ...DEFINE,
                 srcPath,

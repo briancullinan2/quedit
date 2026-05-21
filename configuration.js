@@ -255,18 +255,23 @@ async function findTestFilepath(filePath) {
         for (item of databases) {
             const testFile = item.key + '/' + filePath
 
-            if (trees['#database'].nodesById[testFile]) {
-                dbFile = trees['#database'].nodesById[testFile]
-                selected = item.key
-                break;
-            }
+            try {
+                if (trees['#database'].nodesById[testFile]) {
+                    dbFile = trees['#database'].nodesById[testFile]
+                    selected = item.key
+                    break;
+                }
 
-            let record = await getRecord(DB_STORE_NAME, filePath, item.key)
-            if (record) {
-                dbFile = trees['#database'].nodesById[testFile]
-                    = FS.virtual[filePath] = record
-                selected = item.key
-                break;
+                let record = await getRecord(DB_STORE_NAME, filePath, item.key)
+                if (record) {
+                    dbFile = trees['#database'].nodesById[testFile]
+                        = FS.virtual[filePath] = record
+                    selected = item.key
+                    break;
+                }
+            } catch (e) {
+                debugger
+                writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
             }
         }
 
@@ -354,7 +359,7 @@ async function clickFile(filePath, lineNumber, noBounce = false, noHide = false)
 
     if (!dbFile) return [null, selected]
 
-    currentOpenFileId = dbFile.sha
+    window.currentOpenFileId = dbFile.sha
 
     await openFile(ownerName, repoName, filePath, dbFile.sha, true /* record history */, false /* show file list */)
     setTimeout(() => {

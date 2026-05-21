@@ -2,6 +2,8 @@
  * Quake3e Build Configuration Script - Browser Version
  */
 
+const HEADER_BATCH = 10
+
 
 // 1. Implementation of path.join for the browser
 const path = {
@@ -781,7 +783,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
             writeLog(`Loading IDB/Github (${api.worker ? 'frontend' : 'worker'}): ${file}`)
             await cacheFile(ownerName, repoName, file, null, makeDirs)
         } else if (FS.virtual[file]) {
-            if(api.memfs) {
+            if (api.memfs) {
                 api.memfs.addFile(file, FS.virtual[file].contents)
             }
             writeLog(`Already have from query (${api.worker ? 'frontend' : 'worker'}): ${file}`)
@@ -1125,7 +1127,7 @@ async function buildShaders(database = null, forceChanged = false) {
 
 
 
-async function downloadHeaders(headers, batchSize = 10, database = null) {
+async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = null) {
     if (!database)
         database = api.database
     const parts = database.split('/')
@@ -1139,6 +1141,8 @@ async function downloadHeaders(headers, batchSize = 10, database = null) {
         if (TERMINATE) return
 
         for (let j = 0; j < batch.length; j++) {
+
+            if (TERMINATE) return
 
             let header = batch[j]
             //await Promise.all(batch.map(async (header) => {

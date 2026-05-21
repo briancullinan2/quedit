@@ -86,7 +86,6 @@ const apiOptions = {
       }
     }
     catch (e) {
-      debugger;
       throw e;
     }
   },
@@ -116,6 +115,7 @@ const onAnyMessage = async event => {
     api.assetRepo = event.data.data.assetRepo
   if (event.data.data && event.data.data.toolsRepo2)
     api.toolsRepo2 = event.data.data.toolsRepo2
+  const responseId = event.data?.responseId || (event.data?.id === 0 ? 0 : null);
   switch (event.data.id) {
     case 'constructor':
       port = event.data.data;
@@ -128,7 +128,6 @@ const onAnyMessage = async event => {
       break;
 
     case 'compileToAssembly': {
-      const responseId = event.data.responseId;
       let output = null;
 
       try {
@@ -147,7 +146,6 @@ const onAnyMessage = async event => {
     }
 
     case 'compileTo6502': {
-      const responseId = event.data.responseId;
       let output = null;
 
       try {
@@ -166,7 +164,6 @@ const onAnyMessage = async event => {
     }
 
     case 'header': {
-      const responseId = event.data.responseId;
       let output = null;
       api.extract(event.data.data)
 
@@ -186,7 +183,6 @@ const onAnyMessage = async event => {
     }
 
     case 'upload': {
-      const responseId = event.data.responseId;
       let output = null;
 
       try {
@@ -206,7 +202,6 @@ const onAnyMessage = async event => {
 
 
     case 'build': {
-      const responseId = event.data.responseId;
       let output = null;
       let selected = api.database = event.data.data.database || api.database;
       let mode = event.data.data.action;
@@ -232,7 +227,6 @@ const onAnyMessage = async event => {
 
 
     case 'download': {
-      const responseId = event.data.responseId;
       let output = null;
 
       try {
@@ -251,7 +245,6 @@ const onAnyMessage = async event => {
     }
 
     case 'link': {
-      const responseId = event.data.responseId;
       let output = null;
 
       try {
@@ -270,7 +263,6 @@ const onAnyMessage = async event => {
     }
 
     case 'compile': {
-      const responseId = event.data.responseId;
       let output = null;
 
       try {
@@ -289,7 +281,6 @@ const onAnyMessage = async event => {
     }
 
     case 'run': {
-      const responseId = event.data.responseId;
       let output = null;
       let filePath
       try {
@@ -358,7 +349,7 @@ const onAnyMessage = async event => {
               */
 
               if (FS.virtual[filePath] && FS.virtual[filePath].contents.length) {
-                writeLog('Succeeded: ' + filePath + '\n\r')
+                writeLog('Run succeeded: ' + filePath + '\n\r')
 
                 if (api.database)
                   await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
@@ -404,20 +395,34 @@ const onAnyMessage = async event => {
       for (let db of databases) {
         try {
           if (!db) continue
+          writeLog(`Removing working file ${filename} from ${db}`);
           await deleteRecord(DB_STORE_NAME, filename, db)
         } catch (e) {
           console.error(r)
         }
       }
-      delete FS.virtual[filename]
+      if (FS.virtual[filename]) {
+        delete FS.virtual[filename]
+        writeLog(`Removing working file ${filename} from memory`);
+      }
       try {
-        //if(api.memfs)
-        //api.memfs.
+        if (api.memfs) {
+          await api.ready
+          api.memfs.mem.check()
+          debugger
+          if (api.memfs.exists(filename)) {
+            const buf = this.exports.GetPathBuf()
+            api.memfs.mem.write(buf, path);
+            api.memfs.exports.path_unlink_file(buf)
+          }
+        }
       } catch (e) {
         console.error(e)
       }
       break;
   }
+
+  port.postMessage({ id: 'done', responseId, data: api.pid || true });
 };
 
 self.onmessage = onAnyMessage;
