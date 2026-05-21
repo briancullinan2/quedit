@@ -21,7 +21,7 @@ function writeLog(msg, ...args) {
     if (!msg.includes) debugger
     if (msg.includes && msg.includes('TypeError:')) debugger
     let formatted = formatMessage(PREAMBLE, [msg, ...args])
-    if (window.terminalWrite && !skipTerminal) terminalWrite(formatted);
+    if ((!window.api || !window.api.worker) && window.terminalWrite && !skipTerminal) terminalWrite(formatted);
     if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.log(msg, ...args);
     else console.log(msg, ...args)

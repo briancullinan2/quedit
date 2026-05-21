@@ -743,6 +743,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
 
     if (api.memfs) {
         await api.ready
+        api.memfs.mem.check()
         try {
             api.memfs.mkdirp('tmp')
         } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
@@ -780,6 +781,9 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
             writeLog(`Loading IDB/Github (${api.worker ? 'frontend' : 'worker'}): ${file}`)
             await cacheFile(ownerName, repoName, file, null, makeDirs)
         } else if (FS.virtual[file]) {
+            if(api.memfs) {
+                api.memfs.addFile(file, FS.virtual[file].contents)
+            }
             writeLog(`Already have from query (${api.worker ? 'frontend' : 'worker'}): ${file}`)
         } else if (makeDirs) {
             debugger
@@ -797,8 +801,6 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
 
     try {
         if (api.memfs && makeDirs && FS.virtual[file] && FS.virtual[file].contents) {
-            await api.ready
-            api.memfs.mem.check()
             if ((FS.virtual[file].mode >> 12) === ST_DIR) {
                 api.memfs.addDirectory(file)
             }

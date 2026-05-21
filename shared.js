@@ -1458,30 +1458,37 @@ const API = (function () {
           && (this.toolsRepo || this.toolsRepo2 || this.database)
           && !alreadyTried
         ) {
-
+          const selected = this.toolsRepo || database || this.database
 
           // TODO: try compiling ourselves if its a known module + result
           if (name.includes('q3lcc'))
-            await buildLCC(this.toolsRepo || database || this.database, false)
+            await buildLCC(selected, false)
           if (name.includes('q3rcc'))
-            await buildRCC(this.toolsRepo || database || this.database, false, false)
+            await buildRCC(selected, false, false)
           if (name.includes('lburg'))
-            await buildLBurg(this.toolsRepo || database || this.database, false)
+            await buildLBurg(selected, false)
           if (name.includes('q3cpp'))
-            await buildCPP(this.toolsRepo || database || this.database, false)
+            await buildCPP(selected, false)
           if (name.includes('q3asm')) {
             debugger
-            await buildAsmTool(this.toolsRepo2 || database || this.database, false)
+            await buildAsmTool(this.toolsRepo2 || selected, false)
           }
           if (name.includes('quake3e'))
-            await buildClient(this.toolsRepo || database || this.database, false, false, true /* no bounce */)
+            await buildClient(selected, false, false, true /* no bounce */)
           if (name.includes('quake3e.ded'))
-            await buildDedicated(this.toolsRepo || database || this.database, false)
+            await buildDedicated(selected, false)
           if (name.includes('stringify'))
-            await buildStringify(this.toolsRepo || database || this.database, false)
+            await buildStringify(selected, false)
 
-
-          return await this.getModule(name, database, true)
+          try {
+            writeLog("Compiling required tool: " + name + " on databases: " + selected)
+            return await this.getModule(name, selected, true)
+          } catch (e) {
+            writeLog("Error while compiling required tool: " + name + " on databases: " + selected)
+            writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
+            writeLog('Cannot continue with building...')
+            throw e
+          }
         }
         throw up
       }
