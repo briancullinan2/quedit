@@ -5386,7 +5386,7 @@ define("ace/apply_delta", ["require", "exports", "module"], function(e, t, n) {
     }
     function s(e, t) {
         t.action != "insert" && t.action != "remove" && r(t, "delta.action must be 'insert' or 'remove'"),
-        Array.isArray(t.lines) || r(t, "delta.lines must be an Array"),
+        t.lines instanceof Array || r(t, "delta.lines must be an Array"),
         (!t.start || !t.end) && r(t, "delta.start/end must be an present");
         var n = t.start;
         i(e, t.start) || r(t, "delta.start must be contained in document");

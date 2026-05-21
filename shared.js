@@ -1346,14 +1346,27 @@ const API = (function () {
 
 
     commonPaths(name) {
-      return [
+      let result = [
         name,
         'build/release-wasm-js/' + name,
         'build/debug-wasm-js/' + name,
-        name + '.js.wasm',
-        'build/release-wasm-js/' + name + '.js.wasm',
-        'build/debug-wasm-js/' + name + '.js.wasm',
       ]
+      if (!name.endsWith('.js.wasm')) {
+        result = result.concat(name + '.js.wasm',
+          'build/release-wasm-js/' + name + '.js.wasm',
+          'build/debug-wasm-js/' + name + '.js.wasm')
+      }
+      if (!name.endsWith('.wasm')) {
+        result = result.concat(name + '.wasm',
+          'build/release-wasm-js/' + name + '.wasm',
+          'build/debug-wasm-js/' + name + '.wasm')
+      }
+      if(name.endsWith('.js.wasm')) {
+        result = result.concat(name.replace('.js.wasm', '.wasm'),
+          'build/release-wasm-js/' + name.replace('.js.wasm', '.wasm'),
+          'build/debug-wasm-js/' + name.replace('.js.wasm', '.wasm'))
+      }
+      return result
     }
 
     async getModule(name, database = null, alreadyTried = false) {
@@ -1532,7 +1545,7 @@ const API = (function () {
         let buildDir = filePath.substring(0, filePath.lastIndexOf('/'))
         if (alwaysMkdir)
           writeLog('Header loading (worker): ' + filePath)
-        
+
         if (filePath.includes('build/release-') || filePath.includes('build/debug-')) {
           //debugger
         }

@@ -400,7 +400,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
         // TODO: IF GITHUB, ALWAYS UPDATE
         if (!shouldDownload && FS.virtual[filePath]) {
-            writeLog(`Already have (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+            writeLog(`Already have cached (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
             return FS.virtual[filePath].contents
         }
 

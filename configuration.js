@@ -361,20 +361,28 @@ async function clickFile(filePath, lineNumber, noBounce = false, noHide = false)
         editorContainer.classList.remove('hidden')
         editorContainer.classList.add('not-hidden')
 
+        aceEditor.focus();
         if (lineNumber)
             aceEditor.gotoLine(lineNumber, 0, true);
-        aceEditor.focus();
         latestPanelId = 'editor'
-    }, 500)
+    }, 1000)
     resizeDebouncer()
     return [selected, dbFile]
 }
 
 
-
+let fileNavigationDebouncer
 async function navigateFile(filePath, lineNumber, noBounce = false, noHide = false) {
 
-    const [selected, dbFile] = await clickFile(filePath, lineNumber, noBounce, noHide)
+    if (fileNavigationDebouncer) {
+        clearTimeout(fileNavigationDebouncer)
+    }
+    if (!noBounce) {
+        fileNavigationDebouncer = setTimeout(() => navigateFile(filePath, lineNumber, true, noHide), 500)
+        return
+    }
+
+    const [selected, dbFile] = await clickFile(filePath, lineNumber, true, noHide)
 
     if (!selected) return
 

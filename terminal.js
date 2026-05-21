@@ -1,3 +1,17 @@
+// Simulating x-mode (verbose regex) by joining an array of strings with comments
+const FILE_NAME_REGEX = new RegExp([
+    '(?:',
+        // Group 1: Captures full URLs or relative/absolute file paths
+        '([a-z]+://[^\\s:]+|[\\w\\d._\\-/]+\\.[\\w\\d._\\-]+)',
+    ')',
+    '(?:',
+        // Line capture variations
+        '(?:,\\s*Line:\\s*(\\d+))', // Handles "File: path, Line: 324"
+        '|',
+        '(?::(\\d+))',              // Handles "path:324"
+    ')?',
+    '(?::(\\d+))?'                  // Handles secondary column offsets if present "path:324:10"
+].join(''), 'gi');
 
 
 window.terminalFrameLimiter = createFrameRater(25, (e, t, frame) => {
@@ -261,9 +275,7 @@ function performSharedBufferScanInternal(termToSearch, caseSensitive = false) {
         searchRegex = new RegExp(termToSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
     }
 
-    // Your working file pattern logic
-    const fileRegex = /(?:[\w\d\._\-\/]+\/[\w\d\._\-]+\.\w+|[\w\d\._\-]+\.(?:pk3|tar|pk3|zip|ttf|ttf2|otf|woff|wav|bsp|map|md3|mdc|mdx|ase|obj|tga|jpg|jpeg|png|pcx|wav|ogg|cfg|shader|menu|bot|arena|rc))\b(?::(\d+))?(?::(\d+))?/gi;
-
+ 
     // 3. Scan Entire Active Terminal Buffer Length Row-by-Row
     for (let i = 0; i < buffer.length; i++) {
         const line = buffer.getLine(i);
@@ -276,8 +288,8 @@ function performSharedBufferScanInternal(termToSearch, caseSensitive = false) {
         // PASS A: Extract & Underline Valid File Paths
         // ==========================================
         let fileMatch;
-        fileRegex.lastIndex = 0; // Reset state tracker for global flag loop
-        while ((fileMatch = fileRegex.exec(lineText)) !== null) {
+        FILE_NAME_REGEX.lastIndex = 0; // Reset state tracker for global flag loop
+        while ((fileMatch = FILE_NAME_REGEX.exec(lineText)) !== null) {
             const x = fileMatch.index;
             const length = fileMatch[0].length;
 
@@ -804,9 +816,8 @@ document.getElementById('terminals').addEventListener('click', async (e) => {
 
 });
 
-
 function extractFiles(col, row) {
-    const offsets = [-2, -1, 0, 2];
+    const offsets = [-2, -1, 0, 1, 2]; // Fixed sequence gap by ensuring +1 is included
     const lines = offsets.map(off => ({
         off,
         text: term.buffer.active.getLine(row + off)?.translateToString(true) || ""
@@ -822,22 +833,38 @@ function extractFiles(col, row) {
             targetIndex += col;
             break;
         }
-        // Add the length of the line and the 2 characters for '\n\r'
-        targetIndex += line.text.length + 2;
+        targetIndex += line.text.length + 2; // Line length + '\n\r'
     }
 
-    // 3. Match all and sort
-    const filePattern = /([\w\d\._\-\/]+\.\w+)\b(?::(\d+))?(?::(\d+))?/g;
-    const matches = [
-        ...lineText.matchAll(filePattern)].map(m => Object.assign({
-            path: m[1],
-            line: m[2] ? parseInt(m[2], 10) : null,
+    // 3. Match all and parse capture groups
+    const matches = [...lineText.matchAll(FILE_NAME_REGEX)].map(m => {
+        const fullPath = m[1];
+        
+        // Extract line numbers from whichever capture group caught it
+        const lineNo = m[2] || m[3] || m[4]; 
+
+        // Extract filename from the end of the URL or path
+        let filename = null;
+        if (fullPath) {
+            const parts = fullPath.split('/');
+            filename = parts[parts.length - 1];
+        }
+
+        // Map match back to its original buffer line object context
+        const lineCountBeforeMatch = (lineText.substring(0, m.index).match(/\n/g) || []).length;
+        const originalLineContext = lines[lineCountBeforeMatch] || { off: 0, text: "" };
+
+        return Object.assign({
+            path: fullPath,
+            filename: filename,
+            line: lineNo ? parseInt(lineNo, 10) : null,
             index: m.index,
-            center: m.index + (m[0].length / 2), // Middle of the match for better accuracy
+            center: m.index + (m[0].length / 2),
             isFallback: false
-        }, lines[(lineText.substring(0, m.index).match(/\n/g) || []).length]));
+        }, originalLineContext);
+    });
 
-
+    // 4. Distance sorting calculations
     const sortedMatches = matches
         .map(match => ({
             ...match,
@@ -845,23 +872,23 @@ function extractFiles(col, row) {
         }))
         .sort((a, b) => a.distance - b.distance);
 
-    // 2. Return the sorted list (closest file is at index 0)
-    if (sortedMatches.length > 0)
+    if (sortedMatches.length > 0) {
         return sortedMatches;
+    }
 
+    // Fallback block if no regex patterns matched near the cursor
     return [{
         off: 0,
-        text: lines[2].line?.trim(),
+        text: lines.find(l => l.off === 0)?.text?.trim() || "",
         path: null,
+        filename: null,
         line: null,
-        index: targetIndex - col, // Start of the clicked line
-        center: targetIndex,      // Point of the click
-        distance: 0,              // It's the only option, so distance is 0
-        isFallback: true          // Useful flag for your UI
-    }]
-
+        index: targetIndex - col,
+        center: targetIndex,
+        distance: 0,
+        isFallback: true
+    }];
 }
-
 
 function detectTerminalEvents(event, x, y, updateStatus = true) {
     const rect = terminalContainer.getBoundingClientRect();
@@ -884,10 +911,6 @@ function detectTerminalEvents(event, x, y, updateStatus = true) {
     let lineNumber
     let isFallback
     if (lineText && files.length > 0) {
-        // 3. Regex to find "filename.ext:line" or "filename.ext:line:col"
-        // This matches standard compiler/error output formats
-        const filePattern = /([\w\d\._\-\/]+\.\w+)\b(?::(\d+))?(?::(\d+))?[\n\r\s$]*/;
-        const match = lineText.match(filePattern);
         filePath = files[0].path
         lineNumber = files[0].line
         isFallback = files[0].isFallback

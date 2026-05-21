@@ -780,13 +780,19 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
             writeLog(`Loading IDB/Github (${api.worker ? 'frontend' : 'worker'}): ${file}`)
             await cacheFile(ownerName, repoName, file, null, makeDirs)
         } else if (FS.virtual[file]) {
-            writeLog(`Already have (${api.worker ? 'frontend' : 'worker'}): ${file}`)
+            writeLog(`Already have from query (${api.worker ? 'frontend' : 'worker'}): ${file}`)
         } else if (makeDirs) {
             debugger
         }
 
     } else {
-        writeLog(`Already have (${api.worker ? 'frontend' : 'worker'}): ${file}`)
+        if ((FS.virtual[file].mode >> 12) === ST_DIR) {
+            api.memfs.addDirectory(file)
+        }
+        else {
+            api.memfs.addFile(file, FS.virtual[file].contents)
+        }
+        writeLog(`Already have contents (${api.worker ? 'frontend' : 'worker'}): ${file}`)
     }
 
     try {
@@ -822,7 +828,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
             writeLog(`Loading IDB output (${api.worker ? 'frontend' : 'worker'}): ${obj}`)
             FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database)
         } else {
-            writeLog(`Already have (${api.worker ? 'frontend' : 'worker'}): ${file}`)
+            writeLog(`Already have object (${api.worker ? 'frontend' : 'worker'}): ${file}`)
         }
         //if (api.memfs && !api.memfs.exists(obj) && FS.virtual[file])
         //    api.memfs.addFile(obj, FS.virtual[obj].contents)

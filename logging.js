@@ -22,7 +22,7 @@ function writeLog(msg, ...args) {
     if (msg.includes && msg.includes('TypeError:')) debugger
     let formatted = formatMessage(PREAMBLE, [msg, ...args])
     if (window.terminalWrite && !skipTerminal) terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
+    if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.log(msg, ...args);
     else console.log(msg, ...args)
 }
@@ -135,10 +135,10 @@ function terminalWrite(message, source, skipActualWrite = false) {
         return
     }
 
-    if (!skipActualWrite && terminalWrapper.classList.contains('not-hidden'))
+    if (term && !skipActualWrite && terminalWrapper.classList.contains('not-hidden')) {
         term.write(message)
-
-    triggerIncrementalSave()
+        triggerIncrementalSave()
+    }
 }
 
 
