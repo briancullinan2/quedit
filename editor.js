@@ -3,29 +3,26 @@ let tempCount = 1;
 const sessionCache = {};
 
 const statusBar = document.getElementById('statusbar')
-
 function getOrCreateAceSession(fileId, content) {
     if (sessionCache[fileId]) {
         return sessionCache[fileId];
     }
 
-    // Create a new session with the file content
     const session = ace.createEditSession(content);
+    
+    // FORMAL ASSIGNMENT: Bind the workspace file identifier permanently
+    session.workspaceFileId = fileId; 
 
-    // Set the language mode based on the file extension
     const mode = getModeByFilename(fileId);
     session.setMode(mode);
 
-    // Optional: Set tab size or wrap mode for specific languages
     if (fileId.endsWith('.c') || fileId.endsWith('.h')) {
         session.setTabSize(4);
     }
 
-    // Store in cache so we don't lose the UndoStack for this file
     sessionCache[fileId] = session;
     return session;
 }
-
 
 function currentSession() {
     return Object.keys(sessionCache).find(k => sessionCache[k] === aceEditor.getSession())

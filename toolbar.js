@@ -171,10 +171,15 @@ window.addEventListener('mousemove', e => {
 
     if (!targetEl || !targetText) {
         globalTooltip.style.display = 'none';
+        globalTooltip.style.opacity = 0;
+        globalTooltip.style.zIndex = -1;
         return;
     }
 
     globalTooltip.style.display = 'block';
+    globalTooltip.style.opacity = 1;
+    globalTooltip.style.visibility = 'visible';
+    globalTooltip.style.zIndex = 1000;
 
     // Fluid position layout tracking for tracking paths cleanly under cursor coordinates
     if (aceContainer) {

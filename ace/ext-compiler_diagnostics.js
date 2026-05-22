@@ -6,6 +6,78 @@ ace.define("ace/ext/compiler_diagnostics", [
     "ace/lib/dom"
 ], function (require, exports, module) {
     "use strict";
+
+    // Add these to your Diagnostic Bridge configuration
+    const DIAGNOSTIC_PARSERS = [
+        {
+            name: "clang_lcc",
+            // Matches: code/game/g_main.c:25: error: missing semi-colon
+            pattern: /^([^:\n]+):(\d+):\s*(error|warning):\s*(.+)$/i,
+            resolve: function (match, bridge) {
+                return {
+                    filePath: match[1].trim(),
+                    row: parseInt(match[2], 10) - 1,
+                    type: match[3].toLowerCase() === 'error' ? 'error' : 'warning',
+                    text: match[4].trim()
+                };
+            }
+        },
+        {
+            name: "quake_shader_parser",
+            // Matches: WARNING: expecting '{', found 'INVALID' instead in shader 'textures/gothic/floor'
+            // Or: WARNING: unknown general shader parameter 'bad_keyword' in 'scripts/sfx.shader'
+            pattern: /WARNING:\s*([^'\n]+)'\s*instead\s*in\s*shader\s*'([^']+)'|WARNING:\s*unknown\s*general\s*shader\s*parameter\s*'([^']+)'\s*in\s*'([^']+)'/i,
+            resolve: function (match, bridge) {
+                // Check which capture group hit based on the Printf outputs in ParseShader
+                let infoText = match[1] ? `Expecting '{', found '${match[1]}'` : `Unknown general shader parameter '${match[3]}'`;
+                let shaderOrFile = match[2] || match[4];
+
+                // Shaders are named by texture path, but we map them to their script definition file
+                let filePath = shaderOrFile.endsWith('.shader') ? shaderOrFile : bridge.lookupShaderFile(shaderOrFile);
+
+                return {
+                    filePath: filePath,
+                    row: bridge.findLineInFile(filePath, match[2] || match[3]) || 0, // Fallback locator strategy
+                    type: "warning",
+                    text: infoText
+                };
+            }
+        },
+        {
+            name: "quake_asset_missing",
+            // Matches: Couldn't find image file for shader gfx/2d/sunflare
+            // Or: WARNING: models/mapobjects/energy.tga not present, using .jpg instead
+            pattern: /(?:Couldn't find image file for shader|WARNING:)\s*([^\s\n]+)(?:\s*not present)?/i,
+            resolve: function (match, bridge) {
+                let assetPath = match[1];
+                // Identify which shader is crying about the missing asset texture dependency
+                let filePath = bridge.findShaderByAssetDependency(assetPath);
+
+                return {
+                    filePath: filePath,
+                    row: bridge.findLineInFile(filePath, assetPath) || 0,
+                    type: "error",
+                    text: `Missing Asset Dependency: Could not resolve binary path for [${assetPath}]`
+                };
+            }
+        },
+        {
+            name: "quake_skin_failure",
+            // Matches: Torso skin load failure: models/players/doom/upper_red.skin
+            pattern: /(Leg|Torso|Head)\s*skin\s*load\s*failure:\s*([^\s\n]+)/i,
+            resolve: function (match, bridge) {
+                let component = match[1];
+                let skinFile = match[2];
+                return {
+                    filePath: skinFile,
+                    row: 0, // Skin files are often single line registrations, highlight header
+                    type: "error",
+                    text: `${component} model segment mapping failed to bind cleanly.`
+                };
+            }
+        }
+    ];
+
     // Simulating x-mode (verbose regex) by joining an array of strings with comments
     const FILE_NAME_REGEX = new RegExp([
         '(?:',
@@ -21,6 +93,7 @@ ace.define("ace/ext/compiler_diagnostics", [
         '(?::(\\d+))?'                  // Handles secondary column offsets if present "path:324:10"
     ].join(''), 'gi');
 
+    let MONITOR_LCC = /^([^:\n]+):(\d+):\s*(error|warning):\s*(.+)$/i;
 
     let CLEAN_ANSI = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
 
@@ -38,7 +111,7 @@ ace.define("ace/ext/compiler_diagnostics", [
         this.fileAnnotationsMap = {};
 
         // Strict Clang/LCC compiler error pattern
-        this.lccPattern = /^([^:\n]+):(\d+):\s*(error|warning):\s*(.+)$/i;
+        this.lccPattern = MONITOR_LCC
 
         // Your comprehensive verbose file/line locator pattern
         this.fileNameRegex = FILE_NAME_REGEX;
@@ -118,56 +191,47 @@ ace.define("ace/ext/compiler_diagnostics", [
         }, this.delay);
     };
 
-
     DiagnosticsBridge.prototype.processAnnotations = function () {
-
-        // 1. Reconstruct streaming chunks and strip control tags
         let cleanMegaString = this.collectedLogLines
             .map(function (item) { return typeof item === 'string' ? item : (item.text || ""); })
             .join("")
             .replace(CLEAN_ANSI, "");
 
         let consolidatedLines = cleanMegaString.split(/\r?\n/);
-
-        // Reset our indexed state cache before performing a fresh compilation sweep scan
         this.fileAnnotationsMap = { "system": [] };
 
         for (let i = 0; i < consolidatedLines.length; i++) {
             let line = consolidatedLines[i].trim();
             if (!line) continue;
 
-            // Catch standard compiler diagnostics
-            let match = line.match(this.lccPattern);
-            if (match) {
-                let filePath = match[1].trim();
-                let lineStr = match[2];
-                let severity = match[3];
-                let infoText = match[4];
+            // Iterate through all polymorphic layout engines
+            for (let p = 0; p < DIAGNOSTIC_PARSERS.length; p++) {
+                let parser = DIAGNOSTIC_PARSERS[p];
+                let match = line.match(parser.pattern);
 
-                let lineNumber = parseInt(lineStr, 10) - 1;
-                let isError = severity.toLowerCase() === 'error';
-
-                // Ensure our multi-file dictionary bucket slot exists
-                if (!this.fileAnnotationsMap[filePath]) {
-                    this.fileAnnotationsMap[filePath] = [];
+                if (match) {
+                    let diagnostic = parser.resolve(match, this);
+                    if (diagnostic && diagnostic.filePath) {
+                        let path = diagnostic.filePath;
+                        if (!this.fileAnnotationsMap[path]) {
+                            this.fileAnnotationsMap[path] = [];
+                        }
+                        this.fileAnnotationsMap[path].push({
+                            row: diagnostic.row,
+                            column: 0,
+                            text: diagnostic.text,
+                            type: diagnostic.type
+                        });
+                    }
+                    break; // Handled by this parser rule, break inner loop execution
                 }
-
-                this.fileAnnotationsMap[filePath].push({
-                    row: lineNumber,
-                    column: 0,
-                    text: infoText,
-                    type: isError ? "error" : "warning"
-                });
-                continue;
             }
-
-            // OPTIONAL: Catch byte references, map jumps, or cross-tool tracking logs
-            // via your raw `this.fileNameRegex` pattern right here to build navigation coordinates!
         }
 
-        // After compilation processes terminate, paint annotations on the current active view
+        // Refresh annotations visually across the active viewport interface
         this.refreshActiveEditorView();
     };
+
 
     DiagnosticsBridge.prototype.refreshActiveEditorView = function () {
         if (!this.activeEditor) return;
@@ -256,7 +320,50 @@ ace.define("ace/ext/compiler_diagnostics", [
     };
 
 
+    /**
+     * Resolves a global shader definition target (e.g., "textures/gothic/floor")
+     * back to the specific .shader file inside the virtual file system index.
+     */
+    DiagnosticsBridge.prototype.lookupShaderFile = function (shaderName) {
+        // In your file structure index, look inside your script caches
+        // Fallback safely if no match:
+        return "scripts/base.shader";
+    };
 
+    /**
+     * Searches the raw text contents of an open script tab buffer to find the 
+     * approximate token line number when the engine omits an absolute row index.
+     */
+    DiagnosticsBridge.prototype.findLineInFile = function (filePath, token) {
+        if (!sessionCache[filePath]) return 0;
+        let text = sessionCache[filePath].getValue();
+        let lines = text.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes(token)) {
+                return i;
+            }
+        }
+        return 0;
+    };
+
+    /**
+     * Scans shader definitions to find out which script tab is referencing a failing asset file.
+     */
+    DiagnosticsBridge.prototype.findShaderByAssetDependency = function (assetPath) {
+        // Strips extensions to match base maps cleanly
+        let baseToken = assetPath.replace(/\.(tga|jpg)$/i, "");
+
+        let activeFiles = Object.keys(sessionCache);
+        for (let f = 0; f < activeFiles.length; f++) {
+            let path = activeFiles[f];
+            if (path.endsWith('.shader')) {
+                if (sessionCache[path].getValue().includes(baseToken)) {
+                    return path;
+                }
+            }
+        }
+        return window.currentOpenFileId || "scripts/base.shader";
+    };
 
 
 

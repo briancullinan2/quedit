@@ -702,7 +702,7 @@ async function renderHashCommand(fileName, noBounce = false) {
 
     const [filePath, selected, dbFile, lineNumber] = await findTestFileWindowLocations(fileName)
 
-    previousHashLineNumber = lineNumber
+    window.previousHashLineNumber = lineNumber
 
     if (selected && !filePath)
         navigateFile(selected, lineNumber, true)
@@ -846,6 +846,9 @@ function getDocumentPanelFromClickId(panelId) {
             panelId = panelDocumentId = 'database'
     }
 
+    if (panelId === 'collapse')
+        panelId = previousFilelistId || 'collapse'
+
     return [panelId, panelDocumentId]
 }
 
@@ -862,7 +865,7 @@ let toolbarTabDebounce = null
 let latestPanelId = 'editor'
 let previousPanelId = null
 let debouncedPanelId = null
-let previousFilelistId = null
+let previousFilelistId = 'filelist'
 let notFilelist = 'editor'
 let previousNotFilelistId = null
 
@@ -1050,25 +1053,25 @@ function updateEditorLineIds() {
         }
     }
 
-    
+
     for (let cn of document.body.classList) {
         if (cn.startsWith('hash-')) {
             document.body.classList.remove(cn)
         }
     }
-    
+
 
     if (window.aceEditor) {
         let currentLine = window.aceEditor.getCursorPosition()
         document.body.classList.add('line-' + (currentLine.row + 1))
-        document.body.classList.add('hash-' + previousHashLineNumber || 0)
-        if(currentLine.row + 1 === previousHashLineNumber)
+        document.body.classList.add('hash-' + window.previousHashLineNumber || 0)
+        if (currentLine.row + 1 === window.previousHashLineNumber)
             document.body.classList.add('line-match')
         const session = window.aceEditor.getSession()
         if (session.getAnnotations) {
             var matches = session.getAnnotations().filter(function (ann) {
                 return ann.row === currentLine.row
-                    //&& ann.type === 'error';
+                //&& ann.type === 'error';
             })
             if (matches.length > 0) {
                 document.body.classList.add(matches[0].type + '-' + currentLine.row)

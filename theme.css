@@ -484,17 +484,28 @@ body,
     --ace-green: #009900;
 }
 
-
 .theme-eclipse {
+    /* Main Editor Backgrounds & Text */
     --ace-bg: #FFFFFF;
-    --ace-gutter-bg: #EBEBEB;
+    --ace-gutter-bg: #F0F0F0;         /* Slightly softer classic grey gutter */
     --ace-foreground: #000000;
+    
+    /* Comments - Classic Eclipse Dark Green */
     --ace-comment: #3F7F5F;
+    
+    /* Selection - That perfect light blue highlight */
     --ace-selection-bg: #B2D7FF;
-    --ace-pink: #7F0055;
-    --ace-purple: #0000C0;
-    --ace-blue: #000000;
-    --ace-green: #2A00FF;
+    
+    /* Keywords - The iconic Eclipse Purple/Magenta */
+    --ace-pink: #7F0055;             
+    --ace-purple: #7F0055;           /* Often mapped similarly for keywords */
+    
+    /* The Missing Blues */
+    --ace-blue: #0000C0;             /* Classic deep blue for methods/numbers/types */
+    --ace-string: #2A00FF;           /* Eclipse strings are traditionally this bright blue */
+    
+    /* Literal Constants / JavaDoc Tags */
+    --ace-green: #3F5FBF;            /* Eclipse JavaDoc links/tags blue-green */
 }
 
 .theme-dawn {

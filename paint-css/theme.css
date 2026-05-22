@@ -547,7 +547,43 @@
     padding: 3px 5px;
     filter: none;
     display: none;
+    position: static;
 
+}
+
+body #main #paint {
+    line-height: var(--global-height);
+}
+
+
+#paint .ui_input_group {
+    align-items: center;
+    vertical-align: middle;
+}
+
+#paint .ui_input_group>* {
+    align-items: center;
+    vertical-align: middle;
+}
+
+#paint .ui_range .bar,
+#paint .ui_input_group>.ui_range {
+    min-height: calc(var(--global-height) * 1.2);
+}
+
+#paint input[type="text"],
+#paint select,
+#paint input[type="number"],
+#paint textarea {
+    padding: 5px;
+}
+
+#paint .ui_swatches .swatch_group.rows_3 {
+    height: calc(var(--global-height) * 1.2 * 3 + 4px);
+}
+
+#paint .ui_swatches .swatch {
+    height: calc(var(--global-height) * 1.2);
 }
 
 @media all and (max-width: 800px) {

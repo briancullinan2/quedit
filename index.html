@@ -89,7 +89,7 @@
                         <option value="release">Release</option>
                         <option value="pre">Preprocess</option>
                         <option value="qvms">Renderer Only</option>
-                        <option value="qvms"></option>
+                        <option value="qvms">Shared Libraries</option>
                         <option value="qvms">QVMs Only</option>
                         <option value="tools">QVM Tools Only</option>
                         <option value="assets">Assets Only</option>
@@ -297,7 +297,7 @@ int main() {
                                     id="left_mobile_menu_button" type="button"></button>
                                 <div class="block attributes" id="action_attributes"></div>
                                 <button placeholder="Undo" class="undo_button" id="undo_button" type="button"></button>
-                                <span class="mobile_menu_spacer"></span>
+                                <span class="mobile_menu_spacer" style="max-width: none; flex-grow: 1;"></span>
                                 <button popovertarget="global-popup" placeholder="Toggle Menu" class="right_mobile_menu"
                                     id="mobile_menu_button" type="button"></button>
                             </div>
@@ -389,7 +389,7 @@ int main() {
                             <li><a href="#soft">CLI Render</a></li>
                             <li><a href="#immediate">Immediate</a></li>
                             <li><a href="#build">Build</a></li>
-                            <li><a href="#terminal-container">Console</a></li>
+                            <li><a href="#console">Console</a></li>
                             <li><a href="#ai">AI Integration</a></li>
                             <li style="flex-grow: 1;"><span>&nbsp;</span></li>
                             <li placeholder="Search..."><input autocomplete="off" type="search" id="search-terminal"

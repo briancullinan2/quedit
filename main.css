@@ -437,10 +437,6 @@ select:not(:has(option[value=""]:checked)),
     top: 0 !important;
 }
 
-#paint .attributes {
-    width: auto !important;
-}
-
 #paint button,
 #paint input[type="button"] {
     box-shadow: none !important;
@@ -488,9 +484,11 @@ select:not(:has(option[value=""]:checked)),
 
 #paint .submenu {
     background: transparent !important;
+    justify-content: flex-start;
 }
 
 #paint .attributes {
+    width: auto !important;
     background-color: transparent !important;
     border: none !important;
 }
@@ -864,7 +862,7 @@ input[type="number"]::-webkit-inner-spin-button {
     margin: 0;
     padding: 0;
     white-space: nowrap;
-
+    user-select: none;
 }
 
 
