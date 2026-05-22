@@ -3325,9 +3325,11 @@
                                 var r = S[n];
                                 t += this.generate_menu_bar_item_template(r, n)
                             }
-                            t += "</ul>",
-                                this.menuContainer.innerHTML = t,
-                                this.menuBarNode = this.menuContainer.querySelector('[role="menubar"]'),
+                            if (this.menuContainer.innerHTML.trim().length === 0) {
+                                t += "</ul>",
+                                    this.menuContainer.innerHTML = t
+                            }
+                            this.menuBarNode = this.menuContainer.querySelector('[role="menubar"]'),
                                 this.menuContainer.addEventListener("click", function (t) {
                                     return e.on_click_menu(t)
                                 }, !0),
@@ -3577,7 +3579,9 @@
                         key: "close_child_dropdowns",
                         value: function (e) {
                             for (var t = this.dropdownStack.length - 1; t >= 0; t--)
-                                t >= e && (this.dropdownStack[t].element.parentNode && this.dropdownStack[t].element.parentNode.removeChild(this.dropdownStack[t].element),
+                                t >= e && (this.dropdownStack[t].element.parentNode
+                                    && this.dropdownStack[t].element.classList.add('hidden'),
+                                    this.dropdownStack[t].element.classList.remove('visible'),
                                     this.dropdownStack[t].opener.setAttribute("aria-expanded", !1));
                             this.dropdownStack = this.dropdownStack.slice(0, e)
                         }
@@ -3587,15 +3591,23 @@
                             this.close_child_dropdowns(t);
                             for (var a = S, o = 0; o <= t; o++)
                                 a = a[null != this.dropdownStack[o] ? this.dropdownStack[o].index : n].children;
-                            var s = document.createElement("ul");
+                            var s = document.getElementById("dropdown_main_menu_" + t + "_" + n)
+                                || document.createElement("ul");
                             s.className = "menu_dropdown",
                                 s.role = "menu",
-                                s.tabIndex = 0,
-                                s.setAttribute("aria-labelledby", "main_menu_" + t + "_" + n);
+                                s.tabIndex = 0
+                            if(!s.classList.contains("visible")) {
+                                s.classList.add("visible");
+                            }
+                            s.classList.remove("hidden");
+                            s.setAttribute("aria-labelledby", "main_menu_" + t + "_" + n);
+                            s.setAttribute("id", "dropdown_main_menu_" + t + "_" + n);
                             for (var l = "", c = 0; c < a.length; c++)
                                 l += this.generate_menu_dropdown_item_template(a[c], t + 1, c);
-                            s.innerHTML = l,
-                                this.menuContainer.appendChild(s),
+                            if (s.innerHTML.trim().length === 0) {
+                                s.innerHTML = l;
+                            }
+                            this.menuContainer.appendChild(s),
                                 "en" != i.A.LANG && this.Tools_translate.translate(i.A.LANG, this.menuContainer),
                                 r && s.querySelector("a").focus(),
                                 this.dropdownStack.push({
@@ -3753,9 +3765,9 @@
                                     a && (i.A.layers.length > 1 || 0 == t.Base_layers.is_layer_empty(i.A.layer.id)) && (e.preventDefault(),
                                         e.returnValue = "")
                                 }),*/
-                                    document.getElementById("canvas_minipaint").addEventListener("contextmenu", function (e) {
-                                        e.preventDefault()
-                                    }, !1)
+                                document.getElementById("canvas_minipaint").addEventListener("contextmenu", function (e) {
+                                    e.preventDefault()
+                                }, !1)
                             }
                         }, {
                             key: "check_canvas_offset",

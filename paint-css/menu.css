@@ -244,3 +244,83 @@
 		padding-right: 50px;
 	}
 }
+
+.main_menu>ul.menu_bar {
+    background: var(--menu-background-color);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.main_menu>ul.menu_bar>li>a {
+    color: var(--menu-text-color);
+}
+
+.main_menu>ul.menu_bar>li>a:focus {
+    box-shadow: 0 -3px var(--menu-dropdown-background-color) inset;
+}
+
+.main_menu>ul.menu_bar>li>a:hover {
+    background: var(--menu-dropdown-hover-background-color);
+    color: var(--menu-dropdown-hover-text-color);
+}
+
+.main_menu>ul.menu_bar>li>a[aria-expanded="true"] {
+    background: var(--menu-dropdown-background-color);
+    color: var(--menu-dropdown-text-color);
+    box-shadow: 2px 0 0 0 var(--border-color), -2px 0 0 0 var(--border-color);
+}
+
+/* Floating Window List Containers */
+#main_menu>ul.menu_dropdown {
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+    background: var(--ace-gutter-bg);
+    box-shadow: 4px 4px 0px 0px rgb(from var(--ace-foreground) r g b / 25%);
+    /* Replaces rounding with a retro-block accent drop */
+}
+
+.main_menu>ul.menu_dropdown>li>hr {
+    border: 1px solid var(--menu-dropdown-divider-color);
+    border-bottom: none;
+}
+
+.main_menu>ul.menu_dropdown>li>a {
+    color: var(--menu-dropdown-text-color);
+}
+
+.main_menu>ul.menu_dropdown>li>a:focus,
+.main_menu>ul.menu_dropdown>li>a:hover {
+    background: var(--menu-dropdown-hover-background-color);
+    color: var(--menu-dropdown-hover-text-color);
+}
+
+.main_menu>ul.menu_dropdown>li>a[aria-expanded="true"] {
+    background: var(--menu-dropdown-hover-background-color);
+    color: var(--menu-dropdown-hover-text-color);
+}
+
+.main_menu>ul.menu_dropdown>li>a>.shortcut {
+    color: var(--menu-dropdown-text-muted-color);
+}
+
+#paint,
+#main #main_menu {
+    --menu-dropdown-background-color: var(--ace-gutter-bg);
+    --menu-dropdown-border-color: var(--ace-bg);
+    --menu-dropdown-text-color: var(--ace-foreground);
+    --menu-dropdown-text-muted-color: var(--ace-foreground);
+    --menu-dropdown-hover-background-color: rgb(from var(--ace-selection-bg) r g b / 50%);
+    --menu-dropdown-hover-text-color: var(--ace-foreground);
+    --menu-dropdown-divider-color: var(--ace-bg);
+}
+
+
+#main_menu>ul.menu_dropdown.hidden {
+    display: none;
+}
+
+#main_menu>ul.menu_dropdown.visible {
+    display: flex;
+}
+
+
+
+

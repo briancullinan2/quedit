@@ -18,7 +18,7 @@ const IMPORT_CSS = {
         '/paint-css/alertify.css',
         '/paint-css/component.css',
         '/paint-css/layout.css',
-        '/paint-css/menu.css',
+        // '/paint-css/menu.css', // included with page
         '/paint-css/popup.css',
         '/paint-css/print.css',
         '/paint-css/reset.css',
