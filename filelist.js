@@ -570,6 +570,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         if (filePath.endsWith('.bsp')) {
             // TODO: also open toji bsp viewer like the image editor
             setTimeout(async () => {
+                const viewport = document.getElementById('viewport')
                 await DependencyLoader.loadModule('toji');
                 let mapFile = filePath.split('/').pop().split('.')[0]
                 let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
@@ -865,7 +866,7 @@ let toolbarTabDebounce = null
 let latestPanelId = 'editor'
 let previousPanelId = null
 let debouncedPanelId = null
-let previousFilelistId = 'filelist'
+let previousFilelistId = null
 let notFilelist = 'editor'
 let previousNotFilelistId = null
 
@@ -931,13 +932,14 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
 
         let latestNotFilelist = true
         let previousNotFilelist = true
-        if (FILELIST_IDS.includes(latestPanelId)) {
-            previousFilelistId = latestPanelId
-            latestNotFilelist = false
-        }
         if (FILELIST_IDS.includes(previousPanelId)) {
             previousFilelistId = previousPanelId
             previousNotFilelist = false
+        }
+        if (FILELIST_IDS.includes(latestPanelId)) {
+            if (previousFilelistId !== latestPanelId) // because there is only 1 slot for files now
+                previousFilelistId = latestPanelId
+            latestNotFilelist = false
         }
 
 
@@ -953,15 +955,18 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
         // save previous not file list also
         if (notFilelist !== latestPanelId) {
             previousNotFilelistId = notFilelist
+        } else if (previousPanelId !== previousFilelistId) {
+            previousNotFilelistId = previousPanelId
         }
 
 
         if (panelId === 'collapse'
             // nice side effect if they click the same list it also toggles
+            // TODO: accidentally affected page load by setting a default
             || (panelId === previousFilelistId) // && !changedClass)
         ) {
 
-            if (!hadOpen) {
+            if (!hadOpen || latestPanelId !== previousFilelistId) {
                 document.getElementById(previousFilelistId)?.classList.remove('hidden')
                 document.getElementById(previousFilelistId)?.classList.add('not-hidden')
             } else {
@@ -973,8 +978,9 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
 
         // make sure not file list stays open, whatever exists other than a file list
         if (notFilelist) {
-            if (latestPanelId !== notFilelist)
+            if (latestPanelId !== notFilelist) {
                 previousPanelId = notFilelist
+            }
             document.getElementById(notFilelist)?.classList.remove('hidden')
             document.getElementById(notFilelist)?.classList.add('not-hidden')
         }

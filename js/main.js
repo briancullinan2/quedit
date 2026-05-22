@@ -112,10 +112,23 @@ function initGL(gl, canvas) {
     initMap(gl);
 }
 
+let maploadDebouncer = null
+let previousMapName = null
+
 // Load the map
-function initMap(gl, mapFile) {
+function initMap(gl, mapFile, noBounce = false) {
     //let titleEl = document.getElementById("mapTitle");
     //titleEl.innerHtml = mapName.toUpperCase();
+    if (!noBounce) {
+        if (maploadDebouncer) {
+            previousMapName = mapFile
+            return
+        }
+        maploadDebouncer = setTimeout(() => initMap(gl, mapFile, true), 300)
+        return
+    }
+
+
 
     let tesselation = getQueryVariable("tesselate");
     if (tesselation) {
@@ -139,6 +152,8 @@ function initMap(gl, mapFile) {
     //map.onsurfaces = initSurfaces;
     map.loadShaders(mapShaders);
     map.load('maps/' + mapName + '.bsp', tesselation);
+
+    maploadDebouncer = null
 }
 
 // Process entities loaded from the map
@@ -426,8 +441,8 @@ function initEvents() {
     let lastY = 0;
     let lastMoveX = 0;
     let lastMoveY = 0;
-    let viewport = document.getElementById("viewport");
-    let viewportFrame = document.getElementById("viewport-frame");
+    const viewport = document.getElementById("viewport");
+    const viewportFrame = document.getElementById("viewport-frame");
 
     viewportFrame.addEventListener('click', runTojiEngine)
 
@@ -621,7 +636,7 @@ let tojiRendererRunning = false
 let notRunningFrameCount = 0
 function runTojiEngine() {
 
-    let viewportFrame = document.getElementById("viewport-frame");
+    const viewportFrame = document.getElementById("viewport-frame");
     if (!viewportFrame.classList.contains('not-hidden')
         && (!document.body.classList.contains('previous-viewport-frame') || window.innerWidth < 1200))
         return
