@@ -599,7 +599,6 @@ function updatePainter() {
 let lastTrackedRow = -1;
 let lastTrackedColumn = -1;
 let aceMoveDebounceTimer = null;
-
 /**
  * Main event processor for Ace mouse movements.
  * Converts screen positions into exact buffer coordinates.
@@ -607,16 +606,10 @@ let aceMoveDebounceTimer = null;
 function detectAceEditorEvents(event) {
     if (!editor || !aceEditor.renderer) return null;
 
-    // 1. GATEWAY: Only process calculations if Ctrl (Win/Linux) or Cmd (Mac) is held down
-    //if (!event.ctrlKey && !event.metaKey) {
-    // Optional: clear status bar token readouts if modifier is released
-    //    return null;
-    //}
-
     const canvasX = event.clientX;
     const canvasY = event.clientY;
 
-    // 2. Map mouse screen pixels directly to Ace internal character coordinates
+    // 1. Map mouse screen pixels directly to Ace internal character coordinates
     const screenPos = aceEditor.renderer.screenToTextCoordinates(canvasX, canvasY);
     const row = screenPos.row;
     const column = screenPos.column;
@@ -629,7 +622,7 @@ function detectAceEditorEvents(event) {
     lastTrackedRow = row;
     lastTrackedColumn = column;
 
-    // 3. Get the precise string token sitting under the mouse
+    // 2. Get the precise string token sitting under the mouse
     const session = aceEditor.getSession();
     const token = session.getTokenAt(row, column);
 
@@ -644,7 +637,7 @@ function detectAceEditorEvents(event) {
         tokenText = token.value.trim();
         tokenType = token.type;
 
-        // Peek ahead at the next token to check if it's an invocation paren: "myFunc("
+        // Peek ahead at the next token to check if it's an invocation paren
         const nextToken = session.getTokenAt(row, column + token.value.length);
         if (tokenType.includes("support.function") ||
             tokenType.includes("entity.name.function") ||
@@ -653,13 +646,23 @@ function detectAceEditorEvents(event) {
         }
     }
 
+    // 3. CAPTURE ACTIVE COMPILER ERRORS FROM EXTENSION DATA TAGS
+    let compilerError = null;
+    const aceContainer = event.target.closest('.ace_editor');
+    if (aceContainer) {
+        compilerError = aceContainer.getAttribute('data-compiler-error');
+    }
+
     // Convert internal zero-based indices to human-readable 1-based indices (+1)
     const humanLine = row + 1;
     const humanCol = column + 1;
-    const database = owner.value + '/' + repository.value
-    let filePath = currentSession()
-    if (!filePath)
-        filePath = trees[database].nodesById[window.currentOpenFileId]?.path
+    const database = owner.value + '/' + repository.value;
+
+    let filePath = currentSession();
+    if (!filePath && window.trees && window.trees[database]) {
+        filePath = trees[database].nodesById[window.currentOpenFileId]?.path;
+    }
+
     const updatePayload = {
         event,
         row: humanLine,
@@ -668,6 +671,7 @@ function detectAceEditorEvents(event) {
         tokenText,
         tokenType,
         isFunctionCall,
+        compilerError, // <-- Injected seamlessly into the tracking payload
         id: typeof window.currentOpenFileId !== 'undefined' && window.currentOpenFileId != null ? window.currentOpenFileId : 'unknown',
         file: filePath,
     };
@@ -675,6 +679,7 @@ function detectAceEditorEvents(event) {
     // Update global status readouts dynamically
     updateAceStatus(updatePayload);
 
+    previousAceUpdate = updatePayload;
     return updatePayload;
 }
 
@@ -687,18 +692,48 @@ function updateAceStatus(data) {
         statusBar.innerText = "Editor: Idle";
         return;
     }
+
     const cursor = aceEditor.getCursorPosition();
     const cursorLine = cursor.row + 1;
     const cursorCol = cursor.column + 1;
+
     const tokenInfo = data.tokenText
         ? `Token: "${data.tokenText}" [${data.tokenType}]${data.isFunctionCall ? ' (Function Call)' : ''}, `
+        : '';
+
+    // 4. FORMAT ERROR BANNER TEXT
+    // If a compiler error is present on this line, append a bold visual flag 
+    // to instantly warn the user inside the status layer.
+    const errorInfo = data.compilerError
+        ? ` ⚠️  ${data.compilerError.replace(/\n/g, ' | ')}, `
         : '';
 
     statusBar.innerText = `Editor: Mouse: ${data.row}x${data.column}, `
         + `Cursor: ${cursorLine}x${cursorCol}, `
         + tokenInfo
+        + errorInfo // Displays smoothly across the bottom line sequence
         + `File: ${data.file}, ID: ${data.id}`;
+
+
+    /*
+    const aceContainer = event.target.closest('.ace_editor');
+
+    if (aceContainer && aceContainer.env) {
+        const diagnosticsModule = ace.require("ace/ext/compiler_diagnostics");
+        if (diagnosticsModule) {
+            const bridge = diagnosticsModule.getBridge();
+            
+            // Confirm this specific DOM node belongs to our active tracking channel
+            if (bridge.activeEditor === aceContainer.env.editor) {
+                // Read or mutate the raw state context variables straight from your script
+                let rawLines = bridge.collectedLogLines;
+                let currentRegexPattern = bridge.lccPattern;
+            }
+        }
+    }
+    */
 }
+
 
 /**
  * Throttle handler to guard performance during heavy mouse drag/sweep gestures
@@ -778,4 +813,3 @@ aceEditor.commands.addCommand({
         }
     }
 });
-

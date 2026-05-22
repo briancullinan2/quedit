@@ -111,38 +111,70 @@ document.getElementById('toolbar').addEventListener('click', async (e) => {
 
 });
 
-
 const globalTooltip = document.getElementById('global-tooltip')
+
 window.addEventListener('mousemove', e => {
     if (!e.target) return
 
     let targetEl = null
     let targetText = ""
-    targetText ||= e.target.getAttribute('placeholder')
-    targetText ||= e.target.getAttribute('alt')
-    targetText ||= e.target.getAttribute('data-tooltip')
-    targetText ||= e.target.getAttribute('title')
 
-    if (!targetText && e.target.parentElement) {
-        targetText ||= e.target.parentElement.getAttribute('placeholder')
-        targetText ||= e.target.parentElement.getAttribute('alt')
-        targetText ||= e.target.parentElement.getAttribute('data-tooltip')
-        targetText ||= e.target.parentElement.getAttribute('title')
+    // 1. ISOLATED CHECK: Look for attributes assigned dynamically by our native plugin layer
+    const aceContainer = e.target.closest('.ace_editor');
+    if (aceContainer) {
+        // Pull error string markers
+        targetText ||= aceContainer.getAttribute('data-compiler-error');
+        
+        // Pull code reference definition markers
+        var navSymbol = aceContainer.getAttribute('data-navigation-target');
+        if (navSymbol) {
+            targetText = `Go to reference for definition: "${navSymbol}"`;
+        }
+        
+        if (targetText) {
+            targetEl = aceContainer;
+        }
     }
 
-    if (e.target.getAttribute('popovertarget')) {
-        targetEl = e.target
+    // 2. STANDARD MINIPAINT DOM ATTR FALLBACKS
+    if (!targetText) {
+        targetText ||= e.target.getAttribute('placeholder')
+        targetText ||= e.target.getAttribute('alt')
+        targetText ||= e.target.getAttribute('data-tooltip')
+        targetText ||= e.target.getAttribute('title')
+
+        if (!targetText && e.target.parentElement) {
+            targetText ||= e.target.parentElement.getAttribute('placeholder')
+            targetText ||= e.target.parentElement.getAttribute('alt')
+            targetText ||= e.target.parentElement.getAttribute('data-tooltip')
+            targetText ||= e.target.parentElement.getAttribute('title')
+        }
+
+        if (e.target.getAttribute('popovertarget')) {
+            targetEl = e.target
+        }
+        if (e.target.parentElement && e.target.parentElement.getAttribute('popovertarget')) {
+            targetEl = e.target.parentElement
+        }
     }
-    if (e.target.parentElement && e.target.parentElement.getAttribute('popovertarget'))
-        targetEl = e.target.parentElement
 
     globalTooltip.innerText = targetText
 
-    if (!targetEl || !targetText) return
+    if (!targetEl || !targetText) {
+        globalTooltip.style.display = 'none';
+        return;
+    }
 
-    const rect = targetEl.getBoundingClientRect();
-    globalTooltip.style.top = (rect.top + targetEl.clientHeight) + 'px'
-    globalTooltip.style.left = Math.min(rect.left + targetEl.clientWidth, window.clientWidth - e.clientWidth) + 'px'
+    globalTooltip.style.display = 'block';
 
-})
+    // Fluid position layout tracking for tracking paths cleanly under cursor coordinates
+    if (aceContainer) {
+        globalTooltip.style.top = (e.clientY + 15) + 'px';
+        globalTooltip.style.left = Math.min(e.clientX + 10, window.innerWidth - globalTooltip.clientWidth - 20) + 'px';
+    } else {
+        const rect = targetEl.getBoundingClientRect();
+        globalTooltip.style.top = (rect.top + targetEl.clientHeight) + 'px'
+        globalTooltip.style.left = Math.min(rect.left + targetEl.clientWidth, window.innerWidth - globalTooltip.clientWidth) + 'px'
+    }
+});
 

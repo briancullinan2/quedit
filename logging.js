@@ -109,38 +109,45 @@ let lineCount = 0;
 let lastPartialLine = ''
 
 function terminalWrite(message, source, skipActualWrite = false) {
-    if (!message) {
-        debugger
-        return
-    }
-    let render = message
+    if (!message) return;
+
+    let render = message;
     if (!message.endsWith('\n\r') && !message.endsWith('\n')) {
-        const parts = message.split(/\n\r*/)
-        lastPartialLine = parts.pop()
-        render = parts.join('\n\r')
+        const parts = message.split(/\n\r*/);
+        lastPartialLine = parts.pop();
+        render = parts.join('\n\r');
     }
 
     if (lastPartialLine) {
-        lastPartialLine = ''
-        render = lastPartialLine + render
+        lastPartialLine = '';
+        render = lastPartialLine + render;
     }
 
-    window.lineCount += (message.match(/\n/g) || []).length
-    if(window.terminalLog)
-        window.terminalLog.push({ render: render.includes('\n') 
-        ? forceLineWrap(render, 120) 
-        : '', source: source, text: message, index: terminalLog.length, line: lineCount })
-
-    if (!window.terminalLoaded) {
-        return
+    window.lineCount += (message.match(/\n/g) || []).length;
+    
+    // 2. Core Fix: Pipe log data directly to our clean extension block
+    if (window.compilerDiagnostics) {
+        window.compilerDiagnostics.log(message);
     }
+
+    // Retain only structural diagnostic logging metadata mapping for the master array
+    if (window.terminalLog) {
+        window.terminalLog.push({ 
+            render: render.includes('\n') ? forceLineWrap(render, 120) : '', 
+            source: source, 
+            text: message, 
+            index: window.terminalLog.length, 
+            line: lineCount 
+        });
+    }
+
+    if (!window.terminalLoaded) return;
 
     if (term && !skipActualWrite && terminalWrapper.classList.contains('not-hidden')) {
-        term.write(message)
-        triggerIncrementalSave()
+        term.write(message);
+        triggerIncrementalSave();
     }
 }
-
 
 function forceLineWrap(text, maxCharsPerRow = 80) {
     const rows = [];

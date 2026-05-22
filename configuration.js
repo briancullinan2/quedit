@@ -67,9 +67,10 @@ function clearToken() {
 
 
 function addRepoIfNotExists(newRepo) {
-    if (newRepo.includes('briancullinan2')) {
+    if (!newRepo || newRepo.includes('briancullinan2')) {
         console.error('Assertion repo name is briancullinan2')
         debugger
+        return
     }
 
     if (newRepo.trim().length > 0 && !document.querySelector(`#repository option[value="${newRepo}"]`)) {
@@ -89,6 +90,7 @@ function addOwnerIfNotExists(newOwner) {
     if (newOwner.includes('Quake3e')) {
         console.error('Assertion owner name is Quake3e should be briancullinan2')
         debugger
+        return
     }
 
     if (newOwner && newOwner.trim().length > 0 && !document.querySelector(`#owner option[value="${newOwner}"]`)) {
@@ -103,7 +105,8 @@ function addOwnerIfNotExists(newOwner) {
     }
 }
 
-function configureRepository(newRepo) {
+
+function parseRepository(newRepo) {
     if (newRepo.trim().replace(/\/$|^\//, '').length == 0) {
         return [,]
     }
@@ -111,14 +114,23 @@ function configureRepository(newRepo) {
     const ownerName = parts.length == 2 ? parts[0] : owner.value
     const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
+    return [ownerName, repoName]
+}
+
+function configureRepository(newRepo) {
+    const [ownerName, repoName] = parseRepository(newRepo)
+    if (!ownerName || ownerName.length === 0 || !repoName || repoName.length === 0)
+        return
+
     addRepoIfNotExists(repoName)
     addOwnerIfNotExists(ownerName)
+
     return [ownerName, repoName]
 }
 
 async function setRepository(newRepo) {
     const [ownerName, repoName] = configureRepository(newRepo)
-    if (ownerName === 'Quake3e') {
+    if (ownerName === 'Quake3e' || ownerName === '') {
         console.error('Assertion: newOwner set to Quake3e should be ec- or briancullinan2')
         debugger
     }
@@ -361,7 +373,8 @@ async function clickFile(filePath, lineNumber, noBounce = false, noHide = false)
 
     window.currentOpenFileId = dbFile.sha
 
-    await openFile(ownerName, repoName, filePath, dbFile.sha, true /* record history */, false /* show file list */)
+    await openFile(ownerName, repoName, filePath, dbFile.sha, false /* record history */, false /* show file list */)
+    recordFileHistory(filePath, dbFile.sha, lineNumber)
     setTimeout(() => {
         editorContainer.classList.remove('hidden')
         editorContainer.classList.add('not-hidden')

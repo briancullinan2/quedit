@@ -894,7 +894,7 @@ function _fd_close(fd) {
 		//if(fd < 4) debugger
 		if (fd < 4) {
 			if(!FS.pointers[fd]) {
-				debugger
+				//debugger
 				return 0
 			}
 			FS.pointers[fd][0] = 0

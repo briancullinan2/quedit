@@ -34,7 +34,7 @@ const IMPORT_JS = {
     core: [
         '/preambles.js',
         '/logging.js',
-        '/jszip.min.js',
+        //'/jszip.min.js',
         //'/shared.js', trying to do without this? need to run build
         '/local.js',
         '/sys_fs.js', // Core shared filesystem bridge

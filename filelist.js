@@ -168,7 +168,7 @@ async function expandDatabaseTree(target, folderId) {
 
     if (!target.classList.contains('treejs-node__open')) return
     if (!trees['#database'].nodesById[folderId]) return
-    if(folderId.endsWith('[Recursive]')) return
+    if (folderId.endsWith('[Recursive]')) return
     // if (loadedDatabases[folderId]) return
 
 
@@ -482,19 +482,19 @@ function getMimeTypeByExtension(filename) {
 const imageEditor = document.getElementById('paint')
 
 async function downloadFile(repoOwner, repoName, filename) {
-    ((d, s, k, n) => { 
-        let r = indexedDB.open(d); 
-        r.onsuccess = () => r.result.transaction(s).objectStore(s).get(k).onsuccess = e => { 
-            let d = e.target.result; 
-            if (!d) 
-                return console.error('Key not found'); 
-            let b = d instanceof Blob 
-            ? d 
-            : new Blob([typeof d === 'object' ? JSON.stringify(d, null, 2) : d], { type: 'application/octet-stream' }), 
-            a = document.createElement('a'); 
-            a.href = URL.createObjectURL(b); 
-            a.download = n; a.click() 
-        } 
+    ((d, s, k, n) => {
+        let r = indexedDB.open(d);
+        r.onsuccess = () => r.result.transaction(s).objectStore(s).get(k).onsuccess = e => {
+            let d = e.target.result;
+            if (!d)
+                return console.error('Key not found');
+            let b = d instanceof Blob
+                ? d
+                : new Blob([typeof d === 'object' ? JSON.stringify(d, null, 2) : d], { type: 'application/octet-stream' }),
+                a = document.createElement('a');
+            a.href = URL.createObjectURL(b);
+            a.download = n; a.click()
+        }
     })(repoOwner + '/' + repoName, DB_STORE_NAME, filename, filename.split('/').pop());
 }
 
@@ -616,39 +616,49 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     resizeDebouncer()
 
     // 3. Record it in history if this isn't a "Back/Forward" action
-    let selector = document.getElementById('filename')
     if (recordHistory) {
-        let placeholder = selector.children[0]
-        if (placeholder.value == '')
-            placeholder.remove()
-        if (!selector.querySelector(`[value="${filePath}"]`)) {
-            const option = document.createElement('option');
-
-            option.value = filePath;
-            option.textContent = filePath;
-
-            //if (filePath === selector.value) {
-            option.selected = true;
-            //}
-
-            if (selector.children.length > 0)
-                selector.insertBefore(option, selector.children[0]);
-            else
-                selector.appendChild(option);
-        }
-        const pos = aceEditor.getCursorPosition();
-        NavHistory.push(sha, pos.row, pos.column);
-        history.pushState({ location: window.location.toString() }, filePath, '#' + filePath)
+        recordFileHistory(filePath, sha)
     }
     else {
-        selector.value == filePath
+        document.getElementById('filename').value == filePath
     }
+}
+
+
+function recordFileHistory(filePath, sha, lineNumber = null) {
+    let selector = document.getElementById('filename')
+    let placeholder = selector.children[0]
+    if (placeholder.value == '')
+        placeholder.remove()
+    if (!selector.querySelector(`[value="${filePath}"]`)) {
+        const option = document.createElement('option');
+
+        option.value = filePath;
+        option.textContent = filePath;
+
+        //if (filePath === selector.value) {
+        option.selected = true;
+        //}
+
+        if (selector.children.length > 0)
+            selector.insertBefore(option, selector.children[0]);
+        else
+            selector.appendChild(option);
+    }
+    const pos = aceEditor.getCursorPosition();
+    NavHistory.push(sha, pos.row, pos.column);
+    if (lineNumber)
+        history.pushState({ location: window.location.toString() }, filePath, '#' + filePath + ':' + lineNumber)
+    else
+        history.pushState({ location: window.location.toString() }, filePath, '#' + filePath)
     selector.parentElement.setAttribute('placeholder', 'Current file: ' + filePath)
 }
 
 
+
 let hashDebounce = null
 async function renderHashCommand(fileName, noBounce = false) {
+
 
     if (hashDebounce) {
         clearTimeout(hashDebounce)
@@ -681,33 +691,58 @@ async function renderHashCommand(fileName, noBounce = false) {
     }
 
 
-    let selected
-    let dbFile
-    let filePath
-    let lineNumer
-    for (filePath of [window.location.hash?.substring(1), window.location.pathname.substring(1)]) {
-        if (!filePath || filePath.length === 0) continue
+    const TEST_LOCATIONS = ['', 'demoq3/pak0.pk3dir', 'docs/demoq3/pak0.pk3dir']
 
-        for (let location of TEST_LOCATIONS) {
-            let rewrittenPath = location + (location.length > 0 && !location.endsWith('/') ? '/' : '') + filePath.split(':')[0]
-            let [selected2, dbFile2] = await findTestFilepath(rewrittenPath)
-            selected = selected2 || selected
-            dbFile = dbFile2
-            if (dbFile) {
-                filePath = rewrittenPath
-                lineNumer = filePath.split(':').pop()
-                break
-            }
-        }
-        if (dbFile) break
-    }
+    const [filePath, selected, dbFile, lineNumber] = await findTestFileWindowLocations(fileName)
 
     if (selected && !filePath)
-        navigateFile(selected, lineNumer, true)
+        navigateFile(selected, lineNumber, true)
     else
-        navigateFile(filePath, lineNumer, true)
+        navigateFile(filePath, lineNumber, true)
 
 }
+
+const TESTPATH_ROOTS = ['', 'demoq3/pak0.pk3dir', 'docs/demoq3/pak0.pk3dir'];
+
+const getHashLocations = (...morePrefixes) => {
+
+    const rawPathCandidates = [
+        ...morePrefixes.filter(loc => typeof loc === 'string'),
+        window.location.hash?.substring(1),
+        window.location.pathname?.substring(1)
+    ].filter(Boolean)
+
+    return rawPathCandidates.flatMap(rawCandidate => {
+        const hasColon = rawCandidate.includes(':');
+        const cleanPathPart = hasColon ? rawCandidate.split(':')[0] : rawCandidate;
+        const extractedLine = hasColon ? rawCandidate.split(':').pop() : null;
+
+        // Multiply this single candidate against ALL prefix roots cleanly
+        return TESTPATH_ROOTS.map(location => {
+            const delimiter = (location.length > 0 && !location.endsWith('/')) ? '/' : '';
+            return [location + delimiter + cleanPathPart, extractedLine];
+        });
+    });
+};
+
+
+
+async function findTestFileWindowLocations(filePath) {
+
+    const TEST_LOCATIONS = getHashLocations(filePath); // Extend by passing items here: getHashLocations('custom/path')
+
+    for (let [location, extractedLine] of TEST_LOCATIONS) {
+
+        let [selected, dbFile] = await findTestFilepath(location);
+
+        if (dbFile) {
+            console.log(`[VFS Resolved] File: ${location} | Target Line Anchor: ${extractedLine}`);
+            return [location, selected, dbFile, extractedLine]
+        }
+    }
+    return [, , ,]
+}
+
 
 
 window.addEventListener('popstate', (event) => {
@@ -727,7 +762,7 @@ function treeHandler(selector, e) {
     const fileId = node.getAttribute('data-id'); // Assuming you set this
     //setTimeout(() => trees[selector].values = [fileId], 500)
 
-    if(fileId.endsWith['[Recursive]']) {
+    if (fileId.endsWith['[Recursive]']) {
         return
     }
 

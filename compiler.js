@@ -159,31 +159,32 @@ class WorkerAPI {
 
 function specialWrite(msg) {
     if (!msg) return;
-    if (msg.includes('memory access out of bounds')) {
-        needsHeaders = true
-    }
-    if(msg.includes('$Id$')) {
-        //debugger
+
+    // 1. Core Fix: Clear old marks instantly via the native module API
+    if (msg.includes('q3lcc -v') && window.compilerDiagnostics) {
+        window.compilerDiagnostics.clear();
     }
 
+    if (msg.includes('memory access out of bounds')) {
+        needsHeaders = true;
+    }
 
     if (!window.runningCommand) {
         window.runningCommand = true;
-
         if (!window.detachedConsole && !window.alreadyWroteDetached) {
-            window.detachedConsole = true
-            PREAMBLE = WARN_PREAMBLE
-            console.warn('\n\rDetached console, awaiting terminate...')
+            window.detachedConsole = true;
+            PREAMBLE = WARN_PREAMBLE;
+            console.warn('\n\rDetached console, awaiting terminate...');
         }
     }
 
-    let skipTerminal = false
+    let skipTerminal = false;
     if (msg.includes('Assertion failed: lookup.node')) {
-        skipTerminal = true
+        skipTerminal = true;
     }
-    if (!skipTerminal && window.terminalWrite)
-        window.terminalWrite(msg)
-
+    if (!skipTerminal && window.terminalWrite) {
+        window.terminalWrite(msg);
+    }
 }
 
 
@@ -192,7 +193,6 @@ const api = new WorkerAPI({
 });
 window.api = api;
 window.api.github_token = window.githubToken
-
 
 // TODO: offline mode
 // ServiceWorker stuff

@@ -76,6 +76,37 @@ function onLoadEditor() {
     if (themeSelector && window.ace) {
         setTheme(SettingsManager.get('editor', 'savedTheme'))
     }
+
+    tryLoadingTerminalEditorBridge()
+}
+
+
+function tryLoadingTerminalEditorBridge() {
+    if (!window.aceEditor || !window.terminalWrite || window.compilerDiagnostics /* already setup */) {
+        return
+    }
+
+    // Force Ace to locate, download, and compile the extension module asynchronously
+    ace.config.loadModule(["ext", "compiler_diagnostics"], function () {
+        window.require(["ace/ext/compiler_diagnostics"], function (moduleExports) {
+            if (!moduleExports) {
+                console.error("[Ace Lazy] Failed to initialize compiler_diagnostics extension.");
+                return;
+            }
+
+            // 1. Map the loaded module exports to your global tracking variable alias
+            window.compilerDiagnostics = moduleExports;
+
+            // 2. Attach the active editor instance to kick off mouse interceptors
+            moduleExports.attachInstance(window.aceEditor);
+
+            // 3. Populate the background bridge arrays from your master terminal logs cache
+            const bridge = moduleExports.getBridge();
+            bridge.collectedLogLines = terminalLog.map(log => log.text || log);
+            bridge.triggerDebouncedUpdate()
+            console.log("[Ace Lazy] Compiler diagnostics overlay successfully linked.");
+        });
+    });
 }
 
 function hasChangedEditor() {
@@ -228,6 +259,11 @@ function resizeDebouncer() {
         resizeDebounce = null
 
         debounceFileChange()
+
+        if (window.aceEditor && window.terminalWrite && !window.compilerDiagnostics) {
+            tryLoadingTerminalEditorBridge()
+        }
+
         // don't need to do this on resize because its fixed now at 120ch
         //if (terminalWrapper.classList.contains('not-hidden')) {
 

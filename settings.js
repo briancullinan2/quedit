@@ -29,7 +29,7 @@ const IMPORT_SETTINGS = {
         },
         defaultRepository: {
             key: 'default_repository',
-            default: 'Quake3e',
+            default: 'briancullinan2/Quake3e',
             elementId: 'repository',
             get: (storage, defaultRepo) => owner.value && repository.value
                 ? owner.value + '/' + repository.value
@@ -59,6 +59,11 @@ const IMPORT_SETTINGS = {
         tools2Repository: {
             key: 'tools_repository',
             default: 'ec-/q3asm',
+            set: configureRepository
+        },
+        rendererRepository: {
+            key: 'renderer_repository',
+            default: 'briancullinan2/Quake3e',
             set: configureRepository
         },
         workspaceDefault: {
