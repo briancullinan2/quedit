@@ -1044,6 +1044,28 @@ input[type="number"]::-webkit-inner-spin-button {
     opacity: 1;
 }
 
+.compiler-error-marker,
+.compiler-warning-marker {
+    position: absolute;
+    z-index: 5 !important;
+    text-decoration-style: wavy;
+}
+
+/* 1. Wavy Red Error Underline */
+.compiler-error-marker {
+    border-bottom: 2px dashed #ef4444 !important;
+    /* Modern browser wavy option alternative: */
+    text-decoration: underline wavy #ef4444 2px !important;
+    text-decoration-style: wavy;
+}
+
+/* 2. Wavy Yellow Warning Underline */
+.compiler-warning-marker {
+    border-bottom: 2px dashed #f1c40f !important;
+    /* Modern browser wavy option alternative: */
+    text-decoration: underline wavy #f1c40f 2px !important;
+    text-decoration-style: wavy;
+}
 
 #global-tooltip:hover,
 #main:has(.ace_marker-layer .ace_active-line:hover)~#global-tooltip,

@@ -169,18 +169,23 @@ ace.define("ace/ext/compiler_diagnostics", [
         this.refreshActiveEditorView();
     };
 
-    /**
-     * Lightweight Rendering Update Hook.
-     * Safe to invoke manually from outside whenever an internal tab change finishes.
-     */
     DiagnosticsBridge.prototype.refreshActiveEditorView = function () {
         if (!this.activeEditor) return;
 
         let session = this.activeEditor.getSession();
 
-        // Determine the exact clean identifier path of the file active on screen
+        // 1. THE FILE RESOLVER FIX: Restore your original session path sniffing routine
         let currentFile = window?.currentSession(window.currentOpenFileId || session.id, session)
             || window.currentOpenFileId || session.id || "";
+
+        // 2. TEAR DOWN OLD MARKERS: Flush custom range highlights cleanly
+        if (!this.activeMarkerIds) {
+            this.activeMarkerIds = [];
+        }
+        for (let m = 0; m < this.activeMarkerIds.length; m++) {
+            session.removeMarker(this.activeMarkerIds[m]);
+        }
+        this.activeMarkerIds = [];
 
         // Pull any standard standalone connection logs
         let systemAnnotations = this.fileAnnotationsMap["system"] || [];
@@ -198,7 +203,43 @@ ace.define("ace/ext/compiler_diagnostics", [
 
         // Merge connection state confirmations with targeted file annotations smoothly
         let finalAnnotations = systemAnnotations.concat(targetAnnotations);
+
+        // RESTORED: This puts your gutter exclamation badges right back where they belong!
         session.setAnnotations(finalAnnotations);
+
+        // 3. THE SQUIGGLY ENGINE: Run range highlights only if data exists
+        if (targetAnnotations.length === 0) return;
+
+        let Range = ace.require("ace/range").Range;
+
+        for (let a = 0; a < targetAnnotations.length; a++) {
+            let anno = targetAnnotations[a];
+            let row = anno.row;
+
+            // Extract the raw text line string to evaluate character lengths
+            let lineText = session.getLine(row) || "";
+            let startColumn = 0;
+            let endColumn = lineText.length || 1;
+
+            // Strip indent spacing away from the selection bounds
+            let firstCharMatch = lineText.match(/^\s*/);
+            if (firstCharMatch) {
+                startColumn = firstCharMatch[0].length;
+            }
+
+            let markerRange = new Range(row, startColumn, row, endColumn);
+            let markerClass = (anno.type === "error") ? "compiler-error-marker" : "compiler-warning-marker";
+
+            // Inject line decorations directly into the character layer grid
+            let markerId = session.addMarker(
+                markerRange,
+                markerClass,
+                "text",
+                false
+            );
+
+            this.activeMarkerIds.push(markerId);
+        }
     };
 
     DiagnosticsBridge.prototype.fileAnnotations = function (cachedFileKey) {
