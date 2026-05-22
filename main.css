@@ -1045,9 +1045,13 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
-
+#global-tooltip:hover,
+#main:has(.ace_marker-layer .ace_active-line:hover)~#global-tooltip,
+#main:has(.ace_gutter .ace_gutter-active-line:hover)~#global-tooltip,
 #main:has([placeholder][popovertarget]:hover)~#global-tooltip {
     opacity: 1;
+    display: inline-block;
+    white-space: wrap;
 }
 
 #main:has([placeholder][popovertarget]:hover)~#global-tooltip::after {}
@@ -1073,7 +1077,7 @@ input[type="number"]::-webkit-inner-spin-button {
     --tip: attr(data-tooltip);
 }
 
-
+.ace_tooltip,
 #global-tooltip,
 [placeholder]:not([popovertarget]):not([type="checkbox"])::after,
 [alt]:not([popovertarget])::after,
@@ -1082,18 +1086,31 @@ input[type="number"]::-webkit-inner-spin-button {
     cursor: pointer;
     top: 100%;
     bottom: auto;
-    /*left: max(10px, 50%);
-    transform: translateX(-50%); */
     display: block;
     padding: 5px 10px;
     border-radius: 4px;
     white-space: wrap;
+    word-break: normal;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s;
     font-size: 16px;
-    z-index: 9999;
+    z-index: -1;
     margin: 0;
+
+    /* FIX 3: Constrain width using viewport-width (vw) units instead of percentages */
+    max-width: 45vw;
+}
+
+
+.ace_tooltip,
+#global-tooltip {
+    white-space: wrap;
+    word-break: normal;
+}
+
+.ace_tooltip {
+    position: relative !important;
 }
 
 
@@ -1118,6 +1135,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
+.ace_tooltip[style*="block"],
 [placeholder]:not([popovertarget]):hover::after,
 [alt]:not([popovertarget]):hover::after,
 [data-tooltip]:not([popovertarget]):hover::after {

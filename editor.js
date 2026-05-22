@@ -140,6 +140,7 @@ aceEditor.on("changeSelection", function () {
         if (!lastPoint || lastPoint.fileId !== currentFile || Math.abs(lastPoint.row - humanRow) > 5) {
             NavHistory.push(currentFile, humanRow, humanCol);
         }
+        window.updateEditorLineIds()
     }, 500);
 });
 
@@ -813,3 +814,95 @@ aceEditor.commands.addCommand({
         }
     }
 });
+
+// Keep track of the active gutter line row to prevent erratic multi-firing updates
+let lastTrackedGutterRow = null;
+
+
+// Clear out our row state cache whenever the mouse rolls out of the gutter strip completely
+window.aceEditor.on("guttermouseout", function () {
+    lastTrackedGutterRow = null;
+    if (globalTooltip) {
+        globalTooltip.style.display = 'none';
+    }
+});
+function doAceEditorMouse(e) {
+    if (!globalTooltip) return;
+
+    // 1. Map the raw mouse coordinates down to a logical line row index
+    let canvasY = e.clientY;
+    let row = window.aceEditor.renderer.screenToTextCoordinates(0, canvasY).row;
+
+    // Fetch all cached diagnostics mapped to the active working file split array
+    const session = window.aceEditor.getSession();
+    let currentFile = window?.currentSession(window.currentOpenFileId || session.id, session)
+        || window.currentOpenFileId || session.id || "";
+    let fileAnnotations = [];
+
+    if (window.compilerDiagnostics) {
+        let bridge = window.compilerDiagnostics.getBridge();
+        let keys = Object.keys(bridge.fileAnnotationsMap);
+        for (let i = 0; i < keys.length; i++) {
+            if (currentFile.endsWith(keys[i])) {
+                fileAnnotations = bridge.fileAnnotationsMap[keys[i]];
+                break;
+            }
+        }
+    }
+
+    // Search for matching compiler text records specifically for this line row index
+    let activeErrorsOnLine = fileAnnotations.filter(function (anno) {
+        return anno.row === row;
+    });
+
+    // If no diagnostics reside on this specific row, hide the global overlay panel
+    if (activeErrorsOnLine.length === 0) {
+        globalTooltip.style.display = 'none';
+        globalTooltip.style.opacity = 0;
+        globalTooltip.style.zIndex = -1;
+        // Reset row tracking on empty space so returning to the line re-triggers layout
+        lastTrackedGutterRow = null; 
+        return;
+    }
+
+    // --- THE FIXED HASTY GATE ---
+    // If the tooltip is already correctly positioned on this row, 
+    // drop out completely WITHOUT updating any styles or chasing the cursor!
+    if (row === lastTrackedGutterRow && globalTooltip.style.display === 'block') {
+        return;
+    }
+    lastTrackedGutterRow = row;
+
+    // 4. PACK & UNWRAP: Join multiple warning/error chunks on the same line into a clean string layout
+    let combinedDiagnosticText = activeErrorsOnLine.map(function (anno) {
+        let prefix = anno.type.toUpperCase() === "error" ? "❌ Error: " : "⚠️ Warning: ";
+        return prefix + anno.text;
+    }).join("\n\n");
+
+    // Populate our clean string straight into your Minipaint global layout tooltip
+    globalTooltip.innerText = combinedDiagnosticText;
+    
+    // Switch your tooltip style handling to use view-space fixed coordinate math
+    globalTooltip.style.position = 'absolute';
+    globalTooltip.style.display = 'block';
+    globalTooltip.style.opacity = 1;
+    globalTooltip.style.zIndex = 99999; // Ensure it draws cleanly above other docks
+
+    // Get the absolute screen pixels for the very start of this specific code line text
+    var rowCoords = window.aceEditor.renderer.textToScreenCoordinates(row, 0);
+
+    // FIXING LEFT METRIC: Read the actual bounding rectangle width of the gutter panel container
+    var gutterRect = window.aceEditor.renderer.$gutterLayer.element.getBoundingClientRect();
+    var absoluteGutterRight = gutterRect.right;
+
+    // Directly bind coordinates to the viewport boundaries
+    var correctedLeft = absoluteGutterRight + 10;
+    
+    // Line up perfectly at the bottom edge of the targeted text row frame block
+    var rowHeight = window.aceEditor.renderer.layerConfig.lineHeight || 19;
+    var correctedTop = rowCoords.pageY + rowHeight;
+
+    // Hard-lock the layout dimensions securely
+    globalTooltip.style.left = correctedLeft + "px";
+    globalTooltip.style.top = correctedTop + "px";
+}

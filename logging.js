@@ -22,7 +22,7 @@ function writeLog(msg, ...args) {
     if (msg.includes && msg.includes('TypeError:')) debugger
     let formatted = formatMessage(PREAMBLE, [msg, ...args])
     if ((!window.api || !window.api.worker) && window.terminalWrite && !skipTerminal) terminalWrite(formatted);
-    if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
+    if (typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.log(msg, ...args);
     else console.log(msg, ...args)
 }
@@ -78,28 +78,28 @@ const originalConsole = {
 self.console.log = (...args) => {
     const formatted = formatMessage('log', args);
     if (window.terminalWrite) terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
+    else if (typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.log(...args);
 };
 
 self.console.warn = (...args) => {
     const formatted = formatMessage('warn', args);
     if (window.terminalWrite) terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
+    else if (typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.warn(...args);
 };
 
 self.console.error = (...args) => {
     const formatted = formatMessage('error', args);
     if (window.terminalWrite) terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
+    else if (typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.error(...args);
 };
 
 self.console.info = (...args) => {
     const formatted = formatMessage('info', args);
     if (window.terminalWrite) terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined') api.hostWrite(formatted);
+    else if (typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.info(...args);
 };
 

@@ -81,7 +81,7 @@ async function renderToolbarCommand(buttonId) {
 
     // Auto-save setting file shifts if active view config targets modify variables
     const interactiveStateKeys = [
-        'configuration', 'wasi', 'theme', 'spawn', 'map', 'branch', 
+        'configuration', 'wasi', 'theme', 'spawn', 'map', 'branch',
         'repository', 'owner', 'keybinding', 'filename', 'reload'
     ];
     if (interactiveStateKeys.includes(buttonId)) {
@@ -124,13 +124,13 @@ window.addEventListener('mousemove', e => {
     if (aceContainer) {
         // Pull error string markers
         targetText ||= aceContainer.getAttribute('data-compiler-error');
-        
+
         // Pull code reference definition markers
         var navSymbol = aceContainer.getAttribute('data-navigation-target');
         if (navSymbol) {
             targetText = `Go to reference for definition: "${navSymbol}"`;
         }
-        
+
         if (targetText) {
             targetEl = aceContainer;
         }
@@ -158,6 +158,15 @@ window.addEventListener('mousemove', e => {
         }
     }
 
+    if (window.aceEditor && e.target
+        && (e.target === window.aceEditor.renderer.container
+            || e.target.parentElement === window.aceEditor.renderer.container
+            || e.target.closest('#editor'))
+    ) {
+        doAceEditorMouse(e)
+        return
+    }
+
     globalTooltip.innerText = targetText
 
     if (!targetEl || !targetText) {
@@ -174,7 +183,7 @@ window.addEventListener('mousemove', e => {
     } else {
         const rect = targetEl.getBoundingClientRect();
         globalTooltip.style.top = (rect.top + targetEl.clientHeight) + 'px'
-        globalTooltip.style.left = Math.min(rect.left + targetEl.clientWidth, window.innerWidth - globalTooltip.clientWidth) + 'px'
+        globalTooltip.style.left = Math.min(rect.left + targetEl.clientWidth, window.innerWidth - globalTooltip.clientWidth - 20) + 'px'
     }
 });
 

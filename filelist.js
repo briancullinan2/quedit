@@ -582,6 +582,13 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         previousNotFilelistId = 'editor'
         str = hexDump(sampleBytes, content, filePath)
     } else {
+        if (filePath.endsWith('.c') || filePath.endsWith('.h'))
+            setTimeout(async () => {
+                if (window.compilerDiagnostics) {
+                    const bridge = window.compilerDiagnostics.getBridge();
+                    bridge.refreshActiveEditorView();
+                }
+            }, 200)
         // Standard plain text file path
         str = decoder.decode(content);
     }
@@ -694,6 +701,8 @@ async function renderHashCommand(fileName, noBounce = false) {
     const TEST_LOCATIONS = ['', 'demoq3/pak0.pk3dir', 'docs/demoq3/pak0.pk3dir']
 
     const [filePath, selected, dbFile, lineNumber] = await findTestFileWindowLocations(fileName)
+
+    previousHashLineNumber = lineNumber
 
     if (selected && !filePath)
         navigateFile(selected, lineNumber, true)
@@ -1025,7 +1034,50 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
     }
 }
 
+function updateEditorLineIds() {
 
+    for (let cn of document.body.classList) {
+        if (cn.startsWith('line-')) {
+            document.body.classList.remove(cn)
+        }
+    }
+
+    for (let cn of document.body.classList) {
+        if (cn.startsWith('error-')
+            || cn.startsWith('warning-')
+        ) {
+            document.body.classList.remove(cn)
+        }
+    }
+
+    
+    for (let cn of document.body.classList) {
+        if (cn.startsWith('hash-')) {
+            document.body.classList.remove(cn)
+        }
+    }
+    
+
+    if (window.aceEditor) {
+        let currentLine = window.aceEditor.getCursorPosition()
+        document.body.classList.add('line-' + (currentLine.row + 1))
+        document.body.classList.add('hash-' + previousHashLineNumber || 0)
+        if(currentLine.row + 1 === previousHashLineNumber)
+            document.body.classList.add('line-match')
+        const session = window.aceEditor.getSession()
+        if (session.getAnnotations) {
+            var matches = session.getAnnotations().filter(function (ann) {
+                return ann.row === currentLine.row
+                    //&& ann.type === 'error';
+            })
+            if (matches.length > 0) {
+                document.body.classList.add(matches[0].type + '-' + currentLine.row)
+            }
+        }
+    }
+
+
+}
 
 function updateBodyPanelIds() {
 
@@ -1042,12 +1094,12 @@ function updateBodyPanelIds() {
         }
     }
 
-
     if (previousPanelId)
         document.body.classList.add('previous-' + (previousNotFilelistId || previousPanelId))
     if (latestPanelId)
         document.body.classList.add('panel-' + latestPanelId)
 
+    updateEditorLineIds()
 
 }
 

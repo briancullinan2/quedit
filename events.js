@@ -82,7 +82,7 @@ function onLoadEditor() {
 
 
 function tryLoadingTerminalEditorBridge() {
-    if (!window.aceEditor || !window.terminalWrite || window.compilerDiagnostics /* already setup */) {
+    if (!window.aceEditor || window.compilerDiagnostics /* already setup */) {
         return
     }
 
@@ -101,13 +101,14 @@ function tryLoadingTerminalEditorBridge() {
             moduleExports.attachInstance(window.aceEditor);
 
             // 3. Populate the background bridge arrays from your master terminal logs cache
-            const bridge = moduleExports.getBridge();
-            bridge.collectedLogLines = terminalLog.map(log => log.text || log);
-            bridge.triggerDebouncedUpdate()
+            window.diagnosticsBridge = moduleExports.getBridge();
+            diagnosticsBridge.collectedLogLines = terminalLog.map(log => log.text || log);
+            diagnosticsBridge.triggerDebouncedUpdate()
             console.log("[Ace Lazy] Compiler diagnostics overlay successfully linked.");
         });
     });
 }
+
 
 function hasChangedEditor() {
     if (!window.aceEditor) return false;

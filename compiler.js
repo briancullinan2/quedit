@@ -136,6 +136,7 @@ class WorkerAPI {
 
             case 'done':
                 window.detachedConsole = false
+                window.runningCommand = false
             case 'runAsync': {
                 const responseId = event.data.responseId;
                 const promise = this.responseCBs.get(responseId);

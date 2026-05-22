@@ -1908,7 +1908,7 @@ define("ace/tooltip", ["require", "exports", "module", "ace/lib/oop", "ace/lib/d
 define("ace/mouse/default_gutter_handler", ["require", "exports", "module", "ace/lib/dom", "ace/lib/oop", "ace/lib/event", "ace/tooltip"], function(e, t, n) {
     "use strict";
     function u(e) {
-        function l() {
+        /*function l() {
             var r = u.getDocumentPosition().row
               , s = n.$annotations[r];
             if (!s)
@@ -1936,7 +1936,7 @@ define("ace/mouse/default_gutter_handler", ["require", "exports", "module", "ace
                 v.left = d.right + "px",
                 v.top = d.bottom + "px"
             }
-        }
+        }*/
         function c() {
             o && (o = clearTimeout(o)),
             f && (i.hide(),
@@ -1971,7 +1971,7 @@ define("ace/mouse/default_gutter_handler", ["require", "exports", "module", "ace
             r.preventDefault()
         });
         var o, u, f;
-        e.editor.setDefaultHandler("guttermousemove", function(t) {
+        /*e.editor.setDefaultHandler("guttermousemove", function(t) {
             var n = t.domEvent.target || t.domEvent.srcElement;
             if (r.hasCssClass(n, "ace_fold-widget"))
                 return c();
@@ -1983,7 +1983,7 @@ define("ace/mouse/default_gutter_handler", ["require", "exports", "module", "ace
                 o = null,
                 u && !e.isMousePressed ? l() : c()
             }, 50)
-        }),
+        }),*/
         s.addListener(t.renderer.$gutter, "mouseout", function(e) {
             u = null;
             if (!f || o)
@@ -3029,7 +3029,7 @@ define("ace/mouse/mouse_handler", ["require", "exports", "module", "ace/lib/even
         }
           , u = e.renderer.getMouseEventTarget();
         r.addListener(u, "click", this.onMouseEvent.bind(this, "click"), e),
-        r.addListener(u, "mousemove", this.onMouseMove.bind(this, "mousemove"), e),
+        //r.addListener(u, "mousemove", this.onMouseMove.bind(this, "mousemove"), e),
         r.addMultiMouseDownListener([u, e.renderer.scrollBarV && e.renderer.scrollBarV.inner, e.renderer.scrollBarH && e.renderer.scrollBarH.inner, e.textInput && e.textInput.getElement()].filter(Boolean), [400, 300, 250], this, "onMouseEvent", e),
         r.addMouseWheelListener(e.container, this.onMouseWheel.bind(this, "mousewheel"), e),
         f(e.container, e);
@@ -3037,19 +3037,19 @@ define("ace/mouse/mouse_handler", ["require", "exports", "module", "ace/lib/even
         r.addListener(l, "mousedown", this.onMouseEvent.bind(this, "guttermousedown"), e),
         r.addListener(l, "click", this.onMouseEvent.bind(this, "gutterclick"), e),
         r.addListener(l, "dblclick", this.onMouseEvent.bind(this, "gutterdblclick"), e),
-        r.addListener(l, "mousemove", this.onMouseEvent.bind(this, "guttermousemove"), e),
+        //r.addListener(l, "mousemove", this.onMouseEvent.bind(this, "guttermousemove"), e),
         r.addListener(u, "mousedown", n, e),
         r.addListener(l, "mousedown", n, e),
         i.isIE && e.renderer.scrollBarV && (r.addListener(e.renderer.scrollBarV.element, "mousedown", n, e),
-        r.addListener(e.renderer.scrollBarH.element, "mousedown", n, e)),
-        e.on("mousemove", function(n) {
+        r.addListener(e.renderer.scrollBarH.element, "mousedown", n, e))
+        /*e.on("mousemove", function(n) {
             if (t.state || t.$dragDelay || !t.$dragEnabled)
                 return;
             var r = e.renderer.screenToTextCoordinates(n.x, n.y)
               , i = e.session.selection.getRange()
               , s = e.renderer;
             !i.isEmpty() && i.insideStart(r.row, r.column) ? s.setCursorStyle("default") : s.setCursorStyle("")
-        }, e)
+        }, e)*/
     };
     (function() {
         this.onMouseEvent = function(e, t) {
@@ -3166,7 +3166,7 @@ define("ace/mouse/mouse_handler", ["require", "exports", "module", "ace/lib/even
             initialValue: 0
         },
         tooltipFollowsMouse: {
-            initialValue: !0
+            initialValue: false
         }
     }),
     t.MouseHandler = c
