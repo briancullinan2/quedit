@@ -419,10 +419,6 @@ select:not(:has(option[value=""]:checked)),
 }
 
 
-#main #main_menu {
-    min-width: min-content;
-}
-
 #toolbar>ul>li>ul>li:has(#main_menu) {
     min-width: min-content;
 }
@@ -758,12 +754,25 @@ input[type="number"]::-webkit-inner-spin-button {
     flex-direction: column;
 }
 
-#toolbar>ul>li:has(ul) {
+#toolbar>ul>li:has(ul),
+#toolbar>ul>li:has(nav) {
     flex-basis: min-content;
+    padding: 2px 0;
 }
 
-#toolbar>ul>li:has(ul) {
-    padding: 2px 0;
+
+#main #main_menu {
+    min-width: 100px;
+    max-width: 100%;
+}
+
+#main_menu>ul.menu_bar {
+    padding: 0 10px !important;
+    display: inline-flex !important;
+    flex-wrap: wrap;
+    height: auto !important;
+    width: max-content;
+    max-width: 100%;
 }
 
 #toolbar>ul>li:has(ul):first-child>ul,
@@ -782,18 +791,12 @@ input[type="number"]::-webkit-inner-spin-button {
 
 #toolbar>ul>li>ul,
 #toolbar>ul {
-    display: flex;
+    display: inline-flex;
     flex-direction: row;
     max-width: 100%;
     flex-wrap: wrap;
     justify-content: flex-end;
     align-items: center;
-}
-
-#toolbar>ul>li>ul {
-    flex-wrap: nowrap;
-    justify-content: flex-end;
-    width: min-content;
 }
 
 #toolbar>ul>li>ul>li:has(select),
@@ -1618,7 +1621,7 @@ input[type="number"]::-webkit-inner-spin-button {
     }
 
 
-    #editor-container:has(~ .not-hidden) {
+    #editor-container:not(:has(.not-hidden)):has(~ .not-hidden) {
         display: none;
     }
 

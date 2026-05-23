@@ -100,29 +100,33 @@ ace.define("ace/ext/compiler_diagnostics", [
 
     let config = require("../config");
     let dom = require("../lib/dom");
-
     function DiagnosticsBridge() {
         this.activeEditor = null;
         this.collectedLogLines = [];
         this.timer = null;
         this.delay = 250;
 
-        // Core structural file diagnostic dictionary: { "code/game/g_main.c": [ ...annotations ] }
-        this.fileAnnotationsMap = {};
+        this.fileAnnotationsMap = { "system": [] };
 
-        // Strict Clang/LCC compiler error pattern
-        this.lccPattern = MONITOR_LCC
+        this.workerAnnotations = [];
 
-        // Your comprehensive verbose file/line locator pattern
+        this.lccPattern = MONITOR_LCC;
         this.fileNameRegex = FILE_NAME_REGEX;
     }
+
+    DiagnosticsBridge.prototype.setWorkerAnnotations = function (annotationsArray) {
+        // Cache the worker payload safely away from string clobber loops
+        this.workerAnnotations = annotationsArray || [];
+
+        // Trigger the view layer synchronization
+        this.refreshActiveEditorView();
+    };
 
     DiagnosticsBridge.prototype.attach = function (editor) {
         this.activeEditor = editor;
         this.initMouseInterceptors(editor);
         this.log("system:1: warning: Worker Error Reporting Connected");
     };
-
     DiagnosticsBridge.prototype.initMouseInterceptors = function (editor) {
         let _self = this;
         editor.on("mousemove", function (e) {
@@ -133,8 +137,16 @@ ace.define("ace/ext/compiler_diagnostics", [
             container.removeAttribute('data-compiler-error');
             container.removeAttribute('data-navigation-target');
 
+            // 1. LOOSE HIT-BOX FILTER: Catch any error on this row
             let activeAnnotations = session.getAnnotations().filter(function (ann) {
-                return ann.row === position.row;
+                if (ann.row !== position.row) return false;
+
+                // If the annotation doesn't have a specific column, or it's 0, it applies line-wide
+                if (typeof ann.column !== "number" || ann.column === 0) return true;
+
+                // If it DOES have a column, let's create a friendly 4-character padding threshold 
+                // so the user doesn't have to pixel-perfectly target a single character
+                return position.column >= (ann.column - 4);
             });
 
             if (activeAnnotations.length > 0) {
@@ -218,7 +230,7 @@ ace.define("ace/ext/compiler_diagnostics", [
                         }
                         this.fileAnnotationsMap[path].push({
                             row: diagnostic.row,
-                            column: 0,
+                            column: undefined, // Tell the view layer that this error has NO known explicit token position
                             text: diagnostic.text,
                             type: diagnostic.type
                         });
@@ -232,30 +244,25 @@ ace.define("ace/ext/compiler_diagnostics", [
         this.refreshActiveEditorView();
     };
 
-
     DiagnosticsBridge.prototype.refreshActiveEditorView = function () {
         if (!this.activeEditor) return;
 
         let session = this.activeEditor.getSession();
 
-        // 1. THE FILE RESOLVER FIX: Restore your original session path sniffing routine
         let currentFile = window?.currentSession(window.currentOpenFileId || session.id, session)
             || window.currentOpenFileId || session.id || "";
 
-        // 2. TEAR DOWN OLD MARKERS: Flush custom range highlights cleanly
-        if (!this.activeMarkerIds) {
-            this.activeMarkerIds = [];
-        }
+        // Clear old DOM visual elements safely
+        if (!this.activeMarkerIds) { this.activeMarkerIds = []; }
         for (let m = 0; m < this.activeMarkerIds.length; m++) {
             session.removeMarker(this.activeMarkerIds[m]);
         }
         this.activeMarkerIds = [];
 
-        // Pull any standard standalone connection logs
+        // Extract terminal engine annotations
         let systemAnnotations = this.fileAnnotationsMap["system"] || [];
         let targetAnnotations = [];
 
-        // Find the matching file cache entry block by iterating keys or doing a suffix match
         let keys = Object.keys(this.fileAnnotationsMap);
         for (let i = 0; i < keys.length; i++) {
             let cachedFileKey = keys[i];
@@ -265,47 +272,44 @@ ace.define("ace/ext/compiler_diagnostics", [
             }
         }
 
-        // Merge connection state confirmations with targeted file annotations smoothly
-        let finalAnnotations = systemAnnotations.concat(targetAnnotations);
+        // COMBINE THE WORLD STATES: 
+        // Merge terminal stream errors AND raw background worker syntax rules cleanly!
+        let finalAnnotations = systemAnnotations
+            .concat(targetAnnotations)
+            .concat(this.workerAnnotations);
 
-        // RESTORED: This puts your gutter exclamation badges right back where they belong!
+        // Apply the full aggregated layout to the gutter badges
         session.setAnnotations(finalAnnotations);
 
-        // 3. THE SQUIGGLY ENGINE: Run range highlights only if data exists
-        if (targetAnnotations.length === 0) return;
+        // Render the underline squigglies across all active arrays
+        if (finalAnnotations.length === 0) return;
 
         let Range = ace.require("ace/range").Range;
 
-        for (let a = 0; a < targetAnnotations.length; a++) {
-            let anno = targetAnnotations[a];
-            let row = anno.row;
-
-            // Extract the raw text line string to evaluate character lengths
+        for (let a = 0; a < finalAnnotations.length; a++) {
+            let anno = finalAnnotations[a];
+            var row = anno.row;
             let lineText = session.getLine(row) || "";
-            let startColumn = 0;
-            let endColumn = lineText.length || 1;
 
-            // Strip indent spacing away from the selection bounds
-            let firstCharMatch = lineText.match(/^\s*/);
-            if (firstCharMatch) {
-                startColumn = firstCharMatch[0].length;
+            // FIX: Only use the explicit column if it is a valid, positive, non-zero number coordinate
+            var startColumn = (typeof anno.column === "number" && anno.column > 0) ? anno.column : 0;
+            var endColumn = lineText.length || 1;
+
+            // If we don't have a targeted sub-character column offset, skip the indentation spaces safely
+            if (typeof anno.column !== "number" || anno.column === 0) {
+                let firstCharMatch = lineText.match(/^\s*/);
+                if (firstCharMatch) {
+                    startColumn = firstCharMatch[0].length;
+                }
             }
 
             let markerRange = new Range(row, startColumn, row, endColumn);
             let markerClass = (anno.type === "error") ? "compiler-error-marker" : "compiler-warning-marker";
 
-            // Inject line decorations directly into the character layer grid
-            let markerId = session.addMarker(
-                markerRange,
-                markerClass,
-                "text",
-                false
-            );
-
+            let markerId = session.addMarker(markerRange, markerClass, "text", false);
             this.activeMarkerIds.push(markerId);
         }
     };
-
     DiagnosticsBridge.prototype.fileAnnotations = function (cachedFileKey) {
         return fileAnnotationsMap[cachedFileKey].slice(0);
     }

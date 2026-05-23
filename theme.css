@@ -1382,7 +1382,9 @@ body {
 
 
 #toolbar>ul>li>ul {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: max-content;
     border-left: 2px solid var(--ace-selection-bg);
     border-right: 2px solid var(--ace-selection-bg);
     margin: 0 10px;

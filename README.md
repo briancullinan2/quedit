@@ -16,7 +16,7 @@ This master blueprint consolidates your comprehensive development backlog with o
 * **Goal:** Shift the assets pane from flat relative naming to a multi-root mounting pipeline matching VS Code's project model.
 * **Cascading Actions:**
 * Implement root mounting array handlers for `github://`, `idb://workspace`, `idb://scratchpad`, and `local://` via the browser's File System Access API.
-* Update the `getOrCreateAceSession(fileId, content)` constructor to formally enforce unique `session.workspaceFileId = fileId` properties across all mounted protocol schemes.
+* DONE: Update the `getOrCreateAceSession(fileId, content)` constructor to formally enforce unique `session.workspaceFileId = fileId` properties across all mounted protocol schemes.
 
 
 

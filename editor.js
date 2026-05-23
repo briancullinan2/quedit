@@ -1,20 +1,247 @@
 
 let tempCount = 1;
-const sessionCache = {};
+
+const getModeByFilename = (filePath) => {
+    const ext = filePath.split('.').pop().toLowerCase();
+
+    const modes = {
+        'abap': 'abap',
+        'abc': 'abc',
+        'ada': 'ada',
+        'adb': 'ada',
+        'ahk': 'autohotkey',
+        'apex': 'apex',
+        'applescript': 'applescript',
+        'as': 'actionscript',
+        'asm': 'assembly_x86',
+        'bat': 'batchfile',
+        'bash': 'sh',
+        'c': 'c_cpp',
+        'cbl': 'cobol',
+        'cc': 'c_cpp',
+        'cfc': 'coldfusion',
+        'cfm': 'coldfusion',
+        //'cfg': 'ini',
+        'cfg': 'q3_config',
+        'cjs': 'javascript',
+        'cl': 'lisp',
+        'clj': 'clojure',
+        'cljs': 'clojure',
+        'cls': 'apex',
+        'cmake': 'cmake',
+        'cmd': 'batchfile',
+        'cob': 'cobol',
+        'coffee': 'coffee',
+        'conf': 'apache_conf',
+        'cpp': 'c_cpp',
+        'cs': 'csharp',
+        'css': 'css',
+        'csx': 'csharp',
+        'cxx': 'c_cpp',
+        'd': 'd',
+        'dart': 'dart',
+        'diff': 'diff',
+        'dockerfile': 'dockerfile',
+        'dot': 'dot',
+        'e': 'eiffel',
+        'edn': 'clojure',
+        'ejs': 'ejs',
+        'erl': 'erlang',
+        'ex': 'elixir',
+        'exs': 'elixir',
+        'f': 'fortran',
+        'f90': 'fortran',
+        'f95': 'fortran',
+        'for': 'fortran',
+        'forth': 'forth',
+        'frag': 'glsl',
+        'fs': 'fsharp',
+        'fsi': 'fsharp',
+        'fsx': 'fsharp',
+        'fth': 'forth',
+        'ftl': 'freemarker',
+        'gcode': 'gcode',
+        'gitignore': 'ini',
+        'glsl': 'glsl',
+        'vlsl': 'glsl',
+        'hlsl': 'glsl',
+        'go': 'golang',
+        'gql': 'graphql',
+        'graphql': 'graphql',
+        'groovy': 'groovy',
+        'gsh': 'groovy',
+        'gvy': 'groovy',
+        'gy': 'groovy',
+        'h': 'c_cpp',
+        'haml': 'haml',
+        'handlebars': 'handlebars',
+        'hbs': 'handlebars',
+        'hh': 'c_cpp',
+        'hjson': 'hjson',
+        'hpp': 'c_cpp',
+        'hrl': 'erlang',
+        'hs': 'haskell',
+        'htm': 'html',
+        'html': 'html',
+        'htaccess': 'apache_conf',
+        'hxx': 'c_cpp',
+        'i': 'c_cpp',
+        'ini': 'ini',
+        'ino': 'c_cpp',
+        'io': 'io',
+        'java': 'java',
+        'jade': 'pug',
+        'jl': 'julia',
+        'js': 'javascript',
+        'json': 'json',
+        'jsm': 'javascript',
+        'jsp': 'jsp',
+        'jsx': 'jsx',
+        'kt': 'kotlin',
+        'kts': 'kotlin',
+        'less': 'less',
+        'liquid': 'liquid',
+        'lisp': 'lisp',
+        'log': 'text',
+        'ls': 'livescript',
+        'lsp': 'lisp',
+        'ltx': 'latex',
+        'lua': 'lua',
+        'm': 'matlab',
+        'makefile': 'makefile',
+        'make': 'makefile',
+        'markdown': 'markdown',
+        'md': 'markdown',
+        'mel': 'mel',
+        'mjs': 'javascript',
+        'mk': 'makefile',
+        'ml': 'ocaml',
+        'mli': 'ocaml',
+        'mm': 'objectivec',
+        'mysql': 'mysql',
+        'nginx': 'nginx',
+        'nim': 'nim',
+        'nix': 'nix',
+        'nsh': 'nsis',
+        'nsi': 'nsis',
+        'pas': 'pascal',
+        'patch': 'diff',
+        'perl': 'perl',
+        'pgsql': 'pgsql',
+        'php': 'php',
+        'phtml': 'php',
+        'pig': 'pig',
+        'pl': 'perl',
+        'plsql': 'plsql',
+        'pm': 'perl',
+        'pp': 'pascal',
+        'powershell': 'powershell',
+        'prefs': 'ini',
+        'properties': 'properties',
+        'props': 'properties',
+        'proto': 'protobuf',
+        'ps1': 'powershell',
+        'psm1': 'powershell',
+        'pug': 'pug',
+        'puppet': 'puppet',
+        'py': 'python',
+        'pyw': 'python',
+        'q': 'q',
+        'r': 'r',
+        'rb': 'ruby',
+        'rdoc': 'rdoc',
+        'rhtml': 'ruby',
+        'rprofile': 'r',
+        'rs': 'rust',
+        's': 'assembly_x86',
+        'sass': 'sass',
+        'sbt': 'scala',
+        'scad': 'scad',
+        'scala': 'scala',
+        'scheme': 'scheme',
+        'scm': 'scheme',
+        'scss': 'scss',
+        'sh': 'sh',
+        'sieve': 'sieve',
+        'slim': 'slim',
+        'smali': 'smali',
+        'smarty': 'smarty',
+        'sql': 'sql',
+        'ss': 'scheme',
+        'styl': 'stylus',
+        'svg': 'svg',
+        'swift': 'swift',
+        'tcl': 'tcl',
+        'tex': 'latex',
+        'toml': 'toml',
+        'tpl': 'smarty',
+        'ts': 'typescript',
+        'tsx': 'tsx',
+        'twig': 'twig',
+        'txt': 'text',
+        'wasm': 'wasm_disassembly',
+        'qvm': 'qvm_disassembly',
+        'v': 'verilog',
+        'shader': 'q3_shader',
+        'shaderx': 'q3_shader',
+        'vala': 'vala',
+        'vapi': 'vala',
+        'vbe': 'vbscript',
+        'vbs': 'vbscript',
+        'vert': 'glsl',
+        'cam': 'q3_cam',
+        'map': 'q3_map',
+        'vh': 'verilog',
+        'vhd': 'vhdl',
+        'vhdl': 'vhdl',
+        'vue': 'vue',
+        'xhtml': 'html',
+        'xml': 'xml',
+        'xsd': 'xml',
+        'xsl': 'xml',
+        'yaml': 'yaml',
+        'yml': 'yaml',
+        'zig': 'zig',
+        'zsh': 'sh'
+    };
+
+    // makefile accomadation
+    let filenameAsType = filePath.split('/').pop().toLowerCase()
+    if (!modes[ext] && modes[filenameAsType])
+        return `ace/mode/${modes[filenameAsType]}`
+    return `ace/mode/${modes[ext] || 'text'}`;
+};
+
 
 const statusBar = document.getElementById('statusbar')
+const sessionCache = {};
+
 function getOrCreateAceSession(fileId, content) {
     if (sessionCache[fileId]) {
         return sessionCache[fileId];
     }
 
     const session = ace.createEditSession(content);
-    
-    // FORMAL ASSIGNMENT: Bind the workspace file identifier permanently
-    session.workspaceFileId = fileId; 
+
+    // Bind the workspace file identifier permanently
+    session.workspaceFileId = fileId;
 
     const mode = getModeByFilename(fileId);
     session.setMode(mode);
+    
+    ace.config.loadModule(["mode", "antlr_worker"], function () {
+        require(["ace/mode/antlr_worker"], function (mod) {
+            // Instantiate our clean worker bridge passing the session
+            var worker = new mod.AntlrWorker(session);
+            
+            // Derive a language identity tag from the file suffix (e.g., 'c', 'cpp', 'js')
+            const ext = fileId.split('.').pop().toLowerCase();
+            
+            // Inform the backend thread what language grammar template to execute
+            //debugger
+            worker.setLanguageTarget(ext, fileId);
+        });
+    });
 
     if (fileId.endsWith('.c') || fileId.endsWith('.h')) {
         session.setTabSize(4);
@@ -31,6 +258,7 @@ function currentSession() {
 
 const editorWrapper = document.getElementById('editor-container')
 const editorContainer = document.getElementById('editor')
+const initialCode = document.getElementById('editor').textContent
 let aceEditor = window.aceEditor = ace.edit("editor");
 aceEditor.setTheme(window.savedTheme);
 aceEditor.renderer.setShowGutter(true);
@@ -45,10 +273,7 @@ aceEditor.setOptions({
     //animatedScroll: true,
     //autoScrollEditorIntoView: false,
 })
-//aceEditor.session.setUseWorker(false);
-aceEditor.session.setMode("ace/mode/c_cpp");
-; ++tempCount;
-sessionCache['temp' + (tempCount)] = aceEditor.session
+const session = getOrCreateAceSession('temp' + (++tempCount) + '.c', initialCode);
 getGitShaBrowser(aceEditor.getValue()).then(sha => {
     window.initialTextSha = window.currentOpenFileId = sha
 })
@@ -319,218 +544,6 @@ async function saveFile() {
     if (filePath.includes('settings.json'))
         saveSettings(content)
 }
-
-const getModeByFilename = (filePath) => {
-    const ext = filePath.split('.').pop().toLowerCase();
-
-    const modes = {
-        'abap': 'abap',
-        'abc': 'abc',
-        'ada': 'ada',
-        'adb': 'ada',
-        'ahk': 'autohotkey',
-        'apex': 'apex',
-        'applescript': 'applescript',
-        'as': 'actionscript',
-        'asm': 'assembly_x86',
-        'bat': 'batchfile',
-        'bash': 'sh',
-        'c': 'c_cpp',
-        'cbl': 'cobol',
-        'cc': 'c_cpp',
-        'cfc': 'coldfusion',
-        'cfm': 'coldfusion',
-        //'cfg': 'ini',
-        'cfg': 'q3_config',
-        'cjs': 'javascript',
-        'cl': 'lisp',
-        'clj': 'clojure',
-        'cljs': 'clojure',
-        'cls': 'apex',
-        'cmake': 'cmake',
-        'cmd': 'batchfile',
-        'cob': 'cobol',
-        'coffee': 'coffee',
-        'conf': 'apache_conf',
-        'cpp': 'c_cpp',
-        'cs': 'csharp',
-        'css': 'css',
-        'csx': 'csharp',
-        'cxx': 'c_cpp',
-        'd': 'd',
-        'dart': 'dart',
-        'diff': 'diff',
-        'dockerfile': 'dockerfile',
-        'dot': 'dot',
-        'e': 'eiffel',
-        'edn': 'clojure',
-        'ejs': 'ejs',
-        'erl': 'erlang',
-        'ex': 'elixir',
-        'exs': 'elixir',
-        'f': 'fortran',
-        'f90': 'fortran',
-        'f95': 'fortran',
-        'for': 'fortran',
-        'forth': 'forth',
-        'frag': 'glsl',
-        'fs': 'fsharp',
-        'fsi': 'fsharp',
-        'fsx': 'fsharp',
-        'fth': 'forth',
-        'ftl': 'freemarker',
-        'gcode': 'gcode',
-        'gitignore': 'ini',
-        'glsl': 'glsl',
-        'vlsl': 'glsl',
-        'hlsl': 'glsl',
-        'go': 'golang',
-        'gql': 'graphql',
-        'graphql': 'graphql',
-        'groovy': 'groovy',
-        'gsh': 'groovy',
-        'gvy': 'groovy',
-        'gy': 'groovy',
-        'h': 'c_cpp',
-        'haml': 'haml',
-        'handlebars': 'handlebars',
-        'hbs': 'handlebars',
-        'hh': 'c_cpp',
-        'hjson': 'hjson',
-        'hpp': 'c_cpp',
-        'hrl': 'erlang',
-        'hs': 'haskell',
-        'htm': 'html',
-        'html': 'html',
-        'htaccess': 'apache_conf',
-        'hxx': 'c_cpp',
-        'i': 'c_cpp',
-        'ini': 'ini',
-        'ino': 'c_cpp',
-        'io': 'io',
-        'java': 'java',
-        'jade': 'pug',
-        'jl': 'julia',
-        'js': 'javascript',
-        'json': 'json',
-        'jsm': 'javascript',
-        'jsp': 'jsp',
-        'jsx': 'jsx',
-        'kt': 'kotlin',
-        'kts': 'kotlin',
-        'less': 'less',
-        'liquid': 'liquid',
-        'lisp': 'lisp',
-        'log': 'text',
-        'ls': 'livescript',
-        'lsp': 'lisp',
-        'ltx': 'latex',
-        'lua': 'lua',
-        'm': 'matlab',
-        'makefile': 'makefile',
-        'make': 'makefile',
-        'markdown': 'markdown',
-        'md': 'markdown',
-        'mel': 'mel',
-        'mjs': 'javascript',
-        'mk': 'makefile',
-        'ml': 'ocaml',
-        'mli': 'ocaml',
-        'mm': 'objectivec',
-        'mysql': 'mysql',
-        'nginx': 'nginx',
-        'nim': 'nim',
-        'nix': 'nix',
-        'nsh': 'nsis',
-        'nsi': 'nsis',
-        'pas': 'pascal',
-        'patch': 'diff',
-        'perl': 'perl',
-        'pgsql': 'pgsql',
-        'php': 'php',
-        'phtml': 'php',
-        'pig': 'pig',
-        'pl': 'perl',
-        'plsql': 'plsql',
-        'pm': 'perl',
-        'pp': 'pascal',
-        'powershell': 'powershell',
-        'prefs': 'ini',
-        'properties': 'properties',
-        'props': 'properties',
-        'proto': 'protobuf',
-        'ps1': 'powershell',
-        'psm1': 'powershell',
-        'pug': 'pug',
-        'puppet': 'puppet',
-        'py': 'python',
-        'pyw': 'python',
-        'q': 'q',
-        'r': 'r',
-        'rb': 'ruby',
-        'rdoc': 'rdoc',
-        'rhtml': 'ruby',
-        'rprofile': 'r',
-        'rs': 'rust',
-        's': 'assembly_x86',
-        'sass': 'sass',
-        'sbt': 'scala',
-        'scad': 'scad',
-        'scala': 'scala',
-        'scheme': 'scheme',
-        'scm': 'scheme',
-        'scss': 'scss',
-        'sh': 'sh',
-        'sieve': 'sieve',
-        'slim': 'slim',
-        'smali': 'smali',
-        'smarty': 'smarty',
-        'sql': 'sql',
-        'ss': 'scheme',
-        'styl': 'stylus',
-        'svg': 'svg',
-        'swift': 'swift',
-        'tcl': 'tcl',
-        'tex': 'latex',
-        'toml': 'toml',
-        'tpl': 'smarty',
-        'ts': 'typescript',
-        'tsx': 'tsx',
-        'twig': 'twig',
-        'txt': 'text',
-        'wasm': 'wasm_disassembly',
-        'qvm': 'qvm_disassembly',
-        'v': 'verilog',
-        'shader': 'q3_shader',
-        'shaderx': 'q3_shader',
-        'vala': 'vala',
-        'vapi': 'vala',
-        'vbe': 'vbscript',
-        'vbs': 'vbscript',
-        'vert': 'glsl',
-        'cam': 'q3_cam',
-        'map': 'q3_map',
-        'vh': 'verilog',
-        'vhd': 'vhdl',
-        'vhdl': 'vhdl',
-        'vue': 'vue',
-        'xhtml': 'html',
-        'xml': 'xml',
-        'xsd': 'xml',
-        'xsl': 'xml',
-        'yaml': 'yaml',
-        'yml': 'yaml',
-        'zig': 'zig',
-        'zsh': 'sh'
-    };
-
-    // makefile accomadation
-    let filenameAsType = filePath.split('/').pop().toLowerCase()
-    if (!modes[ext] && modes[filenameAsType])
-        return `ace/mode/${modes[filenameAsType]}`
-    return `ace/mode/${modes[ext] || 'text'}`;
-};
-
 
 function fullScreenLayout() {
     const width = window.document.body.clientWidth - SCROLLBAR_WIDTH
@@ -826,80 +839,98 @@ window.aceEditor.on("guttermouseout", function () {
 function doAceEditorMouse(e) {
     if (!globalTooltip) return;
 
-    // 1. Map the raw mouse coordinates down to a logical line row index
+    // 1. Calculate the active screen row focus block
     let canvasY = e.clientY;
     let row = window.aceEditor.renderer.screenToTextCoordinates(0, canvasY).row;
 
-    // Fetch all cached diagnostics mapped to the active working file split array
+    // 2. Fetch the true, fully aggregated annotation state array directly from Ace
     const session = window.aceEditor.getSession();
-    let currentFile = window?.currentSession(window.currentOpenFileId || session.id, session)
-        || window.currentOpenFileId || session.id || "";
-    let fileAnnotations = [];
+    let allActiveAnnotations = session.getAnnotations() || [];
 
-    if (window.compilerDiagnostics) {
-        let bridge = window.compilerDiagnostics.getBridge();
-        let keys = Object.keys(bridge.fileAnnotationsMap);
-        for (let i = 0; i < keys.length; i++) {
-            if (currentFile.endsWith(keys[i])) {
-                fileAnnotations = bridge.fileAnnotationsMap[keys[i]];
-                break;
-            }
-        }
-    }
-
-    // Search for matching compiler text records specifically for this line row index
-    let activeErrorsOnLine = fileAnnotations.filter(function (anno) {
+    // Filter down to error nodes matching this specific line focus pointer
+    let activeErrorsOnLine = allActiveAnnotations.filter(function (anno) {
         return anno.row === row;
     });
 
-    // If no diagnostics reside on this specific row, hide the global overlay panel
+    // If no diagnostics reside on this specific row, hide the global overlay panel cleanly
     if (activeErrorsOnLine.length === 0) {
         globalTooltip.style.display = 'none';
         globalTooltip.style.opacity = 0;
         globalTooltip.style.zIndex = -1;
-        // Reset row tracking on empty space so returning to the line re-triggers layout
-        lastTrackedGutterRow = null; 
+        lastTrackedGutterRow = null;
         return;
     }
 
-    // --- THE FIXED HASTY GATE ---
-    // If the tooltip is already correctly positioned on this row, 
-    // drop out completely WITHOUT updating any styles or chasing the cursor!
+    // --- THE HASTY GATE ---
+    // If the tooltip is already correctly positioned on this row, drop out out to save cycles
     if (row === lastTrackedGutterRow && globalTooltip.style.display === 'block') {
         return;
     }
     lastTrackedGutterRow = row;
 
-    // 4. PACK & UNWRAP: Join multiple warning/error chunks on the same line into a clean string layout
+    // 3. PACK & UNWRAP: Join multiple warning/error chunks on the same line into a clean string layout
     let combinedDiagnosticText = activeErrorsOnLine.map(function (anno) {
-        let prefix = anno.type.toUpperCase() === "error" ? "❌ Error: " : "⚠️ Warning: ";
-        return prefix + anno.text;
+        // Strip away raw newline formatting if it's already a complex multiline string layout block
+        let textContent = anno.text || "";
+        let prefix = anno.type === "error" ? "❌ Error: " : (anno.type === "warning" ? "⚠️ Warning: " : "ℹ️ Info: ");
+        
+        return prefix + textContent;
     }).join("\n\n");
 
-    // Populate our clean string straight into your Minipaint global layout tooltip
+    // Populate the clean string straight into your global overlay element layout view
     globalTooltip.innerText = combinedDiagnosticText;
-    
-    // Switch your tooltip style handling to use view-space fixed coordinate math
+
+    // Apply the display viewport positions
     globalTooltip.style.position = 'absolute';
     globalTooltip.style.display = 'block';
     globalTooltip.style.opacity = 1;
-    globalTooltip.style.zIndex = 99999; // Ensure it draws cleanly above other docks
+    globalTooltip.style.zIndex = 99999; 
 
-    // Get the absolute screen pixels for the very start of this specific code line text
+    // Compute pixel positioning alignments against the editor's active layout grid
     var rowCoords = window.aceEditor.renderer.textToScreenCoordinates(row, 0);
-
-    // FIXING LEFT METRIC: Read the actual bounding rectangle width of the gutter panel container
     var gutterRect = window.aceEditor.renderer.$gutterLayer.element.getBoundingClientRect();
     var absoluteGutterRight = gutterRect.right;
 
-    // Directly bind coordinates to the viewport boundaries
     var correctedLeft = absoluteGutterRight + 10;
-    
-    // Line up perfectly at the bottom edge of the targeted text row frame block
     var rowHeight = window.aceEditor.renderer.layerConfig.lineHeight || 19;
     var correctedTop = rowCoords.pageY + rowHeight;
 
-    // Hard-lock the layout dimensions securely
     globalTooltip.style.left = correctedLeft + "px";
     globalTooltip.style.top = correctedTop + "px";
 }
+
+/**
+ * Ingests computed worker fold scopes and applies them straight onto the Ace Gutter
+ * @param {Ace.EditSession} aceSession 
+ * @param {string} sourceText 
+ * @param {string} languageKey 
+ */
+async function syncCodeCollapsing(aceSession, sourceText, languageKey) {
+    try {
+        // 1. Fetch multi-channel structural folds asynchronously from the worker
+        const foldRegions = await window.languageApi.runAsync('folds', {
+            text: sourceText,
+            language: languageKey
+        });
+
+        // 2. Clear out archaic stale folds to avoid conflict drift
+        aceSession.clearFolds();
+
+        // 3. Inject computed regions directly into Ace's background layout manager
+        foldRegions.forEach(region => {
+            try {
+                // Ace dynamic native fold insertion: addFold(message, range)
+                // Range parameters: (startRow, startColumn, endRow, endColumn)
+                aceSession.addFold(
+                    "...",
+                    new ace.Range(region.startRow, 0, region.endRow, 1000)
+                );
+            } catch (e) {
+                // Suppress overlaps if user is in the middle of writing open fragments
+            }
+        });
+    } catch (err) {
+        console.error("[Ace Collapsing Engine] Synchronization failure:", err);
+    }
+}
+
