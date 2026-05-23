@@ -20,8 +20,57 @@
 let port;
 const AntlrRegistry = self.AntlrLanguages;
 class TokenVisitor {
-    // ... preserves your pristine _resolveTokenTypeName and getTokensForLine methods completely unchanged
+    static _resolveTokenTypeName(lexer, tokenType) {
+        const vocabulary = lexer.vocabulary ||
+            lexer.constructor.vocabulary ||
+            lexer.constructor ||
+            (lexer.literalNames ? lexer : null);
 
+        if (vocabulary) {
+            if (typeof vocabulary.getSymbolicName === 'function') {
+                return vocabulary.getSymbolicName(tokenType) || `type_${tokenType}`;
+            } else if (vocabulary.symbolicNames && vocabulary.symbolicNames[tokenType]) {
+                return vocabulary.symbolicNames[tokenType];
+            }
+        }
+        return `type_${tokenType}`;
+    }
+
+
+    /**
+     * Extracts tokens on a specific target line number by advancing the stream pointer.
+     */
+    static getTokensForLine(sourceText, languageKey, targetLine) {
+        const lexer = TokenVisitor.createLexerInstance(sourceText, languageKey);
+        if (!lexer) return [];
+
+        const lineTokens = [];
+        let token = lexer.nextToken();
+
+        while (token.type !== AntlrRegistry.antlr4.Token.EOF) {
+            if (token.line > targetLine) {
+                break;
+            }
+
+            if (token.line === targetLine) {
+                lineTokens.push({
+                    text: token.text,
+                    type: TokenVisitor._resolveTokenTypeName(lexer, token.type),
+                    start: token.start,
+                    stop: token.stop,
+                    column: token.column,
+                    channel: token.channel
+                });
+            }
+
+            token = lexer.nextToken();
+        }
+
+        return lineTokens;
+    }
+
+
+    
     /**
      * Resolves and flattens all internal #include dependencies recursively,
      * building a unified virtual source stream before running the parser diagnostics.

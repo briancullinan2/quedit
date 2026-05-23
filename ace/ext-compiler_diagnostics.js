@@ -122,11 +122,26 @@ ace.define("ace/ext/compiler_diagnostics", [
         this.refreshActiveEditorView();
     };
 
+
     DiagnosticsBridge.prototype.attach = function (editor) {
         this.activeEditor = editor;
         this.initMouseInterceptors(editor);
         this.log("system:1: warning: Worker Error Reporting Connected");
     };
+    DiagnosticsBridge.prototype.applyCustomWorkerHighlights = function (tokenLines) {
+        if (!this.activeEditor || !tokenLines) return;
+
+        let session = this.activeEditor.getSession();
+
+        // 1. THE HIJACK: Override Ace's internal line token cache completely
+        // This injects your high-performance ANTLR token sequences directly into memory
+        session.bgTokenizer.lines = tokenLines;
+
+        // 2. FORCE REPAINT LAYER: Tell the text cell renderer that every line is dirty
+        // This forces Ace to drop its old CSS maps and paint your custom classes immediately
+        session.bgTokenizer.fireUpdateEvent(0, tokenLines.length - 1);
+    };
+
     DiagnosticsBridge.prototype.initMouseInterceptors = function (editor) {
         let _self = this;
         editor.on("mousemove", function (e) {

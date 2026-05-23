@@ -44,6 +44,16 @@ define("ace/mode/antlr_worker", ["require", "exports", "module", "ace/worker/wor
             }
         });
 
+        this.on("highlight", function (e) {
+            var compilerDiagnostics = ace.require("ace/ext/compiler_diagnostics");
+            if (compilerDiagnostics && compilerDiagnostics.getBridge) {
+                var bridge = compilerDiagnostics.getBridge();
+
+                // Pass your custom line-token matrix directly to our screen hijacker!
+                bridge.applyCustomWorkerHighlights(e.data.tokenLines);
+            }
+        });
+
         this.on("terminate", function () {
             session.clearAnnotations();
             for (var m = 0; m < self.activeMarkerIds.length; m++) {
