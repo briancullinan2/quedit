@@ -82,6 +82,7 @@ function onLoadEditor() {
 
 
 function tryLoadingTerminalEditorBridge() {
+    return
     if (!window.aceEditor || window.compilerDiagnostics /* already setup */) {
         return
     }

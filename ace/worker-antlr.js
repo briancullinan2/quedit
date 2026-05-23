@@ -1,260 +1,206 @@
-// worker-antlr.js
 let antlrProcessor = null;
 
-// 1. TOP-LEVEL CLASS DECLARATION (No complex nesting or factories)
+// =====================================================================
+// 1. TOP-LEVEL GLOBAL MICRO-UTILITY FUNCTIONS
+// =====================================================================
+
+/**
+ * Updates the structural targets and re-schedules the parser timeline
+ */
+function setLanguageContext(langKey, fileId) {
+    this.languageKey = langKey;
+    this.activeFileId = fileId;
+    this.deferredUpdate.schedule(); // Native trigger to fire onUpdate()
+}
+
+/**
+ * Pure transformation callback formatting incoming ANTLR syntax errors
+ * into Clang/LCC compiler-style multi-line string segments.
+ */
+function processSyntaxError(lines, annotations, syntaxError) {
+    const zeroIndexedRow = syntaxError.line - 1;
+    const activeLineText = lines[zeroIndexedRow] || "";
+    const cleanLine = activeLineText.replace(/\t/g, '    '); // Flatten tabs for layout alignment
+
+    // Build a classic visual compiler caret layout:    ^~~~~
+    const leadingSpaces = ' '.repeat(Math.max(0, syntaxError.column));
+    const caretMarker = `${leadingSpaces}^~~~~`;
+
+    const clangDiagnosticText = [
+        `stdin.c:${syntaxError.line}:${syntaxError.column + 1}: error: ${syntaxError.message}`,
+        cleanLine.trimEnd(),
+        caretMarker
+    ].join('\n');
+
+    annotations.push({
+        row: zeroIndexedRow,
+        column: syntaxError.column,
+        text: clangDiagnosticText,
+        type: "error"
+    });
+}
+
+/**
+ * Functional collector running over tokens to look for lingering tasks or hidden blocks
+ */
+function processStructuralFlags(annotations, token) {
+    if (token.textType === 'comment' && token.text.toLowerCase().includes('todo')) {
+        annotations.push({
+            row: token.line - 1,
+            column: token.column,
+            text: "Unresolved task: " + token.text.trim(),
+            type: "info"
+        });
+    }
+    if (token.channel > 1) {
+        annotations.push({
+            row: token.line - 1,
+            column: token.column,
+            text: "Isolated preprocessor block [" + token.type + "]",
+            type: "warning"
+        });
+    }
+}
+
+/**
+ * Pure mapping iterator mapping linear ANTLR streams into Ace row arrays
+ */
+function mapToRowBucket(tokens, tokenLines, token) {
+    const zeroIndexedRow = token.line - 1;
+    if (!tokenLines[zeroIndexedRow]) {
+        tokenLines[zeroIndexedRow] = [];
+    }
+
+    let symbolicNameTarget = token.type;
+    if (token.textType === 'comment') {
+        symbolicNameTarget = 'BlockComment';
+    } else if (token.textType === 'string') {
+        symbolicNameTarget = 'StringLiteral';
+    }
+
+    let rosettaType = toRosettaToken(token.type, this.languageKey);
+    if (symbolicNameTarget === 'Identifier') {
+        const nextToken = tokens[tokens.indexOf(token) + 1];
+        if (nextToken && nextToken.text === '(') {
+            rosettaType = "entity.name.function"; // Lights up function names in crisp blue
+        }
+    }
+
+    tokenLines[zeroIndexedRow].push({
+        type: rosettaType,
+        value: token.text
+    });
+}
+
+/**
+ * Primary state execution sequence calculating code highlights and token placements
+ */
+function onUpdate() {
+    const fullText = this.doc.getValue();
+    const lines = fullText.split('\n');
+    let annotations = [];
+    let tokenLines = [];
+
+    try {
+        // Bind the active document lines and annotation array targets to the error formatter
+        const errorBoundCallback = processSyntaxError.bind(null, lines, annotations);
+
+        // Execute the failsafe lookahead token compiler pipeline
+        const tokens = getAllTokens(fullText, this.languageKey, errorBoundCallback);
+
+        // Map out structural annotations (TODOs / hidden streams)
+        tokens.forEach(processStructuralFlags.bind(null, annotations));
+
+        // Map linear array indices to row grid arrays with context binding for this.languageKey
+        tokens.forEach(mapToRowBucket.bind(this, tokens, tokenLines));
+
+        this.sender.emit("highlight", {
+            tokenLines: tokenLines,
+            fileId: this.activeFileId
+        });
+    } catch (lexerError) {
+        debugger;
+        annotations.push({
+            row: 0,
+            column: 0,
+            text: "ANTLR Processing crash: " + lexerError.message,
+            type: "error"
+        });
+    }
+
+    // Flush annotations array directly out to the editor gutter
+    this.sender.emit("annotate", annotations);
+}
+
+// =====================================================================
+// 2. CLASS DEFINITION & INHERITANCE BOOTSTRAP
+// =====================================================================
+
 function AntlrWorkerBackend(sender) {
-    // Dynamically retrieve Mirror from the loaded worker-base scope
-    const Mirror = ace.require("ace/worker/mirror").Mirror;
+    debugger
+    const Mirror = self.main = ace.require("ace/worker/mirror").Mirror;
     Mirror.call(this, sender);
 
-    this.setTimeout(200); // Debounce runtime execution (ms)
+    this.setTimeout(200); // Debounce loop delay matching editor buffers
     this.languageKey = "c";
     this.activeFileId = "";
 }
 
-// Complete the prototype inheritance flatly
 function setupInheritance() {
     const Mirror = ace.require("ace/worker/mirror").Mirror;
     const oop = ace.require("ace/lib/oop");
     oop.inherits(AntlrWorkerBackend, Mirror);
 
-    // Assign clean, top-level prototype methods directly
-    AntlrWorkerBackend.prototype.setLanguageContext = function (langKey, fileId) {
-        this.languageKey = langKey;
-        this.activeFileId = fileId;
-        this.deferredUpdate.schedule(); // Native trigger to fire onUpdate()
-    };
-
-    AntlrWorkerBackend.prototype.onUpdate = function () {
-        const fullText = this.doc.getValue();
-        const lines = fullText.split('\n'); // Split text to extract code context lines
-        let annotations = [];
-
-        try {
-            // Live data transfer directly to your real ANTLR setup, checking errors inline
-            const tokens = TokenVisitor.getAllTokens(fullText, this.languageKey, function (syntaxError) {
-                const zeroIndexedRow = syntaxError.line - 1;
-                const activeLineText = lines[zeroIndexedRow] || "";
-                const cleanLine = activeLineText.replace(/\t/g, '    '); // Flatten tabs for layout alignment
-
-                // Build a classic visual compiler caret:      ^~~~~
-                const leadingSpaces = ' '.repeat(Math.max(0, syntaxError.column));
-                const caretMarker = `${leadingSpaces}^~~~~`;
-
-                // Combine into a multi-line diagnostic snippet string
-                const clangDiagnosticText = [
-                    `stdin.c:${syntaxError.line}:${syntaxError.column + 1}: error: ${syntaxError.message}`,
-                    cleanLine.trimEnd(),
-                    caretMarker
-                ].join('\n');
-
-                annotations.push({
-                    row: zeroIndexedRow,
-                    column: syntaxError.column,
-                    text: clangDiagnosticText,
-                    type: "error" // Red error badge inside Ace gutter
-                });
-            });
-
-            // Process structural flags (Comments / Tasks / Custom Preprocessor Channels)
-            tokens.forEach(function (token) {
-                if (token.textType === 'comment' && token.text.toLowerCase().includes('todo')) {
-                    annotations.push({
-                        row: token.line - 1,
-                        column: token.column,
-                        text: "Unresolved task: " + token.text.trim(),
-                        type: "info" // Blue info badge
-                    });
-                }
-                if (token.channel > 1) {
-                    annotations.push({
-                        row: token.line - 1,
-                        column: token.column,
-                        text: "Isolated preprocessor block [" + token.type + "]",
-                        type: "warning" // Yellow warning badge
-                    });
-                }
-            });
-
-            let tokenLines = [];
-
-            // Convert the linear ANTLR stream into Ace-compatible row-token objects
-            tokens.forEach(function (token) {
-                const zeroIndexedRow = token.line - 1;
-                if (!tokenLines[zeroIndexedRow]) {
-                    tokenLines[zeroIndexedRow] = [];
-                }
-
-                // CHOOSE THE TRACKING PATH:
-                // If the token is on a hidden channel or explicitly marked as comment/string, override its root class
-                let symbolicNameTarget = token.type; // e.g. 'Int', 'For', 'IntegerConstant'
-
-                if (token.textType === 'comment') {
-                    symbolicNameTarget = 'BlockComment';
-                } else if (token.textType === 'string') {
-                    symbolicNameTarget = 'StringLiteral';
-                }
-
-                // Map raw ANTLR symbolic names straight to your target Rosetta layer names
-                let rosettaType = toRosettaToken(token.type, this.languageKey);
-                if (symbolicNameTarget === 'Identifier') {
-                    // Look at the sibling index position right next door
-                    const nextToken = tokens[tokens.indexOf(token) + 1];
-                    if (nextToken && nextToken.text === '(') {
-                        rosettaType = "entity.name.function"; // Lights up function titles in crisp blue!
-                    }
-                }
-
-                tokenLines[zeroIndexedRow].push({
-                    type: rosettaType,
-                    //type: 'rosetta.' + rosettaType, // Successfully hands over 'storage', 'keyword', 'constant.numeric', etc.
-                    value: token.text
-                });
-            }.bind(this));
-
-
-            this.sender.emit("highlight", {
-                tokenLines: tokenLines,
-                fileId: this.activeFileId
-            });
-        } catch (lexerError) {
-            debugger
-            annotations.push({
-                row: 0,
-                column: 0,
-                text: "ANTLR Processing crash: " + lexerError.message,
-                type: "error"
-            });
-        }
-
-        // Send both the diagnostics AND the clean token data structures over the bridge
-        this.sender.emit("annotate", annotations);
-    };
+    // Assign clean, top-level functional prototype methods directly
+    AntlrWorkerBackend.prototype.setLanguageContext = setLanguageContext;
+    AntlrWorkerBackend.prototype.onUpdate = onUpdate;
 }
 
-self.addEventListener("message", function (e) {
+// Preserve a local reference to Ace's original, native message parser handler
+//const nativeWorkerOnMessage = self.onmessage;
+
+self.addEventListener('message', function (e) {
     const msg = e.data;
 
-    // RULE: If it has a command, our custom processor will handle it. 
-    // Kill the event transmission so worker-base.js never throws an "Unknown command" error.
-    if (msg.command) {
+    // 1. COMMAND FILTER GATE
+    if (msg.command && ['customHighlightRoute', 'requestAST'].includes(msg.command)) {
         e.stopImmediatePropagation();
+        return; // Process custom actions here safely
     }
 
-    // Handle initial script configurations
-    if (msg.command === "importScripts") {
-        self.importScripts(...msg.args);
-        setupInheritance();
+    // 2. LIFECYCLE HIJACK: Intercept the true Ace 'init' command packet frame
+    if (msg.init) {
+        // Force Ace to run its standard initialization branch first!
+        // This causes worker-base.js to resolve 'require(i.module)[i.classname]'
+        // and populate 'n = e.main = new s(r)' natively.
+        //nativeWorkerOnMessage(e);
 
-        const cleanSender = {
-            on: function () { },
-            callback: function (data, id) { self.postMessage({ type: "call", id: id, data: data }); },
-            emit: function (name, data) { self.postMessage({ type: "event", name: name, data: data }); }
-        };
-
-        antlrProcessor = new AntlrWorkerBackend(cleanSender);
-        antlrProcessor.setValue(""); // Prime the document state
+        // Capture Ace's newly constructed instance out of its own global scope assignment
+        if (self.main) {
+            antlrProcessor = self.main;
+            
+            // Re-assign the top-level prototype context methods directly to the active instance
+            antlrProcessor.setLanguageContext = setLanguageContext.bind(antlrProcessor);
+            antlrProcessor.onUpdate = onUpdate.bind(antlrProcessor);
+            
+            // Prime the initial document state safely inside Ace's memory layout
+            antlrProcessor.setValue("");
+        }
         return;
     }
 
+    // 3. SECURE FALLBACK PACKET ROUTING
+    // If a custom command hits before initialization completes, track it safely
     if (antlrProcessor && typeof antlrProcessor[msg.command] === "function") {
         antlrProcessor[msg.command].apply(antlrProcessor, msg.args);
-    }
-    else if (antlrProcessor && Object.getPrototypeOf(AntlrWorkerBackend.prototype)[msg.command]) {
-        Object.getPrototypeOf(AntlrWorkerBackend.prototype)[msg.command].apply(antlrProcessor, msg.args);
-    }
-}, true);
-
-
-/**
- * Rosetta Token Map Engine
- * Converts high-fidelity ANTLR C-Grammar symbolic type names straight into
- * compatible Ace Editor TextMate CSS scope strings.
- * * @param {string} antlrSymbolicName - The raw resolved token type (e.g., 'Int', 'For', 'Identifier')
- * @param {string} languageKey - Target file language extension context ('c' / 'cpp')
- * @returns {string} - Ace-compatible CSS class selector string
- */
-function toRosettaToken(antlrSymbolicName, languageKey) {
-    if (!antlrSymbolicName) return "text";
-
-    // 1. FAST MARSHALING FOR LITERAL STRINGS
-    // If ANTLR returns single-quoted literal operators directly (e.g. "';'", "'='", "'++'")
-    if (antlrSymbolicName.startsWith("'") && antlrSymbolicName.endsWith("'")) {
-        const literal = antlrSymbolicName.slice(1, -1);
-        // Map common structural assignment/punctuation boundaries
-        if (['=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '&=', '^=', '|='].includes(literal)) {
-            return "keyword.operator";
+        
+        if (['change', 'setValue'].includes(msg.command)) {
+            return; 
         }
-        if (['+', '-', '*', '/', '%', '++', '--', '==', '!=', '<', '>', '<=', '>=', '&&', '||', '!', '&', '|', '^', '~', '<<', '>>'].includes(literal)) {
-            return "keyword.operator";
-        }
-        return "keyword.operator"; // Fallback punctuation
     }
 
-    // Normalize casing for dictionary evaluation matches
-    const tokenKey = antlrSymbolicName.trim();
-    const lowerKey = tokenKey.toLowerCase();
-
-    // 2. EXPLICIT GROUP STORAGE DICTIONARIES
-
-    // Primitive C Types & Storage Qualifiers -> Maps to: .ace_storage
-    const storageTypes = new Set([
-        'Void', 'Char', 'Short', 'Int', 'Long', 'Float', 'Double', 'Signed', 'Unsigned', 'Bool',
-        'Auto', 'Constexpr', 'Extern', 'Register', 'Static', 'ThreadLocal', 'Typedef',
-        'Struct', 'Union', 'Enum', 'Const', 'Restrict', 'Volatile_1', 'Volatile_2', '_Atomic', '_Complex'
-    ]);
-
-    // Native C Structural Keywords -> Maps to: .ace_keyword
-    const keywords = new Set([
-        'Break', 'Case', 'Continue', 'Default', 'Do', 'Else', 'For', 'Goto', 'If', 'Inline',
-        'Return', 'Switch', 'While', '_Noreturn', 'Static_assert', 'Sizeof', 'Alignof',
-        'Countof', 'Maxof', 'Minof', 'Attribute', 'Asm_1', 'Asm_2', 'Asm_3'
-    ]);
-
-    // 3. POLYMORPHIC SCOPE RESOLUTION ROUTINES
-
-    if (storageTypes.has(tokenKey)) {
-        return "storage";
-    }
-
-    if (keywords.has(tokenKey)) {
-        return "keyword";
-    }
-
-    // Numbers & Constants -> Maps to: .ace_constant.ace_numeric
-    if (tokenKey === 'IntegerConstant' || tokenKey === 'DigitSequence') {
-        return "constant.numeric";
-    }
-    if (tokenKey === 'FloatingConstant') {
-        return "constant.numeric";
-    }
-
-    // Explicit Core Language Constants -> Maps to: .ace_constant.ace_language
-    if (lowerKey.includes('predefinedconstant') || ["'true'", "'false'", "'nullptr'"].includes(antlrSymbolicName)) {
-        return "constant.language";
-    }
-
-    // String Channels -> Maps to: .ace_string
-    if (tokenKey === 'StringLiteral' || tokenKey === 'CharacterConstant') {
-        return "string";
-    }
-
-    // Preprocessor Blocks -> Maps to: .ace_meta.ace_tag
-    if (tokenKey === 'LineDirective') {
-        return "meta.tag";
-    }
-
-    // Comments -> Maps to: .ace_comment
-    if (lowerKey.includes('comment') || tokenKey === 'BlockComment') {
-        return "comment";
-    }
-
-    // Base Identifiers -> Maps to variables or generic text codes
-    if (tokenKey === 'Identifier') {
-        return "variable";
-    }
-
-    // Fallback baseline wrapper safety gate
-    return "text";
-}
-
+    // Pass standard text stream buffers ('change', 'setValue') down to the native handler
+    //if (nativeWorkerOnMessage) {
+    //    nativeWorkerOnMessage(e);
+    //}
+});

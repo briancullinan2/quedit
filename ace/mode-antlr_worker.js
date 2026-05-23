@@ -20,7 +20,13 @@ define("ace/mode/antlr_worker", ["require", "exports", "module", "ace/worker/wor
         if (this.$worker) {
             this.$worker.postMessage({
                 command: "importScripts",
-                args: [aceBasePath + "worker-base.js", baseOrigin + '/antlr-languages.bundle.js', aceBasePath + "worker-language.js"]
+                args: [
+                    baseOrigin + '/preambles.js',
+                    baseOrigin + '/parsers.js',
+                    aceBasePath + "worker-base.js",
+                    baseOrigin + '/antlr-languages.bundle.js',
+                    baseOrigin + "/worker-language.js"
+                ]
             });
         }
 
@@ -37,6 +43,7 @@ define("ace/mode/antlr_worker", ["require", "exports", "module", "ace/worker/wor
                 var bridge = compilerDiagnostics.getBridge();
 
                 // Pass the metrics cleanly into the unified caching container
+                debugger
                 bridge.setWorkerAnnotations(e.data);
             } else {
                 // Fallback baseline override if the bridge module isn't loaded yet

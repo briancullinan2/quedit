@@ -426,4 +426,5 @@ const onAnyMessage = async event => {
   port.postMessage({ id: 'done', responseId, data: api.pid || true });
 };
 
-self.onmessage = onAnyMessage;
+self.addEventListener('message', onAnyMessage);
+

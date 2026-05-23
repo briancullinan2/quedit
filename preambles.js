@@ -34,3 +34,69 @@ const TOOLS_PREAMBLE = '\x1b[38;5;121m[TOOLS-BUILD]\x1b[0m '
 //const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m '
 const ENGINE_PREAMBLE = '\x1b[38;5;36m[QUAKE3E]\x1b[0m '
 
+
+const EXTENSION_TO_MODE = {
+    'abap': 'abap', 'abc': 'abc', 'ada': 'ada', 'adb': 'ada', 'ahk': 'autohotkey',
+    'apex': 'apex', 'applescript': 'applescript', 'as': 'actionscript', 'asm': 'assembly_x86',
+    'bat': 'batchfile', 'bash': 'sh', 'c': 'c_cpp', 'cbl': 'cobol', 'cc': 'c_cpp',
+    'cfc': 'coldfusion', 'cfm': 'coldfusion', 'cfg': 'q3_config', 'cjs': 'javascript',
+    'cl': 'lisp', 'clj': 'clojure', 'cljs': 'clojure', 'cls': 'apex', 'cmake': 'cmake',
+    'cmd': 'batchfile', 'cob': 'cobol', 'coffee': 'coffee', 'conf': 'apache_conf',
+    'cpp': 'c_cpp', 'cs': 'csharp', 'css': 'css', 'csx': 'csharp', 'cxx': 'c_cpp',
+    'd': 'd', 'dart': 'dart', 'diff': 'diff', 'dockerfile': 'dockerfile', 'dot': 'dot',
+    'e': 'eiffel', 'edn': 'clojure', 'ejs': 'ejs', 'erl': 'erlang', 'ex': 'elixir',
+    'exs': 'elixir', 'f': 'fortran', 'f90': 'fortran', 'f95': 'fortran', 'for': 'fortran',
+    'forth': 'forth', 'frag': 'glsl', 'fs': 'fsharp', 'fsi': 'fsharp', 'fsx': 'fsharp',
+    'fth': 'forth', 'ftl': 'freemarker', 'gcode': 'gcode', 'gitignore': 'ini', 'glsl': 'glsl',
+    'vlsl': 'glsl', 'hlsl': 'glsl', 'go': 'golang', 'gql': 'graphql', 'graphql': 'graphql',
+    'groovy': 'groovy', 'gsh': 'groovy', 'gvy': 'groovy', 'gy': 'groovy', 'h': 'c_cpp',
+    'haml': 'haml', 'handlebars': 'handlebars', 'hbs': 'handlebars', 'hh': 'c_cpp',
+    'hjson': 'hjson', 'hpp': 'c_cpp', 'hrl': 'erlang', 'hs': 'haskell', 'htm': 'html',
+    'html': 'html', 'htaccess': 'apache_conf', 'hxx': 'c_cpp', 'i': 'c_cpp', 'ini': 'ini',
+    'ino': 'c_cpp', 'io': 'io', 'java': 'java', 'jade': 'pug', 'jl': 'julia', 'js': 'javascript',
+    'json': 'json', 'jsm': 'javascript', 'jsp': 'jsp', 'jsx': 'jsx', 'kt': 'kotlin',
+    'kts': 'kotlin', 'less': 'less', 'liquid': 'liquid', 'lisp': 'lisp', 'log': 'text',
+    'ls': 'livescript', 'lsp': 'lisp', 'ltx': 'latex', 'lua': 'lua', 'm': 'matlab',
+    'makefile': 'makefile', 'make': 'makefile', 'markdown': 'markdown', 'md': 'markdown',
+    'mel': 'mel', 'mjs': 'javascript', 'mk': 'makefile', 'ml': 'ocaml', 'mli': 'ocaml',
+    'mm': 'objectivec', 'mysql': 'mysql', 'nginx': 'nginx', 'nim': 'nim', 'nix': 'nix',
+    'nsh': 'nsis', 'nsi': 'nsis', 'pas': 'pascal', 'patch': 'diff', 'perl': 'perl',
+    'pgsql': 'pgsql', 'php': 'php', 'phtml': 'php', 'pig': 'pig', 'pl': 'perl',
+    'plsql': 'plsql', 'pm': 'perl', 'pp': 'pascal', 'powershell': 'powershell', 'prefs': 'ini',
+    'properties': 'properties', 'props': 'properties', 'proto': 'protobuf', 'ps1': 'powershell',
+    'psm1': 'powershell', 'pug': 'pug', 'puppet': 'puppet', 'py': 'python', 'pyw': 'python',
+    'q': 'q', 'r': 'r', 'rb': 'ruby', 'rdoc': 'rdoc', 'rhtml': 'ruby', 'rprofile': 'r',
+    'rs': 'rust', 's': 'assembly_x86', 'sass': 'sass', 'sbt': 'scala', 'scad': 'scad',
+    'scala': 'scala', 'scheme': 'scheme', 'scm': 'scheme', 'scss': 'scss', 'sh': 'sh',
+    'sieve': 'sieve', 'slim': 'slim', 'smali': 'smali', 'smarty': 'smarty', 'sql': 'sql',
+    'ss': 'scheme', 'styl': 'stylus', 'svg': 'svg', 'swift': 'swift', 'tcl': 'tcl',
+    'tex': 'latex', 'toml': 'toml', 'tpl': 'smarty', 'ts': 'typescript', 'tsx': 'tsx',
+    'twig': 'twig', 'txt': 'text', 'wasm': 'wasm_disassembly', 'qvm': 'qvm_disassembly',
+    'v': 'verilog', 'shader': 'q3_shader', 'shaderx': 'q3_shader', 'vala': 'vala',
+    'vapi': 'vala', 'vbe': 'vbscript', 'vbs': 'vbscript', 'vert': 'glsl', 'cam': 'q3_cam',
+    'map': 'q3_map', 'vh': 'verilog', 'vhd': 'vhdl', 'vhdl': 'vhdl', 'vue': 'vue',
+    'xhtml': 'html', 'xml': 'xml', 'xsd': 'xml', 'xsl': 'xml', 'yaml': 'yaml', 'yml': 'yaml',
+    'zig': 'zig', 'zsh': 'sh'
+};
+
+function getModeByFilename(filePath) {
+    const ext = filePath.split('.').pop().toLowerCase();
+    const filenameAsType = filePath.split('/').pop().toLowerCase();
+    const modeKey = (!EXTENSION_TO_MODE[ext] && EXTENSION_TO_MODE[filenameAsType]) ? filenameAsType : ext;
+    return `ace/mode/${EXTENSION_TO_MODE[modeKey] || 'text'}`;
+}
+
+// Simulating x-mode (verbose regex) by joining an array of strings with comments
+const FILE_NAME_REGEX = new RegExp([
+    '(?:',
+    // Group 1: Captures full URLs or relative/absolute file paths
+    '([a-z]+://[^\\s:]+|[\\w\\d._\\-/]+\\.[\\w\\d._\\-]+)',
+    ')',
+    '(?:',
+    // Line capture variations
+    '(?:,\\s*Line:\\s*(\\d+))', // Handles "File: path, Line: 324"
+    '|',
+    '(?::(\\d+))',              // Handles "path:324"
+    ')?',
+    '(?::(\\d+))?'                  // Handles secondary column offsets if present "path:324:10"
+].join(''), 'gi');
