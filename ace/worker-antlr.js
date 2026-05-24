@@ -79,9 +79,21 @@ function mapToRowBucket(tokens, tokenLines, lexer, parser, semanticOverrides, to
 
     // 3. Fallback to Polymorphic Core Mapping if no direct AST override exists
     if (!rosettaType) {
-        rosettaType = toRosettaToken(null, null, lexer, parser, token, tokens);
-    }
+        // Resolve the explicit string token type name from the grammar blueprint
+        const nativeSymbol = (lexer && lexer.constructor.symbolicNames) ? lexer.constructor.symbolicNames[token.type] : null;
+        const rawTypeName = nativeSymbol || `type_${token.type}`;
 
+        // Pass rawTypeName explicitly to BOTH the 1st parameter (for blending) AND the 7th parameter (for raw trace)
+        rosettaType = toRosettaToken(
+            rawTypeName, // symbolicName (Seeding/Blending layer)
+            null,        // ruleName
+            lexer,
+            parser,
+            token,       // ctxOrToken
+            tokens,      // tokenStream
+            rawTypeName  // rawTypeName (Our explicit 7th parameter!)
+        );
+    }
     tokenLines[zeroIndexedRow].push({
         type: rosettaType,
         value: tokenText

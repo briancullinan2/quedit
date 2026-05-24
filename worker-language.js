@@ -45,9 +45,9 @@ function createLexerInstance(sourceText, languageKey) {
     }
 }
 
-function _safePreprocess(sourceText, languageKey, onResolveInclude) {
+function _safePreprocess(sourceText, languageKey, onResolveInclude, onErrorFound) {
     try {
-        return preprocessSourceText(sourceText, languageKey, onResolveInclude);
+        return preprocessSourceText(sourceText, languageKey, onResolveInclude, onErrorFound);
     } catch (e) {
         console.error("[Preprocessor Crisis] Virtual assembly layer collapsed:", e);
         return sourceText;
@@ -75,6 +75,12 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
         parser.addErrorListener({
             syntaxError: (recognizer, offendingSymbol, line, column, msg) => {
                 onErrorFound({ line, column, message: msg });
+
+                // If there is an offending token, inject a failure scope directly into our overrides map
+                if (offendingSymbol && typeof offendingSymbol.start === 'number') {
+                    const errorScope = "text.syntax_error.err_notfound.annotation_required";
+                    semanticOverrides.set(offendingSymbol.start, errorScope);
+                }
             }
         });
     }
@@ -96,7 +102,6 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
             },
             exitEveryRule: function (ctx) { },
 
-            // 2. This is where your true linear cursor scope processing lives
             visitTerminal: function (node) {
                 const token = node.symbol; // The explicit atomic token element
                 const ctx = node.parentCtx;
@@ -104,10 +109,10 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
 
                 const tokenStartChar = token.start;
                 const tokenText = token.text;
-                const tokenTypeString = lexer.constructor.symbolicNames[token.type];
+                const tokenTypeString = lexer.constructor.symbolicNames[token.type] || "text";
 
-                // CRITICAL FIX: Pass the precise leaf 'token' to the mapper, NOT the 'ctx' block!
-                const generalScope = toRosettaToken(null, ruleName, lexer, parser, token, tokenStream);
+                // CRITICAL FIX: Pass the primitive token type string and your context tokens array safely
+                const generalScope = toRosettaToken(tokenTypeString, ruleName, lexer, parser, token, tokenStream);
 
                 // Lock down the map with the isolated unique char index pointer
                 semanticOverrides.set(tokenStartChar, generalScope);
@@ -131,38 +136,80 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
 
 
 function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
-    const unifiedSourceBuffer = _safePreprocess(sourceText, languageKey, onResolveInclude);
+    const unifiedSourceBuffer = _safePreprocess(sourceText, languageKey, onResolveInclude, onErrorFound);
     const lexer = createLexerInstance(unifiedSourceBuffer, languageKey);
     if (!lexer) return [];
 
     const antlr = AntlrRegistry.antlr4;
     const tokenStream = new antlr.CommonTokenStream(lexer);
+    try {
+        tokenStream.fill();
+    } catch (fillError) {
+        console.warn("[Worker] tokenStream.fill() threw an exception, attempting manual stream extraction:", fillError);
+    }
 
-    tokenStream.fill();
-    // Re-routed with both lexer and antlr parameters correctly populated!
+    // Extraction checkpoint matrix: exhaust every possible location ANTLR stores token blocks
+    let allTokensArray = [];
+    if (typeof tokenStream.getTokens === 'function') {
+        allTokensArray = tokenStream.getTokens();
+    }
+
+    if (!allTokensArray || allTokensArray.length === 0) {
+        allTokensArray = tokenStream.tokens || tokenStream._tokens || tokenStream.buffer || [];
+    }
+
+    // ABSOLUTE LAST RESORT FALLBACK: If the stream completely choked, pull directly from the lexer's source
+    if ((!allTokensArray || allTokensArray.length === 0) && lexer) {
+        console.warn("[Worker] Token stream cache empty. Re-tokenizing directly via Lexer core.");
+        try {
+            lexer.reset();
+            let tok = lexer.nextToken();
+            while (tok && tok.type !== antlr.Token.EOF) {
+                allTokensArray.push(tok);
+                tok = lexer.nextToken();
+            }
+        } catch (lexerFallbackError) {
+            console.error("[Worker] Total breakdown on lexer fallback scanning:", lexerFallbackError);
+        }
+    }
+
     const [semanticOverrides, parser] = _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer, antlr);
-    tokenStream.reset();
 
-    return [tokenStream.tokens.map((token) => {
-        if (token.type === antlr.Token.EOF) return null;
+    try {
+        tokenStream.reset();
+    } catch (e) { }
+
+    return [allTokensArray.map((token) => {
+        if (!token || token.type === antlr.Token.EOF) return null;
 
         const rawTypeName = _resolveTokenTypeName(lexer, token.type);
-        const lowerType = rawTypeName.toLowerCase();
 
-        // Check if our AST-Rule pass discovered a specialized structural override
-        if (semanticOverrides.has(token.tokenIndex)) {
-            const calculatedScope = semanticOverrides.get(token.tokenIndex);
-            return _buildTokenPayload(token, rawTypeName, calculatedScope, lowerType, lexer, self.activeParserReference, self.activeContextReference);
+        let baselineClassification = semanticOverrides.get(token.start);
+        if (!baselineClassification) {
+            baselineClassification = toRosettaToken(
+                rawTypeName,
+                null,
+                lexer,
+                parser,
+                token,
+                tokenStream,
+                rawTypeName
+            );
         }
 
-        // Standard token fallback translation matrix execution pass
-        const ruleName = parser.ruleNames[token.ruleIndex];
-        const baselineClassification = toRosettaToken(rawTypeName, ruleName, lexer, parser, token, tokenStream);
-        return _buildTokenPayload(token, rawTypeName, baselineClassification, lowerType, lexer, null, null);
+        return _buildTokenPayload(
+            token,
+            baselineClassification,
+            baselineClassification,
+            rawTypeName.toLowerCase(),
+            lexer,
+            parser,
+            null
+        );
     }).filter(Boolean), lexer, parser];
 }
 
-function preprocessSourceText(sourceText, languageKey, onResolveInclude, visitedFiles = new Set()) {
+function preprocessSourceText(sourceText, languageKey, onResolveInclude, onErrorFound, visitedFiles = new Set()) {
     if (typeof onResolveInclude !== 'function') return sourceText;
 
     const lexer = createLexerInstance(sourceText, languageKey);
@@ -185,13 +232,19 @@ function preprocessSourceText(sourceText, languageKey, onResolveInclude, visited
                     try {
                         const headerContents = onResolveInclude(targetFileName);
                         if (headerContents) {
-                            const fullyExpandedHeader = preprocessSourceText(headerContents, languageKey, onResolveInclude, visitedFiles);
+                            const fullyExpandedHeader = preprocessSourceText(headerContents, languageKey, onResolveInclude, onErrorFound, visitedFiles);
                             expandedText += `\n/* --- Start Unified Include: ${targetFileName} --- */\n`;
                             expandedText += fullyExpandedHeader;
                             expandedText += `\n/* --- End Unified Include: ${targetFileName} --- */\n`;
                         }
                     } catch (err) {
+                        // Track missing dependencies in a global context register for the token mapper to read
+                        if (typeof window !== 'undefined') {
+                            window.__missingHeaders = window.__missingHeaders || new Set();
+                            window.__missingHeaders.add(targetFileName);
+                        }
                         expandedText += `\n/* Missing Header Dependency: ${targetFileName} */\n`;
+                        onErrorFound({ line: token.start.line, column: token.start.column, message: err.message });
                     }
                 }
             } else {
