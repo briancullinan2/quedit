@@ -65,21 +65,12 @@ function mapToRowBucket(tokens, tokenLines, lexer, parser, semanticOverrides, to
     let baseRowIndex = token.line - 1; // 0-indexed base coordinate
 
     // Fetch your dynamic classification up front
-    let rosettaType = semanticOverrides.get(token.start);
-    if (!rosettaType) {
-        const nativeSymbol = (lexer && lexer.constructor.symbolicNames) ? lexer.constructor.symbolicNames[token.type] : null;
-        const rawTypeName = nativeSymbol || `type_${token.type}`;
-
-        rosettaType = toRosettaToken(
-            rawTypeName, 
-            null,        
-            lexer,
-            parser,
-            token,       
-            tokens,      
-            rawTypeName  
-        );
-    }
+    let rosettaType =  token.rosettaScope;// semanticOverrides.get(token.start);
+    //if (!rosettaType) {
+    //    const nativeSymbol = (lexer && lexer.constructor.symbolicNames) ? lexer.constructor.symbolicNames[token.type] : null;
+    //    const rawTypeName = nativeSymbol || `type_${token.type}`;
+    //    rosettaType = token.rosettaScope;
+    //}
 
     // ─── THE MULTI-LINE SPLITTING LOOP ───
     // If the token contains internal line breaks, distribute the pieces safely

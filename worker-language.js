@@ -93,19 +93,19 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
     try {
         // Fallback array evaluation: check the instance or constructor for rule maps
         const targetRules = parser.ruleNames || (parser.constructor && parser.constructor.ruleNames);
-        
+
         if (targetRules && targetRules[0] && typeof parser[targetRules[0]] === 'function') {
             const rootRuleName = targetRules[0]; // Resolves straight to "json" or "compilationUnit"
             console.log(`[Worker] Dynamic execution target acquired: parser.${rootRuleName}()`);
             tree = parser[rootRuleName]();
-        } 
+        }
     } catch (dynamicParseError) {
         console.warn("[Worker] Dynamic root execution failed, falling back to legacy signature gates:", dynamicParseError);
     }
 
+
     if (tree) {
         const configurationListener = {
-            // 1. Leave this strictly for debugging rule layers—do NOT save keys here
             enterEveryRule: function (ctx) {
                 const ruleName = parser.ruleNames[ctx.ruleIndex];
                 console.log(`Rule: ${ruleName} | Invoking State: ${ctx.invokingState}`);
@@ -113,21 +113,36 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
             exitEveryRule: function (ctx) { },
 
             visitTerminal: function (node) {
-                const token = node.symbol; // The explicit atomic token element
-                const ctx = node.parentCtx;
-                const ruleName = parser.ruleNames[ctx.ruleIndex];
+                const token = node.symbol;
+                let ctx = node.parentCtx;
 
+                // 1. ACCUMULATE ACCURATE INHERITANCE STRUCTURAL DATA
+                const ruleHistory = [];
+                let currentCtx = ctx;
+
+                while (currentCtx) {
+                    if (currentCtx.ruleIndex !== undefined && parser.ruleNames[currentCtx.ruleIndex]) {
+                        ruleHistory.push(parser.ruleNames[currentCtx.ruleIndex]);
+                    }
+                    currentCtx = currentCtx.parentCtx; // Move up the syntax tree hierarchy
+                }
+
+                const ruleName = parser.ruleNames[ctx.ruleIndex];
                 const tokenStartChar = token.start;
                 const tokenText = token.text;
                 const tokenTypeString = lexer.constructor.symbolicNames[token.type] || "text";
 
-                // CRITICAL FIX: Pass the primitive token type string and your context tokens array safely
+                // 2. ATTACH INHERITANCE TO THE PAYLOAD OBJECT
+                // We add 'ruleHistory' onto the token object so 'toRosettaToken' can inspect it natively.
+                token.ruleHistory = ruleHistory;
+                token.contextNode = ctx; // Pass the active parent context node along for deep walks
+
+                console.log(`Token: "${tokenText}" | Direct Rule: ${ruleName} | Inherited Trace Array:`, ruleHistory);
+
+                // Run your flattened pipeline with the newly enriched token payload
                 const generalScope = toRosettaToken(tokenTypeString, ruleName, lexer, parser, token, tokenStream);
 
-                // Lock down the map with the isolated unique char index pointer
                 semanticOverrides.set(tokenStartChar, generalScope);
-
-                console.log(`Cursor at Char ${tokenStartChar} | Token: [${tokenTypeString}: "${tokenText}"] | Interpreted by Rule: ${ruleName}`);
             },
 
             visitErrorNode: function (node) {
@@ -147,7 +162,7 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
 
 function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
     const unifiedSourceBuffer = _safePreprocess(sourceText, languageKey, onResolveInclude, onErrorFound);
-    
+
     // ─── STAGE 1: SPIN UP THE VISUAL ROW BUFFER ENGINE ───
     const visualLexer = createLexerInstance(unifiedSourceBuffer, languageKey);
     if (!visualLexer) return [];
@@ -161,7 +176,7 @@ function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
 
     // Capture everything (code + channel 1 whitespace) for your UI viewport map
     const visualTokenStream = new StreamConstructor(visualLexer);
-    try { visualTokenStream.fill(); } catch (e) {}
+    try { visualTokenStream.fill(); } catch (e) { }
 
 
     // ─── STAGE 2: SPIN UP THE ISOLATED AST PARSER ENGINE ───
@@ -182,7 +197,7 @@ function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
         if (!token || token.type === antlr.Token.EOF) return null;
 
         let text = token.text || "";
-        
+
         // Sanitize leading newlines out of raw whitespace blocks so they stream nicely into row buckets
         if (token.channel === 1 && text.startsWith('\n')) {
             text = text.substring(1);
@@ -191,13 +206,12 @@ function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
 
         // Use the visualLexer to map names cleanly
         const rawTypeName = _resolveTokenTypeName(visualLexer, token.type);
-        
         // Intercept and cross-reference semantic AST positions seamlessly
         let baselineClassification = semanticOverrides.get(token.start);
         if (!baselineClassification) {
             baselineClassification = toRosettaToken(
                 rawTypeName,
-                null,
+                token.tokenRule,
                 visualLexer,
                 parser,
                 token,

@@ -708,281 +708,300 @@ const LEXER_FUNCTIONAL_CLASSIFIER_MATRIX = {
 };
 
 
+const ROSETTA_CROSS_LANGUAGE_MAPPING = {
+    // =====================================================================
+    // 1. HIGHER-LEVEL PARSER EXPR/RULE CONTEXTS (Parser Rules -> C Rules)
+    // =====================================================================
+    "json": ["compilationUnit", "translationUnit"],
+    "obj": ["compoundStatement"],                        // Scoped brace blocks '{ ... }'
+    "pair": ["assignmentExpression", "initDeclarator"],  // 'Key: Value' maps to assignments or initializers
+    "jsonKey": ["Identifier", "typedefName"],            // Structural naming identifiers
+    "jsonValue": ["primaryExpression", "constant"],      // Base terminal values and literal atoms
+    "arr": ["initializerList"],                          // Nested array values map to C literal array brackets
 
-const ROSETTA_INTERCEPTOR_RULES = {
-    "match.intercept.validator.dependency.dynamic.precompiler.has.reserved.clang.cinclude.control.keyword": (state) => {
-        if (!state.literalText.startsWith('#include') && !state.lowerSymbol.includes('directive')) return null;
-        
-        let base = "keyword.control.c_include.c_lang.c_reserved.has_precompiler";
-        const includeMatch = state.literalText.match(/#include\s*["<]([^">]+)[">]/);
-        if (includeMatch?.[1]) {
-            const targetHeader = includeMatch[1].trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-            base += `.import_target.header_${targetHeader}`;
-            const missingHeaders = (typeof window !== 'undefined') ? window.__missingHeaders : null;
-            base += (!missingHeaders || !missingHeaders.has(includeMatch[1].trim()))
-                ? ".err_notfound.status_missing.annotation_required"
-                : ".status_resolved";
-            return base;
+    // =====================================================================
+    // 2. LEXER TERMINAL CORES (Lexer Rules -> C Lexer Keys / Token Names)
+    // =====================================================================
+    "STRING": ["StringLiteral", "CharacterConstant"],
+    "NUMBER": ["IntegerConstant", "FloatingConstant", "DigitSequence"],
+    "WS": ["Whitespace", "Newline"],
+
+    // Literal value constants mapped directly down to static C primitives
+    "true": ["True_"],
+    "false": ["False_"],
+    "null": ["Nulptr"],
+
+    // Structural JSON dividers mapped to matching C punctuators
+    "{": ["LeftBrace"],
+    "}": ["RightBrace"],
+    "[": ["LeftBracket"],
+    "]": ["RightBracket"],
+    ":": ["Colon"],
+    ",": ["Comma"],
+
+    // =====================================================================
+    // 3. SUB-ELEMENT LEXICAL FRAGMENTS (Internal Layout Construction)
+    // =====================================================================
+    "ESC": ["EscapeSequence", "SimpleEscapeSequence"],
+    "UNICODE": ["UniversalCharacterName", "HexQuad"],
+    "HEX": ["HexadecimalDigit"],
+    "SAFECODEPOINT": ["Nondigit", "Digit"],
+    "INT": ["DecimalConstant", "OctalConstant"],
+    "EXP": ["ExponentPart", "BinaryExponentPart"]
+};
+
+
+// Compiled straight from your CSS tokens to prioritize class positions natively
+const ACE_COLORED_CLASSES = [
+    "keyword",
+    "meta",
+    "constant",
+    "invalid",
+    "support",
+    "storage",
+    "string",
+    "comment",
+    "heading",
+    "variable",
+    "function" // Explicitly included to guarantee rendering dominance
+];
+
+
+const ROSETTA_NEIGHBORHOOD_ASSOCIATIONS = {
+    // =====================================================================
+    // 1. SYSTEM BASE COMPILATION & PRECOMPILER PIPELINES (6.10)
+    // =====================================================================
+    "match.intercept.directive.precompiler.import": (t, s) => {
+        if (!t.tokenSymbol?.toLowerCase().includes('directive') && !t.tokenRule?.toLowerCase().includes('preproc') && !t.text?.startsWith('#') && !t.ruleHistory?.some(r => r.toLowerCase().includes('directive'))) return null;
+        let tag = "keyword.control.import.directive";
+        const match = t.text?.match(/(?:#include|import|require)\s*["<]([^">]+)[">]/);
+        if (match?.[1]) {
+            const cleanTarget = match[1].trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+            const win = typeof window !== 'undefined' ? window : null;
+            return tag + `.target_${cleanTarget}` + ((!win?.__missingHeaders || win.__missingHeaders.has(match[1].trim())) ? ".status_resolved" : ".status_missing.annotation_required");
         }
-        return base + ".err_malformed_directive";
+        return tag + ".err_malformed";
     },
 
-    "match.intercept.override.descriptor.key.property.json.purple.variable": (state) => {
-        if (state.lowerSymbol.includes('comment')) return null;
-        return (['jsonkey', 'pair', 'pair_key'].includes(state.lowerRule) || state.ruleName === 'jsonKey') ? "variable" : null;
-    },
-
-    "match.intercept.override.payload.value.literal.json.blue.string": (state) => {
-        return (['jsonvalue', 'json_value'].includes(state.lowerRule) || state.ruleName === 'jsonValue') ? "string" : null;
-    },
+    // =====================================================================
+    // 2. EXPRESSIONS, FUNCTION INVOCATIONS, & BUILT-INS (6.5)
+    // =====================================================================
+    "is_function_call": (t, s) => (!t.tokenSymbol?.includes('Identifier') && t.tokenRule !== 'Identifier') ? null : (s?.[t.tokenIndex + 1]?.text === '(' || ['LeftParen'].includes(s?.[t.tokenIndex + 1]?.tokenSymbol) || t.ruleHistory?.some(r => ['postfixexpression', 'primaryexpression'].includes(r.toLowerCase()))) ? "function.support.function" : null,
     
-    "match.intercept.delimiter.opening.structural.lparen.paren": (state) => {
-        return ['{', '('].includes(state.literalText) ? "paren.lparen" : null;
-    },
+    "is_member_access": (t, s) => (!t.tokenSymbol?.includes('Identifier')) ? null : (['.', '->'].includes(s?.[t.tokenIndex - 1]?.text) || t.ruleHistory?.some(r => r.toLowerCase().includes('postfixexpression') && ['.', '->'].includes(s?.[t.tokenIndex - 1]?.text))) ? "variable.other.member" : null,
+    
+    "is_pointer_indirection": (t, s) => (!['*', '^'].includes(t.text)) ? null : (s?.[t.tokenIndex + 1]?.tokenSymbol?.includes('Identifier') || ['const', 'volatile', 'restrict'].includes(s?.[t.tokenIndex + 1]?.text) || t.ruleHistory?.some(r => r.toLowerCase().includes('pointer'))) ? "keyword.operator.pointer" : null,
+    
+    "is_generic_selection": (t, s) => (t.text === '_Generic' || t.ruleHistory?.some(r => r.toLowerCase().includes('generic'))) ? "keyword.control.generic" : (s?.[t.tokenIndex - 1]?.text === ':' && s?.[t.tokenIndex - 3]?.text === '_Generic') ? "constant.library.generic_assoc" : null,
 
-    "match.intercept.delimiter.closing.structural.rparen.paren": (state) => {
-        return ['}', ')'].includes(state.literalText) ? "paren.rparen" : null;
-    },
+    "is_builtin_intrinsic": (t, s) => (t.text?.startsWith('__builtin_') || ['__func__', '__FUNCTION__', '__PRETTY_FUNCTION__'].includes(t.text)) ? "support.function.builtin" : null,
 
-    "match.intercept.array.character.sequence.literal.quoted.string": (state) => {
-        if (state.baseClassification === "variable" || ['jsonkey', 'pair_key'].includes(state.lowerRule)) return "variable";
-        return state.lowerSymbol.includes('string') ? "string" : null;
-    },
+    // =====================================================================
+    // 3. DECLARATIONS, DEFINITIONS, & SIGNATURE PINPOINTS (6.7)
+    // =====================================================================
+    "is_function_definition": (t, s) => (!t.tokenSymbol?.includes('Identifier')) ? null : (s?.[t.tokenIndex + 1]?.text === '(' && (t.ruleHistory?.some(r => ['directdeclarator', 'functiondefinition', 'declarator'].includes(r.toLowerCase())) || s?.slice(Math.max(0, t.tokenIndex - 4), t.tokenIndex).some(p => ['int', 'char', 'void', 'float', 'double', 'long', 'short', 'signed', 'unsigned'].includes(p.text?.toLowerCase()) || p.tokenSymbol?.includes('Type') || p.tokenSymbol?.includes('Storage')))) ? "function.entity.name.function" : null,
 
-    "match.intercept.separator.statement.inline.operator.punctuation": (state) => {
-        return [',', ';', '.'].includes(state.literalText) ? "punctuation.operator" : null;
-    },
+    "is_parameter_declaration": (t, s) => (!t.tokenSymbol?.includes('Identifier')) ? null : (t.ruleHistory?.some(r => ['parameter', 'declaration', 'argument'].includes(r.toLowerCase())) || (s?.slice(Math.max(0, t.tokenIndex - 10), t.tokenIndex).some(p => p.text === '(' || p.text === ',') && s?.slice(t.tokenIndex + 1, t.tokenIndex + 5).some(n => n.text === ')' || n.text === ','))) ? "variable.parameter" : null,
 
-    "match.intercept.fallback.expression.literal.character.operator.keyword": (state) => {
-        return (state.lexerLiteralName.startsWith("'") && state.lexerLiteralName.length <= 5) ? "keyword.operator" : null;
-    },
+    "is_typedef_definition": (t, s) => (!t.tokenSymbol?.includes('Identifier')) ? null : (t.ruleHistory?.some(r => r.toLowerCase().includes('typedef')) || s?.slice(Math.max(0, t.tokenIndex - 8), t.tokenIndex).some(p => p.text === 'typedef')) ? "storage.type.typedef_alias" : null,
 
-    "match.intercept.line.or.block.annotation.code.source.italic.comment": (state) => {
-        return state.lowerSymbol.includes('comment') ? "comment" : null;
-    },
+    "is_type_specifier_keyword": (t, s) => (['void', 'char', 'short', 'int', 'long', 'float', 'double', 'signed', 'unsigned', '_Complex', '__m128', '__m128d', '__m128i', '_Atomic'].includes(t.text) || t.ruleHistory?.some(r => ['typespecifier', 'typename', 'type'].includes(r.toLowerCase())) || t.tokenSymbol?.toLowerCase().includes('type')) ? "storage.type" : null,
 
-    "match.intercept.specifier.linkage.and.qualifier.scope.modifier.storage": (state) => {
-        return (state.lowerSymbol.includes('storage') || state.lowerSymbol.includes('qualifier')) ? "storage.modifier" : null;
-    },
+    "is_storage_class_modifier": (t, s) => (['auto', 'constexpr', 'extern', 'register', 'static', 'typedef', 'const', 'volatile', 'restrict', 'inline', '_Noreturn'].includes(t.text) || t.ruleHistory?.some(r => ['storageclassspecifier', 'typequalifier', 'functionspecifier', 'storage', 'qualifier', 'modifier'].includes(r.toLowerCase())) || t.tokenSymbol?.toLowerCase().includes('storage') || t.tokenSymbol?.toLowerCase().includes('qualifier') || t.tokenSymbol?.toLowerCase().includes('modifier')) ? "storage.modifier" : null,
 
-    "match.intercept.structures.allocated.and.datatype.primitive.type.storage": (state) => {
-        return (state.lowerSymbol.includes('type') || state.lowerSymbol === 'type_name') ? "storage.type" : null;
-    },
+    // =====================================================================
+    // 4. COMPOSITES, STRUCTURE DESIGNATORS, & ENUMS (6.7.2)
+    // =====================================================================
+    "is_composite_layout": (t, s) => (['struct', 'union', 'enum'].includes(t.text) || t.ruleHistory?.some(r => ['structorunionspecifier', 'enumspecifier'].includes(r.toLowerCase()))) ? "storage.type.composite" : null,
 
-    "match.intercept.statements.assertion.and.looping.branching.control.keyword": (state) => {
-        return (state.lowerSymbol.includes('statement') || state.lowerSymbol.includes('control') || state.lowerSymbol.includes('assert')) ? "keyword.control" : null;
-    },
+    "is_designated_initializer": (t, s) => (t.tokenSymbol?.includes('Identifier') && (t.ruleHistory?.some(r => r.toLowerCase().includes('designat')) || (s?.[t.tokenIndex - 1]?.text === '.' && s?.slice(Math.max(0, t.tokenIndex - 4), t.tokenIndex).some(p => p.text === '{' || p.text === ',')))) ? "variable.other.member.designator" : null,
 
-    "match.intercept.declarations.architectural.and.builtins.compiler.native.keyword": (state) => {
-        return ['struct', 'union', 'enum', 'sizeof', 'typeof', 'alignof', 'alignas', 'asm'].includes(state.lowerLiteral) ? "keyword" : null;
-    },
+    "is_enum_constant": (t, s) => (t.tokenSymbol?.includes('Identifier') && (t.ruleHistory?.some(r => r.toLowerCase().includes('enumerator')) || ((s?.[t.tokenIndex + 1]?.text === '=' || s?.[t.tokenIndex + 1]?.text === ',' || s?.[t.tokenIndex + 1]?.text === '}') && s?.slice(Math.max(0, t.tokenIndex - 15), t.tokenIndex).some(p => p.text === 'enum')))) ? "constant.library.enum" : null,
 
-    "match.intercept.literal.binary.or.hex.point.floating.integer.numeric.constant": (state) => {
-        return (state.lowerSymbol.includes('constant') || state.lowerSymbol.includes('numeric')) ? "constant.numeric" : null;
-    },
+    // =====================================================================
+    // 5. ATTRIBUTES, DIRECTIVES, & INLINE ASSEMBLERS (GCC / GNU / MSVC)
+    // =====================================================================
+    "is_attribute_annotation": (t, s) => (['__attribute__', '__declspec'].includes(t.text) || t.ruleHistory?.some(r => r.toLowerCase().includes('attribute')) || s?.[t.tokenIndex - 1]?.text === '[[' || s?.[t.tokenIndex - 2]?.text === '[[') ? "meta.tag.annotation" : null,
 
-    "match.intercept.symbols.mutation.and.assignment.logical.mathematical.operator.keyword": (state) => {
-        return (state.lowerSymbol.includes('assign') || state.lowerSymbol.includes('operator') || state.lowerSymbol.includes('arrow')) ? "keyword.operator" : null;
-    },
+    "is_inline_assembly": (t, s) => (t.text?.toLowerCase() === 'asm' || ['__asm', '__asm__'].includes(t.text) || t.ruleHistory?.some(r => r.toLowerCase().includes('asm'))) ? "keyword.control.assembly" : (s?.slice(Math.max(0, t.tokenIndex - 5), t.tokenIndex).some(p => p.text?.toLowerCase() === 'asm')) ? "variable.other.assembly_payload" : null,
 
-    "match.intercept.walker.tree.ancestor.ast.and.context.symbol.intelligent.other.variable": (state) => {
-        if (!state.lowerSymbol.includes('identifier') && state.ruleName !== 'identifier') return null;
-        if (state.tokenStream?.tokens && typeof state.ctxOrToken?.tokenIndex === 'number') {
-            if (state.tokenStream.tokens[state.ctxOrToken.tokenIndex + 1]?.text === '(') return "support.function";
-        }
-        let current = state.contextNode;
-        while (current) {
-            const ruleStr = String(current.ruleName || current.constructor?.name || "");
-            if (ruleStr.includes("directDeclarator") || ruleStr.includes("functionDefinition")) return "entity.name.function";
-            if (ruleStr.includes("postfixExpression") && ['.', '->'].includes(state.literalText)) return "variable.other.member";
-            if (ruleStr.includes("initDeclarator") || ruleStr.includes("parameterDeclaration") || ruleStr.includes("declarator")) return "variable.parameter";
-            current = current.parent;
-        }
-        return "variable.other";
-    },
+    "is_calling_convention": (t, s) => (['__cdecl', '__clrcall', '__stdcall', '__fastcall', '__thiscall', '__vectorcall'].includes(t.text) || t.ruleHistory?.some(r => r.toLowerCase().includes('vcspecificmodifer'))) ? "storage.modifier.calling_convention" : null,
 
-    "match.intercept.lookup.configuration.static.fallback.matrix.rule.rosetta": (state) => {
-        return (state.ruleName && ROSETTA_RULE_MATRIX[state.ruleName] !== "text") ? ROSETTA_RULE_MATRIX[state.ruleName] : null;
-    }
+    // =====================================================================
+    // 6. STATEMENTS, CONTROL FLOW, & LABELS (6.8)
+    // =====================================================================
+    "is_control_statement": (t, s) => (['if', 'else', 'switch', 'while', 'do', 'for', 'goto', 'continue', 'break', 'return'].includes(t.text) || t.ruleHistory?.some(r => ['statement', 'selectionstatement', 'iterationstatement', 'jumpstatement'].includes(r.toLowerCase())) || t.tokenSymbol?.toLowerCase().includes('statement') || t.tokenSymbol?.toLowerCase().includes('control') || t.tokenSymbol?.toLowerCase().includes('loop') || t.tokenSymbol?.toLowerCase().includes('branch')) ? "keyword.control" : null,
+
+    "is_case_default_label": (t, s) => (['case', 'default'].includes(t.text) || t.ruleHistory?.some(r => r.toLowerCase().includes('labeledstatement'))) ? "keyword.control.label" : null,
+
+    "is_code_label_assertion": (t, s) => (t.tokenSymbol?.includes('Identifier') && s?.[t.tokenIndex + 1]?.text === ':' && !['case', 'default'].includes(s?.[t.tokenIndex - 1]?.text)) ? "entity.name.label" : (t.text === '__label__') ? "keyword.control.label_declaration" : null,
+
+    // =====================================================================
+    // 7. ENCLOSURES, STRUCTURAL PUNCTUATION & ANNOTATIONS
+    // =====================================================================
+    "is_structural_opening": (t, s) => (['{', '(', '['].includes(t.text)) ? "punctuation.enclosure.opening" : null,
+
+    "is_structural_closing": (t, s) => (['}', ')', ']'].includes(t.text)) ? "punctuation.enclosure.closing" : null,
+
+    "is_structural_separator": (t, s) => ([',', ';', '.'].includes(t.text)) ? "punctuation.separator" : null,
+
+    "is_code_comment": (t, s) => (t.tokenRule?.toLowerCase().includes('comment') || t.tokenSymbol?.toLowerCase().includes('comment') || t.channel === 1) ? "comment" : null,
+
+    "is_fallback_operator_literal": (t, s) => (t.tokenRule?.startsWith("'") && t.tokenRule?.length <= 5) ? "keyword.operator" : null,
+
+    // =====================================================================
+    // 8. MULTI-LANGUAGE JSON MAPPING HOOKS & LEAF LEAVES
+    // =====================================================================
+    "is_json_key": (t, s) => (t.ruleName === 'jsonKey' || t.ruleHistory?.some(r => r.toLowerCase().includes('jsonkey')) || (t.tokenSymbol?.toLowerCase().includes('string') && s?.[t.tokenIndex + 1]?.text === ':')) ? "variable.key" : null,
+
+    "is_json_value": (t, s) => (t.ruleName === 'jsonValue' || t.ruleHistory?.some(r => r.toLowerCase().includes('jsonvalue')) || (s?.[t.tokenIndex - 1]?.text === ':' && !t.tokenSymbol?.includes('Identifier'))) ? "string.value" : null,
+
+    "is_constant_numeric_literal": (t, s) => (['IntegerConstant', 'FloatingConstant', 'CharacterConstant', 'DigitSequence'].includes(t.tokenRule) || ['true', 'false', 'nullptr', 'NULL'].includes(t.text) || t.ruleHistory?.some(r => r.toLowerCase().includes('constant')) || t.tokenSymbol?.toLowerCase().includes('constant') || t.tokenSymbol?.toLowerCase().includes('numeric') || t.tokenSymbol?.toLowerCase().includes('digit')) ? "constant.numeric" : null,
+
+    "is_catchall_variable_fallback": (t, s) => (t.tokenSymbol?.includes('Identifier') || t.tokenRule === 'Identifier' || t.ruleName === 'identifier') ? "variable.other" : null
 };
 
 
-const ARGUMENT_INTERCEPT_SCHEMAS = {
-    "argument.resolution.worker.payload.interception.schema": (state) => {
-        const payload = state.ctxOrToken;
-        if (!payload) return;
-        
-        state.symbolicName = payload.symbolicName || payload.tokenSymbol || payload.tokenRule || state.symbolicName;
-        state.ruleName = payload.ruleName || state.ruleName;
-        state.typeInt = typeof payload.type === 'number' ? payload.type : (payload.tokenIndex ?? state.typeInt);
-        state.literalText = payload.text || state.literalText;
-        state.tokenChannel = typeof payload.channel === 'number' ? payload.channel : state.tokenChannel;
-        state.contextNode = payload.start ? payload : (payload.parent || state.contextNode);
-
-        // Flatten nested class name resolution checks
-        if (!state.ruleName && typeof payload.type === 'string') {
-            state.ruleName = payload.type.match(/rule_([a-zA-Z0-9_-]+)/)?.[1] || "";
-        }
-        if (!state.ruleName) {
-            state.ruleName = payload.textType || "";
-        }
+function toRosettaNonRecursive(ruleName, lexerSymbolicName) {
+    const parts = [];
+    if (ruleName && ROSETTA_RULE_MATRIX[ruleName]) {
+        ROSETTA_RULE_MATRIX[ruleName].split('.').forEach(p => parts.push(p));
     }
-};
+    if (lexerSymbolicName && ROSETTA_LEXER_MATRIX[lexerSymbolicName]) {
+        ROSETTA_LEXER_MATRIX[lexerSymbolicName].split('.').forEach(p => parts.push(p));
+    }
+    return parts.length > 0 ? parts.join('.') : "text";
+}
 
-const POST_PROCESS_SCHEMAS = {
-    "classification.root.scope.isolation.and.text.fallback.schema": (state) => {
-        if (!state.baseClassification.split('.')[0] || state.baseClassification.startsWith("text")) {
-            state.baseClassification = "text" + (state.baseClassification.includes('.') ? state.baseClassification.substring(state.baseClassification.indexOf('.')) : '');
+
+function structuralPartsAccumulatorPush(array, tag) {
+    if (!tag) return;
+    tag.split('.').forEach(atom => {
+        if (atom && !array.includes(atom)) {
+            array.push(atom);
         }
-    },
-    "classification.prefix.token.type.deconstruction.schema": (state) => {
-        if (state.baseClassification.startsWith("entity.name.function") || state.baseClassification === "function") return "function";
-        return state.baseClassification.replace(/^type_(text|keyword|comment|storage|support|constant)/, "$1");
-    },
-    "classification.json.key.value.strict.override.schema": (state) => {
-        if (['jsonkey', 'pair_key', 'pair'].includes(state.lowerRule)) return "variable";
-        if (['jsonvalue', 'json_value'].includes(state.lowerRule)) return "string";
-        return state.cleanBase;
-    }
-};
-
-const SERIALIZATION_METADATA_SCHEMAS = {
-    "serialization.layer.base.classification.append.schema": ({ parts, cleanBase }) => parts.push(cleanBase),
-    "serialization.layer.antlr.lexer.symbolic.name.append.schema": ({ parts, lexerSymbolicName }) => {
-        if (lexerSymbolicName && lexerSymbolicName !== "Text") parts.push(`lex_${lexerSymbolicName.toLowerCase()}`);
-    },
-    "serialization.layer.antlr.parser.rule.name.append.schema": ({ parts, ruleName }) => {
-        if (ruleName && !["text", "jsonKey"].includes(ruleName)) parts.push(`rule_${ruleName}`);
-    },
-    "serialization.layer.token.channel.stream.index.append.schema": ({ parts, tokenChannel }) => {
-        if (tokenChannel !== 0) parts.push(`chan_${tokenChannel}`);
-    },
-    "serialization.layer.lexer.integer.type.identity.append.schema": ({ parts, typeInt }) => {
-        if (typeInt !== null && !isNaN(typeInt)) parts.push(`idx_${typeInt}`);
-    },
-    "serialization.layer.raw.sanitized.grammar.identifier.append.schema": ({ parts, symbolicName, lexerSymbolicName }) => {
-        const raw = (lexerSymbolicName || symbolicName || 'symbol').toLowerCase().replace(/[^a-z0-9_-]/g, '');
-        if (raw && raw !== "text" && !raw.startsWith('keyword')) parts.push(`raw_${raw}`);
-    }
-};
+    });
+}
 
 
 function toRosettaToken(symbolicName, ruleName, lexer, parser, ctxOrToken, tokenStream) {
-    // 1. Build unified normalized state object with native parameters mapped instantly
-    const tokenState = {
+    console.log(`[STREAM PIPELINE] Processing token context via global stream index lookup.`);
+
+    // 1. Setup localized token parsing payload state natively
+    const state = {
         symbolicName: symbolicName || "", ruleName: ruleName || "",
-        lexer: lexer, parser: parser, ctxOrToken: ctxOrToken, tokenStream: tokenStream,
-        typeInt: null, literalText: "", tokenChannel: 0, contextNode: null,
-        baseClassification: "text", cleanBase: "text", lowerRule: "", lowerSymbol: "", lowerLiteral: ""
+        typeInt: null, literalText: "", tokenChannel: 0,
+        lexerSymbolicName: "", lexerLiteralName: "",
+        tokenIndex: null, ruleHistory: []
     };
 
-    // 2. Normalize and compute payload layer fields across worker bridges
-    ARGUMENT_INTERCEPT_SCHEMAS["argument.resolution.worker.payload.interception.schema"](tokenState);
-
-    const ctor = lexer?.constructor;
-    tokenState.lexerSymbolicName = tokenState.typeInt !== null ? (ctor?.symbolicNames?.[tokenState.typeInt] || "") : "";
-    tokenState.lexerLiteralName = tokenState.typeInt !== null ? (ctor?.literalNames?.[tokenState.typeInt] || "") : "";
-    tokenState.symbolicName ||= tokenState.lexerSymbolicName;
-    
-    // Normalize casing for direct matching
-    tokenState.lowerRule = tokenState.ruleName.toLowerCase();
-    tokenState.lowerSymbol = tokenState.symbolicName.toLowerCase();
-    tokenState.lowerLiteral = tokenState.literalText.toLowerCase();
-
-    // 3. Fast-path cross-reference using the comprehensive language dictionaries
-    let mapped = false;
-    if (tokenState.ruleName && ROSETTA_RULE_MATRIX[tokenState.ruleName]) {
-        tokenState.baseClassification = ROSETTA_RULE_MATRIX[tokenState.ruleName];
-        mapped = true;
-    } else if (tokenState.lexerSymbolicName && ROSETTA_LEXER_MATRIX[tokenState.lexerSymbolicName]) {
-        tokenState.baseClassification = ROSETTA_LEXER_MATRIX[tokenState.lexerSymbolicName];
-        mapped = true;
+    if (ctxOrToken) {
+        state.symbolicName = ctxOrToken.symbolicName || ctxOrToken.tokenSymbol || ctxOrToken.tokenRule || state.symbolicName;
+        state.ruleName = ctxOrToken.ruleName || state.ruleName;
+        state.typeInt = typeof ctxOrToken.tokenType === 'number' ? ctxOrToken.tokenType :
+            (typeof ctxOrToken.type === 'number' ? ctxOrToken.type : null);
+        state.literalText = ctxOrToken.text || "";
+        state.tokenChannel = typeof ctxOrToken.channel === 'number' ? ctxOrToken.channel : 0;
+        state.tokenIndex = typeof ctxOrToken.tokenIndex === 'number' ? ctxOrToken.tokenIndex : null;
+        state.ruleHistory = ctxOrToken.ruleHistory || [];
     }
 
-    // 4. Interception Engine Overrides Pass
-    const eliteInterceptors = [
-        "match.intercept.validator.dependency.dynamic.precompiler.has.reserved.clang.cinclude.control.keyword",
-        "match.intercept.override.descriptor.key.property.json.purple.variable",
-        "match.intercept.override.payload.value.literal.json.blue.string",
-        "match.intercept.walker.tree.ancestor.ast.and.context.symbol.intelligent.other.variable"
-    ];
-
-    for (const key of eliteInterceptors) {
-        const res = ROSETTA_INTERCEPTOR_RULES[key](tokenState);
-        if (res !== null) {
-            tokenState.baseClassification = res;
-            if (key === "match.intercept.validator.dependency.dynamic.precompiler.has.reserved.clang.cinclude.control.keyword") {
-                return assembleFinalMegaScope(tokenState);
-            }
-            mapped = true;
-            break;
-        }
+    const vocab = lexer?.vocabulary || lexer?.constructor?.vocabulary;
+    if (vocab && state.typeInt !== null) {
+        state.lexerSymbolicName = vocab.getSymbolicName(state.typeInt) || "";
+        state.lexerLiteralName = vocab.getLiteralName(state.typeInt) || "";
     }
+    state.symbolicName ||= state.lexerSymbolicName;
 
-    if (!mapped) {
-        for (const key in ROSETTA_INTERCEPTOR_RULES) {
-            if (eliteInterceptors.includes(key)) continue;
-            if (key === "match.intercept.line.or.block.annotation.code.source.italic.comment" && tokenState.tokenChannel !== 1 && !tokenState.lowerSymbol.includes('comment')) continue;
+    const structuralParts = [];
 
-            const res = ROSETTA_INTERCEPTOR_RULES[key](tokenState);
-            if (res !== null) {
-                tokenState.baseClassification = res;
-                break;
+    // 2. Ingest Flat Non-Recursive Core Categories First
+    const coreBaseClass = toRosettaNonRecursive(state.ruleName, state.lexerSymbolicName);
+    coreBaseClass.split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
+
+    const activeStreamTokens = tokenStream?.tokens || tokenStream || [];
+    if (state.tokenIndex !== null && activeStreamTokens.length > 0) {
+        
+        // Assemble unified configuration payload structure
+        const evaluationPayload = {
+            tokenIndex: state.tokenIndex,
+            tokenSymbol: state.symbolicName,
+            tokenRule: state.lexerSymbolicName,
+            ruleName: state.ruleName,
+            text: state.literalText,
+            channel: state.tokenChannel,
+            ruleHistory: state.ruleHistory // ◄ Feeds structural history directly to the matcher metrics
+        };
+
+        for (const associationKey in ROSETTA_NEIGHBORHOOD_ASSOCIATIONS) {
+            const matchResult = ROSETTA_NEIGHBORHOOD_ASSOCIATIONS[associationKey](evaluationPayload, activeStreamTokens);
+            if (matchResult) {
+                matchResult.split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
             }
         }
     }
 
-    // 5. Scoping Post-Processing Pipeline
-    POST_PROCESS_SCHEMAS["classification.root.scope.isolation.and.text.fallback.schema"](tokenState);
-    tokenState.cleanBase = POST_PROCESS_SCHEMAS["classification.prefix.token.type.deconstruction.schema"](tokenState);
-    tokenState.cleanBase = POST_PROCESS_SCHEMAS["classification.json.key.value.strict.override.schema"](tokenState);
-
-    // 6. Output Asset Construction Packing
-    const parts = [];
-    for (const schemaKey in SERIALIZATION_METADATA_SCHEMAS) {
-        SERIALIZATION_METADATA_SCHEMAS[schemaKey]({ 
-            parts, 
-            cleanBase: tokenState.cleanBase, 
-            lexerSymbolicName: tokenState.lexerSymbolicName, 
-            ruleName: tokenState.ruleName, 
-            tokenChannel: tokenState.tokenChannel, 
-            typeInt: tokenState.typeInt, 
-            symbolicName: tokenState.symbolicName 
+    // 4. Trace the Ancestral Rule Matrix Hierarchy sequentially
+    if (state.ruleHistory && state.ruleHistory.length > 0) {
+        state.ruleHistory.forEach(ancestorRule => {
+            // Unpack dynamic multi-language crossings safely
+            if (ROSETTA_CROSS_LANGUAGE_MAPPING[ancestorRule]) {
+                ROSETTA_CROSS_LANGUAGE_MAPPING[ancestorRule].forEach(crossCKey => {
+                    const nonRecCross = toRosettaNonRecursive(crossCKey, null);
+                    if (nonRecCross !== "text") nonRecCross.split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
+                });
+            }
+            // Append standard base rules if matched
+            const nonRecAncestor = toRosettaNonRecursive(ancestorRule, null);
+            if (nonRecAncestor !== "text") {
+                nonRecAncestor.split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
+            }
         });
     }
 
-    return parts.join('.');
+    // Remove text keywords from active tokens lists if a specialized class is present
+    let finalTokens = structuralParts.filter((item, idx) => structuralParts.indexOf(item) === idx);
+    if (finalTokens.length > 1 && finalTokens.includes("text")) {
+        finalTokens = finalTokens.filter(t => t !== "text");
+    }
+    if (finalTokens.includes("key") || finalTokens.includes("jsonkey") || state.ruleName === 'jsonKey') {
+        // Purge all leaked C storage components, expression statements, and numerical operators
+        finalTokens = finalTokens.filter(t => ![
+            "keyword", "constant", "storage", "type", "operator",
+            "assignmentexpression", "compoundstatement", "numeric", "text"
+        ].includes(t.toLowerCase()));
+
+        // Ensure variable dominance is locked down at the front line
+        if (!finalTokens.includes("variable")) finalTokens.unshift("variable");
+    }
+    // If we are looking at an explicit JSON literal string value context
+    else if (state.ruleName === 'jsonValue' && finalTokens.includes("string")) {
+        // Strip out cross-language leaks like numeric constants or operator states
+        finalTokens = finalTokens.filter(t => !["constant", "numeric", "operator", "keyword"].includes(t.toLowerCase()));
+        if (!finalTokens.includes("string")) finalTokens.unshift("string");
+    }
+    // 5. Enforce Theme Dominance Layer Order Sorting
+    for (let i = ACE_COLORED_CLASSES.length - 1; i >= 0; i--) {
+        const targetClass = ACE_COLORED_CLASSES[i];
+        if (finalTokens.includes(targetClass)) {
+            const classIndex = finalTokens.indexOf(targetClass);
+            finalTokens.splice(classIndex, 1);
+            finalTokens.unshift(targetClass);
+        }
+    }
+
+    // Append debugger metadata fields onto output trace blocks
+    if (state.lexerSymbolicName) finalTokens.push(`lex_${state.lexerSymbolicName.toLowerCase()}`);
+    if (state.ruleName) finalTokens.push(`rule_${state.ruleName.toLowerCase()}`);
+    if (state.tokenChannel !== 0) finalTokens.push(`chan_${state.tokenChannel}`);
+    if (state.typeInt !== null) finalTokens.push(`idx_${state.typeInt}`);
+
+    return finalTokens.join('.');
 }
 
 
 
-function assembleFinalMegaScope({ baseClassification, lexerSymbolicName, ruleName, tokenChannel, typeInt, symbolicName }) {
-    const structuralParts = [baseClassification];
 
-    if (lexerSymbolicName && lexerSymbolicName !== "Text") {
-        structuralParts.push(`lex_${lexerSymbolicName.toLowerCase()}`);
-    }
-
-    if (ruleName && ruleName !== "text") {
-        structuralParts.push(`rule_${ruleName}`);
-    }
-
-    // Explicitly serializes channels correctly instead of passing text layout defaults
-    if (typeof tokenChannel === 'number') {
-        structuralParts.push(`chan_${tokenChannel}`);
-    }
-
-    if (typeInt !== null && !isNaN(typeInt)) {
-        structuralParts.push(`idx_${typeInt}`);
-    }
-
-    const sanitizedRaw = (symbolicName || 'symbol').toLowerCase().replace(/[^a-z0-9_-]/g, '');
-    if (sanitizedRaw && sanitizedRaw !== "text") {
-        structuralParts.push(`raw_${sanitizedRaw}`);
-    }
-
-    return structuralParts.join('.');
-}
 
 function _resolveTokenTypeName(lexer, tokenType) {
     const Ctor = lexer.constructor;
@@ -994,6 +1013,7 @@ function _resolveTokenTypeName(lexer, tokenType) {
     return `type_${tokenType}`;
 }
 
+
 /**
  * Builds the comprehensive token payload combined with verified grammar metadata
  */
@@ -1001,11 +1021,15 @@ function _buildTokenPayload(token, rawTypeName, classification, lowerType, lexer
     const isComment = lowerType.includes('comment') || token.channel === 1;
     const isString = lowerType.includes('string') || lowerType.includes('literal') || classification.startsWith('string');
 
-    const lexerCtor = lexer ? lexer.constructor : null;
     const tokenType = token.type;
     const ruleIndex = ctx ? ctx.ruleIndex : null;
 
-    const trueLexerRuleName = (lexerCtor && lexerCtor.symbolicNames) ? lexerCtor.symbolicNames[tokenType] : "Text";
+    // Extract vocabulary managers natively from the runtime engine instances
+    const lexerVocab = lexer?.vocabulary || lexer?.constructor?.vocabulary;
+    const parserVocab = parser?.vocabulary || parser?.constructor?.vocabulary;
+
+    // Resolve the clean, authentic symbolic rule names via the vocabulary contracts
+    const trueLexerRuleName = lexerVocab ? lexerVocab.getSymbolicName(tokenType) : "Text";
 
     return {
         text: token.text,
@@ -1020,17 +1044,23 @@ function _buildTokenPayload(token, rawTypeName, classification, lowerType, lexer
         rosettaScope: classification,
 
         // =====================================================================
-        // UNIFIED COMPATIBILITY MATRIX DATA (ANTLR Grammar Blueprint)
+        // UNIFIED COMPATIBILITY MATRIX DATA (FIXED ANTLR RUNTIME ALIGNMENT)
         // =====================================================================
-        tokenIndex: tokenType,
-        tokenMode: (lexer && lexerCtor.modeNames) ? lexerCtor.modeNames[lexer._mode] : "default",
-        tokenNames: (lexerCtor && lexerCtor.literalNames) ? lexerCtor.literalNames[tokenType] : null,
-        tokenSymbol: (lexerCtor && lexerCtor.symbolicNames) ? lexerCtor.symbolicNames[tokenType] : null,
+        tokenIndex: typeof token.tokenIndex === 'number' ? token.tokenIndex : null, // ◄ Physical index in file stream
+        tokenType: tokenType,                                                       // ◄ The ANTLR numerical ID (e.g., 134)
+        tokenMode: lexer && lexer.constructor?.modeNames ? lexer.constructor.modeNames[lexer._mode] : "default",
+
+        // Vocabulary lookups resolve names correctly by absolute vocabulary contract bounds
+        tokenNames: lexerVocab ? lexerVocab.getLiteralName(tokenType) : null,
+        tokenSymbol: lexerVocab ? lexerVocab.getSymbolicName(tokenType) : null,
         tokenRule: trueLexerRuleName,
 
         symbolIndex: ruleIndex,
-        symbolicName: (parser && ruleIndex !== null) ? parser.symbolicNames[ruleIndex] : null,
-        literalName: (parser && ruleIndex !== null) ? parser.literalNames[ruleIndex] : null,
-        ruleName: (parser && ruleIndex !== null) ? parser.ruleNames[ruleIndex] : null
+        symbolicName: (parserVocab && ruleIndex !== null) ? parserVocab.getSymbolicName(ruleIndex) : null,
+        literalName: (parserVocab && ruleIndex !== null) ? parserVocab.getLiteralName(ruleIndex) : null,
+        ruleName: (parser && ruleIndex !== null && parser.ruleNames) ? parser.ruleNames[ruleIndex] : null
     };
 }
+
+
+
