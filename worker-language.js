@@ -124,7 +124,7 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
         const walker = new antlr.tree.ParseTreeWalker();
         walker.walk(configurationListener, tree);
     }
-    
+
     return [semanticOverrides, parser];
 }
 

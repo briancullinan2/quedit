@@ -80,7 +80,7 @@ function onBridgeHighlight(response) {
         }
 
         // 3. Force Ace to redraw the viewport using your newly injected arrays
-        session._emit("tokenizerUpdate", { firstRow: 0, lastRow: totalLines - 1 });
+        session._emit("tokenizerUpdate", { first: 0, last: totalLines - 1 });
     }
 }
 

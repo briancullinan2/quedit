@@ -89,13 +89,15 @@ function syncTokensToAce(session, startRow, endRow) {
         session.bgTokenizer.lines = session.tokenCache;
 
         let lastRow = endRow !== undefined ? endRow : session.tokenCache.length - 1;
-        
+
         session.bgTokenizer.fireUpdateEvent(startRow || 0, lastRow);
-        
+
         // CRITICAL FIX: Ace expects 'first' and 'last', NOT 'firstRow' and 'lastRow'
-        session._emit("tokenizerUpdate", { 
-            first: startRow || 0, 
-            last: lastRow 
+        session._emit("tokenizerUpdate", {
+            data: {
+                first: startRow || 0,
+                last: lastRow
+            }
         });
     }
 }
