@@ -6,22 +6,23 @@
 let port;
 const AntlrRegistry = self.AntlrLanguages;
 
-// =====================================================================
-// 1. CORE PIPELINE BACKEND CONSTRUCTORS
-// =====================================================================
 
 function createLexerInstance(sourceText, languageKey) {
-    const lexerName = `${languageKey}_${languageKey.charAt(0).toUpperCase() + languageKey.slice(1)}Lexer`;
-    let LexerCtor = AntlrRegistry[lexerName];
+    if (!languageKey) return null;
 
+    // 1. Force the lookup key to be fully normalized lowercase
+    const cleanKey = languageKey.toLowerCase().trim();
+    const lookupKey = `${cleanKey}_lexer`;
+
+    let LexerCtor = AntlrRegistry[lookupKey];
+
+    // Sane localized compiler overrides map
     if (!LexerCtor) {
-        if (languageKey === 'c') LexerCtor = AntlrRegistry['cpp_CLexer'];
-        if (languageKey === 'cpp') LexerCtor = AntlrRegistry['cpp_CPP14Lexer'];
-        if (languageKey === 'python') LexerCtor = AntlrRegistry['python3_Python3Lexer'];
+        if (cleanKey === 'python') LexerCtor = AntlrRegistry['python3_lexer'];
     }
 
     if (!LexerCtor) {
-        console.error(`[Worker] Language target context '${languageKey}' not found in bundle.`);
+        console.error(`[Worker] Normalized target look-up key '${lookupKey}' not found in registry matrix.`);
         return null;
     }
 
@@ -40,7 +41,7 @@ function createLexerInstance(sourceText, languageKey) {
 
         return new LexerCtor(chars);
     } catch (e) {
-        console.error("[Worker] Failed to spin up ANTLR string stream:", e);
+        console.error(`[Worker] Failed to spin up ANTLR string stream for look-up '${lookupKey}':`, e);
         return null;
     }
 }
@@ -56,17 +57,16 @@ function _safePreprocess(sourceText, languageKey, onResolveInclude, onErrorFound
 
 
 
-/**
- * Universal Structural Rule Context Deep-Scanner Pass
- */
+
 function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer, antlr) {
     const semanticOverrides = new Map();
-    const lCased = languageKey.toLowerCase();
+    if (!languageKey) return semanticOverrides;
 
-    const pName = `${lCased}_${lCased.charAt(0).toUpperCase() + lCased.slice(1)}Parser`;
-    let ParserCtor = AntlrRegistry[pName] || (lCased === 'c' ? AntlrRegistry.c_CParser : (lCased === 'cpp' ? AntlrRegistry.cpp_CPP14Parser : null));
+    // 1. Force strict lowercase flat-key parity with our normalized database registry
+    const cleanKey = languageKey.toLowerCase().trim();
+    const lookupKey = `${cleanKey}_parser`;
 
-    if (!ParserCtor) return semanticOverrides;
+    let ParserCtor = AntlrRegistry[lookupKey];
 
     const parser = new ParserCtor(tokenStream);
     parser.removeErrorListeners();
@@ -88,10 +88,20 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
     parser._interp.predictionMode = antlr.atn.PredictionMode.LL;
     parser._errHandler = new antlr.error.DefaultErrorStrategy();
 
-    let tree;
+
+    let tree = null;
     try {
-        tree = parser.compilationUnit ? parser.compilationUnit() : parser.translationUnit();
-    } catch (parseWalkError) { }
+        // Fallback array evaluation: check the instance or constructor for rule maps
+        const targetRules = parser.ruleNames || (parser.constructor && parser.constructor.ruleNames);
+        
+        if (targetRules && targetRules[0] && typeof parser[targetRules[0]] === 'function') {
+            const rootRuleName = targetRules[0]; // Resolves straight to "json" or "compilationUnit"
+            console.log(`[Worker] Dynamic execution target acquired: parser.${rootRuleName}()`);
+            tree = parser[rootRuleName]();
+        } 
+    } catch (dynamicParseError) {
+        console.warn("[Worker] Dynamic root execution failed, falling back to legacy signature gates:", dynamicParseError);
+    }
 
     if (tree) {
         const configurationListener = {
@@ -137,62 +147,61 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
 
 function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
     const unifiedSourceBuffer = _safePreprocess(sourceText, languageKey, onResolveInclude, onErrorFound);
-    const lexer = createLexerInstance(unifiedSourceBuffer, languageKey);
-    if (!lexer) return [];
+    
+    // ─── STAGE 1: SPIN UP THE VISUAL ROW BUFFER ENGINE ───
+    const visualLexer = createLexerInstance(unifiedSourceBuffer, languageKey);
+    if (!visualLexer) return [];
 
     const antlr = AntlrRegistry.antlr4;
-    const tokenStream = new antlr.CommonTokenStream(lexer);
-    try {
-        tokenStream.fill();
-    } catch (fillError) {
-        console.warn("[Worker] tokenStream.fill() threw an exception, attempting manual stream extraction:", fillError);
+    const BaseCommonStream = AntlrRegistry.CommonTokenStream || antlr.CommonTokenStream;
+    let StreamConstructor = antlr.BufferedTokenStream ? antlr.BufferedTokenStream : Object.getPrototypeOf(BaseCommonStream);
+    if (!StreamConstructor || typeof StreamConstructor !== 'function' || StreamConstructor === Function.prototype) {
+        StreamConstructor = BaseCommonStream;
     }
 
-    // Extraction checkpoint matrix: exhaust every possible location ANTLR stores token blocks
+    // Capture everything (code + channel 1 whitespace) for your UI viewport map
+    const visualTokenStream = new StreamConstructor(visualLexer);
+    try { visualTokenStream.fill(); } catch (e) {}
+
+
+    // ─── STAGE 2: SPIN UP THE ISOLATED AST PARSER ENGINE ───
+    // Build a dedicated twin lexer so its internal stream cursors are 100% private
+    const parserLexer = createLexerInstance(unifiedSourceBuffer, languageKey);
+    const parserTokenStream = new antlr.CommonTokenStream(parserLexer);
+
+    // This will now parse flawlessly on channel 0 without seeing any whitespace artifacts!
+    const [semanticOverrides, parser] = _extractSemanticOverrides(parserTokenStream, languageKey, onErrorFound, parserLexer, antlr);
+
+
+    // ─── STAGE 3: MAP THE SECURED BUFFERS DOWN THE WIRE ───
     let allTokensArray = [];
-    if (typeof tokenStream.getTokens === 'function') {
-        allTokensArray = tokenStream.getTokens();
-    }
-
-    if (!allTokensArray || allTokensArray.length === 0) {
-        allTokensArray = tokenStream.tokens || tokenStream._tokens || tokenStream.buffer || [];
-    }
-
-    // ABSOLUTE LAST RESORT FALLBACK: If the stream completely choked, pull directly from the lexer's source
-    if ((!allTokensArray || allTokensArray.length === 0) && lexer) {
-        console.warn("[Worker] Token stream cache empty. Re-tokenizing directly via Lexer core.");
-        try {
-            lexer.reset();
-            let tok = lexer.nextToken();
-            while (tok && tok.type !== antlr.Token.EOF) {
-                allTokensArray.push(tok);
-                tok = lexer.nextToken();
-            }
-        } catch (lexerFallbackError) {
-            console.error("[Worker] Total breakdown on lexer fallback scanning:", lexerFallbackError);
-        }
-    }
-
-    const [semanticOverrides, parser] = _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer, antlr);
-
-    try {
-        tokenStream.reset();
-    } catch (e) { }
+    if (typeof visualTokenStream.getTokens === 'function') allTokensArray = visualTokenStream.getTokens();
+    if (!allTokensArray || allTokensArray.length === 0) allTokensArray = visualTokenStream.tokens || [];
 
     return [allTokensArray.map((token) => {
         if (!token || token.type === antlr.Token.EOF) return null;
 
-        const rawTypeName = _resolveTokenTypeName(lexer, token.type);
+        let text = token.text || "";
+        
+        // Sanitize leading newlines out of raw whitespace blocks so they stream nicely into row buckets
+        if (token.channel === 1 && text.startsWith('\n')) {
+            text = text.substring(1);
+            if (text === "") return null; // If it was a pure newline, let the line index break handle it natively
+        }
 
+        // Use the visualLexer to map names cleanly
+        const rawTypeName = _resolveTokenTypeName(visualLexer, token.type);
+        
+        // Intercept and cross-reference semantic AST positions seamlessly
         let baselineClassification = semanticOverrides.get(token.start);
         if (!baselineClassification) {
             baselineClassification = toRosettaToken(
                 rawTypeName,
                 null,
-                lexer,
+                visualLexer,
                 parser,
                 token,
-                tokenStream,
+                visualTokenStream,
                 rawTypeName
             );
         }
@@ -202,11 +211,11 @@ function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
             baselineClassification,
             baselineClassification,
             rawTypeName.toLowerCase(),
-            lexer,
+            visualLexer,
             parser,
             null
         );
-    }).filter(Boolean), lexer, parser];
+    }).filter(Boolean), visualLexer, parser];
 }
 
 function preprocessSourceText(sourceText, languageKey, onResolveInclude, onErrorFound, visitedFiles = new Set()) {

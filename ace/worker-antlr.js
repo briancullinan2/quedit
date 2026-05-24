@@ -61,44 +61,71 @@ function processStructuralFlags(annotations, token) {
 }
 
 function mapToRowBucket(tokens, tokenLines, lexer, parser, semanticOverrides, token) {
-    // 1. Strip implicit carriage returns and newlines so Ace viewports don't crash
-    let tokenText = token.text;
-    if (tokenText.endsWith('\n')) tokenText = tokenText.slice(0, -1);
-    if (tokenText.endsWith('\r')) tokenText = tokenText.slice(0, -1);
+    const rawText = token.text || "";
+    let baseRowIndex = token.line - 1; // 0-indexed base coordinate
 
-    // If the token was just a pure newline block, do not push an empty ghost token into the row
-    if (tokenText === "" && token.text.includes('\n')) return;
-
-    const zeroIndexedRow = token.line - 1;
-    if (!tokenLines[zeroIndexedRow]) {
-        tokenLines[zeroIndexedRow] = [];
-    }
-
-    // 2. CHECK THE SEMANTIC OVERRIDES MAP FIRST (High-Fidelity AST Layer)
+    // Fetch your dynamic classification up front
     let rosettaType = semanticOverrides.get(token.start);
-
-    // 3. Fallback to Polymorphic Core Mapping if no direct AST override exists
     if (!rosettaType) {
-        // Resolve the explicit string token type name from the grammar blueprint
         const nativeSymbol = (lexer && lexer.constructor.symbolicNames) ? lexer.constructor.symbolicNames[token.type] : null;
         const rawTypeName = nativeSymbol || `type_${token.type}`;
 
-        // Pass rawTypeName explicitly to BOTH the 1st parameter (for blending) AND the 7th parameter (for raw trace)
         rosettaType = toRosettaToken(
-            rawTypeName, // symbolicName (Seeding/Blending layer)
-            null,        // ruleName
+            rawTypeName, 
+            null,        
             lexer,
             parser,
-            token,       // ctxOrToken
-            tokens,      // tokenStream
-            rawTypeName  // rawTypeName (Our explicit 7th parameter!)
+            token,       
+            tokens,      
+            rawTypeName  
         );
     }
-    tokenLines[zeroIndexedRow].push({
-        type: rosettaType,
-        value: tokenText
-    });
+
+    // ─── THE MULTI-LINE SPLITTING LOOP ───
+    // If the token contains internal line breaks, distribute the pieces safely
+    if (rawText.includes('\n')) {
+        const structuralLines = rawText.split('\n');
+
+        structuralLines.forEach((lineText, offset) => {
+            const targetRow = baseRowIndex + offset;
+
+            // Strip trailing carriage returns if present on the split fragment
+            if (lineText.endsWith('\r')) {
+                lineText = lineText.slice(0, -1);
+            }
+
+            // Ensure the target row array exists
+            if (!tokenLines[targetRow]) {
+                tokenLines[targetRow] = [];
+            }
+
+            // Do not push empty string artifacts on trailing split lines
+            if (lineText === "" && offset === structuralLines.length - 1) {
+                return;
+            }
+
+            tokenLines[targetRow].push({
+                type: rosettaType,
+                value: lineText
+            });
+        });
+    } else {
+        // ─── STANDARD SINGLE-LINE TRACKING ───
+        let tokenText = rawText;
+        if (tokenText.endsWith('\r')) tokenText = tokenText.slice(0, -1);
+
+        if (!tokenLines[baseRowIndex]) {
+            tokenLines[baseRowIndex] = [];
+        }
+
+        tokenLines[baseRowIndex].push({
+            type: rosettaType,
+            value: tokenText
+        });
+    }
 }
+
+
 
 function onUpdate() {
     // Safety check: if no document has been assigned yet, slide out

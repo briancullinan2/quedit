@@ -20,6 +20,7 @@ function getOrCreateAceSession(fileId, content) {
     session.setMode(mode);
     
     
+    /*
     ace.config.loadModule(["mode", "antlr_worker"], function () {
         require(["ace/mode/antlr_worker"], function (mod) {
             // Instantiate our clean worker bridge passing the session
@@ -27,11 +28,13 @@ function getOrCreateAceSession(fileId, content) {
             
             // Derive a language identity tag from the file suffix (e.g., 'c', 'cpp', 'js')
             const ext = fileId.split('.').pop().toLowerCase();
+            worker.setLanguageTarget(ext, fileId);
             
             // Inform the backend thread what language grammar template to execute
-            worker.setLanguageTarget(ext, fileId);
+            
         });
     });
+    */
     
 
     if (fileId.endsWith('.c') || fileId.endsWith('.h')) {

@@ -40,6 +40,9 @@ function clear(session) {
     session ||= session || activeEditor?.getSession() || aceEditor?.getSession() || ace?.getSession();
 
     // Remove active visual line highlights
+    if (!session.activeMarkerIds) {
+        session.activeMarkerIds = []
+    }
     session.activeMarkerIds.forEach(function (markerId) {
         session.removeMarker(markerId);
     });
@@ -160,11 +163,15 @@ function refreshActiveEditorView(session) {
         || window.currentOpenFileId || session.id || "";
 
     // Strip previous drawing layers
+    if (!session.activeMarkerIds) {
+        session.activeMarkerIds = []
+    }
     session.activeMarkerIds.forEach(function (id) {
         session.removeMarker(id);
     });
     session.activeMarkerIds = [];
-
+    if (!session.fileAnnotationsMap)
+        session.fileAnnotationsMap = { system: [] }
     let systemAnnotations = session.fileAnnotationsMap["system"] || [];
     let targetAnnotations = [];
 

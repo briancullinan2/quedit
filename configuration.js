@@ -57,6 +57,7 @@ function saveToken() {
     if (window.api.github_token) {
         tokenInput.value = ''; // Clear input for security
         alert('Token saved to local storage.');
+        setTimeout(() => modal.classList.add('hidden'), 200);
     }
 }
 
