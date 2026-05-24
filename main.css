@@ -1568,6 +1568,25 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
+.ace-dawn .ace_gutter-cell .ace_fold-widget {
+    transition: opacity 0.15ms ease, color 0.15ms ease;
+    font-family: "Courier New", Courier, monospace;
+    font-weight: bold;
+}
+
+/* Gutter icon hover states */
+.ace-dawn .ace_gutter-cell:hover .ace_fold-widget {
+    color: rgb(from var(--ace-selection-bg) r g b / 80%) !important;
+}
+
+/* Style for the inline collapsed block pill text placeholder (... ) */
+.ace-dawn .ace_fold {
+    background-color: rgb(from var(--ace-selection-bg) r g b / 10%) !important;
+    border: 1px solid rgb(from var(--ace-selection-bg) r g b / 30%) !important;
+    color: #5A525F !important;
+    font-style: normal !important;
+}
+
 
 .not-hidden {}
 

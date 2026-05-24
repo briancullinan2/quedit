@@ -255,6 +255,11 @@ define("ace/mode/antlr_worker", [
                 handleWorkerAnnotate(session, response);
             }
         });
+        this.on("foldRegionsCalculated", function (response) {
+            if (typeof handleWorkerFoldRegions === 'function') {
+                handleWorkerFoldRegions(session, response.data);
+            }
+        });
 
         this.on("terminate", function (response) {
             session.clearAnnotations();
@@ -319,3 +324,93 @@ define("ace/mode/antlr_worker", [
 
     exports.Mode = Mode;
 });
+
+
+
+/**
+ * Core Gutter Plugin: Man-in-the-middle handler that overrides Ace's 
+ * internal template string generators to force VS Code style chevrons.
+ */
+function handleWorkerFoldRegions(session, data) {
+    const blocks = data.blocks || [];
+    session.antlrDiscoveredFoldBlocks = blocks;
+
+    const renderer = aceEditor.renderer;
+    if (!renderer || !renderer.$gutterLayer) return;
+
+    // ─── 1. FORCE THE IN-MEMORY ARRAY SYSTEM TO SHIFT STATES ───
+    session.foldWidgets = [];
+    for (let i = 0; i < session.getLength(); i++) {
+        const humanRow = i + 1;
+        const hasBlockStart = blocks.some(b => b.startLine === humanRow);
+        session.foldWidgets[i] = hasBlockStart ? "start" : "";
+    }
+
+    // ─── 2. PLUG NATIVE RANGE OVERRIDES FOR CLICK INTERACTIONS ───
+    session.getFoldWidget = function(row) {
+        return session.foldWidgets[row] || "";
+    };
+
+    session.getFoldWidgetRange = function(row) {
+        const humanRow = row + 1;
+        const aceRange = ace.require("ace/range").Range;
+
+        // Specificity sort: prioritize the narrowest nested inner rule on multi-block lines
+        const targetBlock = (session.antlrDiscoveredFoldBlocks || [])
+            .filter(b => b.startLine === humanRow)
+            .sort((a, b) => (a.endLine - a.startLine) - (b.endLine - b.startLine))[0];
+
+        if (targetBlock) {
+            const lineText = session.getLine(row);
+            const startColumn = lineText.search(/\S/) !== -1 ? lineText.search(/\S/) : 0;
+            return new aceRange(row, startColumn, targetBlock.endLine - 1, session.getLine(targetBlock.endLine - 1).length);
+        }
+        return null;
+    };
+
+    // ─── 3. OVERRIDE THE PHYSICAL HTML STRING GENERATOR ───
+    // This intercepts Ace's internal cell compiler right before strings append to the DOM layer!
+    
+    return
+    if (!renderer.$gutterLayer.originalUpdateCellHtml) {
+        renderer.$gutterLayer.originalUpdateCellHtml = renderer.$gutterLayer.update;
+        
+        renderer.$gutterLayer.update = function(config) {
+            // Run the standard core gutter row generator loop array
+            this.originalUpdateCellHtml(config);
+            
+            // Instantly grab the freshly drawn cells out of the virtual layer layout container
+            const cells = this.element.children;
+            for (let i = 0; i < cells.length; i++) {
+                const cell = cells[i];
+                const rowText = cell.textContent.replace(/[^\d]/g, '');
+                const rowIdx = parseInt(rowText, 10) - 1;
+                
+                if (isNaN(rowIdx)) continue;
+
+                const humanRow = rowIdx + 1;
+                const hasBlockStart = (session.antlrDiscoveredFoldBlocks || []).some(b => b.startLine === humanRow);
+
+                // Fetch the inner placeholder span node container
+                let span = cell.querySelector("span");
+                if (span) {
+                    if (hasBlockStart) {
+                        const isFolded = session.isRowFolded(rowIdx);
+                        // Inject the exact multi-class structure Ace requires to trigger mouse events
+                        span.className = `ace_fold-widget ace_start ${isFolded ? "ace_closed" : "ace_open"}`;
+                        span.style.display = "inline-block";
+                        span.style.visibility = "visible";
+                    } else {
+                        span.className = "";
+                        span.style.display = "none";
+                    }
+                }
+            }
+        };
+    }
+
+    // ─── 4. FLUSH BUFFER AND RERENDER FULL MESH ───
+    renderer.$gutterLayer.config = null; 
+    session._emit("changeFoldWidget");
+    aceEditor.renderer.updateFull(true);
+}

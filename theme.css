@@ -1398,6 +1398,58 @@ body {
     position: absolute;
 }
 
+/*
+.ace_gutter-cell .ace_fold-widget {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 16px !important;
+    height: 16px !important;
+    cursor: pointer !important;
+}
+
+.ace_fold-widget.ace_start:before {
+    content: "▼" !important;
+    font-size: 10px;
+    color: rgb(from var(--ace-selection-bg, #234A97) r g b / 60%);
+}
+
+.ace_fold-widget.ace_start.ace_open:before {
+    content: "▼" !important;
+}
+
+.ace_fold-widget.ace_start.ace_closed:before {
+    content: "▶" !important;
+    color: rgb(from var(--ace-selection-bg, #234A97) r g b / 90%) !important;
+}
+
+.ace_gutter-layer .ace_gutter-cell span.ace_fold-widget {
+    display: inline-block !important;
+    visibility: visible !important;
+    width: 12px !important;
+    height: 12px !important;
+    margin-left: 4px !important;
+    cursor: pointer !important;
+}
+
+.ace_gutter-layer .ace_gutter-cell span.ace_fold-widget.ace_open:before {
+    content: "▼" !important;
+    font-size: 9px !important;
+    position: relative;
+    top: -1px;
+    color: rgb(from var(--ace-selection-bg, #234A97) r g b / 50%) !important;
+}
+
+.ace_gutter-layer .ace_gutter-cell span.ace_fold-widget.ace_closed:before {
+    content: "▶" !important;
+    font-size: 9px !important;
+    position: relative;
+    top: -1px;
+    color: rgb(from var(--ace-selection-bg, #234A97) r g b / 90%) !important;
+}
+
+*/
+
 #assetlist,
 #gamelist,
 #database,

@@ -1420,3 +1420,69 @@ function extractCurrentBlock(codeStr, lineNumber, langId) {
 
 
 
+/**
+ * Agnostic ANTLR Visitor that dynamically captures multi-line code blocks 
+ * across any grammar based on universal rule structural names.
+ */
+class AntlrBlockCollectorVisitor {
+    constructor(parser) {
+        this.parser = parser;
+        this.blocks = [];
+        
+        // Explicit list of known block-defining rule signatures across your 40 languages
+        this.blockRuleIdentifiers = new Set([
+            "compoundstatement", "functionbody", "blockitemlist", "block",
+            "obj", "arr", "initializerlist", "memberdeclarationlist",
+            "statement", "selectionstatement", "iterationstatement",
+            "asmdatapayload", "assembly_payload", "methoddeclaration"
+        ]);
+    }
+
+    /**
+     * Entry execution hook to scan the generated AST
+     */
+    collect(tree) {
+        if (!tree) return this.blocks;
+        this.visit(tree);
+        return this.blocks;
+    }
+
+    /**
+     * Recursive structural tree walker node pass
+     */
+    visit(ctx) {
+        if (!ctx) return;
+
+        if (ctx.ruleIndex !== undefined) {
+            const rawRuleName = this.parser.ruleNames[ctx.ruleIndex];
+            const lowerRuleName = rawRuleName ? rawRuleName.toLowerCase() : "";
+
+            // If the current node represents a multi-line structural container boundary
+            if (this.blockRuleIdentifiers.has(lowerRuleName) && ctx.start && ctx.stop) {
+                const startToken = ctx.start;
+                const endToken = ctx.stop;
+
+                const startLine = startToken.line;
+                const endLine = endToken.line;
+
+                // Only log and harvest blocks that span across multiple line rows
+                if (startLine < endLine) {
+                    this.blocks.push({
+                        ruleName: rawRuleName,
+                        startLine: startLine,
+                        endLine: endLine,
+                        startIndex: startToken.start,
+                        endIndex: endToken.stop + 1
+                    });
+                }
+            }
+        }
+
+        // Deep-walk through all child tree node branches sequentially
+        if (ctx.children && ctx.children.length > 0) {
+            for (let i = 0; i < ctx.children.length; i++) {
+                this.visit(ctx.children[i]);
+            }
+        }
+    }
+}

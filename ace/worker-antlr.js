@@ -219,6 +219,13 @@ self.addEventListener('message', function (e) {
         return
     }
 
+
+    if (msg.command === 'getFoldRegions') {
+        e.stopImmediatePropagation()
+        return executeGetFoldRegionsCommand(msg, antlrProcessor.sender)
+    }
+
+
     // 2. SOVEREIGN BOOTSTRAP INITIALIZATION
     if (msg.command === "importScripts") {
         // Let the worker thread download your dependencies cleanly
@@ -255,3 +262,90 @@ self.addEventListener('message', function (e) {
     }
 }, true);
 
+/**
+ * Standalone Worker Command: Dynamically parses an active document and harvests
+ * structural blocks for code folding and editor gutter highlights.
+ */
+function executeGetFoldRegionsCommand(msg, sender) {
+    // 1. RECOVER WORKER CONTEXT HOOKS
+    const activeDoc = antlrProcessor.doc || self.doc || (typeof globalDoc !== 'undefined' ? globalDoc : null);
+    if (!activeDoc) {
+        console.warn("[Worker Fold] Execution failed: Active document stream buffer is missing.");
+        return;
+    }
+
+    const codeString = activeDoc.getValue();
+    const languageKey = antlrProcessor.languagekey || self.languageKey || "c";
+    
+    // Resolve core ANTLR library context reference out of the worker global space
+    const antlrCore = AntlrRegistry?.antlr4 || self.antlr4 || (self.antlr && self.antlr.core) || antlr;
+    if (!antlrCore) {
+        console.error("[Worker Fold] Critical Error: ANTLR runtime core library context lost.");
+        return;
+    }
+
+    // 2. PARSER CONSTRUCTION PIPELINE
+    const cleanKey = languageKey.toLowerCase().trim();
+    const lexerLookupKey = `${cleanKey}_lexer`;
+    const parserLookupKey = `${cleanKey}_parser`;
+
+    let LexerCtor = AntlrRegistry[lexerLookupKey];
+    let ParserCtor = AntlrRegistry[parserLookupKey];
+
+    if (!LexerCtor || !ParserCtor) {
+        console.warn(`[Worker Fold] No valid ANTLR grammars registered for language key: ${languageKey}`);
+        return;
+    }
+
+    // Spin up lightweight input char-stream frameworks natively
+    //const chars = new antlrCore.InputStream(codeString);
+    const lexer = createLexerInstance(codeString, languageKey);
+    const tokens = new antlrCore.CommonTokenStream(lexer);
+    const parser = new ParserCtor(tokens);
+
+    // Mute console errors during layout-only block parsing runs
+    parser.removeErrorListeners();
+    parser._interp.predictionMode = antlrCore.atn.PredictionMode.SLL; // Use fast SLL mode for speed on layout scans
+    parser._errHandler = new antlrCore.error.BailErrorStrategy ? new antlrCore.error.BailErrorStrategy() : new antlrCore.error.DefaultErrorStrategy();
+
+    // 3. GENERATE AST SYNTAX TREE SKELETON
+    let tree = null;
+    try {
+        const targetRules = parser.ruleNames || (parser.constructor && parser.constructor.ruleNames);
+        if (targetRules && targetRules[0] && typeof parser[targetRules[0]] === 'function') {
+            const rootRuleName = targetRules[0]; // Matches base rules like "compilationUnit" or "json"
+            tree = parser[rootRuleName]();
+        }
+    } catch (parseFallbackError) {
+        // If Bail Strategy tripped under SLL, drop back to LL mode quickly for deep checking
+        try {
+            tokens.reset();
+            parser._interp.predictionMode = antlrCore.atn.PredictionMode.LL;
+            parser._errHandler = new antlrCore.error.DefaultErrorStrategy();
+            const rootRuleName = parser.ruleNames[0];
+            tree = parser[rootRuleName]();
+        } catch (treeCrash) {
+            console.error("[Worker Fold] Syntax compilation completely blocked context generation: ", treeCrash);
+            return;
+        }
+    }
+
+    // 4. RUN AGNOSTIC BLOCK HARVEST VISITOR
+    if (tree) {
+        try {
+            const blockVisitor = new AntlrBlockCollectorVisitor(parser);
+            const discoveredBlocks = blockVisitor.collect(tree);
+
+            console.log(`[Worker Fold Success] Extracted ${discoveredBlocks.length} regions for language: ${languageKey}`);
+
+            // 5. EMIT BOUNDARIES IMMEDIATELY BACK TO MAIN THREAD VIA CHANNELS
+            sender.emit("foldRegionsCalculated", {
+                fileId: self.activeFileId || msg.args?.[0] || "active_buffer",
+                blocks: discoveredBlocks
+            });
+
+        } catch (visitorError) {
+            console.warn("[Worker Fold] AntlrBlockCollectorVisitor invocation error: ", visitorError);
+        }
+    }
+}

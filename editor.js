@@ -18,8 +18,7 @@ function getOrCreateAceSession(fileId, content) {
 
     const mode = getModeByFilename(fileId);
     session.setMode(mode);
-    
-    
+
     /*
     ace.config.loadModule(["mode", "antlr_worker"], function () {
         require(["ace/mode/antlr_worker"], function (mod) {
@@ -35,7 +34,7 @@ function getOrCreateAceSession(fileId, content) {
         });
     });
     */
-    
+
 
     if (fileId.endsWith('.c') || fileId.endsWith('.h')) {
         session.setTabSize(4);
@@ -63,7 +62,11 @@ aceEditor.setOptions({
     scrollPastEnd: 0.9,       // Keeps cursor centered when adding new code at EOF
     showPrintMargin: true,
     navigateWithinSoftTabs: true,
-    printMarginColumn: 80
+    printMarginColumn: 80,
+    foldStyle: 'markbegin',
+    showFoldWidgets: true,
+    fadeFoldWidgets: false,
+    selectInitFoldWithBlock: true,
     //animatedScroll: true,
     //autoScrollEditorIntoView: false,
 })
@@ -141,7 +144,7 @@ function parseToHex(colorStr, backgroundStr = null) {
  */
 function handleWorkerBlockHighlight(session, response) {
     const aceRange = ace.require("ace/range").Range;
-    
+
     // Clear the old background marker overlay if it exists
     if (currentBlockMarkerId !== null) {
         session.removeMarker(currentBlockMarkerId);
@@ -158,8 +161,8 @@ function handleWorkerBlockHighlight(session, response) {
 
     // Inject background marker layer (class name targets your theme CSS style)
     currentBlockMarkerId = session.addMarker(
-        highlightRange, 
-        "ace_active_block_scope_highlight", 
+        highlightRange,
+        "ace_active_block_scope_highlight",
         "fullLine"
     );
 }
@@ -203,7 +206,7 @@ function onBlockTrackerCursorChange() {
         if (!lastPoint || lastPoint.fileId !== currentFile || Math.abs(lastPoint.row - humanRow) > 5) {
             if (typeof NavHistory !== 'undefined') NavHistory.push(currentFile, humanRow, humanCol);
         }
-        
+
         if (typeof window.updateEditorLineIds === 'function') {
             window.updateEditorLineIds();
         }
@@ -214,7 +217,13 @@ function onBlockTrackerCursorChange() {
                 event: "calculateActiveBlockRange",
                 data: { lineNumber: humanRow }
             });
+
+            session.$worker.$worker.postMessage({
+                event: "getFoldRegions",
+                data: { fileId: session.workspaceFileId }
+            });
         }
+
     }, 150);
 }
 
@@ -222,7 +231,7 @@ function onBlockTrackerCursorChange() {
 // 1. Listen to global session swaps (Fires when changing files, tabs, or buffers)
 aceEditor.on("changeSession", function (e) {
     console.log("[ACE SESSION SWAP] New file context mounted. Re-binding tracking listeners.");
-    
+
     // Clear out the old visual block marker from the dead session so it doesn't leave ghost artifacts
     if (currentBlockMarkerId !== null && e.oldSession) {
         e.oldSession.removeMarker(currentBlockMarkerId);
@@ -231,7 +240,7 @@ aceEditor.on("changeSession", function (e) {
 
     // Bind your look-around listener directly onto the incoming fresh session selection layer
     bindBlockTrackerToSession(e.session);
-    
+
     // Instant execution trigger so the block highlights the moment the new file flashes open
     onBlockTrackerCursorChange();
 });
@@ -748,7 +757,7 @@ function doAceEditorMouse(e) {
         // Strip away raw newline formatting if it's already a complex multiline string layout block
         let textContent = anno.text || "";
         let prefix = anno.type === "error" ? "❌ Error: " : (anno.type === "warning" ? "⚠️ Warning: " : "ℹ️ Info: ");
-        
+
         return prefix + textContent;
     }).join("\n\n");
 
@@ -759,7 +768,7 @@ function doAceEditorMouse(e) {
     globalTooltip.style.position = 'absolute';
     globalTooltip.style.display = 'block';
     globalTooltip.style.opacity = 1;
-    globalTooltip.style.zIndex = 99999; 
+    globalTooltip.style.zIndex = 99999;
 
     // Compute pixel positioning alignments against the editor's active layout grid
     var rowCoords = window.aceEditor.renderer.textToScreenCoordinates(row, 0);
