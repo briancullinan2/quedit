@@ -1391,6 +1391,12 @@ body {
     padding: 0 10px;
 }
 
+#editor .ace_marker-layer .ace_active_block_scope_highlight {
+    background-color: rgb(from var(--ace-selection-bg, rgba(39, 95, 255, 0.3)) r g b / 15%) !important;
+    border-left: 3px solid rgb(from var(--ace-selection-bg, rgba(39, 95, 255, 0.3)) r g b / 70%) !important;
+    border-radius: 2px 0 0 2px;
+    position: absolute;
+}
 
 #assetlist,
 #gamelist,

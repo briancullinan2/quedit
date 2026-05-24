@@ -184,6 +184,10 @@ function refreshActiveEditorView(session) {
         }
     }
 
+    if(!session.workerAnnotations) {
+        session.workerAnnotations = []
+    }
+
     // Combine everything into a single layout array
     let finalAnnotations = systemAnnotations
         .concat(targetAnnotations)

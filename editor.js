@@ -136,30 +136,110 @@ function parseToHex(colorStr, backgroundStr = null) {
 }
 
 
+/**
+ * Intercepts worker block range coordinates and forces visual layer renders
+ */
+function handleWorkerBlockHighlight(session, response) {
+    const aceRange = ace.require("ace/range").Range;
+    
+    // Clear the old background marker overlay if it exists
+    if (currentBlockMarkerId !== null) {
+        session.removeMarker(currentBlockMarkerId);
+        currentBlockMarkerId = null;
+    }
+
+    // Extract the worker's 1-based bounds calculation
+    const { startLine, endLine } = response;
+    if (!startLine || !endLine) return;
+
+    // Convert values back to Ace's internal 0-indexed column system
+    // Selects full lines cleanly from the first character of the start line to the end line
+    const highlightRange = new aceRange(startLine - 1, 0, endLine - 1, Number.MAX_SAFE_INTEGER);
+
+    // Inject background marker layer (class name targets your theme CSS style)
+    currentBlockMarkerId = session.addMarker(
+        highlightRange, 
+        "ace_active_block_scope_highlight", 
+        "fullLine"
+    );
+}
+
+
+
+
+// Global tracking handles for debouncing and markers
 let navTimer;
+let currentBlockMarkerId = null;
 
-aceEditor.on("changeSelection", function () {
-    // FIX: If the user is selecting a block of text, do not interrupt them
-    //if (!aceEditor.selection.isEmpty()) return; 
+/**
+ * Attaches the high-fidelity cursor look-around pipeline to an active session
+ */
+function bindBlockTrackerToSession(session) {
+    if (!session || !session.selection) return;
 
+    // Remove any pre-existing tracker handle on this session to prevent duplicate fire leaks
+    session.selection.off("changeCursor", onBlockTrackerCursorChange);
+
+    // Bind the execution frame cleanly
+    session.selection.on("changeCursor", onBlockTrackerCursorChange);
+}
+
+/**
+ * Core event execution logic frame
+ */
+function onBlockTrackerCursorChange() {
     if (typeof NavHistory !== 'undefined' && NavHistory.isNavigating) return;
 
     clearTimeout(navTimer);
     navTimer = setTimeout(() => {
+        const session = aceEditor.getSession();
         const pos = aceEditor.getCursorPosition();
         const currentFile = typeof window.currentOpenFileId !== 'undefined' ? window.currentOpenFileId : null;
 
-        // Ground coordinates to human 1-based format inside tracking tables
         const humanRow = pos.row + 1;
         const humanCol = pos.column + 1;
 
-        const lastPoint = NavHistory.stack[NavHistory.index];
+        const lastPoint = typeof NavHistory !== 'undefined' ? NavHistory.stack[NavHistory.index] : null;
         if (!lastPoint || lastPoint.fileId !== currentFile || Math.abs(lastPoint.row - humanRow) > 5) {
-            NavHistory.push(currentFile, humanRow, humanCol);
+            if (typeof NavHistory !== 'undefined') NavHistory.push(currentFile, humanRow, humanCol);
         }
-        window.updateEditorLineIds()
-    }, 500);
+        
+        if (typeof window.updateEditorLineIds === 'function') {
+            window.updateEditorLineIds();
+        }
+
+        // Emit block range calculations natively to the active web worker thread
+        if (session && session.$worker && session.$worker.$worker) {
+            session.$worker.$worker.postMessage({
+                event: "calculateActiveBlockRange",
+                data: { lineNumber: humanRow }
+            });
+        }
+    }, 150);
+}
+
+// ─── THE LIFECYCLE INTERCEPTOR ───
+// 1. Listen to global session swaps (Fires when changing files, tabs, or buffers)
+aceEditor.on("changeSession", function (e) {
+    console.log("[ACE SESSION SWAP] New file context mounted. Re-binding tracking listeners.");
+    
+    // Clear out the old visual block marker from the dead session so it doesn't leave ghost artifacts
+    if (currentBlockMarkerId !== null && e.oldSession) {
+        e.oldSession.removeMarker(currentBlockMarkerId);
+        currentBlockMarkerId = null;
+    }
+
+    // Bind your look-around listener directly onto the incoming fresh session selection layer
+    bindBlockTrackerToSession(e.session);
+    
+    // Instant execution trigger so the block highlights the moment the new file flashes open
+    onBlockTrackerCursorChange();
 });
+
+// 2. Boot-strapping initialization trigger for the very first file opened on page load
+bindBlockTrackerToSession(aceEditor.getSession());
+
+
 
 aceEditor.on('change', () => {
     debounceFileChange(window.aceEditor);

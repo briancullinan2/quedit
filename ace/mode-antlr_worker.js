@@ -185,7 +185,7 @@ define("ace/mode/antlr_worker", [
     "exports",
     "module",
     "ace/lib/oop",
-    "ace/mode/text", 
+    "ace/mode/text",
     "ace/worker/worker_client",
     "ace/mode/text_highlight_rules"
 ], function (require, exports, module) {
@@ -212,7 +212,7 @@ define("ace/mode/antlr_worker", [
         }
 
         // Global prototype registration method
-        this.setLanguageTarget = function(langKey, fileId) {
+        this.setLanguageTarget = function (langKey, fileId) {
             if (this.$worker) {
                 this.$worker.postMessage({
                     command: "setLanguageContext",
@@ -244,14 +244,18 @@ define("ace/mode/antlr_worker", [
                 handleWorkerHighlight(session, response);
             }
         });
-
+        this.on("blockRange", function (response) {
+            if (typeof handleWorkerBlockHighlight === 'function') {
+                handleWorkerBlockHighlight(session, response.data);
+            }
+        });
         this.on("annotate", function (response) {
             session.setAnnotations(response.data);
             if (typeof handleWorkerAnnotate === 'function') {
                 handleWorkerAnnotate(session, response);
             }
         });
-        
+
         this.on("terminate", function (response) {
             session.clearAnnotations();
             if (typeof clear === 'function') clear(session);
@@ -264,7 +268,7 @@ define("ace/mode/antlr_worker", [
 
     // ─── 2. THE MODE CONTAINER SPECIFICATION ───
     var Mode = function () {
-        this.HighlightRules = TextHighlightRules; 
+        this.HighlightRules = TextHighlightRules;
     };
     oop.inherits(Mode, TextMode);
 

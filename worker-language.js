@@ -378,7 +378,7 @@ const onAnyMessage = async event => {
             case 'folds':
                 output = getFoldRegions(data.text, data.language);
                 break;
-
+           
             default:
                 output = { status: 'unhandled_command' };
                 break;

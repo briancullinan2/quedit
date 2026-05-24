@@ -65,7 +65,7 @@ function mapToRowBucket(tokens, tokenLines, lexer, parser, semanticOverrides, to
     let baseRowIndex = token.line - 1; // 0-indexed base coordinate
 
     // Fetch your dynamic classification up front
-    let rosettaType =  token.rosettaScope;// semanticOverrides.get(token.start);
+    let rosettaType = token.rosettaScope;// semanticOverrides.get(token.start);
     //if (!rosettaType) {
     //    const nativeSymbol = (lexer && lexer.constructor.symbolicNames) ? lexer.constructor.symbolicNames[token.type] : null;
     //    const rawTypeName = nativeSymbol || `type_${token.type}`;
@@ -191,11 +191,32 @@ function setupInheritance() {
 
 self.addEventListener('message', function (e) {
     const msg = e.data;
-
+    msg.command ||= msg.event
     // 1. FILTER HIGH-FIDELITY HOOKS
     if (msg.command && ['customHighlightRoute', 'requestAST'].includes(msg.command)) {
         e.stopImmediatePropagation();
         return;
+    }
+
+    if (msg.command === "calculateActiveBlockRange") {
+        const cursorRow = msg.data.lineNumber; // 1-based lineNumber passed from front-end
+        const codeString = antlrProcessor.doc.getValue(); // Get running buffer from doc wrapper
+        const runningLangId = antlrProcessor.languageKey || "c";
+
+        try {
+            // Execute your streamlined look-around block algorithm
+            const blockMeta = extractCurrentBlock(codeString, cursorRow, runningLangId);
+
+            // Post the clean range boundaries right back up the thread channel
+            antlrProcessor.sender.emit("blockRange", {
+                startLine: blockMeta.startLine,
+                endLine: blockMeta.endLine
+            })
+        } catch (err) {
+            console.error("[Worker Block Trace Error]: ", err);
+        }
+        e.stopImmediatePropagation();
+        return
     }
 
     // 2. SOVEREIGN BOOTSTRAP INITIALIZATION

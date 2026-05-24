@@ -5,76 +5,76 @@
 // =====================================================================
 const TEXT_LANGUAGE_DETECTOR_WATERFALL = [
     // ─── 1. BINARY & VIRTUAL MACHINE CORE SIGNATURES ───
-    { id: "wat",        match: (s, b) => s.trim().startsWith('(module') || s.includes('(func ') || s.includes('(import "env"') },
-    { id: "wasm",       match: (s, b) => b?.[0] === 0x00 && b?.[1] === 0x61 && b?.[2] === 0x73 && b?.[3] === 0x6D },
-    { id: "qvm",        match: (s, b) => b?.[0] === 0x44 && b?.[1] === 0x14 && b?.[2] === 0x72 && b?.[3] === 0x12 },
-    { id: "bsp",        match: (s, b) => b?.[0] === 0x49 && b?.[1] === 0x42 && b?.[2] === 0x53 && b?.[3] === 0x50 }, // "IBSP"
-    { id: "md3",        match: (s, b) => b?.[0] === 0x49 && b?.[1] === 0x44 && b?.[2] === 0x50 && b?.[3] === 0x33 }, // "IDP3"
+    { id: "wat", match: (s, b) => s.trim().startsWith('(module') || s.includes('(func ') || s.includes('(import "env"') },
+    { id: "wasm", match: (s, b) => b?.[0] === 0x00 && b?.[1] === 0x61 && b?.[2] === 0x73 && b?.[3] === 0x6D },
+    { id: "qvm", match: (s, b) => b?.[0] === 0x44 && b?.[1] === 0x14 && b?.[2] === 0x72 && b?.[3] === 0x12 },
+    { id: "bsp", match: (s, b) => b?.[0] === 0x49 && b?.[1] === 0x42 && b?.[2] === 0x53 && b?.[3] === 0x50 }, // "IBSP"
+    { id: "md3", match: (s, b) => b?.[0] === 0x49 && b?.[1] === 0x44 && b?.[2] === 0x50 && b?.[3] === 0x33 }, // "IDP3"
 
     // ─── 2. TEXT STRUCTURAL & DOMAIN SPECIFIC LAYOUTS ───
-    { id: "quakemap",   match: (s, b) => s.includes('// entity ') && s.includes('"classname"') && s.includes(' brushes') },
-    { id: "json",       match: (s, b) => s.trim().startsWith('{') && s.includes('":') && (s.includes('",') || s.includes('"\n') || s.trim().endsWith('}')) },
-    { id: "html",       match: (s, b) => /<!doctype\s+html|<\/html>|<body|<script/i.test(s) },
-    { id: "xml",        match: (s, b) => s.trim().startsWith('<?xml') || (s.includes('</') && /<[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+/i.test(s)) },
-    { id: "graphql",    match: (s, b) => s.includes('query ') || s.includes('mutation ') || s.includes('type ') && s.includes(' {') && !s.includes(';') },
-    { id: "css3",       match: (s, b) => s.includes('{') && s.includes('}') && s.includes(':') && s.includes(';') && !s.includes('function ') && !s.includes('let ') },
-    { id: "csv",        match: (s, b) => s.split('\n').slice(0, 3).every(l => l.split(',').length > 2 && !l.includes('{') && !l.includes(';')) },
-    { id: "toml",       match: (s, b) => s.includes('[') && s.includes(']') && s.includes('=') && !s.includes('{') && !s.includes(';') && !s.includes('function') },
+    { id: "quakemap", match: (s, b) => s.includes('// entity ') && s.includes('"classname"') && s.includes(' brushes') },
+    { id: "json", match: (s, b) => s.trim().startsWith('{') && s.includes('":') && (s.includes('",') || s.includes('"\n') || s.trim().endsWith('}')) },
+    { id: "html", match: (s, b) => /<!doctype\s+html|<\/html>|<body|<script/i.test(s) },
+    { id: "xml", match: (s, b) => s.trim().startsWith('<?xml') || (s.includes('</') && /<[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+/i.test(s)) },
+    { id: "graphql", match: (s, b) => s.includes('query ') || s.includes('mutation ') || s.includes('type ') && s.includes(' {') && !s.includes(';') },
+    { id: "css3", match: (s, b) => s.includes('{') && s.includes('}') && s.includes(':') && s.includes(';') && !s.includes('function ') && !s.includes('let ') },
+    { id: "csv", match: (s, b) => s.split('\n').slice(0, 3).every(l => l.split(',').length > 2 && !l.includes('{') && !l.includes(';')) },
+    { id: "toml", match: (s, b) => s.includes('[') && s.includes(']') && s.includes('=') && !s.includes('{') && !s.includes(';') && !s.includes('function') },
     { id: "properties", match: (s, b) => s.split('\n').every(l => !l.trim() || l.trim().startsWith('#') || l.trim().startsWith('!') || l.includes('=')) && s.includes('=') && !s.includes('{') },
 
     // ─── 3. DEVOPS, ANNOTATIONS & SYSTEM SCHEMAS ───
-    { id: "terraform",  match: (s, b) => s.includes('resource "') || s.includes('variable "') || s.includes('provider "') || s.includes('output "') },
-    { id: "protobuf3",  match: (s, b) => s.includes('syntax = "proto3"') || s.includes('message ') && s.includes(' = ') && s.includes(';') },
-    { id: "cmake",      match: (s, b) => s.includes('cmake_minimum_required') || s.includes('project(') || s.includes('add_executable(') },
-    { id: "webidl",     match: (s, b) => s.includes('interface ') && s.includes('attribute ') && s.includes(';') },
+    { id: "terraform", match: (s, b) => s.includes('resource "') || s.includes('variable "') || s.includes('provider "') || s.includes('output "') },
+    { id: "protobuf3", match: (s, b) => s.includes('syntax = "proto3"') || s.includes('message ') && s.includes(' = ') && s.includes(';') },
+    { id: "cmake", match: (s, b) => s.includes('cmake_minimum_required') || s.includes('project(') || s.includes('add_executable(') },
+    { id: "webidl", match: (s, b) => s.includes('interface ') && s.includes('attribute ') && s.includes(';') },
 
     // ─── 4. RELATIONAL DATABASES & DIALECTS (SQL) ───
-    { id: "plsql",      match: (s, b) => /create\s+or\s+replace\s+(?:procedure|function|package|trigger)/i.test(s) || s.toLowerCase().includes('begin') && s.toLowerCase().includes('exception') },
-    { id: "tsql",       match: (s, b) => s.toLowerCase().includes('declare @') || s.toLowerCase().includes('exec ') || s.toLowerCase().includes('with nocount') },
+    { id: "plsql", match: (s, b) => /create\s+or\s+replace\s+(?:procedure|function|package|trigger)/i.test(s) || s.toLowerCase().includes('begin') && s.toLowerCase().includes('exception') },
+    { id: "tsql", match: (s, b) => s.toLowerCase().includes('declare @') || s.toLowerCase().includes('exec ') || s.toLowerCase().includes('with nocount') },
     { id: "postgresql", match: (s, b) => s.toLowerCase().includes('$$ language plpgsql') || s.toLowerCase().includes('returns trigger as') },
-    { id: "sqlite",     match: (s, b) => s.toLowerCase().includes('autoincrement') || s.toLowerCase().includes('create table if not exists') },
+    { id: "sqlite", match: (s, b) => s.toLowerCase().includes('autoincrement') || s.toLowerCase().includes('create table if not exists') },
 
     // ─── 5. LOW-LEVEL ASSEMBLERS (ASM MATRIX) ───
-    { id: "masm",       match: (s, b) => s.toLowerCase().includes('.model ') || s.toLowerCase().includes('.code') || s.toLowerCase().includes('proc near') || s.toLowerCase().includes('endp') },
-    { id: "asm6502",    match: (s, b) => s.toLowerCase().includes('lda #') || s.toLowerCase().includes('sta $') || s.toLowerCase().includes('jmp $') },
-    { id: "asm8080",    match: (s, b) => s.toLowerCase().includes('mvi a,') || s.toLowerCase().includes('lxi h,') || s.toLowerCase().includes('cpi ') },
-    { id: "asm8086",    match: (s, b) => s.toLowerCase().includes('mov ax,') || s.toLowerCase().includes('int 21h') || s.toLowerCase().includes('segment') },
-    { id: "asmz80",     match: (s, b) => s.toLowerCase().includes('ld a,') || s.toLowerCase().includes('ld hl,') || s.toLowerCase().includes('djnz ') },
-    { id: "pdp7",       match: (s, b) => s.toLowerCase().includes('lac ') || s.toLowerCase().includes('dac ') || s.toLowerCase().includes('dzm ') },
+    { id: "masm", match: (s, b) => s.toLowerCase().includes('.model ') || s.toLowerCase().includes('.code') || s.toLowerCase().includes('proc near') || s.toLowerCase().includes('endp') },
+    { id: "asm6502", match: (s, b) => s.toLowerCase().includes('lda #') || s.toLowerCase().includes('sta $') || s.toLowerCase().includes('jmp $') },
+    { id: "asm8080", match: (s, b) => s.toLowerCase().includes('mvi a,') || s.toLowerCase().includes('lxi h,') || s.toLowerCase().includes('cpi ') },
+    { id: "asm8086", match: (s, b) => s.toLowerCase().includes('mov ax,') || s.toLowerCase().includes('int 21h') || s.toLowerCase().includes('segment') },
+    { id: "asmz80", match: (s, b) => s.toLowerCase().includes('ld a,') || s.toLowerCase().includes('ld hl,') || s.toLowerCase().includes('djnz ') },
+    { id: "pdp7", match: (s, b) => s.toLowerCase().includes('lac ') || s.toLowerCase().includes('dac ') || s.toLowerCase().includes('dzm ') },
 
     // ─── 6. AUTOMATED SHELLS, REGEX & SPECIAL RUNTIMES ───
     { id: "powershell", match: (s, b) => s.toLowerCase().includes('write-output') || s.toLowerCase().includes('get-process') || s.includes('$global:') || s.includes('param(') },
-    { id: "bash",       match: (s, b) => s.startsWith('#!') && (s.includes('bin/bash') || s.includes('bin/sh')) || s.includes('export ') && s.includes('local ') },
-    { id: "pcre",       match: (s, b) => s.startsWith('/') && s.endsWith('/') && (s.includes('\\d') || s.includes('\\w') || s.includes('(?:') || s.includes('(?=')) },
-    { id: "xsdregex",   match: (s, b) => s.includes('\\p{Is') || s.includes('[\\c]') },
+    { id: "bash", match: (s, b) => s.startsWith('#!') && (s.includes('bin/bash') || s.includes('bin/sh')) || s.includes('export ') && s.includes('local ') },
+    { id: "pcre", match: (s, b) => s.startsWith('/') && s.endsWith('/') && (s.includes('\\d') || s.includes('\\w') || s.includes('(?:') || s.includes('(?=')) },
+    { id: "xsdregex", match: (s, b) => s.includes('\\p{Is') || s.includes('[\\c]') },
 
     // ─── 7. HEAVY SCRIPTING & SCRIPT-BASED ENGINES ───
-    { id: "python3",    match: (s, b) => s.includes('def ') && s.includes(':') && (s.includes('import ') || s.includes('print(')) && !s.includes('{') && !s.includes(';') },
-    { id: "python2",    match: (s, b) => s.includes('def ') && s.includes(':') && /print\s+["'].*["']/i.test(s) && !s.includes('{') },
-    { id: "php",        match: (s, b) => s.includes('<?php') || s.includes('?>') || s.includes('$_GET') || s.includes('$_POST') || s.includes('echo ') && s.includes(';') },
-    { id: "lua",        match: (s, b) => s.includes('local ') && s.includes('function(') || s.includes('end') && s.includes('local ') || s.includes('require(') && s.includes('local') },
+    { id: "python3", match: (s, b) => s.includes('def ') && s.includes(':') && (s.includes('import ') || s.includes('print(')) && !s.includes('{') && !s.includes(';') },
+    { id: "python2", match: (s, b) => s.includes('def ') && s.includes(':') && /print\s+["'].*["']/i.test(s) && !s.includes('{') },
+    { id: "php", match: (s, b) => s.includes('<?php') || s.includes('?>') || s.includes('$_GET') || s.includes('$_POST') || s.includes('echo ') && s.includes(';') },
+    { id: "lua", match: (s, b) => s.includes('local ') && s.includes('function(') || s.includes('end') && s.includes('local ') || s.includes('require(') && s.includes('local') },
 
     // ─── 8. FRONT-END SCRIPTING LAYERS (JS/TS) ───
-    { id: "jsx",        match: (s, b) => s.includes('import ') && s.includes('from ') && s.includes('return (') && s.includes('</') },
+    { id: "jsx", match: (s, b) => s.includes('import ') && s.includes('from ') && s.includes('return (') && s.includes('</') },
     { id: "typescript", match: (s, b) => s.includes('import ') && s.includes('from ') && (s.includes('interface ') || s.includes('type ') || s.includes('as ') || s.includes('private ') || s.includes(': string') || s.includes(': number') || s.includes(': any')) },
     { id: "javascript", match: (s, b) => s.includes('const ') || s.includes('let ') || s.includes('var ') || s.includes('function ') || s.includes('import ') && s.includes('from ') || s.includes('require(') },
 
     // ─── 9. TYPED ARCHITECTURAL COMPILER SYSTEMS (JAVA & RUST) ───
-    { id: "rust",       match: (s, b) => s.includes('fn main()') || s.includes('pub struct ') || s.includes('impl ') || s.includes('use std::') || s.includes('let mut ') || s.includes('fn ') && s.includes('->') },
-    { id: "java9",      match: (s, b) => s.includes('module ') && s.includes('requires ') && s.includes('exports ') },
-    { id: "java8",      match: (s, b) => s.includes('public class ') && s.includes('public static void main') || s.includes('import java.') },
-    { id: "java",       match: (s, b) => s.includes('public class ') && s.includes('System.out.print') },
+    { id: "rust", match: (s, b) => s.includes('fn main()') || s.includes('pub struct ') || s.includes('impl ') || s.includes('use std::') || s.includes('let mut ') || s.includes('fn ') && s.includes('->') },
+    { id: "java9", match: (s, b) => s.includes('module ') && s.includes('requires ') && s.includes('exports ') },
+    { id: "java8", match: (s, b) => s.includes('public class ') && s.includes('public static void main') || s.includes('import java.') },
+    { id: "java", match: (s, b) => s.includes('public class ') && s.includes('System.out.print') },
 
     // ─── 10. UNREAL / GAME PLAY SCENE MANAGEMENT ───
     { id: "unreal_angelscript", match: (s, b) => s.includes('UPROPERTY(') || s.includes('UFUNCTION(') || s.includes('class A') && s.includes(' : AActor') },
-    { id: "angelscript",        match: (s, b) => s.includes('class ') && s.includes('void ') && s.includes('::') && !s.includes('#include') && !s.includes('using namespace') },
+    { id: "angelscript", match: (s, b) => s.includes('class ') && s.includes('void ') && s.includes('::') && !s.includes('#include') && !s.includes('using namespace') },
 
     // ─── 11. HARD NATIVE LOW-LEVEL COMPILERS (C++ vs C DETERMINATION) ───
-    { id: "csharp",    match: (s, b) => s.includes('using System;') || s.includes('namespace ') && s.includes('public class ') && s.includes('{') && s.includes('get;') && s.includes('set;') },
-    { id: "cpp",       match: (s, b) => s.includes('#include <iostream>') || s.includes('std::cout') || s.includes('using namespace std;') || s.includes('::') && s.includes('class ') || s.includes('public:') || s.includes('template<typename') },
-    
+    { id: "csharp", match: (s, b) => s.includes('using System;') || s.includes('namespace ') && s.includes('public class ') && s.includes('{') && s.includes('get;') && s.includes('set;') },
+    { id: "cpp", match: (s, b) => s.includes('#include <iostream>') || s.includes('std::cout') || s.includes('using namespace std;') || s.includes('::') && s.includes('class ') || s.includes('public:') || s.includes('template<typename') },
+
     // Explicit Fallthrough to Base C if none of the modern object enhancements matched
-    { id: "c",         match: (s, b) => s.includes('#include') || s.includes('printf(') || s.includes('struct ') || s.includes('int main(') || s.includes('NULL') || s.includes('extern ') }
+    { id: "c", match: (s, b) => s.includes('#include') || s.includes('printf(') || s.includes('struct ') || s.includes('int main(') || s.includes('NULL') || s.includes('extern ') }
 ];
 
 
@@ -85,10 +85,10 @@ function autodetectLanguage(fileText, fileBuffer) {
 
     // Sequentially execute the array matches; returns the first absolute hit or defaults to text
     const matchedLanguageNode = TEXT_LANGUAGE_DETECTOR_WATERFALL.find(lang => lang.match(textContent, cleanBuffer));
-    
+
     const resolvedLanguageId = matchedLanguageNode ? matchedLanguageNode.id : "text";
     console.log(`[AUTODETECT SUCCESS] File classified cleanly as: ${resolvedLanguageId}`);
-    
+
     return resolvedLanguageId;
 }
 
@@ -883,11 +883,11 @@ const ROSETTA_NEIGHBORHOOD_ASSOCIATIONS = {
     // 2. EXPRESSIONS, FUNCTION INVOCATIONS, & BUILT-INS (6.5)
     // =====================================================================
     "is_function_call": (t, s) => (!t.tokenSymbol?.includes('Identifier') && t.tokenRule !== 'Identifier') ? null : (s?.[t.tokenIndex + 1]?.text === '(' || ['LeftParen'].includes(s?.[t.tokenIndex + 1]?.tokenSymbol) || t.ruleHistory?.some(r => ['postfixexpression', 'primaryexpression'].includes(r.toLowerCase()))) ? "function.support.function" : null,
-    
+
     "is_member_access": (t, s) => (!t.tokenSymbol?.includes('Identifier')) ? null : (['.', '->'].includes(s?.[t.tokenIndex - 1]?.text) || t.ruleHistory?.some(r => r.toLowerCase().includes('postfixexpression') && ['.', '->'].includes(s?.[t.tokenIndex - 1]?.text))) ? "variable.other.member" : null,
-    
+
     "is_pointer_indirection": (t, s) => (!['*', '^'].includes(t.text)) ? null : (s?.[t.tokenIndex + 1]?.tokenSymbol?.includes('Identifier') || ['const', 'volatile', 'restrict'].includes(s?.[t.tokenIndex + 1]?.text) || t.ruleHistory?.some(r => r.toLowerCase().includes('pointer'))) ? "keyword.operator.pointer" : null,
-    
+
     "is_generic_selection": (t, s) => (t.text === '_Generic' || t.ruleHistory?.some(r => r.toLowerCase().includes('generic'))) ? "keyword.control.generic" : (s?.[t.tokenIndex - 1]?.text === ':' && s?.[t.tokenIndex - 3]?.text === '_Generic') ? "constant.library.generic_assoc" : null,
 
     "is_builtin_intrinsic": (t, s) => (t.text?.startsWith('__builtin_') || ['__func__', '__FUNCTION__', '__PRETTY_FUNCTION__'].includes(t.text)) ? "support.function.builtin" : null,
@@ -1017,7 +1017,7 @@ function toRosettaToken(symbolicName, ruleName, lexer, parser, ctxOrToken, token
 
     const activeStreamTokens = tokenStream?.tokens || tokenStream || [];
     if (state.tokenIndex !== null && activeStreamTokens.length > 0) {
-        
+
         // Assemble unified configuration payload structure
         const evaluationPayload = {
             tokenIndex: state.tokenIndex,
@@ -1155,6 +1155,266 @@ function _buildTokenPayload(token, rawTypeName, classification, lowerType, lexer
         symbolicName: (parserVocab && ruleIndex !== null) ? parserVocab.getSymbolicName(ruleIndex) : null,
         literalName: (parserVocab && ruleIndex !== null) ? parserVocab.getLiteralName(ruleIndex) : null,
         ruleName: (parser && ruleIndex !== null && parser.ruleNames) ? parser.ruleNames[ruleIndex] : null
+    };
+}
+
+
+
+const ROSETTA_BLOCK_ASSOCIATIONS = {
+    // ─── C-STYLE LANGUAGES: BRACE MATCHING WITH TYPE HEADERS ───
+    c: {
+        open: /^[ \t]*(?:static\s+|inline\s+|extern\s+)?(?:[\w\d_*]+[ \t]+)+[\w\d_*]+\s*\([^)]*\)\s*(?=\{)/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    cpp: {
+        open: /^[ \t]*(?:template\s*<[^>]*>\s*)?(?:class|struct|namespace|(?:(?:inline\s+|static\s+|virtual\s+)?[\w\d_:<>]+\s+)+[\w\d_*~]+)\s*(?:\([^)]*\))?\s*(?::\s*[\w\d_:<>, ]+)?\s*(?=\{)/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    csharp: {
+        open: /^[ \t]*(?:public|private|protected|internal|static|async|virtual|override|partial\s+)*(?:class|struct|interface|namespace|enum|(?:[\w\d_:<>]+\s+)+[\w\d_]+)\s*(?:\([^)]*\))?\s*(?=\{)/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    java: {
+        open: /^[ \t]*(?:public|private|protected|static|final|native|synchronized|abstract\s+)*(?:class|interface|enum|(?:[\w\d_:<>]+\s+)+[\w\d_]+)\s*\([^)]*\)\s*(?:throws\s+[\w\d_, ]+)?\s*(?=\{)/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    angelscript: {
+        open: /^[ \t]*(?:class|interface|shared|abstract|(?:(?:private|protected|inline)?\s*[\w\d_*@<>]+\s+)+[\w\d_*]+)\s*\([^)]*\)\s*(?=\{)/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+
+    // ─── WEB ENGINEERING & SCRIPTS ───
+    javascript: {
+        open: /^[ \t]*(?:async\s+)?function\s*[\w\d_*]*\s*\([^)]*\)|^[ \t]*(?:const|let|var)\s+[\w\d_]+\s*=\s*(?:async\s*)?\([^)]*\)\s*=>|^[ \t]*(?:public|private|static|async\s+)?[\w\d_]+\s*\([^)]*\)\s*\{/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    typescript: {
+        open: /^[ \t]*(?:export\s+)?(?:async\s+)?function\s*[\w\d_*]*\s*\([^)]*\)|^[ \t]*(?:interface|type|class|namespace)\s+[\w\d_]+|^[ \t]*(?:public|private|protected|static|readonly|async\s+)*[\w\d_]+\s*\([^)]*\)\s*[:\w\d_<>]*\s*\{/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    html: {
+        open: /<([a-zA-Z1-6]+)(?:\s+[^>]*)*>/gm,
+        close: "xml", // Forces an explicit tag name stack tracker
+        isKeywordClose: false
+    },
+    xml: {
+        open: /<([a-zA-Z0-9_.:-]+)(?:\s+[^>]*)*>/gm,
+        close: "xml",
+        isKeywordClose: false
+    },
+    css3: {
+        open: /^[ \t]*[.#\w\d_:\s,>+~[\]*=-]+\s*(?=\{)/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    json: {
+        open: /"[\w\d_]+"\s*:\s*\{|\[/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+
+    // ─── KEYWORD-BOUNDED SCRIPTING LAYERS ───
+    lua: {
+        open: /^[ \t]*(?:local\s+)?function\s+[\w\d_.]+\s*\([^)]*\)|^[ \t]*while\s+.*do\b|^[ \t]*for\s+.*do\b|^[ \t]*if\s+.*then\b/gm,
+        close: /\b(end)\b/i,
+        isKeywordClose: true
+    },
+    python3: {
+        open: /^[ \t]*(?:def|class)\s+[\w\d_]+\s*(?:\([^)]*\))?\s*:/gm,
+        close: "indent", // Python closes when indentation levels decrease
+        isKeywordClose: false
+    },
+    python2: {
+        open: /^[ \t]*(?:def|class)\s+[\w\d_]+\s*(?:\([^)]*\))?\s*:/gm,
+        close: "indent",
+        isKeywordClose: false
+    },
+    php: {
+        open: /^[ \t]*(?:public|private|protected|static|final\s+)*function\s+[\w\d_]+\s*\([^)]*\)\s*(?=\{)/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    rust: {
+        open: /^[ \t]*(?:pub\s*(?:\([^)]*\))?\s*)?(?:unsafe\s+)?(?:async\s+)?(?:fn|struct|enum|impl|trait|mod)\b[^\{]*/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    golang: {
+        open: /^[ \t]*func\s*(?:\([^)]*\))?\s*[\w\d_]*\s*\([^)]*\)[^\{]*/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+
+    // ─── UTILITIES & DATA CONFIGURATIONS ───
+    terraform: {
+        open: /^[ \t]*(?:resource|variable|provider|output|module|locals)\s+[^\{]*/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    protobuf3: {
+        open: /^[ \t]*(?:message|service|enum)\s+[\w\d_]+\s*(?=\{)/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    cmake: {
+        open: /\b(function|macro|foreach|while|if)\s*\(/gim,
+        close: /\b(endfunction|endmacro|endforeach|endwhile|endif)\s*\(/gim,
+        isKeywordClose: true
+    },
+    powershell: {
+        open: /^[ \t]*function\s+[\w\d_-]+\s*(?=\{|\(|[ \t\n]|$)/gim,
+        close: "{}",
+        isKeywordClose: false
+    },
+    bash: {
+        open: /^[ \t]*function\s+[\w\d_-]+|[\w\d_-]+\s*\(\s*\)\s*\{|^\s*\b(if|for|while|case)\b/gm,
+        close: /\b(fi|done|esac|\})\b/gm,
+        isKeywordClose: true
+    },
+    sql: {
+        open: /\b(create\s+or\s+replace\s+(?:procedure|function|package|trigger)|begin)\b/gim,
+        close: /\b(end)\b/gim,
+        isKeywordClose: true
+    },
+    wat: {
+        open: /\((module|func|type|import|export|table|memory|global)\b/gm,
+        close: "()",
+        isKeywordClose: false
+    },
+    quakemap: {
+        open: /^[ \t]*\(\s*[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*\)/gm, // Brushes open on face declarations
+        close: "{}",
+        isKeywordClose: false
+    }
+};
+
+// Mirror baseline aliases natively
+ROSETTA_BLOCK_ASSOCIATIONS['plsql'] = ROSETTA_BLOCK_ASSOCIATIONS['sql'];
+ROSETTA_BLOCK_ASSOCIATIONS['tsql'] = ROSETTA_BLOCK_ASSOCIATIONS['sql'];
+ROSETTA_BLOCK_ASSOCIATIONS['postgresql'] = ROSETTA_BLOCK_ASSOCIATIONS['sql'];
+ROSETTA_BLOCK_ASSOCIATIONS['sqlite'] = ROSETTA_BLOCK_ASSOCIATIONS['sql'];
+
+
+function extractCurrentBlock(codeStr, lineNumber, langId) {
+    const lines = codeStr.split('\n');
+    const totalLines = lines.length;
+
+    // Fallback safely to plaintext if language mappings are absent
+    const rules = ROSETTA_BLOCK_ASSOCIATIONS[langId] || { open: null, close: "{}", isKeywordClose: false };
+    if (!rules.open) {
+        return { text: codeStr, startLine: 1, endLine: totalLines, startIndex: 0, endIndex: codeStr.length };
+    }
+
+    // Build the character line offset indexes array for positional lookup
+    const lineOffsets = [];
+    let currentOffset = 0;
+    lines.forEach(line => {
+        lineOffsets.push(currentOffset);
+        currentOffset += line.length + 1; // Accumulate char count plus trailing newline
+    });
+
+    const cursorLineIndex = Math.min(Math.max(1, lineNumber), totalLines) - 1;
+    let foundHeaderIdx = -1;
+    let matchOffset = -1;
+
+    // 1. SCAN UPWARD: Locate the closest active block header boundary
+    for (let l = cursorLineIndex; l >= 0; l--) {
+        rules.open.lastIndex = 0;
+        const lineText = lines[l];
+        const match = rules.open.exec(lineText);
+
+        if (match) {
+            foundHeaderIdx = l;
+            matchOffset = lineOffsets[l] + match.index;
+            break;
+        }
+    }
+
+    // If no header matches above the cursor line, return the absolute global file bounds
+    if (foundHeaderIdx === -1) {
+        return { text: codeStr, startLine: 1, endLine: totalLines, startIndex: 0, endIndex: codeStr.length };
+    }
+
+    // 2. SCAN DOWNWARD: Trace the depth counter limits until the block balances out
+    let depth = 0;
+    let endLineIdx = foundHeaderIdx;
+    let endCharOffset = matchOffset;
+    let blockStarted = false;
+
+    // Handle HTML/XML explicit Tag Stack tracking systems
+    let xmlTagName = null;
+    if (rules.close === "xml") {
+        rules.open.lastIndex = 0;
+        const tagMatch = rules.open.exec(lines[foundHeaderIdx]);
+        xmlTagName = tagMatch ? tagMatch[1] : null;
+    }
+
+    for (let l = foundHeaderIdx; l < totalLines; l++) {
+        const text = lines[l];
+        endLineIdx = l;
+
+        // Python block validation: Closes out whenever an indentation drop occurs
+        if (rules.close === "indent") {
+            const currentIndent = text.search(/\S/);
+            const headerIndent = lines[foundHeaderIdx].search(/\S/);
+            if (blockStarted && currentIndent !== -1 && currentIndent <= headerIndent) {
+                endLineIdx = Math.max(foundHeaderIdx, l - 1);
+                endCharOffset = lineOffsets[endLineIdx] + lines[endLineIdx].length;
+                break;
+            }
+            if (currentIndent !== -1 && l > foundHeaderIdx) blockStarted = true;
+            endCharOffset = lineOffsets[l] + text.length;
+            continue;
+        }
+
+        // Standard Text Character/Brace Token Stream Balancer
+        if (!rules.isKeywordClose) {
+            const openChar = rules.close[0] || '{';
+            const closeChar = rules.close[1] || '}';
+
+            for (let c = 0; c < text.length; c++) {
+                const char = text[c];
+                if (char === openChar) { depth++; blockStarted = true; }
+                else if (char === closeChar) { depth--; }
+
+                if (blockStarted && depth <= 0) {
+                    endCharOffset = lineOffsets[l] + c + 1;
+                    break;
+                }
+            }
+        }
+        // Keyword Token Match Balancer (e.g., Lua `if ... then` -> `end`, bash `if` -> `fi`)
+        else {
+            rules.open.lastIndex = 0;
+            if (rules.open.test(text)) { depth++; blockStarted = true; }
+
+            rules.close.lastIndex = 0;
+            if (rules.close.test(text)) { depth--; }
+
+            if (blockStarted && depth <= 0) {
+                endCharOffset = lineOffsets[l] + text.length;
+                break;
+            }
+        }
+
+        if (blockStarted && depth <= 0) break;
+        endCharOffset = lineOffsets[l] + text.length;
+    }
+
+    // Return the packaged functional block payload slice
+    return {
+        text: codeStr.slice(matchOffset, endCharOffset),
+        startLine: foundHeaderIdx + 1,
+        endLine: endLineIdx + 1,
+        startIndex: matchOffset,
+        endIndex: endCharOffset
     };
 }
 
