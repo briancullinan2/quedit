@@ -29,7 +29,6 @@ function getOrCreateAceSession(fileId, content) {
             const ext = fileId.split('.').pop().toLowerCase();
             
             // Inform the backend thread what language grammar template to execute
-            //debugger
             worker.setLanguageTarget(ext, fileId);
         });
     });

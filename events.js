@@ -82,7 +82,7 @@ function onLoadEditor() {
 
 
 function tryLoadingTerminalEditorBridge() {
-    return
+
     if (!window.aceEditor || window.compilerDiagnostics /* already setup */) {
         return
     }
@@ -99,12 +99,12 @@ function tryLoadingTerminalEditorBridge() {
             window.compilerDiagnostics = moduleExports;
 
             // 2. Attach the active editor instance to kick off mouse interceptors
-            moduleExports.attachInstance(window.aceEditor);
+            //setEditor(window.aceEditor);
 
             // 3. Populate the background bridge arrays from your master terminal logs cache
-            window.diagnosticsBridge = moduleExports.getBridge();
+            window.diagnosticsBridge = moduleExports.getBridge(window.aceEditor?.getSession());
             diagnosticsBridge.collectedLogLines = terminalLog.map(log => log.text || log);
-            diagnosticsBridge.triggerDebouncedUpdate()
+            diagnosticsBridge.triggerBridgeRefresh()
             console.log("[Ace Lazy] Compiler diagnostics overlay successfully linked.");
         });
     });

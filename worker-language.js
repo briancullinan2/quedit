@@ -7,58 +7,8 @@ let port;
 const AntlrRegistry = self.AntlrLanguages;
 
 // =====================================================================
-// 1. UNIFIED CORE PIPELINE LOOKUP DICTIONARIES
+// 1. CORE PIPELINE BACKEND CONSTRUCTORS
 // =====================================================================
-
-const ROSETTA_STORAGE_TYPES = new Set([
-    'Void', 'Char', 'Short', 'Int', 'Long', 'Float', 'Double', 'Signed', 'Unsigned', 'Bool',
-    'Auto', 'Constexpr', 'Extern', 'Register', 'function', 'ThreadLocal', 'Typedef',
-    'Struct', 'Union', 'Enum', 'Const', 'Restrict', 'Volatile_1', 'Volatile_2', '_Atomic', '_Complex'
-]);
-
-const ROSETTA_KEYWORDS = new Set([
-    'Break', 'Case', 'Continue', 'Default', 'Do', 'Else', 'For', 'Goto', 'If', 'Inline',
-    'Return', 'Switch', 'While', '_Noreturn', 'function_assert', 'Sizeof', 'Alignof',
-    'Countof', 'Maxof', 'Minof', 'Attribute', 'Asm_1', 'Asm_2', 'Asm_3'
-]);
-
-// =====================================================================
-// 2. GLOBAL SYSTEM MICRO-UTILITY CORE
-// =====================================================================
-
-function _resolveTokenTypeName(lexer, tokenType) {
-    const vocabulary = lexer.vocabulary || lexer.constructor.vocabulary || lexer.constructor || (lexer.literalNames ? lexer : null);
-    if (vocabulary) {
-        if (typeof vocabulary.getSymbolicName === 'function') {
-            return vocabulary.getSymbolicName(tokenType) || `type_${tokenType}`;
-        } else if (vocabulary.symbolicNames && vocabulary.symbolicNames[tokenType]) {
-            return vocabulary.symbolicNames[tokenType];
-        }
-    }
-    return `type_${tokenType}`;
-}
-
-function toRosettaToken(antlrSymbolicName, languageKey) {
-    if (!antlrSymbolicName) return "text";
-
-    if (antlrSymbolicName.startsWith("'") && antlrSymbolicName.endsWith("'")) {
-        return "keyword.operator";
-    }
-
-    const tokenKey = antlrSymbolicName.trim();
-    const lowerKey = tokenKey.toLowerCase();
-
-    if (ROSETTA_STORAGE_TYPES.has(tokenKey)) return "storage";
-    if (ROSETTA_KEYWORDS.has(tokenKey)) return "keyword";
-    if (['IntegerConstant', 'DigitSequence', 'FloatingConstant'].includes(tokenKey)) return "constant.numeric";
-    if (lowerKey.includes('predefinedconstant') || ["'true'", "'false'", "'nullptr'"].includes(antlrSymbolicName)) return "constant.language";
-    if (['StringLiteral', 'CharacterConstant'].includes(tokenKey)) return "string";
-    if (tokenKey === 'LineDirective') return "meta.tag";
-    if (lowerKey.includes('comment') || tokenKey === 'BlockComment') return "comment";
-    if (tokenKey === 'Identifier') return "variable";
-
-    return "text";
-}
 
 function createLexerInstance(sourceText, languageKey) {
     const lexerName = `${languageKey}_${languageKey.charAt(0).toUpperCase() + languageKey.slice(1)}Lexer`;
@@ -78,13 +28,9 @@ function createLexerInstance(sourceText, languageKey) {
     const antlr = AntlrRegistry.antlr4;
     let chars;
     try {
-        if (antlr.CharStreams && typeof antlr.CharStreams.fromString === 'function') {
-            chars = antlr.CharStreams.fromString(sourceText);
-        } else if (typeof antlr.CharStream === 'function') {
-            chars = new antlr.CharStream(sourceText);
-        } else {
-            chars = new antlr.InputStream(sourceText);
-        }
+        chars = (antlr.CharStreams && typeof antlr.CharStreams.fromString === 'function')
+            ? antlr.CharStreams.fromString(sourceText)
+            : new antlr.InputStream(sourceText);
 
         if (LexerCtor.normalizeInputStream && typeof LexerCtor.normalizeInputStream === 'function') {
             chars = LexerCtor.normalizeInputStream(chars);
@@ -99,33 +45,121 @@ function createLexerInstance(sourceText, languageKey) {
     }
 }
 
-// =====================================================================
-// 3. SERVICE RUNNERS (FUNCTIONAL REFACTOR)
-// =====================================================================
+function _safePreprocess(sourceText, languageKey, onResolveInclude) {
+    try {
+        return preprocessSourceText(sourceText, languageKey, onResolveInclude);
+    } catch (e) {
+        console.error("[Preprocessor Crisis] Virtual assembly layer collapsed:", e);
+        return sourceText;
+    }
+}
 
-function getTokensForLine(sourceText, languageKey, targetLine) {
-    const lexer = createLexerInstance(sourceText, languageKey);
+
+
+/**
+ * Universal Structural Rule Context Deep-Scanner Pass
+ */
+function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer, antlr) {
+    const semanticOverrides = new Map();
+    const lCased = languageKey.toLowerCase();
+
+    const pName = `${lCased}_${lCased.charAt(0).toUpperCase() + lCased.slice(1)}Parser`;
+    let ParserCtor = AntlrRegistry[pName] || (lCased === 'c' ? AntlrRegistry.c_CParser : (lCased === 'cpp' ? AntlrRegistry.cpp_CPP14Parser : null));
+
+    if (!ParserCtor) return semanticOverrides;
+
+    const parser = new ParserCtor(tokenStream);
+    parser.removeErrorListeners();
+
+    if (typeof onErrorFound === 'function') {
+        parser.addErrorListener({
+            syntaxError: (recognizer, offendingSymbol, line, column, msg) => {
+                onErrorFound({ line, column, message: msg });
+            }
+        });
+    }
+
+    parser._interp.predictionMode = antlr.atn.PredictionMode.LL;
+    parser._errHandler = new antlr.error.DefaultErrorStrategy();
+
+    let tree;
+    try {
+        tree = parser.compilationUnit ? parser.compilationUnit() : parser.translationUnit();
+    } catch (parseWalkError) { }
+
+    if (tree) {
+        const configurationListener = {
+            // 1. Leave this strictly for debugging rule layers—do NOT save keys here
+            enterEveryRule: function (ctx) {
+                const ruleName = parser.ruleNames[ctx.ruleIndex];
+                console.log(`Rule: ${ruleName} | Invoking State: ${ctx.invokingState}`);
+            },
+            exitEveryRule: function (ctx) { },
+
+            // 2. This is where your true linear cursor scope processing lives
+            visitTerminal: function (node) {
+                const token = node.symbol; // The explicit atomic token element
+                const ctx = node.parentCtx;
+                const ruleName = parser.ruleNames[ctx.ruleIndex];
+
+                const tokenStartChar = token.start;
+                const tokenText = token.text;
+                const tokenTypeString = lexer.constructor.symbolicNames[token.type];
+
+                // CRITICAL FIX: Pass the precise leaf 'token' to the mapper, NOT the 'ctx' block!
+                const generalScope = toRosettaToken(null, ruleName, lexer, parser, token, tokenStream);
+
+                // Lock down the map with the isolated unique char index pointer
+                semanticOverrides.set(tokenStartChar, generalScope);
+
+                console.log(`Cursor at Char ${tokenStartChar} | Token: [${tokenTypeString}: "${tokenText}"] | Interpreted by Rule: ${ruleName}`);
+            },
+
+            visitErrorNode: function (node) {
+                const token = node.symbol;
+                console.log(`Parser failed at token cursor: ${token.start} ("${token.text}")`);
+            }
+        };
+
+        const walker = new antlr.tree.ParseTreeWalker();
+        walker.walk(configurationListener, tree);
+    }
+    
+    return [semanticOverrides, parser];
+}
+
+
+
+function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
+    const unifiedSourceBuffer = _safePreprocess(sourceText, languageKey, onResolveInclude);
+    const lexer = createLexerInstance(unifiedSourceBuffer, languageKey);
     if (!lexer) return [];
 
-    const lineTokens = [];
-    let token = lexer.nextToken();
-    const eof = AntlrRegistry.antlr4.Token.EOF;
+    const antlr = AntlrRegistry.antlr4;
+    const tokenStream = new antlr.CommonTokenStream(lexer);
 
-    while (token.type !== eof) {
-        if (token.line > targetLine) break;
-        if (token.line === targetLine) {
-            lineTokens.push({
-                text: token.text,
-                type: _resolveTokenTypeName(lexer, token.type),
-                start: token.start,
-                stop: token.stop,
-                column: token.column,
-                channel: token.channel
-            });
+    tokenStream.fill();
+    // Re-routed with both lexer and antlr parameters correctly populated!
+    const [semanticOverrides, parser] = _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer, antlr);
+    tokenStream.reset();
+
+    return [tokenStream.tokens.map((token) => {
+        if (token.type === antlr.Token.EOF) return null;
+
+        const rawTypeName = _resolveTokenTypeName(lexer, token.type);
+        const lowerType = rawTypeName.toLowerCase();
+
+        // Check if our AST-Rule pass discovered a specialized structural override
+        if (semanticOverrides.has(token.tokenIndex)) {
+            const calculatedScope = semanticOverrides.get(token.tokenIndex);
+            return _buildTokenPayload(token, rawTypeName, calculatedScope, lowerType, lexer, self.activeParserReference, self.activeContextReference);
         }
-        token = lexer.nextToken();
-    }
-    return lineTokens;
+
+        // Standard token fallback translation matrix execution pass
+        const ruleName = parser.ruleNames[token.ruleIndex];
+        const baselineClassification = toRosettaToken(rawTypeName, ruleName, lexer, parser, token, tokenStream);
+        return _buildTokenPayload(token, rawTypeName, baselineClassification, lowerType, lexer, null, null);
+    }).filter(Boolean), lexer, parser];
 }
 
 function preprocessSourceText(sourceText, languageKey, onResolveInclude, visitedFiles = new Set()) {
@@ -214,264 +248,72 @@ function getFoldRegions(sourceText, languageKey) {
     return folds;
 }
 
-// =====================================================================
-// 4. PIPELINE PACKET ROUTING CONTROLLER
-// =====================================================================
-
-
-function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
-    // 1. FIXED: Calling plain global micro-utility safely
-    const unifiedSourceBuffer = _safePreprocess(sourceText, languageKey, onResolveInclude);
-
-    // 2. Instantiate the lexer engine over the layout
-    const lexer = createLexerInstance(unifiedSourceBuffer, languageKey);
+function getTokensForLine(sourceText, languageKey, targetLine) {
+    const lexer = createLexerInstance(sourceText, languageKey);
     if (!lexer) return [];
 
-    const antlr = self.AntlrLanguages.antlr4;
-    const tokenStream = new antlr.CommonTokenStream(lexer);
-
-    // Fill the stream completely to cache indices cleanly
-    tokenStream.fill();
-
-    // 3. Run the Error-Tolerant Parse Tree Walk to extract overrides
-    const semanticOverrides = _extractSemanticOverrides(
-        tokenStream,
-        languageKey,
-        onErrorFound,
-        antlr
-    );
-
-    // Ensure the stream index state is reset back to zero before mapping properties
-    tokenStream.reset();
-
-    // 4. Map flat stream arrays to Rosetta web-safe CSS classifications
-    return _mapTokensToRosettaScopes(tokenStream, lexer, semanticOverrides, antlr);
-}
-
-
-const executePipelineAction = async (event) => {
-    const { id, data, responseId } = event.data;
-    if (!id) return;
-
-    let output = null;
-    try {
-        if (id === 'constructor') {
-            port = event.data.data;
-            port.onmessage = executePipelineAction;
-            return;
-        }
-
-        if (id === 'lineToken') {
-            output = getTokensForLine(data.text, data.language, data.line);
-        } else if (id === 'tokens') {
-            // FIXED: Do not pass non-serializable properties down the message pipe.
-            // Route data strings and leverage internal local callbacks or bound ports.
-            output = getAllTokens(data.text, data.language, data.onErrorFound, data.onResolveInclude);
-        } else if (id === 'folds') {
-            output = getFoldRegions(data.text, data.language);
-        }
-
-        if (port) {
-            port.postMessage({ id: 'runAsync', responseId, data: output });
-        }
-    } catch (e) {
-        if (port) {
-            port.postMessage({ id: 'runAsync', responseId, data: { error: e.toString(), stack: e.stack } });
-        }
-    }
-}
-
-
-self.addEventListener('message', executePipelineAction);
-
-
-
-function _safePreprocess(sourceText, languageKey, onResolveInclude) {
-    try {
-        // FIXED: Mapping directly to your flat file preprocessing function
-        return preprocessSourceText(sourceText, languageKey, onResolveInclude);
-    } catch (e) {
-        console.error("[Preprocessor Crisis] Virtual assembly layer collapsed:", e);
-        return sourceText;
-    }
-}
-
-function _mapTokensToRosettaScopes(tokenStream, lexer, semanticOverrides, antlr) {
-    // Traverse the cold token cache securely
-    const tokenArray = tokenStream.tokens || [];
-
-    return tokenArray.map((token) => {
-        if (token.type === antlr.Token.EOF) return null;
-
-        const rawTypeName = _resolveTokenTypeName(lexer, token.type);
-        const lowerType = rawTypeName.toLowerCase();
-
-        // 1. Check parser structural overrides first
-        if (semanticOverrides.has(token.tokenIndex)) {
-            const typeOverride = semanticOverrides.get(token.tokenIndex);
-            return _buildTokenPayload(token, rawTypeName, typeOverride, lowerType);
-        }
-
-        // 2. Fallback to basic grammar lexography classifications
-        let semanticClassification = "text";
-        if (rawTypeName.startsWith("'")) {
-            semanticClassification = "keyword.operator";
-        } else if (['int', 'float', 'double', 'char', 'void', 'bool'].includes(lowerType) || lowerType.includes('storage')) {
-            semanticClassification = "storage";
-        } else if (lowerType.includes('comment') || token.channel === 1) {
-            semanticClassification = "comment";
-        } else if (lowerType.includes('string') || lowerType.includes('literal') || lowerType.includes('characterconstant')) {
-            semanticClassification = "string";
-        } else if (lowerType.includes('keyword') || ['if', 'for', 'while', 'return', 'break', 'switch', 'case', 'else'].includes(lowerType)) {
-            semanticClassification = "keyword";
-        } else if (rawTypeName === 'Identifier') {
-            semanticClassification = "variable";
-        }
-
-        return _buildTokenPayload(token, rawTypeName, semanticClassification, lowerType);
-    }).filter(Boolean);
-}
-
-function _buildTokenPayload(token, rawTypeName, classification, lowerType) {
-    const isComment = lowerType.includes('comment') || token.channel === 1;
-    const isString = lowerType.includes('string') || lowerType.includes('literal') || classification === 'string';
-
-    return {
-        text: token.text,
-        type: rawTypeName,
-        textType: isComment ? 'comment' : (isString ? 'string' : 'code'),
-        spellCheckable: isComment || isString,
-        line: token.line,
-        column: token.column,
-        start: token.start,
-        stop: token.stop,
-        channel: token.channel,
-        rosettaScope: classification // Clean, single CSS scope ready for Ace Editor rendering
-    };
-}
-
-function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, antlr) {
-    const semanticOverrides = new Map();
-
-    const parserName = `${languageKey}_${languageKey.charAt(0).toUpperCase() + languageKey.slice(1)}Parser`;
-    let ParserCtor = self.AntlrLanguages[parserName];
-    if (!ParserCtor && languageKey === 'c') ParserCtor = self.AntlrLanguages.c_CParser;
-    if (!ParserCtor && languageKey === 'cpp') ParserCtor = self.AntlrLanguages.cpp_CPP14Parser;
-
-    if (!ParserCtor) return semanticOverrides;
-
-    const parser = new ParserCtor(tokenStream);
-
-    // --- THE FAILSAFE CONFIGURATIONS ---
-    parser.removeErrorListeners();
-    if (typeof onErrorFound === 'function') {
-        parser.addErrorListener({
-            syntaxError: (recognizer, offendingSymbol, line, column, msg, e) => {
-                onErrorFound({ line, column, message: msg });
-            }
-        });
-    }
-
-    // CRITICAL 1: Set the prediction mode to deep LL optimization.
-    // This forces the engine to run full lookahead calculations rather than giving up early (SLL)
-    parser._interp.predictionMode = antlr.atn.PredictionMode.LL;
-
-    // CRITICAL 2: Ensure we use DefaultErrorStrategy instead of BailErrorStrategy.
-    // DefaultErrorStrategy executes token insertion and deletion recovery dynamically mid-parse.
-    parser._errHandler = new antlr.DefaultErrorStrategy();
-
-    // Execute the parse pass
-    let tree;
-    try {
-        tree = parser.compilationUnit ? parser.compilationUnit() : parser.translationUnit();
-    } catch (parseWalkError) {
-        // Suppress complete crash logs; whatever survived inside the tree will be walked
-    }
-
-    // Walk whatever structural fragments survived the parse loop
-    if (tree) {
-        const ParseTreeListener = function () {
-            antlr.tree.ParseTreeListener.call(this);
-            return this;
-        };
-        ParseTreeListener.prototype = Object.create(antlr.tree.ParseTreeListener.prototype);
-
-        // Map function declarations safely
-        ParseTreeListener.prototype.enterDirectDeclarator = function (ctx) {
-            if (ctx.Identifier() && ctx.getText().includes('(')) {
-                semanticOverrides.set(ctx.Identifier().symbol.tokenIndex, 'function');
-            }
-        };
-
-        // Map type definitions safely
-        ParseTreeListener.prototype.enterTypedefName = function (ctx) {
-            if (ctx.Identifier()) {
-                semanticOverrides.set(ctx.Identifier().symbol.tokenIndex, 'type');
-            }
-        };
-
-        const walker = new antlr.tree.ParseTreeWalker();
-        walker.walk(new ParseTreeListener(), tree);
-    }
-
-    return semanticOverrides;
-}
-
-function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
-    let unifiedSourceBuffer = sourceText;
-    try {
-        unifiedSourceBuffer = preprocessSourceText(sourceText, languageKey, onResolveInclude);
-    } catch (e) { }
-
-    const lexer = createLexerInstance(unifiedSourceBuffer, languageKey);
-    if (!lexer) return [];
-
-    const antlr = AntlrRegistry.antlr4;
-    const tokenStream = new antlr.CommonTokenStream(lexer);
-
-    if (typeof onErrorFound === 'function') {
-        const parserName = `${languageKey}_${languageKey.charAt(0).toUpperCase() + languageKey.slice(1)}Parser`;
-        let ParserCtor = AntlrRegistry[parserName] || (languageKey === 'c' ? AntlrRegistry.c_CParser : (languageKey === 'cpp' ? AntlrRegistry.cpp_CPP14Parser : null));
-
-        if (ParserCtor) {
-            const parser = new ParserCtor(tokenStream);
-            parser.removeErrorListeners();
-            parser.addErrorListener({
-                syntaxError: (recognizer, offendingSymbol, line, column, msg) => {
-                    onErrorFound({ line, column, message: msg });
-                }
-            });
-            try {
-                if (typeof parser.compilationUnit === 'function') parser.compilationUnit();
-                else if (typeof parser.translationUnit === 'function') parser.translationUnit();
-            } catch (pErr) { }
-        }
-    }
-
-    tokenStream.reset();
-    lexer.reset();
-
-    const allTokens = [];
+    const lineTokens = [];
     let token = lexer.nextToken();
+    const eof = AntlrRegistry.antlr4.Token.EOF;
 
-    while (token.type !== antlr.Token.EOF) {
-        const rawTypeName = _resolveTokenTypeName(lexer, token.type);
-        const lowerType = rawTypeName.toLowerCase();
-        const isComment = lowerType.includes('comment') || token.channel === 1;
-        const isString = lowerType.includes('string') || lowerType.includes('literal_string') || lowerType.includes('text');
-
-        allTokens.push({
-            text: token.text,
-            type: rawTypeName,
-            line: token.line,
-            column: token.column,
-            start: token.start,
-            stop: token.stop,
-            channel: token.channel,
-            spellCheckable: isComment || isString,
-            textType: isComment ? 'comment' : (isString ? 'string' : 'code')
-        });
+    while (token.type !== eof) {
+        if (token.line > targetLine) break;
+        if (token.line === targetLine) {
+            lineTokens.push({
+                text: token.text,
+                type: _resolveTokenTypeName(lexer, token.type),
+                start: token.start,
+                stop: token.stop,
+                column: token.column,
+                channel: token.channel
+            });
+        }
         token = lexer.nextToken();
     }
-    return allTokens;
+    return lineTokens;
 }
+
+
+const onAnyMessage = async event => {
+    const { id, data, responseId } = event.data;
+    if (!id) return;
+    let output = null;
+
+    try {
+        switch (id) {
+            case 'constructor':
+                port = event.data.data;
+                port.onmessage = onAnyMessage;
+
+                self.language = {
+                    lineToken: async (text, language, line) => await self.onmessage({ id: 'lineToken', data: { text, language, line } }),
+                    getAllTokens: async (text, language) => await self.onmessage({ id: 'lineToken', data: { text, language } })
+                };
+                return;
+
+            case 'lineToken':
+                output = getTokensForLine(data.text, data.language, data.line);
+                break;
+
+            case 'tokens':
+                output = getAllTokens(data.text, data.language, data.onErrorFound, data.onResolveInclude);
+                break;
+
+            case 'folds':
+                output = getFoldRegions(data.text, data.language);
+                break;
+
+            default:
+                output = { status: 'unhandled_command' };
+                break;
+        }
+    } catch (e) {
+        output = { error: e.toString(), stack: e.stack };
+    } finally {
+        if (port && id !== 'constructor') {
+            port.postMessage({ id: 'runAsync', responseId, data: output });
+        }
+    }
+};
+
+self.addEventListener('message', onAnyMessage);

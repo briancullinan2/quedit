@@ -15,14 +15,12 @@ function setLanguageContext(langKey, fileId) {
 
 /**
  * Pure transformation callback formatting incoming ANTLR syntax errors
- * into Clang/LCC compiler-style multi-line string segments.
  */
 function processSyntaxError(lines, annotations, syntaxError) {
     const zeroIndexedRow = syntaxError.line - 1;
     const activeLineText = lines[zeroIndexedRow] || "";
-    const cleanLine = activeLineText.replace(/\t/g, '    '); // Flatten tabs for layout alignment
+    const cleanLine = activeLineText.replace(/\t/g, '    ');
 
-    // Build a classic visual compiler caret layout:    ^~~~~
     const leadingSpaces = ' '.repeat(Math.max(0, syntaxError.column));
     const caretMarker = `${leadingSpaces}^~~~~`;
 
@@ -41,7 +39,7 @@ function processSyntaxError(lines, annotations, syntaxError) {
 }
 
 /**
- * Functional collector running over tokens to look for lingering tasks or hidden blocks
+ * Functional collector scanning for lingering tasks or preprocessor channels
  */
 function processStructuralFlags(annotations, token) {
     if (token.textType === 'comment' && token.text.toLowerCase().includes('todo')) {
@@ -62,57 +60,64 @@ function processStructuralFlags(annotations, token) {
     }
 }
 
-/**
- * Pure mapping iterator mapping linear ANTLR streams into Ace row arrays
- */
-function mapToRowBucket(tokens, tokenLines, token) {
+function mapToRowBucket(tokens, tokenLines, lexer, parser, semanticOverrides, token) {
+    // 1. Strip implicit carriage returns and newlines so Ace viewports don't crash
+    let tokenText = token.text;
+    if (tokenText.endsWith('\n')) tokenText = tokenText.slice(0, -1);
+    if (tokenText.endsWith('\r')) tokenText = tokenText.slice(0, -1);
+
+    // If the token was just a pure newline block, do not push an empty ghost token into the row
+    if (tokenText === "" && token.text.includes('\n')) return;
+
     const zeroIndexedRow = token.line - 1;
     if (!tokenLines[zeroIndexedRow]) {
         tokenLines[zeroIndexedRow] = [];
     }
 
-    let symbolicNameTarget = token.type;
-    if (token.textType === 'comment') {
-        symbolicNameTarget = 'BlockComment';
-    } else if (token.textType === 'string') {
-        symbolicNameTarget = 'StringLiteral';
-    }
+    // 2. CHECK THE SEMANTIC OVERRIDES MAP FIRST (High-Fidelity AST Layer)
+    let rosettaType = semanticOverrides.get(token.start);
 
-    let rosettaType = toRosettaToken(token.type, this.languageKey);
-    if (symbolicNameTarget === 'Identifier') {
-        const nextToken = tokens[tokens.indexOf(token) + 1];
-        if (nextToken && nextToken.text === '(') {
-            rosettaType = "entity.name.function"; // Lights up function names in crisp blue
-        }
+    // 3. Fallback to Polymorphic Core Mapping if no direct AST override exists
+    if (!rosettaType) {
+        rosettaType = toRosettaToken(null, null, lexer, parser, token, tokens);
     }
 
     tokenLines[zeroIndexedRow].push({
         type: rosettaType,
-        value: token.text
+        value: tokenText
     });
 }
 
-/**
- * Primary state execution sequence calculating code highlights and token placements
- */
 function onUpdate() {
+    // Safety check: if no document has been assigned yet, slide out
+    if (!this.doc) return;
+
     const fullText = this.doc.getValue();
     const lines = fullText.split('\n');
     let annotations = [];
     let tokenLines = [];
 
     try {
-        // Bind the active document lines and annotation array targets to the error formatter
         const errorBoundCallback = processSyntaxError.bind(null, lines, annotations);
 
-        // Execute the failsafe lookahead token compiler pipeline
-        const tokens = getAllTokens(fullText, this.languageKey, errorBoundCallback);
+        // A. Extract baseline token streams
+        const [tokens, lexer, parser] = getAllTokens(fullText, this.languageKey, errorBoundCallback);
 
-        // Map out structural annotations (TODOs / hidden streams)
+        // B. RUN THE DEEP-SCANNER PASS TO HARVEST THE SEMANTIC OVERRIDES DICTIONARY
+        // We reuse the exact token stream configuration, reset it inside the method, and capture overrides
+        const tokenStream = parser.getInputStream(); // or parser._input depending on target bindings
+        const [semanticOverrides] = _extractSemanticOverrides(tokenStream, this.languageKey, errorBoundCallback, lexer, AntlrRegistry.antlr4);
+
+        // C. Process standard compilation flags
         tokens.forEach(processStructuralFlags.bind(null, annotations));
 
-        // Map linear array indices to row grid arrays with context binding for this.languageKey
-        tokens.forEach(mapToRowBucket.bind(this, tokens, tokenLines));
+        // D. Pass your harvested semanticOverrides cache down into the mapper mapping execution loop
+        tokens.forEach(mapToRowBucket.bind(this, tokens, tokenLines, lexer, parser, semanticOverrides));
+
+        // Fill any empty line arrays so Ace has a stable line indexing sequence
+        for (let i = 0; i < lines.length; i++) {
+            if (!tokenLines[i]) tokenLines[i] = [];
+        }
 
         this.sender.emit("highlight", {
             tokenLines: tokenLines,
@@ -128,20 +133,15 @@ function onUpdate() {
         });
     }
 
-    // Flush annotations array directly out to the editor gutter
     this.sender.emit("annotate", annotations);
 }
 
-// =====================================================================
-// 2. CLASS DEFINITION & INHERITANCE BOOTSTRAP
-// =====================================================================
 
 function AntlrWorkerBackend(sender) {
-    debugger
-    const Mirror = self.main = ace.require("ace/worker/mirror").Mirror;
+    const Mirror = ace.require("ace/worker/mirror").Mirror;
     Mirror.call(this, sender);
 
-    this.setTimeout(200); // Debounce loop delay matching editor buffers
+    this.setTimeout(200);
     this.languageKey = "c";
     this.activeFileId = "";
 }
@@ -151,56 +151,56 @@ function setupInheritance() {
     const oop = ace.require("ace/lib/oop");
     oop.inherits(AntlrWorkerBackend, Mirror);
 
-    // Assign clean, top-level functional prototype methods directly
     AntlrWorkerBackend.prototype.setLanguageContext = setLanguageContext;
     AntlrWorkerBackend.prototype.onUpdate = onUpdate;
 }
 
-// Preserve a local reference to Ace's original, native message parser handler
-//const nativeWorkerOnMessage = self.onmessage;
+// =====================================================================
+// 3. CLEAN LISTENER COEXISTENCE BUS
+// =====================================================================
 
 self.addEventListener('message', function (e) {
     const msg = e.data;
 
-    // 1. COMMAND FILTER GATE
+    // 1. FILTER HIGH-FIDELITY HOOKS
     if (msg.command && ['customHighlightRoute', 'requestAST'].includes(msg.command)) {
         e.stopImmediatePropagation();
-        return; // Process custom actions here safely
-    }
-
-    // 2. LIFECYCLE HIJACK: Intercept the true Ace 'init' command packet frame
-    if (msg.init) {
-        // Force Ace to run its standard initialization branch first!
-        // This causes worker-base.js to resolve 'require(i.module)[i.classname]'
-        // and populate 'n = e.main = new s(r)' natively.
-        //nativeWorkerOnMessage(e);
-
-        // Capture Ace's newly constructed instance out of its own global scope assignment
-        if (self.main) {
-            antlrProcessor = self.main;
-            
-            // Re-assign the top-level prototype context methods directly to the active instance
-            antlrProcessor.setLanguageContext = setLanguageContext.bind(antlrProcessor);
-            antlrProcessor.onUpdate = onUpdate.bind(antlrProcessor);
-            
-            // Prime the initial document state safely inside Ace's memory layout
-            antlrProcessor.setValue("");
-        }
         return;
     }
 
-    // 3. SECURE FALLBACK PACKET ROUTING
-    // If a custom command hits before initialization completes, track it safely
-    if (antlrProcessor && typeof antlrProcessor[msg.command] === "function") {
-        antlrProcessor[msg.command].apply(antlrProcessor, msg.args);
-        
-        if (['change', 'setValue'].includes(msg.command)) {
-            return; 
-        }
+    // 2. SOVEREIGN BOOTSTRAP INITIALIZATION
+    if (msg.command === "importScripts") {
+        // Let the worker thread download your dependencies cleanly
+        self.importScripts(...msg.args);
+        setupInheritance();
+
+        // Build a dedicated sender pipeline to post events straight back to our frontend instance
+        const cleanSender = {
+            on: function () { },
+            callback: function (data, id) { self.postMessage({ type: "call", id: id, data: data }); },
+            emit: function (name, data) { self.postMessage({ type: "event", name: name, data: data }); }
+        };
+
+        // Construct your independent workspace engine instance!
+        antlrProcessor = new AntlrWorkerBackend(cleanSender);
+        return;
     }
 
-    // Pass standard text stream buffers ('change', 'setValue') down to the native handler
-    //if (nativeWorkerOnMessage) {
-    //    nativeWorkerOnMessage(e);
-    //}
-});
+    // 3. AUTONOMOUS TUNNELING GATES
+    // If your frontend worker client posts an explicit execution directive,
+    // intercept it and apply it straight to your processor context.
+    if (antlrProcessor && typeof antlrProcessor[msg.command] === "function") {
+        antlrProcessor[msg.command].apply(antlrProcessor, msg.args);
+        e.stopImmediatePropagation();
+        return;
+    }
+
+    // 4. ACE CHANGE HOOK INTEGRATION
+    // Since worker-base.js handles "change" packets inside its own listener array,
+    // we mirror the incoming edits directly to your sovereign doc state tracker.
+    if (antlrProcessor && antlrProcessor.doc && msg.command === "change") {
+        antlrProcessor.doc.applyDeltas(msg.args[0]);
+        antlrProcessor.deferredUpdate.schedule(); // Trigger lookahead parse
+    }
+}, true);
+

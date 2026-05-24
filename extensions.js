@@ -33,6 +33,7 @@ const IMPORT_JS = {
     // Application Bootstrap / UI Orchestration
     core: [
         '/preambles.js',
+        '/annotations.js',
         '/logging.js',
         //'/jszip.min.js',
         //'/shared.js', trying to do without this? need to run build

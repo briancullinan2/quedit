@@ -587,7 +587,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
             setTimeout(async () => {
                 if (window.compilerDiagnostics) {
                     const bridge = window.compilerDiagnostics.getBridge();
-                    bridge.refreshActiveEditorView();
+                    bridge.refreshActiveEditorView(session);
                 }
             }, 200)
         // Standard plain text file path
