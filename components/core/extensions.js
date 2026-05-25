@@ -52,6 +52,8 @@ const IMPORT_JS = {
     // Virtual Terminal Environment
     terminal: [
         '/components/terminal/xterm.js',
+        '/components/terminal/utilities.js',
+        '/components/terminal/render.js',
         '/components/terminal/commands.js',
         '/components/terminal/terminal.js'
     ],

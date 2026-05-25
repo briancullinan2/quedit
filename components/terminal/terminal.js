@@ -400,6 +400,8 @@ function getAceThemeColors() {
 }
 
 function refreshBlinker() {
+
+
     if (document.visibilityState === 'visible') {
         // Force xterm to think it is focused
         term.focus();
@@ -433,7 +435,13 @@ document.addEventListener('visibilitychange', refreshBlinker);
 
 // 2. Watch for clicks back into the window from other apps
 window.addEventListener('focus', refreshBlinker);
-terminalContainer.addEventListener('click', refreshBlinker);
+terminalContainer.addEventListener('click', () => {
+
+    if (document.querySelector('#terminals a[href="#soft"].active') !== null) {
+        terminalContainer.requestPointerLock()
+    }
+    refreshBlinker()
+});
 terminalContainer.addEventListener('focus', refreshBlinker);
 
 // 3. Handle the 'stuck' blinker when focus shifts to other UI elements (like Ace)
@@ -850,7 +858,8 @@ async function renderTerminalsCommand(panelId, noBounce = false) {
     term.reset()
 
     if (panelId === 'soft') {
-        window.cliRenderFrameLimiter = createFrameRater(10, captureRenderToTerminal)
+        term.options.scrollback = 0;
+        window.cliRenderFrameLimiter = createFrameRater(10, captureRenderToTerminalCorner)
         cliRenderFrameLimiter.requestFrameUpdate()
         return
     }
@@ -861,29 +870,6 @@ async function renderTerminalsCommand(panelId, noBounce = false) {
         .join(''))
 
 
-}
-
-
-async function captureRenderToTerminal() {
-    if (typeof getAvailableContext === 'undefined') {
-        await DependencyLoader.loadModule('toji')
-    }
-
-    let viewport = document.getElementById("viewport");
-
-    // Get the GL Context (try 'webgl2' first, then fallback)
-    let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
-    const cols = term.cols;
-    const rows = term.rows - 2;
-
-    // Run extraction algorithm
-    const ansiStringFrame = captureFrameToAnsiExtended(gl, cols, rows);
-
-    // 3. Nuke xterm view and stream frame straight to the terminal instance
-    //term.reset();
-    term.write("\x1b[H" + ansiStringFrame);
-    if (document.querySelector('#terminals a[href="#soft"].active') !== null)
-        cliRenderFrameLimiter.requestFrameUpdate()
 }
 
 
@@ -1043,7 +1029,7 @@ async function debounceTerminalStatus(event) {
         previousUpdate.y = currentY;
     }
 
-    if (event && isModifierPressed && typeof moveLookLocked === 'function') {
+    if (event && (isModifierPressed || document.pointerLockElement !== null) && typeof moveLookLocked === 'function') {
         moveLookLocked(event.movementX, event.movementY);
     } else if (event) {
         // Otherwise, project the local window client bounds directly to his look-around matrix.
