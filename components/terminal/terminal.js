@@ -579,6 +579,39 @@ let alreadyWroteDetached = false;
 
 
 term.onData(async data => {
+
+    if (typeof pressed !== 'undefined' && data.length === 1) {
+        const lowerChar = data.toLowerCase();
+
+        if (['w', 'a', 's', 'd', ' '].includes(lowerChar)) {
+            // Map the character token to its uppercase ASCII code equivalent
+            let targetKeyCode;
+            if (lowerChar === ' ') {
+                targetKeyCode = 32; // Space bar index
+                // Directly trigger his jump method immediately for responsiveness
+                if (typeof playerMover !== 'undefined') playerMover.jump();
+            } else {
+                targetKeyCode = lowerChar.toUpperCase().charCodeAt(0);
+            }
+
+            // 1. Force the key state to active in Toji's loop array
+            pressed[targetKeyCode] = true;
+
+            // 2. Setup a clear timeout threshold (e.g., 120ms).
+            // Since terminals send repeating key pulses when held down, 
+            // if a new pulse doesn't arrive before this expires, we treat it as keyup.
+            self.terminalTimers = self.terminalTimers || {};
+            clearTimeout(self.terminalTimers[targetKeyCode]);
+
+            self.terminalTimers[targetKeyCode] = setTimeout(() => {
+                pressed[targetKeyCode] = false;
+            }, 120);
+
+            // STOP execution here so it doesn't write "w-a-s-d" into your terminal text bar!
+            return;
+        }
+    }
+
     switch (data) {
 
         case '\r': // Enter
@@ -791,10 +824,10 @@ term.onRender(() => {
 
 let terminalsDebouncer = null
 let terminalPanelId = null
-function renderTerminalsCommand(panelId, noBounce = false) {
+async function renderTerminalsCommand(panelId, noBounce = false) {
 
     if (!panelId) return
-    if(!TERMINALS.includes(panelId)) return
+    if (!TERMINALS.includes(panelId)) return
     terminalPanelId = panelId
     if (!noBounce && terminalsDebouncer) return
     if (!noBounce) {
@@ -810,18 +843,47 @@ function renderTerminalsCommand(panelId, noBounce = false) {
     for (let button of buttons) {
         button.children[0].classList.remove('active')
     }
+    document.querySelector(`#terminals [href="#${panelId}"]`).classList.add('active')
+
+
 
     term.reset()
+
+    if (panelId === 'soft') {
+        window.cliRenderFrameLimiter = createFrameRater(10, captureRenderToTerminal)
+        cliRenderFrameLimiter.requestFrameUpdate()
+        return
+    }
+
     term.write(terminalLog
         .filter(l => (l.text || l || '').match(/error/) || l.source === 'error')
         .map(l => (l.text || l || ''))
         .join(''))
 
-    debugger
+
+}
 
 
-    document.querySelector(`#terminals [href="#${panelId}"]`).classList.add('active')
+async function captureRenderToTerminal() {
+    if (typeof getAvailableContext === 'undefined') {
+        await DependencyLoader.loadModule('toji')
+    }
 
+    let viewport = document.getElementById("viewport");
+
+    // Get the GL Context (try 'webgl2' first, then fallback)
+    let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
+    const cols = term.cols;
+    const rows = term.rows - 2;
+
+    // Run extraction algorithm
+    const ansiStringFrame = captureFrameToAnsiExtended(gl, cols, rows);
+
+    // 3. Nuke xterm view and stream frame straight to the terminal instance
+    //term.reset();
+    term.write("\x1b[H" + ansiStringFrame);
+    if (document.querySelector('#terminals a[href="#soft"].active') !== null)
+        cliRenderFrameLimiter.requestFrameUpdate()
 }
 
 
@@ -965,46 +1027,51 @@ function detectTerminalEvents(event, x, y, updateStatus = true) {
 
 }
 
+let debounceTerminalMouse = null;
+let previousUpdate = null;
 
-let debounceTerminalMouse = null
-let previousUpdate = null
 async function debounceTerminalStatus(event) {
-
-    //if (!event.ctrlKey && !event.metaKey && !isModifierPressed) return false;
-
-
-
+    // 1. Compute localized tracking offsets relative to the terminal canvas element boundaries
     const rect = terminalContainer.getBoundingClientRect();
+
+    let currentX = event ? event.clientX - rect.left : 0;
+    let currentY = event ? event.clientY - rect.top : 0;
+
     if (previousUpdate && event) {
-        previousUpdate.event = event
-        previousUpdate.x = event.clientX - rect.left;
-        previousUpdate.y = event.clientY - rect.top;
+        previousUpdate.event = event;
+        previousUpdate.x = currentX;
+        previousUpdate.y = currentY;
     }
 
-    if (debounceTerminalMouse) return false
+    if (event && isModifierPressed && typeof moveLookLocked === 'function') {
+        moveLookLocked(event.movementX, event.movementY);
+    } else if (event) {
+        // Otherwise, project the local window client bounds directly to his look-around matrix.
+        // Using pageX/pageY positions preserves consistency across standard scroll offset environments.
+        //moveLook(event.pageX, event.pageY);
+    }
+
+
+    if (debounceTerminalMouse) return false;
 
     debounceTerminalMouse = setTimeout(() => {
-
-        performSharedBufferScanInternal(searchTerminal.value)
-
+        performSharedBufferScanInternal(searchTerminal.value);
 
         if (!previousUpdate && !event) {
             // do nothing
         }
         else if (!previousUpdate) {
-            previousUpdate = detectTerminalEvents(
-                event, event.clientX - rect.left, event.clientY - rect.top)
+            previousUpdate = detectTerminalEvents(event, currentX, currentY);
         } else {
             previousUpdate = detectTerminalEvents(
-                previousUpdate.event, previousUpdate.x, previousUpdate.y)
+                previousUpdate.event, previousUpdate.x, previousUpdate.y
+            );
         }
 
+        debounceTerminalMouse = null;
+    }, 200);
 
-        debounceTerminalMouse = null
-    }, 200)
-
-
-    return false
+    return false;
 }
 
 function updateTerminalStatus(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, isFallback, history) {

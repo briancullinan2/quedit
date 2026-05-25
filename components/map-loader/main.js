@@ -638,7 +638,10 @@ function runTojiEngine() {
 
     const viewportFrame = document.getElementById("viewport-frame");
     if (!viewportFrame.classList.contains('not-hidden')
-        && (!document.body.classList.contains('previous-viewport-frame') || window.innerWidth < 1200))
+        && (!document.body.classList.contains('previous-viewport-frame') || window.innerWidth < 1200)
+        && (!document.body.classList.contains('panel-terminal-container')
+            && document.querySelector('#terminals a[href="#soft"].active') === null)
+    )
         return
 
     if (tojiEngineRunning) {
@@ -691,7 +694,10 @@ function runTojiEngine() {
 
         window.tojiFrameLimiter = createFrameRater(25, (e, t, frame) => {
             if (!viewportFrame.classList.contains('not-hidden')
-                && (!document.body.classList.contains('previous-viewport-frame') || window.innerWidth < 1200)) {
+                && (!document.body.classList.contains('previous-viewport-frame') || window.innerWidth < 1200)
+                && (!document.body.classList.contains('panel-terminal-container')
+                    && document.querySelector('#terminals a[href="#soft"].active') === null)
+            ) {
                 notRunningFrameCount++
                 if (notRunningFrameCount > 25) {
                     tojiRendererRunning = false;
@@ -805,4 +811,49 @@ window.addEventListener("load", function () {
     }
 
     //main();
-}); 
+});
+
+
+
+function captureFrameToAnsiExtended(gl, cols, rows) {
+    // 1. Get the GPU's true rendering dimensions
+    const width = gl.drawingBufferWidth;
+    const height = gl.drawingBufferHeight;
+
+    // 2. Size the buffer to fit the FULL canvas frame
+    const pixelBuffer = new Uint8Array(width * height * 4);
+
+    // 3. Read the complete frame out of the GPU
+    gl.readPixels(
+        0, 0,
+        width, height,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixelBuffer
+    );
+
+    let ansiOutput = "\x1b[H"; // Reset terminal cursor to top-left home position
+
+    // 4. Downsample across your terminal target columns/rows step layout
+    for (let r = 0; r < rows; r++) {
+        // Map terminal row down to WebGL pixel buffer heights
+        const srcY = Math.floor(((rows - 1 - r) / rows) * height);
+        const yOffset = srcY * width * 4;
+
+        for (let c = 0; c < cols; c++) {
+            // Map terminal column across to WebGL pixel buffer widths
+            const srcX = Math.floor((c / cols) * width);
+            const pixelIdx = yOffset + (srcX * 4);
+
+            // Extract RGBA channels
+            const red = pixelBuffer[pixelIdx];
+            const green = pixelBuffer[pixelIdx + 1];
+            const blue = pixelBuffer[pixelIdx + 2];
+
+            ansiOutput += `\x1b[48;2;${red};${green};${blue}m `;
+        }
+        ansiOutput += "\x1b[0m\n";
+    }
+
+    return ansiOutput;
+}
