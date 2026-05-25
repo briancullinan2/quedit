@@ -115,7 +115,7 @@ function hasChangedEditor() {
     if (!window.aceEditor) return false;
     const session = currentSession()
     let currentSha = window.currentOpenFileId
-    if (currentSha.length !== 40 && currentSha.length !== 64) {
+    if (currentSha && currentSha.length !== 40 && currentSha.length !== 64) {
         currentSha = trees['#database'].nodesById[session]?.sha
     }
 

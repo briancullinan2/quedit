@@ -154,6 +154,8 @@ async function triggerIncrementalSave() {
     }, 1000)
 }
 
+
+
 let searchIndex = -1;
 let searchResults = [];
 let debounceTimeout;
@@ -253,6 +255,10 @@ function performSharedBufferScanInternal(termToSearch, caseSensitive = false) {
     const buffer = term.buffer.active;
     const activeRowMarkerOffset = buffer.baseY + buffer.cursorY;
 
+    const startRow = buffer.viewportY;
+    // The bottom-most visible line is the top + the height of the terminal
+    const endRow = startRow + term.rows;
+
     // 2. Setup Regex Parsers
     let searchRegex = null;
     if (termToSearch && termToSearch.trim().length > 0) {
@@ -260,11 +266,12 @@ function performSharedBufferScanInternal(termToSearch, caseSensitive = false) {
         searchRegex = new RegExp(termToSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
     }
 
- 
-    // 3. Scan Entire Active Terminal Buffer Length Row-by-Row
-    for (let i = 0; i < buffer.length; i++) {
+    // 3. Scan ONLY the visible rows
+    for (let i = startRow; i < endRow; i++) {
         const line = buffer.getLine(i);
         if (!line) continue;
+
+
 
         const lineText = line.translateToString(true);
         const relativeMarkerDistance = i - activeRowMarkerOffset;
@@ -824,9 +831,9 @@ function extractFiles(col, row) {
     // 3. Match all and parse capture groups
     const matches = [...lineText.matchAll(FILE_NAME_REGEX)].map(m => {
         const fullPath = m[1];
-        
+
         // Extract line numbers from whichever capture group caught it
-        const lineNo = m[2] || m[3] || m[4]; 
+        const lineNo = m[2] || m[3] || m[4];
 
         // Extract filename from the end of the URL or path
         let filename = null;
@@ -955,6 +962,9 @@ async function debounceTerminalStatus(event) {
 
     debounceTerminalMouse = setTimeout(() => {
 
+        performSharedBufferScanInternal(searchTerminal.value)
+
+
         if (!previousUpdate && !event) {
             // do nothing
         }
@@ -976,8 +986,13 @@ async function debounceTerminalStatus(event) {
 
 function updateTerminalStatus(event, x, y, activeRow, col, row, lineText, filePath, lineNumber, isFallback, history) {
 
+    const buffer = term.buffer.active;
+    const startRow = buffer.viewportY;
+    const endRow = startRow + term.rows;
+
     statusBar.innerText = `Terminal: Mouse: ${col}x${row}, `
         + `Cursor: ${cursorPosition}x${activeRow}, `
+        + `Viewport: ${startRow}x${endRow}, `
         + (history !== null && history !== -1 ? `History: ${history}, ` : '')
         + (filePath && !isFallback ? lineNumber !== null ?
             `File: ${filePath}, Line: ${lineNumber}`
@@ -985,6 +1000,10 @@ function updateTerminalStatus(event, x, y, activeRow, col, row, lineText, filePa
             : '')
 
 }
+
+
+terminalContainer.addEventListener('mousemove', debounceTerminalStatus);
+
 
 
 

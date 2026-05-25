@@ -15508,7 +15508,7 @@
                                         width: o.A.WIDTH,
                                         height: o.A.HEIGHT,
                                         dither: "FloydSteinberg-serpentine",
-                                        workerScript: "./src/js/libs/gifjs/gif.worker.js"
+                                        workerScript: "../components/paint/libs/gifjs/gif.worker.js"
                                     };
                                     1 == o.A.TRANSPARENCY && (g.transparent = "rgba(0,0,0,0)");
                                     var v = new (m())(g);

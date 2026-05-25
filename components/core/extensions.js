@@ -75,18 +75,18 @@ const IMPORT_JS = {
 
     toji: [
         // Subsystem Shims & Math Matrices
-        '/js/util/webxr-polyfill.min.js',
-        '/js/util/game-shim.js',
-        '/js/util/gl-matrix-min.js',
-        '/js/util/stats.min.js',
-        '/js/basis/basis-basics.js',
+        '/components/map-loader/util/webxr-polyfill.min.js',
+        '/components/map-loader/util/game-shim.js',
+        '/components/map-loader/util/gl-matrix-min.js',
+        '/components/map-loader/util/stats.min.js',
+        '/components/map-loader/basis/basis-basics.js',
 
         // WebGL Renderer Core & Engine Logic
-        '/js/main.js',
-        '/js/q3bsp.js',
-        '/js/q3shader.js',
-        '/js/q3glshader.js',
-        '/js/q3movement.js'
+        '/components/map-loader/main.js',
+        '/components/map-loader/q3bsp.js',
+        '/components/map-loader/q3shader.js',
+        '/components/map-loader/q3glshader.js',
+        '/components/map-loader/q3movement.js'
     ],
 
     // Quake 3 WebGL & Native WASM Runtime Subsystems

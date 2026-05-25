@@ -47,7 +47,7 @@ q3bsp = function (gl) {
     this.showLoadStatus();
 
     // Spawn the web worker
-    this.worker = new Worker('js/q3bsp_worker.js');
+    this.worker = new Worker('components/map-loader/q3bsp_worker.js');
     this.worker.onmessage = function (msg) {
         map.onMessage(msg);
     };

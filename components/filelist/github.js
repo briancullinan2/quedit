@@ -378,7 +378,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
             FS.virtual[filePath].timestamp = files[selected][filePath].timestamp
 
         try {
-            if (api.memfs && FS.virtual[filePath] && !api.memfs.exists(filePath))
+            if (typeof api !== 'undefined' && api.memfs && FS.virtual[filePath] && !api.memfs.exists(filePath))
                 api.memfs.addFile(filePath, FS.virtual[filePath].contents)
         } catch (e) {
             writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
@@ -388,11 +388,11 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
             || filePath.includes('build/release-')
             || filePath.includes('build/debug-')) {
             if (FS.virtual[filePath]) {
-                writeLog(`Already compiled (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+                writeLog(`Already compiled (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
                 return FS.virtual[filePath].contents
             }
             else {
-                writeLog(`Skipping output (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+                writeLog(`Skipping output (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
                 return null
             }
         }
@@ -404,22 +404,22 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
         // TODO: IF GITHUB, ALWAYS UPDATE
         if (!shouldDownload && FS.virtual[filePath]) {
-            writeLog(`Already have cached (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+            writeLog(`Already have cached (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
             return FS.virtual[filePath].contents
         }
 
         if (!shouldDownload) {
-            writeLog(`Skipping unimportant (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+            writeLog(`Skipping unimportant (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
             return null
         }
 
 
         // TODO: use this to indicate whether we should update against file change time
         if (!forceReload && FS.virtual[filePath]) {
-            writeLog(`Skipping important (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+            writeLog(`Skipping important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
             return
         } else {
-            writeLog(`Downloading important (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+            writeLog(`Downloading important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
         }
 
 
@@ -455,14 +455,14 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
         try {
 
-            if (api.memfs && !api.memfs.exists(filePath))
+            if (typeof api !== 'undefined' && api.memfs && !api.memfs.exists(filePath))
                 api.memfs.addFile(filePath, bytes)
 
         } catch (e) {
             writeLog(`Memfs Error: ${e.message}\n\r${e.stack || e.stacktrace}`)
         }
 
-        writeLog(`Downloaded fresh (${api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+        writeLog(`Downloaded fresh (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
 
         return bytes
     } catch (e) {

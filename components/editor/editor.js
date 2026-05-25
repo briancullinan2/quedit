@@ -15,6 +15,9 @@ function getOrCreateAceSession(fileId, content) {
 
     // Bind the workspace file identifier permanently
     session.workspaceFileId = fileId;
+    getGitShaBrowser(content).then(sha => {
+        window.initialTextSha = window.currentOpenFileId = sha
+    })
 
     const mode = getModeByFilename(fileId);
     session.setMode(mode);
@@ -71,9 +74,6 @@ aceEditor.setOptions({
 })
 const session = getOrCreateAceSession('temp' + (++tempCount) + '.c', initialCode);
 aceEditor.setSession(session);
-getGitShaBrowser(aceEditor.getValue()).then(sha => {
-    window.initialTextSha = window.currentOpenFileId = sha
-})
 
 updateMaxLines()
 
@@ -350,6 +350,7 @@ const NavHistory = {
         const filePath = trees[database].nodesById[point.fileId].path
         window.currentOpenFileId = point.fileId; debugger
         trees[database].values = [point.fileId];
+        debugger
         openFile(owner.value, repository.value, filePath, trees[database].nodesById[point.fileId].sha, false);
 
         aceEditor.gotoLine(point.row + 1, point.column);

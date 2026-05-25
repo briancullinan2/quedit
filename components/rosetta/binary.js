@@ -4,7 +4,7 @@ const checkMagic = (bytes, offset, pattern) => {
     if (bytes.length < offset + pattern.length) return false;
     return pattern.every((byte, i) => bytes[offset + i] === byte);
 };
-    const isImage = filePath => /\.(png|jpe?g|gif|webp)$/i.test(filePath);
+const isImage = filePath => /\.(png|jpe?g|gif|webp)$/i.test(filePath);
 
 const BINARY_DETECTOR = {
     wasm: {
@@ -760,7 +760,9 @@ function renderWasmDisassemblySuite(sampleBytes, rowWidth = 16, viewportStart = 
     let outputBuffer = `WASM Executable Map Summary\n`;
     outputBuffer += `========================================================================\n`;
     outputBuffer += `Binary Profile:       WASM v${wasmVersion} (${isRelocatableObject ? "Relocatable Object File" : "Linked Executable Module"})\n`;
-    outputBuffer += `Program Core Bounds:  Offset Address: 0x${codeSectionStart.toString(16).toUpperCase().padStart(4, '0')} (${codeSectionLength} raw payload bytes)\n`;
+    outputBuffer += `Program Core Bounds:  ${typeof codeSectionStart === 'undefined' || !codeSectionStart
+        ? 'Not found'
+        : ('Offset Address: 0x' + codeSectionStart.toString(16).toUpperCase().padStart(4, '0'))} (${codeSectionLength} raw payload bytes)\n`;
     outputBuffer += `Instruction Matrix:  ${compiledFunctionsCount} compiled structural function blocks context\n`;
     outputBuffer += `Import Assertions:   ${importedFunctionsCount} dynamic external calls, ${importedGlobalsCount} global memory offsets\n`;
     outputBuffer += `Export Accessors:    ${exportedSymbolsCount} mapped system interface entry gates\n`;
