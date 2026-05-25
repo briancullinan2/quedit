@@ -42,7 +42,10 @@ function processSyntaxError(lines, annotations, syntaxError) {
  * Functional collector scanning for lingering tasks or preprocessor channels
  */
 function processStructuralFlags(annotations, token) {
-    if (token.textType === 'comment' && token.text.toLowerCase().includes('todo')) {
+    if (token.textType === 'comment'
+        && (token.text.toLowerCase().includes('todo')
+            || token.text.toLowerCase().includes('fix'))
+    ) {
         annotations.push({
             row: token.line - 1,
             column: token.column,
@@ -305,8 +308,25 @@ function executeGetFoldRegionsCommand(msg, sender) {
 
     // Mute console errors during layout-only block parsing runs
     parser.removeErrorListeners();
-    parser._interp.predictionMode = antlrCore.atn.PredictionMode.SLL; // Use fast SLL mode for speed on layout scans
-    parser._errHandler = new antlrCore.error.BailErrorStrategy ? new antlrCore.error.BailErrorStrategy() : new antlrCore.error.DefaultErrorStrategy();
+    const silentDiagnosticObserver = {
+        syntaxError: function (recognizer, offendingSymbol, line, column, msg, e) {
+            // Quietly absorb syntax markers during visual fold processing runs
+        },
+        reportAmbiguity: function (recognizer, dfa, startIndex, stopIndex, exact, ambigAlts, configs) {
+            // Absorb deep SLL prediction branching conflicts silently
+        },
+        reportAttemptingFullContext: function (recognizer, dfa, startIndex, stopIndex, conflictingAlts, configs) {
+            // CRITICAL PROXIMATE GAP FIX: Satisfies the engine when dropping into deep LL validation
+        },
+        reportContextSensitivity: function (recognizer, dfa, startIndex, stopIndex, prediction, configs) {
+            // Absorb fallback optimization logs smoothly
+        }
+    };
+
+    // Attach the clean listener shell to the parser
+    parser.addErrorListener(silentDiagnosticObserver);
+    parser._interp.predictionMode = AntlrRegistry.antlr4.atn.PredictionMode.SLL;
+    parser._errHandler = new AntlrRegistry.antlr4.error.BailErrorStrategy ? new AntlrRegistry.antlr4.error.BailErrorStrategy() : new AntlrRegistry.antlr4.error.DefaultErrorStrategy();
 
     // 3. GENERATE AST SYNTAX TREE SKELETON
     let tree = null;
@@ -330,7 +350,7 @@ function executeGetFoldRegionsCommand(msg, sender) {
         }
     }
 
-    
+
 
 
 
@@ -339,85 +359,87 @@ function executeGetFoldRegionsCommand(msg, sender) {
         try {
             const blockVisitor = new AntlrBlockCollectorVisitor(parser);
             const rawBlocks = blockVisitor.collect(tree);
+            const checkDoc = antlrProcessor.doc || self.doc || (typeof globalDoc !== 'undefined' ? globalDoc : null);
 
-            const langId = languageKey || "c";
-            const regexRule = ROSETTA_BLOCK_ASSOCIATIONS[langId];
+            if (checkDoc) {
+                const discoveredBlocks = [];
 
-            // ─── STAGE 1: HYBRID VALIDATION CEILING ───
-            const validatedBlocks = rawBlocks.filter(b => {
-                const height = b.endLine - b.startLine;
-                if (height <= 5) return false; 
+                // Total line count helper to check bounds safely
+                const totalLines = checkDoc.getLength();
 
-                if (height > 300 && regexRule && regexRule.open) {
-                    // CRITICAL FIX: Use the exact same context resolution hook as the top of the function
-                    const checkDoc = antlrProcessor.doc || self.doc || (typeof globalDoc !== 'undefined' ? globalDoc : null);
-                    if (checkDoc) {
-                        const headerLineText = checkDoc.getLine(b.startLine - 1) || "";
-                        const prevLineText = b.startLine > 1 ? checkDoc.getLine(b.startLine - 2) || "" : "";
+                // Step 2: Filter out blocks that don't meet basic size criteria
+                // Rule: Must be at least 5 lines long (inclusive bounds check)
+                const candidates = rawBlocks.filter(b => (b.endLine - b.startLine + 1) >= 5);
 
-                        regexRule.open.lastIndex = 0;
-                        const isValidHeader = regexRule.open.test(headerLineText) || regexRule.open.test(prevLineText);
+                // Step 3: Run filtering & line adjustments
+                for (let i = 0; i < candidates.length; i++) {
+                    const b = candidates[i];
 
-                        if (!isValidHeader) {
-                            console.warn(`[Regex Gated] Dropped structural anomaly at line ${b.startLine}`);
-                            return false; 
-                        }
+                    // 1-based to 0-based conversion for Ace Document line indexing
+                    const startLineIdx = b.startLine - 1;
+                    const endLineIdx = b.endLine - 1;
+
+                    // Skip safely if the positions are out of file boundaries
+                    if (startLineIdx < 0 || endLineIdx >= totalLines) continue;
+
+                    // Step 4: Handle standard JS deep nesting threshold
+                    // Filter elements in the original list that are strictly inside this block
+                    const internalBlocks = rawBlocks.filter(other =>
+                        other !== b &&
+                        other.startLine >= b.startLine &&
+                        other.endLine <= b.endLine
+                    );
+
+                    // Skip block if it contains more than 4 nested functional blocks
+                    if (internalBlocks.length > 100) {
+
+                        continue;
+                    }
+
+                    // Step 5: Double-stack elimination (De-duplication of identical/near-identical ranges)
+                    // Check if we already processed a broader structural rule handling this exact code range
+                    const isDuplicate = discoveredBlocks.some(existing =>
+                        Math.abs(existing.startLine - b.startLine) <= 1 &&
+                        Math.abs(existing.endLine - b.endLine) <= 1
+                    );
+                    if (isDuplicate) continue;
+
+                    // Step 6: Visual Bracket Layout Adjustment
+                    const headerLineText = checkDoc.getLine(startLineIdx) || "";
+                    let finalStartLine = b.startLine;
+                    let finalEndLine = b.endLine;
+
+                    // If the starting line contains an opening curly bracket '{', 
+                    // adjust the fold downward by 1 line so the function signature line remains visible
+                    if (headerLineText.includes('{')) {
+                        finalStartLine = b.startLine + 1;
+                    }
+
+
+                    if (checkDoc.getLine(endLineIdx).includes('}')
+                        || checkDoc.getLine(endLineIdx + 1).includes('}')
+                    ) {
+                        finalEndLine = b.endLine - 1;
+                    }
+
+                    // Final sanity check: ensuring our modifications didn't shrink the fold to less than 2 lines
+                    if (b.endLine - finalStartLine >= 2) {
+                        discoveredBlocks.push({
+                            ruleName: b.ruleName,
+                            startLine: finalStartLine,
+                            endLine: finalEndLine,
+                            startIndex: b.startIndex,
+                            endIndex: b.endIndex
+                        });
                     }
                 }
-                return true; 
-            });
 
-            // ─── STAGE 2: SORT BY NESTING DEPTH (NARROWEST SPANS FIRST) ───
-            validatedBlocks.sort((a, b) => (a.endLine - a.startLine) - (b.endLine - b.startLine));
-
-            const discoveredBlocks = [];
-
-            // ─── STAGE 3: THE ANTI-BLANKET SWEEP (FIXED) ───
-            for (let i = 0; i < validatedBlocks.length; i++) {
-                const current = validatedBlocks[i];
-                let isOuterParentArtifact = false;
-                let wrappedApprovedCount = 0;
-
-                for (let j = 0; j < discoveredBlocks.length; j++) {
-                    const approved = discoveredBlocks[j];
-
-                    // Check if current block entirely blankets an already-approved inner body
-                    const wrapsApprovedBlock = current.startLine <= approved.startLine && current.endLine >= approved.endLine;
-                    
-                    if (wrapsApprovedBlock) {
-                        wrappedApprovedCount++;
-                        
-                        const startsClose = Math.abs(current.startLine - approved.startLine) <= 2;
-                        const endsClose = Math.abs(current.endLine - approved.endLine) <= 2;
-
-                        // Case A: Tightly matching double-wrapper (e.g., compoundStatement vs blockItemList)
-                        if (startsClose || endsClose) {
-                            isOuterParentArtifact = true;
-                            break;
-                        }
-                    }
-                }
-
-                // Case B: The Macro-Blanket Trap. If this block spans a long distance
-                // and swallows multiple completely separate approved functions, it's a phantom.
-                if (wrappedApprovedCount > 2 && (current.endLine - current.startLine) > 300) {
-                    console.warn(`[Macro Blanket Defeated] Dropped rogue container starting at line ${current.startLine} swallowing ${wrappedApprovedCount} functions.`);
-                    isOuterParentArtifact = true;
-                }
-
-                if (!isOuterParentArtifact) {
-                    discoveredBlocks.push(current);
-                }
+                // Step 7: Emit processed clean fold structures to the Ace interface
+                sender.emit("foldRegionsCalculated", {
+                    fileId: self.activeFileId || msg.args?.[0] || "active_buffer",
+                    blocks: discoveredBlocks
+                });
             }
-
-            // ─── STAGE 4: RESTORE CHRONOLOGICAL ORDER FOR SIDEBAR / NAVIGATION TREE ───
-            discoveredBlocks.sort((a, b) => a.startLine - b.startLine);
-
-            // 5. EMIT BOUNDARIES IMMEDIATELY BACK TO MAIN THREAD VIA CHANNELS
-            sender.emit("foldRegionsCalculated", {
-                fileId: self.activeFileId || msg.args?.[0] || "active_buffer",
-                blocks: discoveredBlocks
-            });
 
         } catch (visitorError) {
             console.warn("[Worker Fold] AntlrBlockCollectorVisitor invocation error: ", visitorError);

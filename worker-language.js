@@ -98,7 +98,23 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
 
     const parser = new ParserCtor(tokenStream);
     parser.removeErrorListeners();
+    const silentDiagnosticObserver = {
+        syntaxError: function (recognizer, offendingSymbol, line, column, msg, e) {
+            // Quietly absorb syntax markers during visual fold processing runs
+        },
+        reportAmbiguity: function (recognizer, dfa, startIndex, stopIndex, exact, ambigAlts, configs) {
+            // Absorb deep SLL prediction branching conflicts silently
+        },
+        reportAttemptingFullContext: function (recognizer, dfa, startIndex, stopIndex, conflictingAlts, configs) {
+            // CRITICAL PROXIMATE GAP FIX: Satisfies the engine when dropping into deep LL validation
+        },
+        reportContextSensitivity: function (recognizer, dfa, startIndex, stopIndex, prediction, configs) {
+            // Absorb fallback optimization logs smoothly
+        }
+    };
 
+    // Attach the clean listener shell to the parser
+    parser.addErrorListener(silentDiagnosticObserver);
     if (typeof onErrorFound === 'function') {
         parser.addErrorListener({
             syntaxError: (recognizer, offendingSymbol, line, column, msg) => {
@@ -112,9 +128,8 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
             }
         });
     }
-
-    parser._interp.predictionMode = antlr.atn.PredictionMode.LL;
-    parser._errHandler = new antlr.error.DefaultErrorStrategy();
+    parser._interp.predictionMode = AntlrRegistry.antlr4.atn.PredictionMode.SLL;
+    parser._errHandler = new AntlrRegistry.antlr4.error.BailErrorStrategy ? new AntlrRegistry.antlr4.error.BailErrorStrategy() : new AntlrRegistry.antlr4.error.DefaultErrorStrategy();
 
 
     let tree = null;
@@ -175,7 +190,7 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
 
             visitErrorNode: function (node) {
                 const token = node.symbol;
-                console.log(`Parser failed at token cursor: ${token.start} ("${token.text}")`);
+                //console.log(`Parser failed at token cursor: ${token.start} ("${token.text}")`);
             }
         };
 
@@ -294,6 +309,10 @@ function preprocessSourceText(sourceText, languageKey, onResolveInclude, onError
     while (token.type !== antlr.Token.EOF) {
         const rawTypeName = _resolveTokenTypeName(lexer, token.type);
 
+
+
+
+        // TODO: resolve header types
         if (rawTypeName === 'Directive' || token.text.trim().startsWith('#include')) {
             const includeMatch = token.text.match(/#include\s*["<]([^">]+)[">]/);
             if (includeMatch && includeMatch[1]) {

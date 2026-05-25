@@ -38,44 +38,73 @@ function processOrder() {
 
 
 const DependencyLoader = {
-    registry: new Set(
-        [...document.scripts].map(s => s.getAttribute('src')).filter(Boolean)
+    registry: new Map(
+        [...document.scripts]
+            .map(s => s.getAttribute('src'))
+            .filter(Boolean)
             .concat([...document.styleSheets].map(s => s.href).filter(Boolean))
+            .map(url => {
+                const absoluteUrl = new URL(url, window.location.origin).pathname;
+                // Pre-seed the Map with an instantly resolved promise for elements already loaded
+                return [absoluteUrl, Promise.resolve()];
+            })
     ),
+    // Ensure your class constructor initializes a Map instead of a Set:
+    // this.registry = new Map();
 
     async loadScript(src) {
         const absoluteUrl = new URL(src, window.location.origin).pathname;
-        if (this.registry.has(absoluteUrl)) return;
 
-        return new Promise((resolve, reject) => {
+        // ─── THE CONCURRENCY LOCK CHECK ───
+        // If it's already loaded OR currently downloading, return the existing tracking handle
+        if (this.registry.has(absoluteUrl)) {
+            return this.registry.get(absoluteUrl);
+        }
+
+        // Create the promise and cache it immediately to block secondary asset creation runs
+        const scriptPromise = new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = src;
             script.type = 'text/javascript';
             script.async = false; // Preserves literal script tree order
-            script.onload = () => {
-                this.registry.add(absoluteUrl);
-                resolve();
+
+            script.onload = () => resolve();
+            script.onerror = () => {
+                this.registry.delete(absoluteUrl); // Evict on failure so a retry can clear the pipe
+                reject(new Error(`Failed execution pipeline: ${src}`));
             };
-            script.onerror = () => reject(new Error(`Failed execution pipeline: ${src}`));
+
             document.head.appendChild(script);
         });
+
+        this.registry.set(absoluteUrl, scriptPromise);
+        return scriptPromise;
     },
 
     async loadStyle(href) {
         const absoluteUrl = new URL(href, window.location.origin).pathname;
-        if (this.registry.has(absoluteUrl)) return;
 
-        return new Promise((resolve, reject) => {
+        // ─── THE CONCURRENCY LOCK CHECK ───
+        if (this.registry.has(absoluteUrl)) {
+            return this.registry.get(absoluteUrl);
+        }
+
+        const stylePromise = new Promise((resolve, reject) => {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = href;
-            link.onload = () => {
-                this.registry.add(absoluteUrl);
-                resolve();
+
+            link.onload = () => resolve();
+            link.onerror = () => {
+                this.registry.delete(absoluteUrl); // Evict on failure
+                reject(new Error(`Failed stylesheet mounting: ${href}`));
             };
-            link.onerror = () => reject(new Error(`Failed stylesheet mounting: ${href}`));
+
             document.head.appendChild(link);
         });
+
+        this.registry.set(absoluteUrl, stylePromise);
+        return stylePromise;
     },
 
     async loadModule(key) {

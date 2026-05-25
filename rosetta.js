@@ -941,7 +941,23 @@ const ROSETTA_NEIGHBORHOOD_ASSOCIATIONS = {
 
     "is_structural_separator": (t, s) => ([',', ';', '.'].includes(t.text)) ? "punctuation.separator" : null,
 
-    "is_code_comment": (t, s) => (t.tokenRule?.toLowerCase().includes('comment') || t.tokenSymbol?.toLowerCase().includes('comment') || t.channel === 1) ? "comment" : null,
+    "is_code_comment": (t, s) => {
+        const ruleLow = t.tokenRule ? t.tokenRule.toLowerCase() : "";
+        const symLow = t.tokenSymbol ? t.tokenSymbol.toLowerCase() : "";
+
+        // Explicitly exclude whitespace, newline rules, or space characters 
+        // from being accidentally blanketed under comment formatting hooks
+        if (ruleLow.includes('whitespace') || ruleLow.includes('newline') || t.text === " " || t.text === "\t" || t.text.trim().length === 0) {
+            return null;
+        }
+
+        // Apply comment tokens only if rule names explicitly target real comment definitions
+        if (ruleLow.includes('comment') || symLow.includes('comment') || t.channel === 1) {
+            return "comment";
+        }
+
+        return null;
+    },
 
     "is_fallback_operator_literal": (t, s) => (t.tokenRule?.startsWith("'") && t.tokenRule?.length <= 5) ? "keyword.operator" : null,
 
@@ -1359,7 +1375,7 @@ function extractCurrentBlock(codeStr, lineNumber, langId) {
     let blockStarted = false;
 
     // HARD CEILING SAFETY THRESHOLD: Avoid swallowing trailing broken scopes
-    const MAX_BLOCK_LINE_HEIGHT = 500; 
+    const MAX_BLOCK_LINE_HEIGHT = 500;
 
     rowLoop: for (let l = foundHeaderIdx; l < totalLines; l++) {
         const text = lines[l];
@@ -1403,7 +1419,7 @@ function extractCurrentBlock(codeStr, lineNumber, langId) {
 
                 if (blockStarted && depth <= 0) {
                     endCharOffset = lineOffsets[l] + c + 1;
-                    break rowLoop; 
+                    break rowLoop;
                 }
             }
         } else {
