@@ -37,9 +37,12 @@ const tokenInput = document.getElementById('gh-token-input');
 const modal = document.getElementById('token-modal');
 
 function updatePlaceholder() {
-    if (api.github_token && api.github_token.length > 0) {
+    let token = typeof api !== 'undefined' && api.github_token && api.github_token.length > 0
+        ? api.github_token
+        : localStorage.getItem('github_token')
+    if (token) {
         // Show a masked version so the user knows it's set
-        const masked = api.github_token.substring(0, 4) + "•".repeat(12);
+        const masked = token.substring(0, 4) + "•".repeat(12);
         tokenInput.placeholder = `Currently set: ${masked}`;
         tokenInput.classList.add('has-token');
     } else {

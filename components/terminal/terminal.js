@@ -786,16 +786,35 @@ term.onRender(() => {
 });
 
 
-
-function renderTerminalsCommand(panelId) {
+let terminalsDebouncer = null
+let terminalPanelId = null
+function renderTerminalsCommand(panelId, noBounce = false) {
 
     if (!panelId) return
+    terminalPanelId = panelId
+    if (!noBounce && terminalsDebouncer) return
+    if (!noBounce) {
+        terminalsDebouncer = setTimeout(() => {
+            renderTerminalsCommand(terminalPanelId, true)
+            terminalsDebouncer = null
+        }, 400)
+        return
+    }
 
     let buttons = document.getElementById('terminals').children[0].children
 
     for (let button of buttons) {
         button.children[0].classList.remove('active')
     }
+
+    term.reset()
+    term.write(terminalLog
+        .filter(l => (l.text || l || '').match(/error/) || l.source === 'error')
+        .map(l => (l.text || l || ''))
+        .join(''))
+
+    debugger
+
 
     document.querySelector(`#terminals [href="#${panelId}"]`).classList.add('active')
 
@@ -1004,12 +1023,7 @@ function updateTerminalStatus(event, x, y, activeRow, col, row, lineText, filePa
 
 terminalContainer.addEventListener('mousemove', debounceTerminalStatus);
 
-
-
-
-terminalContainer.addEventListener('mousemove', debounceTerminalStatus);
-
-
+term.onScroll(debounceTerminalStatus);
 
 terminalContainer.addEventListener('mousedown', async (event) => {
 

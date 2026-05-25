@@ -83,6 +83,7 @@ const DependencyLoader = {
 
     async loadStyle(href) {
         const absoluteUrl = new URL(href, window.location.origin).pathname;
+        const existingTheme = document.querySelector('link[href*="/main.css"]', document.head)
 
         // ─── THE CONCURRENCY LOCK CHECK ───
         if (this.registry.has(absoluteUrl)) {
@@ -100,7 +101,11 @@ const DependencyLoader = {
                 reject(new Error(`Failed stylesheet mounting: ${href}`));
             };
 
-            document.head.appendChild(link);
+
+            if(existingTheme)
+                document.head.insertBefore(link, existingTheme)
+            else
+                document.head.appendChild(link);
         });
 
         this.registry.set(absoluteUrl, stylePromise);

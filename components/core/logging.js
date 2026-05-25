@@ -77,28 +77,28 @@ const originalConsole = {
 
 self.console.log = (...args) => {
     const formatted = formatMessage('log', args);
-    if (window.terminalWrite) terminalWrite(formatted);
+    if (window.terminalWrite) terminalWrite(formatted, 'log');
     else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.log(...args);
 };
 
 self.console.warn = (...args) => {
     const formatted = formatMessage('warn', args);
-    if (window.terminalWrite) terminalWrite(formatted);
+    if (window.terminalWrite) terminalWrite(formatted, 'warn');
     else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.warn(...args);
 };
 
 self.console.error = (...args) => {
     const formatted = formatMessage('error', args);
-    if (window.terminalWrite) terminalWrite(formatted);
+    if (window.terminalWrite) terminalWrite(formatted, 'error');
     else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.error(...args);
 };
 
 self.console.info = (...args) => {
     const formatted = formatMessage('info', args);
-    if (window.terminalWrite) terminalWrite(formatted);
+    if (window.terminalWrite) terminalWrite(formatted, 'info');
     else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.info(...args);
 };

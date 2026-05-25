@@ -15623,7 +15623,7 @@
                                     title: "About",
                                     params: [{
                                         title: "",
-                                        html: '<img style="width:64px;" class="about-logo" alt="" src="/paint-css/images/logo-colors.png" />'
+                                        html: '<img style="width:64px;" class="about-logo" alt="" src="/components/paint/logo-colors.png" />'
                                     }, {
                                         title: "Name:",
                                         html: '<span class="about-name">miniPaint</span>'

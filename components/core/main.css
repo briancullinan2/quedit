@@ -897,7 +897,7 @@ input[type="number"]::-webkit-inner-spin-button {
     flex-shrink: 1;
 
     white-space: nowrap;
-    overflow: hidden;
+    overflow: visible;
     text-overflow: ellipsis;
     max-width: min-content;
     min-width: 60px;
@@ -1174,6 +1174,7 @@ input[type="number"]::-webkit-inner-spin-button {
 [alt]:not([popovertarget]):hover::after,
 [data-tooltip]:not([popovertarget]):hover::after {
     opacity: 1;
+    visibility: visible;
 }
 
 
@@ -1215,7 +1216,7 @@ input[type="number"]::-webkit-inner-spin-button {
     transition: color 0.2s, transform 0.2s;
     width: var(--global-height);
     margin: 0;
-    line-height: var(--global-height);
+    line-height: auto;
     height: var(--global-height);
     width: var(--global-height);
     vertical-align: middle;
@@ -1237,6 +1238,7 @@ input[type="number"]::-webkit-inner-spin-button {
 #popups .popup .close:hover:before,
 #token-modal .close-btn:hover:before {
     color: var(--ace-pink);
+    margin: 0;
 }
 
 #popups .popup .close:hover,
