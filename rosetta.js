@@ -981,7 +981,7 @@ function structuralPartsAccumulatorPush(array, tag) {
 
 
 function toRosettaToken(symbolicName, ruleName, lexer, parser, ctxOrToken, tokenStream) {
-    console.log(`[STREAM PIPELINE] Processing token context via global stream index lookup.`);
+    //console.log(`[STREAM PIPELINE] Processing token context via global stream index lookup.`);
 
     // 1. Setup localized token parsing payload state natively
     const state = {
@@ -1163,42 +1163,47 @@ function _buildTokenPayload(token, rawTypeName, classification, lowerType, lexer
 const ROSETTA_BLOCK_ASSOCIATIONS = {
     // ─── C-STYLE LANGUAGES: BRACE MATCHING WITH TYPE HEADERS ───
     c: {
-        open: /^[ \t]*(?:static\s+|inline\s+|extern\s+)?(?:[\w\d_*]+[ \t]+)+[\w\d_*]+\s*\([^)]*\)\s*(?=\{)/gm,
+        open: /^[ \t]*(?:static\s+|inline\s+|extern\s+)?(?:[\w\d_*]+[ \t]+)+[\w\d_*]+\s*\([^)]*\)/gm,
         close: "{}",
         isKeywordClose: false
     },
     cpp: {
-        open: /^[ \t]*(?:template\s*<[^>]*>\s*)?(?:class|struct|namespace|(?:(?:inline\s+|static\s+|virtual\s+)?[\w\d_:<>]+\s+)+[\w\d_*~]+)\s*(?:\([^)]*\))?\s*(?::\s*[\w\d_:<>, ]+)?\s*(?=\{)/gm,
+        open: /^[ \t]*(?:template\s*<[^>]*>\s*)?(?:class|struct|namespace|(?:(?:inline\s+|static\s+|virtual\s+)?[\w\d_:<>]+\s+)+[\w\d_*~]+)\s*(?:\([^)]*\))?\s*(?::\s*[\w\d_:<>, ]+)?/gm,
         close: "{}",
         isKeywordClose: false
     },
     csharp: {
-        open: /^[ \t]*(?:public|private|protected|internal|static|async|virtual|override|partial\s+)*(?:class|struct|interface|namespace|enum|(?:[\w\d_:<>]+\s+)+[\w\d_]+)\s*(?:\([^)]*\))?\s*(?=\{)/gm,
+        open: /^[ \t]*(?:public|private|protected|internal|static|async|virtual|override|partial\s+)*(?:class|struct|interface|namespace|enum|(?:[\w\d_:<>]+\s+)+[\w\d_]+)\s*(?:\([^)]*\))?/gm,
         close: "{}",
         isKeywordClose: false
     },
     java: {
-        open: /^[ \t]*(?:public|private|protected|static|final|native|synchronized|abstract\s+)*(?:class|interface|enum|(?:[\w\d_:<>]+\s+)+[\w\d_]+)\s*\([^)]*\)\s*(?:throws\s+[\w\d_, ]+)?\s*(?=\{)/gm,
+        // Removed trailing (?=\{) and added trailing optional type signatures
+        open: /^[ \t]*(?:public|private|protected|static|final|native|synchronized|abstract\s+)*(?:class|interface|enum|(?:[\w\d_:<>]+\s+)+[\w\d_]+)\s*\([^)]*\)\s*(?:throws\s+[\w\d_, ]+)?/gm,
         close: "{}",
         isKeywordClose: false
     },
     angelscript: {
-        open: /^[ \t]*(?:class|interface|shared|abstract|(?:(?:private|protected|inline)?\s*[\w\d_*@<>]+\s+)+[\w\d_*]+)\s*\([^)]*\)\s*(?=\{)/gm,
+        // Strip trailing (?=\{) lookahead
+        open: /^[ \t]*(?:class|interface|shared|abstract|(?:(?:private|protected|inline)?\s*[\w\d_*@<>]+\s+)+[\w\d_*]+)\s*\([^)]*\)/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    php: {
+        // Strip trailing (?=\{) lookahead
+        open: /^[ \t]*(?:public|private|protected|static|final\s+)*function\s+[\w\d_]+\s*\([^)]*\)/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    protobuf3: {
+        // Strip trailing (?=\{) lookahead
+        open: /^[ \t]*(?:message|service|enum)\s+[\w\d_]+/gm,
         close: "{}",
         isKeywordClose: false
     },
 
+
     // ─── WEB ENGINEERING & SCRIPTS ───
-    javascript: {
-        open: /^[ \t]*(?:async\s+)?function\s*[\w\d_*]*\s*\([^)]*\)|^[ \t]*(?:const|let|var)\s+[\w\d_]+\s*=\s*(?:async\s*)?\([^)]*\)\s*=>|^[ \t]*(?:public|private|static|async\s+)?[\w\d_]+\s*\([^)]*\)\s*\{/gm,
-        close: "{}",
-        isKeywordClose: false
-    },
-    typescript: {
-        open: /^[ \t]*(?:export\s+)?(?:async\s+)?function\s*[\w\d_*]*\s*\([^)]*\)|^[ \t]*(?:interface|type|class|namespace)\s+[\w\d_]+|^[ \t]*(?:public|private|protected|static|readonly|async\s+)*[\w\d_]+\s*\([^)]*\)\s*[:\w\d_<>]*\s*\{/gm,
-        close: "{}",
-        isKeywordClose: false
-    },
     html: {
         open: /<([a-zA-Z1-6]+)(?:\s+[^>]*)*>/gm,
         close: "xml", // Forces an explicit tag name stack tracker
@@ -1209,17 +1214,30 @@ const ROSETTA_BLOCK_ASSOCIATIONS = {
         close: "xml",
         isKeywordClose: false
     },
+    javascript: {
+        // Re-aligned the class/object method rule block to not rely on an immediate inline '{'
+        open: /^[ \t]*(?:async\s+)?function\s*[\w\d_*]*\s*\([^)]*\)|^[ \t]*(?:const|let|var)\s+[\w\d_]+\s*=\s*(?:async\s*)?\([^)]*\)\s*=>|^[ \t]*(?:public|private|static|async\s+)?[\w\d_]+\s*\([^)]*\)/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
+    typescript: {
+        // Cleaned up method declarations so return interfaces don't require inline '{' anchors
+        open: /^[ \t]*(?:export\s+)?(?:async\s+)?function\s*[\w\d_*]*\s*\([^)]*\)|^[ \t]*(?:interface|type|class|namespace)\s+[\w\d_]+|^[ \t]*(?:public|private|protected|static|readonly|async\s+)*[\w\d_]+\s*\([^)]*\)\s*[:\w\d_<>|?]*\s*/gm,
+        close: "{}",
+        isKeywordClose: false
+    },
     css3: {
-        open: /^[ \t]*[.#\w\d_:\s,>+~[\]*=-]+\s*(?=\{)/gm,
+        // Completely stripped (?=\{) so nesting rules work smoothly even if braces drop or track multi-selectors
+        open: /^[ \t]*[.#\w\d_:\s,>+~[\]*=-]+/gm,
         close: "{}",
         isKeywordClose: false
     },
     json: {
-        open: /"[\w\d_]+"\s*:\s*\{|\[/gm,
+        // Stripped the inline execution requirement for the object container opening brace
+        open: /"[\w\d_]+"\s*:\s*|\[/gm,
         close: "{}",
         isKeywordClose: false
     },
-
     // ─── KEYWORD-BOUNDED SCRIPTING LAYERS ───
     lua: {
         open: /^[ \t]*(?:local\s+)?function\s+[\w\d_.]+\s*\([^)]*\)|^[ \t]*while\s+.*do\b|^[ \t]*for\s+.*do\b|^[ \t]*if\s+.*then\b/gm,
@@ -1234,11 +1252,6 @@ const ROSETTA_BLOCK_ASSOCIATIONS = {
     python2: {
         open: /^[ \t]*(?:def|class)\s+[\w\d_]+\s*(?:\([^)]*\))?\s*:/gm,
         close: "indent",
-        isKeywordClose: false
-    },
-    php: {
-        open: /^[ \t]*(?:public|private|protected|static|final\s+)*function\s+[\w\d_]+\s*\([^)]*\)\s*(?=\{)/gm,
-        close: "{}",
         isKeywordClose: false
     },
     rust: {
@@ -1258,11 +1271,6 @@ const ROSETTA_BLOCK_ASSOCIATIONS = {
         close: "{}",
         isKeywordClose: false
     },
-    protobuf3: {
-        open: /^[ \t]*(?:message|service|enum)\s+[\w\d_]+\s*(?=\{)/gm,
-        close: "{}",
-        isKeywordClose: false
-    },
     cmake: {
         open: /\b(function|macro|foreach|while|if)\s*\(/gim,
         close: /\b(endfunction|endmacro|endforeach|endwhile|endif)\s*\(/gim,
@@ -1274,12 +1282,14 @@ const ROSETTA_BLOCK_ASSOCIATIONS = {
         isKeywordClose: false
     },
     bash: {
-        open: /^[ \t]*function\s+[\w\d_-]+|[\w\d_-]+\s*\(\s*\)\s*\{|^\s*\b(if|for|while|case)\b/gm,
+        // Modified to allow variable declarations and loops to transition lines before matching blocks take off
+        open: /^[ \t]*function\s+[\w\d_-]+|[\w\d_-]+\s*\(\s*\)|^\s*\b(if|for|while|case)\b/gm,
         close: /\b(fi|done|esac|\})\b/gm,
         isKeywordClose: true
     },
     sql: {
-        open: /\b(create\s+or\s+replace\s+(?:procedure|function|package|trigger)|begin)\b/gim,
+        // Added multi-whitespace support (\s+) inside "create or replace" checks to capture broken lines cleanly
+        open: /\b(create\s+(?:or\s+replace\s+)?(?:procedure|function|package|trigger)|begin)\b/gim,
         close: /\b(end)\b/gim,
         isKeywordClose: true
     },
@@ -1302,34 +1312,35 @@ ROSETTA_BLOCK_ASSOCIATIONS['postgresql'] = ROSETTA_BLOCK_ASSOCIATIONS['sql'];
 ROSETTA_BLOCK_ASSOCIATIONS['sqlite'] = ROSETTA_BLOCK_ASSOCIATIONS['sql'];
 
 
+
 function extractCurrentBlock(codeStr, lineNumber, langId) {
     const lines = codeStr.split('\n');
     const totalLines = lines.length;
 
-    // Fallback safely to plaintext if language mappings are absent
     const rules = ROSETTA_BLOCK_ASSOCIATIONS[langId] || { open: null, close: "{}", isKeywordClose: false };
     if (!rules.open) {
         return { text: codeStr, startLine: 1, endLine: totalLines, startIndex: 0, endIndex: codeStr.length };
     }
 
-    // Build the character line offset indexes array for positional lookup
     const lineOffsets = [];
     let currentOffset = 0;
     lines.forEach(line => {
         lineOffsets.push(currentOffset);
-        currentOffset += line.length + 1; // Accumulate char count plus trailing newline
+        currentOffset += line.length + 1;
     });
 
     const cursorLineIndex = Math.min(Math.max(1, lineNumber), totalLines) - 1;
     let foundHeaderIdx = -1;
     let matchOffset = -1;
 
-    // 1. SCAN UPWARD: Locate the closest active block header boundary
+    // 1. SCAN UPWARD: Locate closest active header line
     for (let l = cursorLineIndex; l >= 0; l--) {
         rules.open.lastIndex = 0;
         const lineText = lines[l];
-        const match = rules.open.exec(lineText);
 
+        if (lineText.trim().startsWith("/") || lineText.trim().startsWith("*")) continue;
+
+        const match = rules.open.exec(lineText);
         if (match) {
             foundHeaderIdx = l;
             matchOffset = lineOffsets[l] + match.index;
@@ -1337,61 +1348,65 @@ function extractCurrentBlock(codeStr, lineNumber, langId) {
         }
     }
 
-    // If no header matches above the cursor line, return the absolute global file bounds
     if (foundHeaderIdx === -1) {
         return { text: codeStr, startLine: 1, endLine: totalLines, startIndex: 0, endIndex: codeStr.length };
     }
 
-    // 2. SCAN DOWNWARD: Trace the depth counter limits until the block balances out
+    // 2. SCAN DOWNWARD: Balance with defensive limits
     let depth = 0;
     let endLineIdx = foundHeaderIdx;
     let endCharOffset = matchOffset;
     let blockStarted = false;
 
-    // Handle HTML/XML explicit Tag Stack tracking systems
-    let xmlTagName = null;
-    if (rules.close === "xml") {
-        rules.open.lastIndex = 0;
-        const tagMatch = rules.open.exec(lines[foundHeaderIdx]);
-        xmlTagName = tagMatch ? tagMatch[1] : null;
-    }
+    // HARD CEILING SAFETY THRESHOLD: Avoid swallowing trailing broken scopes
+    const MAX_BLOCK_LINE_HEIGHT = 500; 
 
-    for (let l = foundHeaderIdx; l < totalLines; l++) {
+    rowLoop: for (let l = foundHeaderIdx; l < totalLines; l++) {
         const text = lines[l];
         endLineIdx = l;
 
-        // Python block validation: Closes out whenever an indentation drop occurs
+        // ─── THE CEILING GUARD CRACKDOWN ───
+        // If the balance loop has tracked deeper than 500 lines without finding an exit,
+        // it signals a broken block tracking state. Terminate immediately.
+        if ((l - foundHeaderIdx) > MAX_BLOCK_LINE_HEIGHT) {
+            console.warn(`[Selector Ceiling Triggered] Terminated out-of-bounds scan at line ${l + 1}.`);
+            endLineIdx = Math.min(foundHeaderIdx + 40, totalLines - 1); // Truncate safely
+            endCharOffset = lineOffsets[endLineIdx] + lines[endLineIdx].length;
+            break rowLoop;
+        }
+
         if (rules.close === "indent") {
             const currentIndent = text.search(/\S/);
             const headerIndent = lines[foundHeaderIdx].search(/\S/);
             if (blockStarted && currentIndent !== -1 && currentIndent <= headerIndent) {
                 endLineIdx = Math.max(foundHeaderIdx, l - 1);
                 endCharOffset = lineOffsets[endLineIdx] + lines[endLineIdx].length;
-                break;
+                break rowLoop;
             }
             if (currentIndent !== -1 && l > foundHeaderIdx) blockStarted = true;
             endCharOffset = lineOffsets[l] + text.length;
             continue;
         }
 
-        // Standard Text Character/Brace Token Stream Balancer
         if (!rules.isKeywordClose) {
             const openChar = rules.close[0] || '{';
             const closeChar = rules.close[1] || '}';
 
             for (let c = 0; c < text.length; c++) {
                 const char = text[c];
-                if (char === openChar) { depth++; blockStarted = true; }
-                else if (char === closeChar) { depth--; }
+                if (char === openChar) {
+                    depth++;
+                    blockStarted = true;
+                } else if (char === closeChar) {
+                    depth--;
+                }
 
                 if (blockStarted && depth <= 0) {
                     endCharOffset = lineOffsets[l] + c + 1;
-                    break;
+                    break rowLoop; 
                 }
             }
-        }
-        // Keyword Token Match Balancer (e.g., Lua `if ... then` -> `end`, bash `if` -> `fi`)
-        else {
+        } else {
             rules.open.lastIndex = 0;
             if (rules.open.test(text)) { depth++; blockStarted = true; }
 
@@ -1400,15 +1415,13 @@ function extractCurrentBlock(codeStr, lineNumber, langId) {
 
             if (blockStarted && depth <= 0) {
                 endCharOffset = lineOffsets[l] + text.length;
-                break;
+                break rowLoop;
             }
         }
 
-        if (blockStarted && depth <= 0) break;
         endCharOffset = lineOffsets[l] + text.length;
     }
 
-    // Return the packaged functional block payload slice
     return {
         text: codeStr.slice(matchOffset, endCharOffset),
         startLine: foundHeaderIdx + 1,
@@ -1420,6 +1433,8 @@ function extractCurrentBlock(codeStr, lineNumber, langId) {
 
 
 
+
+
 /**
  * Agnostic ANTLR Visitor that dynamically captures multi-line code blocks 
  * across any grammar based on universal rule structural names.
@@ -1428,13 +1443,13 @@ class AntlrBlockCollectorVisitor {
     constructor(parser) {
         this.parser = parser;
         this.blocks = [];
-        
+
         // Explicit list of known block-defining rule signatures across your 40 languages
         this.blockRuleIdentifiers = new Set([
-            "compoundstatement", "functionbody", "blockitemlist", "block",
+            "functionbody", "methoddeclaration", // ◄ ADD THESE BACK!
+            "compoundstatement", "blockitemlist", "block",
             "obj", "arr", "initializerlist", "memberdeclarationlist",
-            "statement", "selectionstatement", "iterationstatement",
-            "asmdatapayload", "assembly_payload", "methoddeclaration"
+            "asmdatapayload", "assembly_payload"
         ]);
     }
 

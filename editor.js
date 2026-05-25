@@ -783,6 +783,19 @@ function doAceEditorMouse(e) {
     globalTooltip.style.top = correctedTop + "px";
 }
 
+
+function forceEditorFoldByLine(targetStartLine) {
+    const session = aceEditor.getSession();
+    const rowIdx = targetStartLine - 1; // Convert human tree line back to 0-indexed row
+
+    // Force Ace to calculate the range bounds using our ANTLR visitor logic
+    const range = session.getFoldWidgetRange(rowIdx);
+    if (range) {
+        // Add the fold natively, collapsing the target section instantly
+        session.addFold("...", range);
+    }
+}
+
 /**
  * Ingests computed worker fold scopes and applies them straight onto the Ace Gutter
  * @param {Ace.EditSession} aceSession 
@@ -817,4 +830,27 @@ async function syncCodeCollapsing(aceSession, sourceText, languageKey) {
         console.error("[Ace Collapsing Engine] Synchronization failure:", err);
     }
 }
+
+
+function executeGlobalWorkspaceCollapse() {
+    const session = aceEditor.getSession();
+    const blocks = session.antlrDiscoveredFoldBlocks || [];
+
+    // Sort backwards from the bottom of the file up to preserve nested index integrity
+    const processingQueue = [...blocks].sort((a, b) => b.startLine - a.startLine);
+
+    processingQueue.forEach(block => {
+        const rowIdx = block.startLine - 1;
+        const range = session.getFoldWidgetRange(rowIdx);
+        if (range) {
+            try {
+                session.addFold("...", range);
+            } catch (e) {
+                // Safe bypass if parent blocks already wrapped and swallowed the sub-range
+            }
+        }
+    });
+}
+
+
 

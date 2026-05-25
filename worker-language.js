@@ -39,7 +39,35 @@ function createLexerInstance(sourceText, languageKey) {
             chars = Object.getPrototypeOf(LexerCtor.prototype).constructor.normalizeInputStream(chars);
         }
 
-        return new LexerCtor(chars);
+
+        // 1. Instantiate the stream pipeline completely natively
+        //const chars = new AntlrRegistry.antlr4.InputStream(codeString);
+        const lexer = new LexerCtor(chars);
+        //const tokens = new AntlrRegistry.antlr4.CommonTokenStream(lexer);
+
+        // ─── THE SIDE-EFFECT FREE FIXED INTERCEPT LOOP ───
+        // Force-fill the stream buffer array natively so we can work with real instances
+        //tokens.fill();
+        /*
+        // Walk the flat array cache and memoize text explicitly
+        if (tokens.tokens && Array.isArray(tokens.tokens)) {
+            for (let i = 0; i < tokens.tokens.length; i++) {
+                const t = tokens.tokens[i];
+
+                // Skip mutations if ANTLR already hard-baked an EOF or special token string value
+                if (t._text !== null && t._text !== undefined) continue;
+
+                try {
+                    // Hard-bind the sliced string directly to avoid the lazy-evaluation getter bugs
+                    t.text = codeString.substring(t.start, t.stop + 1);
+                } catch (e) {
+                    t.text = "";
+                }
+            }
+        }
+        */
+
+        return lexer
     } catch (e) {
         console.error(`[Worker] Failed to spin up ANTLR string stream for look-up '${lookupKey}':`, e);
         return null;
@@ -154,39 +182,58 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
         const walker = new antlr.tree.ParseTreeWalker();
         walker.walk(configurationListener, tree);
 
-        
+
     }
 
     return [semanticOverrides, parser];
 }
 
 
-
 function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
     const unifiedSourceBuffer = _safePreprocess(sourceText, languageKey, onResolveInclude, onErrorFound);
+    const antlr = AntlrRegistry.antlr4;
 
     // ─── STAGE 1: SPIN UP THE VISUAL ROW BUFFER ENGINE ───
     const visualLexer = createLexerInstance(unifiedSourceBuffer, languageKey);
     if (!visualLexer) return [];
 
-    const antlr = AntlrRegistry.antlr4;
     const BaseCommonStream = AntlrRegistry.CommonTokenStream || antlr.CommonTokenStream;
     let StreamConstructor = antlr.BufferedTokenStream ? antlr.BufferedTokenStream : Object.getPrototypeOf(BaseCommonStream);
     if (!StreamConstructor || typeof StreamConstructor !== 'function' || StreamConstructor === Function.prototype) {
         StreamConstructor = BaseCommonStream;
     }
 
-    // Capture everything (code + channel 1 whitespace) for your UI viewport map
     const visualTokenStream = new StreamConstructor(visualLexer);
-    try { visualTokenStream.fill(); } catch (e) { }
+
+    try {
+        // Force-load all raw tokens natively into memory 
+        visualTokenStream.fill();
+
+        /*
+        const visualTokensArr = visualTokenStream.tokens || (typeof visualTokenStream.getTokens === 'function' ? visualTokenStream.getTokens() : []);
+        if (Array.isArray(visualTokensArr)) {
+            for (let i = 0; i < visualTokensArr.length; i++) {
+                const t = visualTokensArr[i];
+                if (t && (t._text === null || t._text === undefined)) {
+                    try {
+                        t.text = unifiedSourceBuffer.substring(t.start, t.stop + 1);
+                    } catch (err) {
+                        t.text = "";
+                    }
+                }
+            }
+        }
+        */
+    } catch (e) {
+        console.error("[Worker Visual Stream Fill Failure]:", e);
+    }
 
 
     // ─── STAGE 2: SPIN UP THE ISOLATED AST PARSER ENGINE ───
-    // Build a dedicated twin lexer so its internal stream cursors are 100% private
     const parserLexer = createLexerInstance(unifiedSourceBuffer, languageKey);
     const parserTokenStream = new antlr.CommonTokenStream(parserLexer);
 
-    // This will now parse flawlessly on channel 0 without seeing any whitespace artifacts!
+    // Run the extraction matrix smoothly with clean channel 0 tokens
     const [semanticOverrides, parser] = _extractSemanticOverrides(parserTokenStream, languageKey, onErrorFound, parserLexer, antlr);
 
 
@@ -203,13 +250,12 @@ function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
         // Sanitize leading newlines out of raw whitespace blocks so they stream nicely into row buckets
         if (token.channel === 1 && text.startsWith('\n')) {
             text = text.substring(1);
-            if (text === "") return null; // If it was a pure newline, let the line index break handle it natively
+            if (text === "") return null;
         }
 
-        // Use the visualLexer to map names cleanly
         const rawTypeName = _resolveTokenTypeName(visualLexer, token.type);
-        // Intercept and cross-reference semantic AST positions seamlessly
         let baselineClassification = semanticOverrides.get(token.start);
+
         if (!baselineClassification) {
             baselineClassification = toRosettaToken(
                 rawTypeName,
@@ -233,6 +279,7 @@ function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
         );
     }).filter(Boolean), visualLexer, parser];
 }
+
 
 function preprocessSourceText(sourceText, languageKey, onResolveInclude, onErrorFound, visitedFiles = new Set()) {
     if (typeof onResolveInclude !== 'function') return sourceText;
@@ -380,7 +427,7 @@ const onAnyMessage = async event => {
             case 'folds':
                 output = getFoldRegions(data.text, data.language);
                 break;
-           
+
             default:
                 output = { status: 'unhandled_command' };
                 break;

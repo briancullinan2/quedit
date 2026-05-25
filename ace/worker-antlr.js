@@ -262,10 +262,10 @@ self.addEventListener('message', function (e) {
     }
 }, true);
 
-/**
- * Standalone Worker Command: Dynamically parses an active document and harvests
- * structural blocks for code folding and editor gutter highlights.
- */
+
+
+
+
 function executeGetFoldRegionsCommand(msg, sender) {
     // 1. RECOVER WORKER CONTEXT HOOKS
     const activeDoc = antlrProcessor.doc || self.doc || (typeof globalDoc !== 'undefined' ? globalDoc : null);
@@ -276,7 +276,7 @@ function executeGetFoldRegionsCommand(msg, sender) {
 
     const codeString = activeDoc.getValue();
     const languageKey = antlrProcessor.languagekey || self.languageKey || "c";
-    
+
     // Resolve core ANTLR library context reference out of the worker global space
     const antlrCore = AntlrRegistry?.antlr4 || self.antlr4 || (self.antlr && self.antlr.core) || antlr;
     if (!antlrCore) {
@@ -330,13 +330,88 @@ function executeGetFoldRegionsCommand(msg, sender) {
         }
     }
 
+    
+
+
+
     // 4. RUN AGNOSTIC BLOCK HARVEST VISITOR
     if (tree) {
         try {
             const blockVisitor = new AntlrBlockCollectorVisitor(parser);
-            const discoveredBlocks = blockVisitor.collect(tree);
+            const rawBlocks = blockVisitor.collect(tree);
 
-            console.log(`[Worker Fold Success] Extracted ${discoveredBlocks.length} regions for language: ${languageKey}`);
+            const langId = languageKey || "c";
+            const regexRule = ROSETTA_BLOCK_ASSOCIATIONS[langId];
+
+            // ─── STAGE 1: HYBRID VALIDATION CEILING ───
+            const validatedBlocks = rawBlocks.filter(b => {
+                const height = b.endLine - b.startLine;
+                if (height <= 5) return false; 
+
+                if (height > 300 && regexRule && regexRule.open) {
+                    // CRITICAL FIX: Use the exact same context resolution hook as the top of the function
+                    const checkDoc = antlrProcessor.doc || self.doc || (typeof globalDoc !== 'undefined' ? globalDoc : null);
+                    if (checkDoc) {
+                        const headerLineText = checkDoc.getLine(b.startLine - 1) || "";
+                        const prevLineText = b.startLine > 1 ? checkDoc.getLine(b.startLine - 2) || "" : "";
+
+                        regexRule.open.lastIndex = 0;
+                        const isValidHeader = regexRule.open.test(headerLineText) || regexRule.open.test(prevLineText);
+
+                        if (!isValidHeader) {
+                            console.warn(`[Regex Gated] Dropped structural anomaly at line ${b.startLine}`);
+                            return false; 
+                        }
+                    }
+                }
+                return true; 
+            });
+
+            // ─── STAGE 2: SORT BY NESTING DEPTH (NARROWEST SPANS FIRST) ───
+            validatedBlocks.sort((a, b) => (a.endLine - a.startLine) - (b.endLine - b.startLine));
+
+            const discoveredBlocks = [];
+
+            // ─── STAGE 3: THE ANTI-BLANKET SWEEP (FIXED) ───
+            for (let i = 0; i < validatedBlocks.length; i++) {
+                const current = validatedBlocks[i];
+                let isOuterParentArtifact = false;
+                let wrappedApprovedCount = 0;
+
+                for (let j = 0; j < discoveredBlocks.length; j++) {
+                    const approved = discoveredBlocks[j];
+
+                    // Check if current block entirely blankets an already-approved inner body
+                    const wrapsApprovedBlock = current.startLine <= approved.startLine && current.endLine >= approved.endLine;
+                    
+                    if (wrapsApprovedBlock) {
+                        wrappedApprovedCount++;
+                        
+                        const startsClose = Math.abs(current.startLine - approved.startLine) <= 2;
+                        const endsClose = Math.abs(current.endLine - approved.endLine) <= 2;
+
+                        // Case A: Tightly matching double-wrapper (e.g., compoundStatement vs blockItemList)
+                        if (startsClose || endsClose) {
+                            isOuterParentArtifact = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Case B: The Macro-Blanket Trap. If this block spans a long distance
+                // and swallows multiple completely separate approved functions, it's a phantom.
+                if (wrappedApprovedCount > 2 && (current.endLine - current.startLine) > 300) {
+                    console.warn(`[Macro Blanket Defeated] Dropped rogue container starting at line ${current.startLine} swallowing ${wrappedApprovedCount} functions.`);
+                    isOuterParentArtifact = true;
+                }
+
+                if (!isOuterParentArtifact) {
+                    discoveredBlocks.push(current);
+                }
+            }
+
+            // ─── STAGE 4: RESTORE CHRONOLOGICAL ORDER FOR SIDEBAR / NAVIGATION TREE ───
+            discoveredBlocks.sort((a, b) => a.startLine - b.startLine);
 
             // 5. EMIT BOUNDARIES IMMEDIATELY BACK TO MAIN THREAD VIA CHANNELS
             sender.emit("foldRegionsCalculated", {
