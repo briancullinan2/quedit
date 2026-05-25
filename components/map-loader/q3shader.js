@@ -78,19 +78,30 @@ q3shader.loadList = function(sources, onload) {
     }
 };
 
-q3shader.load = function(url, onload) {
-    var request = new XMLHttpRequest();
-    
-    request.onreadystatechange = function () {
-        if (request.readyState == 4 && request.status == 200) {
-            q3shader.parse(url, request.responseText, onload);
+
+q3shader.load = async function(url, onload) {
+    try {
+        // Match the high-fidelity CORS profile used by your other asset streams
+        const response = await fetch(url, {
+            mode: 'cors',
+            credentials: 'omit'
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP network error! Status: ${response.status}`);
         }
-    };
-    
-    request.open('GET', url, true);
-    request.setRequestHeader('Content-Type', 'text/plain');
-    request.send(null);
+
+        const shaderText = await response.text();
+        
+        // Execute the legacy callback handler seamlessly
+        if (typeof onload === 'function') {
+            q3shader.parse(url, shaderText, onload);
+        }
+    } catch (error) {
+        console.error(`[Shader Fetch Failure] Unable to load resource from: ${url}`, error);
+    }
 };
+
 
 q3shader.parse = function(url, src, onload) {
     var shaders = [];

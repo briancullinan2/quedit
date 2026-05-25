@@ -38,7 +38,7 @@ function captureFrameToAnsiExtended(gl, cols, rows, scale = 1.0, offsetX = 0, of
         // Map terminal row down to our window sub-height
         // Invert rows mapping match because WebGL tracks (0,0) at the bottom-left
         const subY = ((rows - 1 - r) / rows) * sampleHeight;
-        
+
         // Add the vertical pixel offset, clamped cleanly inside the buffer boundaries
         const srcY = Math.floor(Math.max(0, Math.min(height - 1, subY + offsetY)));
         const yOffset = srcY * width * 4;
@@ -46,7 +46,7 @@ function captureFrameToAnsiExtended(gl, cols, rows, scale = 1.0, offsetX = 0, of
         for (let c = 0; c < cols; c++) {
             // Map terminal column across to our window sub-width
             const subX = (c / cols) * sampleWidth;
-            
+
             // Add the horizontal pixel offset, clamped cleanly inside the buffer boundaries
             const srcX = Math.floor(Math.max(0, Math.min(width - 1, subX + offsetX)));
             const pixelIdx = yOffset + (srcX * 4);
@@ -286,7 +286,7 @@ const quakeEngineMenuData = {
 
 function drawQuakeConfigDashboard(xtermInstance) {
     const width = xtermInstance.cols || 80;
-    
+
     // Clear screen cursor pointers
     xtermInstance.write("\x1b[H");
 
@@ -294,7 +294,7 @@ function drawQuakeConfigDashboard(xtermInstance) {
     for (const [key, category] of Object.entries(quakeEngineMenuData)) {
         // Feed the fieldsets straight into your adapted boxes code loops!
         const renderedSectionBox = obThemeFormObject(key, category, width);
-        
+
         xtermInstance.write(renderedSectionBox);
     }
 }
@@ -310,21 +310,22 @@ async function captureRenderToTerminalCorner() {
 
     // 1. Constrain rows height to half the terminal real estate
     const rows = Math.floor(term.rows / 2);
-    
+
     // 2. Calculate aspect ratio columns width
     const canvasAspect = viewport.clientWidth / viewport.clientHeight;
     const cols = Math.floor(rows * canvasAspect * 2);
 
     // 3. Define corner destination alignment parameters (Top-Right positioning math)
-    const targetStartX = Math.max(0, term.cols - cols); // Slaps it cleanly against the right border edge
+    const windowViewCols = terminalContainer.clientWidth / term._core._renderService._charSizeService.width
+    const targetStartX = Math.floor(Math.max(0, windowViewCols - cols));
     const targetStartY = 0;                             // Fixed to the top row line of the terminal screen
 
     // 4. Extract localized window matrix string block
     const ansiStringFrame = captureFrameToCornerAnsi(
-        gl, 
-        cols, 
-        rows, 
-        targetStartX, 
+        gl,
+        cols,
+        rows,
+        targetStartX,
         targetStartY,
         1.0, // Scale
         0,   // Offset X
@@ -360,10 +361,6 @@ async function captureRenderToTerminal() {
         cliRenderFrameLimiter.requestFrameUpdate()
 }
 
-
-/**
- * Captures a WebGL sub-frame and encodes it into a localized, floating block overlay matrix.
- */
 function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY = 0, scale = 1.0, offsetX = 0, offsetY = 0) {
     const width = gl.drawingBufferWidth;
     const height = gl.drawingBufferHeight;
@@ -371,20 +368,21 @@ function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY
 
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixelBuffer);
 
-    // Save the active user typing cursor state globally before drawing the frame
-    let ansiOutput = "\x1b[s"; 
+    let ansiOutput = "\x1b[s"; // Save cursor position
 
     const sampleWidth = width / scale;
     const sampleHeight = height / scale;
 
-    for (let r = 0; r < rows; r++) {
-        // Compute terminal destination layout lines: targetStartY tracks row indices down the buffer
-        const destinationLine = targetStartY + r + 1; // 1-based ANSI sequence positioning
-        
-        // Direct absolute hardware coordinate cursor jump command: \x1b[Row;ColumnH
-        ansiOutput += `\x1b[${destinationLine};${targetStartX + 1}H`;
+    // Enforce strict integer baselines for calculations
+    const startXInt = Math.floor(targetStartX) + 1;
+    const startYInt = Math.floor(targetStartY);
 
-        // Map sampling coordinates down to the source WebGL texture
+    for (let r = 0; r < rows; r++) {
+        const destinationLine = startYInt + r + 1; 
+
+        // CRITICAL FIX: Safe integer interpolation ensures valid ANSI syntax tracking
+        ansiOutput += `\x1b[${destinationLine};${startXInt}H`;
+
         const subY = ((rows - 1 - r) / rows) * sampleHeight;
         const srcY = Math.floor(Math.max(0, Math.min(height - 1, subY + offsetY)));
         const yOffset = srcY * width * 4;
@@ -400,12 +398,9 @@ function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY
 
             ansiOutput += `\x1b[48;2;${red};${green};${blue}m `;
         }
-        // Safely wipe cell graphic attributes at the edge of the picture cell boundary block
-        ansiOutput += "\x1b[0m"; 
+        ansiOutput += "\x1b[0m";
     }
 
-    // Instantly restore the typing cursor cleanly to its untouched location
-    ansiOutput += "\x1b[u"; 
+    ansiOutput += "\x1b[u"; // Restore cursor position
     return ansiOutput;
 }
-
