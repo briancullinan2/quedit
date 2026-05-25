@@ -66,7 +66,6 @@ aceEditor.setOptions({
     foldStyle: 'markbegin',
     showFoldWidgets: true,
     fadeFoldWidgets: false,
-    selectInitFoldWithBlock: true,
     //animatedScroll: true,
     //autoScrollEditorIntoView: false,
 })

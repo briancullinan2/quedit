@@ -324,7 +324,6 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                             '-o', obj,
                         ],
                         database: database,
-                        toolsRepo: toolsRepo,
                         paths: [obj, src],
                     })
 

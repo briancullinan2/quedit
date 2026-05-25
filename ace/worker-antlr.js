@@ -325,8 +325,19 @@ function executeGetFoldRegionsCommand(msg, sender) {
 
     // Attach the clean listener shell to the parser
     parser.addErrorListener(silentDiagnosticObserver);
-    parser._interp.predictionMode = AntlrRegistry.antlr4.atn.PredictionMode.SLL;
-    parser._errHandler = new AntlrRegistry.antlr4.error.BailErrorStrategy ? new AntlrRegistry.antlr4.error.BailErrorStrategy() : new AntlrRegistry.antlr4.error.DefaultErrorStrategy();
+
+    //parser._interp.predictionMode = AntlrRegistry.antlr4.atn.PredictionMode.SLL;
+    const ErrorNamespace = AntlrRegistry.antlr4?.error || {};
+    const BailStrategy = ErrorNamespace.BailErrorStrategy;
+    const DefaultStrategy = ErrorNamespace.DefaultErrorStrategy;
+
+    // 2. Default to DefaultErrorStrategy so the parser attempts syntax recovery 
+    // rather than instantly throwing an uncatchable exception on minor token gaps
+    if (DefaultStrategy) {
+        parser._errHandler = new DefaultStrategy();
+    } else if (BailStrategy) {
+        parser._errHandler = new BailStrategy();
+    }
 
     // 3. GENERATE AST SYNTAX TREE SKELETON
     let tree = null;

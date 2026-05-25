@@ -444,7 +444,8 @@ async function handleCommand(input) {
     const database = owner.value + '/' + repository.value;
     const tokens = tokenize(input.trim());
 
-    api.configuration = configuration.value === 'debug' ? 'debug' : 'release';
+    if(window.api)
+        api.configuration = configuration.value === 'debug' ? 'debug' : 'release';
 
     if (tokens.length === 0) return;
 

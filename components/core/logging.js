@@ -22,7 +22,7 @@ function writeLog(msg, ...args) {
     if (msg.includes && msg.includes('TypeError:')) debugger
     let formatted = formatMessage(PREAMBLE, [msg, ...args])
     if ((!window.api || window.api.worker) && window.terminalWrite && !skipTerminal) terminalWrite(formatted);
-    if (typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
+    if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.log(msg, ...args);
     else console.log(msg, ...args)
 }
@@ -78,28 +78,28 @@ const originalConsole = {
 self.console.log = (...args) => {
     const formatted = formatMessage('log', args);
     if (window.terminalWrite) terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
+    else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.log(...args);
 };
 
 self.console.warn = (...args) => {
     const formatted = formatMessage('warn', args);
     if (window.terminalWrite) terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
+    else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.warn(...args);
 };
 
 self.console.error = (...args) => {
     const formatted = formatMessage('error', args);
     if (window.terminalWrite) terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
+    else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.error(...args);
 };
 
 self.console.info = (...args) => {
     const formatted = formatMessage('info', args);
     if (window.terminalWrite) terminalWrite(formatted);
-    else if (typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
+    else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
     if (typeof originalConsole != 'undefined') originalConsole.info(...args);
 };
 
@@ -194,3 +194,33 @@ function forceLineWrap(text, maxCharsPerRow = 80) {
     return rows.join('\n\r');
 }
 
+
+function specialWrite(msg) {
+    if (!msg) return;
+
+    // 1. Core Fix: Clear old marks instantly via the native module API
+    if (msg.includes('q3lcc -v') && window.compilerDiagnostics) {
+        window.compilerDiagnostics.clear();
+    }
+
+    if (msg.includes('memory access out of bounds')) {
+        needsHeaders = true;
+    }
+
+    if (!window.runningCommand) {
+        window.runningCommand = true;
+        if (!window.detachedConsole && !window.alreadyWroteDetached) {
+            window.detachedConsole = true;
+            PREAMBLE = WARN_PREAMBLE;
+            console.warn('\n\rDetached console, awaiting terminate...');
+        }
+    }
+
+    let skipTerminal = false;
+    if (msg.includes('Assertion failed: lookup.node')) {
+        skipTerminal = true;
+    }
+    if (!skipTerminal && window.terminalWrite) {
+        window.terminalWrite(msg);
+    }
+}

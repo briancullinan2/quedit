@@ -14,11 +14,15 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
             'X-GitHub-Api-Version': '2022-11-28'
         };
 
+        let token = typeof api !== 'undefined'
+            ? api.github_token
+            : localStorage.getItem('github_token')
+
         // Only add auth if explicitly requested AND we have a token
-        if (authorize && api.github_token) {
+        if (authorize && token) {
             // Using 'token ' works universally for both classic and fine-grained PATs
-            headers['Authorization'] = `Bearer ${api.github_token}`;
-        } else if (!api.github_token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        } else if (!token) {
             debugger
         }
 

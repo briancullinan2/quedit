@@ -163,7 +163,6 @@
 	width: 10px;
 	height: 10px;
 	margin-left: 5px;
-	background: url('images/icons/external.png') no-repeat center center;
 	background-size: auto 8px;
 	opacity: 0.3;
 }
@@ -215,7 +214,6 @@
 	bottom: 0;
 	right: 0;
 	filter: var(--mobile-menu-toggle-filter);
-	background: url('images/icons/menu.svg') no-repeat center center;
 	background-size: auto 26px;
 }
 

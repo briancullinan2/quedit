@@ -714,7 +714,7 @@ function mkdirp(path, database) {
                 FS.virtual[accumulated + '/..'] = FS.virtual[previousPath]
             if (database && hadnt) // TODO: good for checking build times?
                 putRecord(DB_STORE_NAME, FS.virtual[accumulated], database)
-            if(FS.virtual[accumulated].default) {
+            if (FS.virtual[accumulated].default) {
                 FS.virtual[accumulated].default = false
             }
         } catch (e) {
@@ -785,8 +785,9 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
         if (!FS.virtual[file] && makeDirs /* only load github if its a controlled file */) {
             writeLog(`Loading IDB/Github (${api.worker ? 'frontend' : 'worker'}): ${file}`)
             await cacheFile(ownerName, repoName, file, null, makeDirs)
-        } else if (FS.virtual[file]) {
+        } else if (FS.virtual[file] && (FS.virtual[file].mode >> 12) === ST_FILE) {
             if (api.memfs) {
+                api.memfs.mem.check
                 api.memfs.addFile(file, FS.virtual[file].contents)
             }
             writeLog(`Already have from query (${api.worker ? 'frontend' : 'worker'}): ${file}`)
@@ -799,6 +800,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
             api.memfs.addDirectory(file)
         }
         else {
+            api.memfs.mem.check
             api.memfs.addFile(file, FS.virtual[file].contents)
         }
         writeLog(`Already have contents (${api.worker ? 'frontend' : 'worker'}): ${file}`)
@@ -810,6 +812,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
                 api.memfs.addDirectory(file)
             }
             else {
+                api.memfs.mem.check
                 api.memfs.addFile(file, FS.virtual[file].contents)
             }
         }

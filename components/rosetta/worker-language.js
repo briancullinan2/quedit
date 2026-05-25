@@ -84,43 +84,39 @@ function _safePreprocess(sourceText, languageKey, onResolveInclude, onErrorFound
 }
 
 
-
-
 function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer, antlr) {
     const semanticOverrides = new Map();
-    if (!languageKey) return semanticOverrides;
+    if (!languageKey) return [semanticOverrides, null];
 
-    // 1. Force strict lowercase flat-key parity with our normalized database registry
     const cleanKey = languageKey.toLowerCase().trim();
     const lookupKey = `${cleanKey}_parser`;
-
     let ParserCtor = AntlrRegistry[lookupKey];
+    if (!ParserCtor) return [semanticOverrides, null];
 
     const parser = new ParserCtor(tokenStream);
     parser.removeErrorListeners();
-    const silentDiagnosticObserver = {
-        syntaxError: function (recognizer, offendingSymbol, line, column, msg, e) {
-            // Quietly absorb syntax markers during visual fold processing runs
-        },
-        reportAmbiguity: function (recognizer, dfa, startIndex, stopIndex, exact, ambigAlts, configs) {
-            // Absorb deep SLL prediction branching conflicts silently
-        },
-        reportAttemptingFullContext: function (recognizer, dfa, startIndex, stopIndex, conflictingAlts, configs) {
-            // CRITICAL PROXIMATE GAP FIX: Satisfies the engine when dropping into deep LL validation
-        },
-        reportContextSensitivity: function (recognizer, dfa, startIndex, stopIndex, prediction, configs) {
-            // Absorb fallback optimization logs smoothly
-        }
-    };
 
-    // Attach the clean listener shell to the parser
-    parser.addErrorListener(silentDiagnosticObserver);
+    // Set prediction mode to full LL context so it works smoothly with fallback grammars
+    if (parser._interp && AntlrRegistry.antlr4?.atn?.PredictionMode) {
+        parser._interp.predictionMode = AntlrRegistry.antlr4.atn.PredictionMode.LL;
+    }
+
+    // --- STEP 1: WIRE UP SYNTAX ERROR LISTENERS FOR THE UX ---
     if (typeof onErrorFound === 'function') {
         parser.addErrorListener({
+            reportAmbiguity: function (recognizer, dfa, startIndex, stopIndex, exact, ambigAlts, configs) {
+                // Absorb deep SLL prediction branching conflicts silently
+            },
+            reportContextSensitivity: function (recognizer, dfa, startIndex, stopIndex, prediction, configs) {
+                // Absorb fallback optimization logs smoothly
+            },
+            reportAttemptingFullContext: function (recognizer, dfa, startIndex, stopIndex, conflictingAlts, configs) {
+                // CRITICAL PROXIMATE GAP FIX: Satisfies the engine when dropping into deep LL validation
+            },
             syntaxError: (recognizer, offendingSymbol, line, column, msg) => {
+                // This will catch unrecoverable errors and critical syntax issues
                 onErrorFound({ line, column, message: msg });
 
-                // If there is an offending token, inject a failure scope directly into our overrides map
                 if (offendingSymbol && typeof offendingSymbol.start === 'number') {
                     const errorScope = "text.syntax_error.err_notfound.annotation_required";
                     semanticOverrides.set(offendingSymbol.start, errorScope);
@@ -128,8 +124,45 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
             }
         });
     }
-    parser._interp.predictionMode = AntlrRegistry.antlr4.atn.PredictionMode.SLL;
-    parser._errHandler = new AntlrRegistry.antlr4.error.BailErrorStrategy ? new AntlrRegistry.antlr4.error.BailErrorStrategy() : new AntlrRegistry.antlr4.error.DefaultErrorStrategy();
+
+
+
+
+    // --- STEP 2: CUSTOM ERROR STRATEGY FOR SOFT ERROR ABSORPTION ---
+    const ErrorNamespace = AntlrRegistry.antlr4?.error || {};
+    const BaseStrategy = ErrorNamespace.DefaultErrorStrategy;
+
+    let customStrategyInstance;
+
+    if (BaseStrategy) {
+        // Use modern ES6 class syntax to inherit safely from native class constructors
+        class SoftErrorRecoveryStrategy extends BaseStrategy {
+            constructor() {
+                super();
+            }
+
+            // Override to handle minor structural deviations quietly
+            reportNoViableAlternative(recognizer, e) {
+                // Quietly absorb soft alternatives during structural pass
+            }
+
+            // Override to absorb inline token insertion errors silently
+            reportUnwantedToken(recognizer, e) {
+                // Soft error: keep UX feedback clean by overriding default logging
+            }
+        }
+
+        customStrategyInstance = new SoftErrorRecoveryStrategy();
+    } else {
+        // Safe fallback if the registry isn't fully structured
+        const BailStrategy = ErrorNamespace.BailErrorStrategy;
+        customStrategyInstance = BailStrategy ? new BailStrategy() : null;
+    }
+
+    if (customStrategyInstance) {
+        parser._errHandler = customStrategyInstance;
+    }
+
 
 
     let tree = null;

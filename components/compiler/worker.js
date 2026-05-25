@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-self.importScripts('preambles.js');
-self.importScripts('logging.js');
-self.importScripts('shared.js');
-self.importScripts('local.js');
-self.importScripts('sys_fs.js');
-self.importScripts('sys_std.js');
-self.importScripts('sys_web.js');
-self.importScripts('github.js');
-self.importScripts('make.js');
-self.importScripts('make-tools.js');
-self.importScripts('make-qvm.js');
+self.importScripts('../core/preambles.js');
+self.importScripts('../core/logging.js');
+self.importScripts('../compiler/shared.js');
+self.importScripts('../core/local.js');
+self.importScripts('../engine/sys_fs.js');
+self.importScripts('../engine/sys_std.js');
+self.importScripts('../engine/sys_web.js');
+self.importScripts('../filelist/github.js');
+self.importScripts('../compiler/make.js');
+self.importScripts('../compiler/make-tools.js');
+self.importScripts('../compiler/make-qvm.js');
 
 
 let TERMINATE = false

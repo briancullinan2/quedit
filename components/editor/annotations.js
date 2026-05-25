@@ -1,6 +1,5 @@
-/**
- * Ace Top-Level Pipeline Engine Manager
- */
+
+
 let activeEditor = null
 function PipelineManager(options) {
     options = options || {};

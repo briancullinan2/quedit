@@ -11,19 +11,19 @@ const IMPORT_CSS = {
 
     // Loaded dynamically on demand
     terminal: [
-        '/xterm.css'
+        '/components/terminal/xterm.css'
     ],
 
     paint: [
-        '/paint-css/alertify.css',
-        '/paint-css/component.css',
-        '/paint-css/layout.css',
-        // '/paint-css/menu.css', // included with page
-        '/paint-css/popup.css',
-        '/paint-css/print.css',
-        '/paint-css/reset.css',
-        '/paint-css/utility.css',
-        '/paint-css/theme.css'
+        '/components/paint/css/alertify.css',
+        '/components/paint/css/component.css',
+        '/components/paint/css/layout.css',
+        // '/components/paint/css/menu.css', // included with page
+        '/components/paint/css/popup.css',
+        '/components/paint/css/print.css',
+        '/components/paint/css/reset.css',
+        '/components/paint/css/utility.css',
+        '/components/paint/css/theme.css'
     ],
 
     editor: [] // Handled internally by Ace's DOM-injected themes
@@ -32,45 +32,45 @@ const IMPORT_CSS = {
 const IMPORT_JS = {
     // Application Bootstrap / UI Orchestration
     core: [
-        '/preambles.js',
-        '/annotations.js',
-        '/logging.js',
+        '/components/core/preambles.js',
+        '/components/editor/annotations.js',
+        '/components/core/logging.js',
         //'/jszip.min.js',
         //'/shared.js', trying to do without this? need to run build
-        '/local.js',
-        '/sys_fs.js', // Core shared filesystem bridge
-        '/tree.js',
-        '/compiler.js',
-        '/configuration.js',
-        '/settings.js',
-        '/toolbar.js',
-        '/binary.js',
-        '/github.js',
-        '/filelist.js',
+        '/components/core/local.js',
+        '/components/engine/sys_fs.js', // Core shared filesystem bridge
+        '/components/filelist/tree.js',
+        '/components/layout/configuration.js',
+        '/components/layout/settings.js',
+        '/components/layout/toolbar.js',
+        '/components/rosetta/binary.js',
+        '/components/filelist/github.js',
+        '/components/filelist/filelist.js',
         //'/unzip.js'
     ],
 
     // Virtual Terminal Environment
     terminal: [
-        '/xterm.js',
-        '/commands.js',
-        '/terminal.js'
+        '/components/terminal/xterm.js',
+        '/components/terminal/commands.js',
+        '/components/terminal/terminal.js'
     ],
 
     // Code Workspace
     editor: [
         '/ace/ace.js',
-        '/editor.js'
+        '/components/editor/editor.js'
     ],
 
     // Local QVM Compiler / Build Toolchain (Matches your Worker imports)
     build: [
-        '/shared.js',
-        '/local.js',
-        '/sys_fs.js',
-        '/make.js',
-        '/make-tools.js',
-        '/make-qvm.js',
+        '/components/compiler/compiler.js',
+        '/components/compiler/shared.js',
+        '/components/core/local.js',
+        '/components/engine/sys_fs.js',
+        '/components/compiler/make.js',
+        '/components/compiler/make-tools.js',
+        '/components/compiler/make-qvm.js',
     ],
 
     toji: [
@@ -93,20 +93,20 @@ const IMPORT_JS = {
     quake3e: [
 
         // Low-Level WASM / Native Execution Layer
-        '/nipplejs.js',
-        '/sys_emgl.js',
-        '/sys_in.js',
-        '/sys_net.js',
-        '/sys_std.js',
-        '/sys_web.js',
-        '/sys_snd.js',
-        '/sys_wasm.js',
+        '/components/engine/nipplejs.js',
+        '/components/engine/sys_emgl.js',
+        '/components/engine/sys_in.js',
+        '/components/engine/sys_net.js',
+        '/components/engine/sys_std.js',
+        '/components/engine/sys_web.js',
+        '/components/engine/sys_snd.js',
+        '/components/engine/sys_wasm.js',
 
     ],
 
     // Image Editor Canvas
     paint: [
-        '/paint.js'
+        '/components/paint/paint.js'
     ]
 };
 

@@ -221,7 +221,6 @@
 	outline: none;
 	cursor: pointer;
 	filter: var(--mobile-menu-toggle-filter);
-	background: url(images/icons/undo.svg) no-repeat center center;
 	background-size: auto 25px;
 	margin-left: 10px;
 }
@@ -564,7 +563,6 @@ IMPORTANT: any new icon should also must be added on /service-worker.js + its ve
 	bottom: 0;
 	right: 0;
 	filter: var(--menu-icons-filter);
-	background: url('images/icons/arrow-down.svg') no-repeat center center;
 	background-size: 12px auto;
 }
 
@@ -590,7 +588,6 @@ IMPORTANT: any new icon should also must be added on /service-worker.js + its ve
 	bottom: 0;
 	right: 0;
 	filter: var(--menu-icons-filter);
-	background: url('images/icons/view.svg') no-repeat center center;
 	background-size: 18px auto;
 }
 
@@ -605,7 +602,6 @@ IMPORTANT: any new icon should also must be added on /service-worker.js + its ve
 	width: 12px;
 	height: 19px;
 	margin-left: 5px;
-	background: transparent url(images/icons/delete.svg) no-repeat center center;
 	background-size: 10px 10px;
 	border: none;
 	box-shadow: none;
@@ -699,7 +695,6 @@ IMPORTANT: any new icon should also must be added on /service-worker.js + its ve
 	top: 0;
 	bottom: 0;
 	right: 0;
-	background: url(images/icons/refresh.svg) no-repeat center center;
 	background-size: auto 14px;
 	filter: var(--menu-icons-filter);
 }

@@ -154,7 +154,7 @@ const API = (function () {
   };
 
   class MemFS {
-    constructor(options) {
+    constructor(options, api) {
       const compileStreaming = options.compileStreaming;
       this.hostWrite = options.hostWrite;
       this.stdinStr = options.stdinStr || "";
@@ -167,7 +167,7 @@ const API = (function () {
       const env = getImportObject(
         this, ['abort', 'host_write', 'host_read', 'memfs_log', 'copy_in', 'copy_out']);
 
-      this.ready = compileStreaming(this.memfsFilename)
+      this.ready = api.getModule(this.memfsFilename)
         .then(module => WebAssembly.instantiate(module, { env }))
         .then(instance => {
           this.instance = instance;
@@ -240,6 +240,10 @@ const API = (function () {
 
     addFile(path, contents) {
       try {
+        if(!contents) {
+          debugger
+          return 
+        }
         // TODO: remove memfs after read input bug is figured out
         const dirPath = path.substring(0, path.lastIndexOf('/'));
         if (dirPath) {
@@ -1316,7 +1320,7 @@ const API = (function () {
         compileStreaming: this.compileStreaming,
         hostWrite: this.hostWrite,
         memfsFilename: this.options.memfs || 'memfs.wasm',
-      });
+      }, this);
 
       this.ready = this.memfs.ready.then(
         () => { return this.untar(this.memfs, this.sysrootFilename); });
@@ -1355,6 +1359,8 @@ const API = (function () {
     commonPaths(name) {
       let result = [
         name,
+        'components/compiler/' + name,
+        'components/compiler/' + name.replace('.js.wasm', '.wasm'),
         'build/release-wasm-js/' + name,
         'build/debug-wasm-js/' + name,
       ]
@@ -1433,18 +1439,22 @@ const API = (function () {
             break
           }
 
+          try {
+            if (!module || typeof module === 'string') {
+
+              module = await this.hostLogAsync(`Fetching and compiling ${filePath}`,
+                this.compileStreaming(filePath));
+              module.name = name
+              this.moduleCache[name] = this.moduleCache[filePath] = module;
+              break
+            }
+          } catch (e) {
+            console.warn(e)
+          }
+
+
         }
-
-        if (!module || typeof module === 'string') {
-
-          module = await this.hostLogAsync(`Fetching and compiling ${name}`,
-            this.compileStreaming(name));
-          if (!module) throw new Error('No module! ' + name)
-        }
-
-
-        module.name = name
-        this.moduleCache[name] = module;
+        if (!module) throw new Error('No module! ' + name)
 
         if (name.includes('q3lcc')) {
           try {
@@ -1471,6 +1481,7 @@ const API = (function () {
         if (
           (up.message.includes('Response code: 404')
             || up.message.includes('HTTP status code is not ok'))
+            || up.message.includes('No module!')
           && (this.toolsRepo || this.toolsRepo2 || this.database)
           && !alreadyTried
         ) {

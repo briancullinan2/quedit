@@ -26,7 +26,7 @@ function AntlrWorker(_this2, session, WorkerClient) {
                 baseOrigin + '/rosetta.js',
                 baseOrigin + '/parsers.js',
                 aceBasePath + "worker-base.js",
-                baseOrigin + '/antlr-languages.bundle.js',
+                baseOrigin + '/components/rosetta/antlr-languages.bundle.js',
                 baseOrigin + "/worker-language.js"
             ]
         });
@@ -38,7 +38,7 @@ function AntlrWorker(_this2, session, WorkerClient) {
             baseOrigin + '/rosetta.js',
             baseOrigin + '/parsers.js',
             aceBasePath + "worker-base.js",
-            baseOrigin + '/antlr-languages.bundle.js',
+            baseOrigin + '/components/rosetta/antlr-languages.bundle.js',
             baseOrigin + "/worker-language.js"
         ]);
     }
@@ -226,12 +226,12 @@ define("ace/mode/antlr_worker", [
             this.$worker.postMessage({
                 command: "importScripts",
                 args: [
-                    baseOrigin + '/preambles.js',
-                    baseOrigin + '/rosetta.js',
-                    baseOrigin + '/parsers.js',
+                    baseOrigin + '/components/core/preambles.js',
+                    baseOrigin + '/components/rosetta/rosetta.js',
+                    baseOrigin + '/components/rosetta/parsers.js',
                     aceBasePath + "worker-base.js",
-                    baseOrigin + '/antlr-languages.bundle.js',
-                    baseOrigin + "/worker-language.js"
+                    baseOrigin + '/components/rosetta/antlr-languages.bundle.js',
+                    baseOrigin + "/components/rosetta/worker-language.js"
                 ]
             });
         }

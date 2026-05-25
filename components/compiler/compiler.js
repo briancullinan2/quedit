@@ -4,7 +4,7 @@ class LanguageAPI {
         this.responseCBs = new Map();
         
         // Target your dedicated ANTLR background worker thread
-        this.worker = new Worker('worker-language.js'); 
+        this.worker = new Worker('components/rosetta/worker-language.js'); 
         
         const channel = new MessageChannel();
         this.port = channel.port1;
@@ -135,7 +135,7 @@ class WorkerAPI {
     constructor(options) {
         this.nextResponseId = 0;
         this.responseCBs = new Map();
-        this.worker = new Worker('worker.js');
+        this.worker = new Worker('components/compiler/worker.js');
         const channel = new MessageChannel();
         this.port = channel.port1;
         this.port.onmessage = this.onmessage.bind(this);
@@ -289,42 +289,12 @@ class WorkerAPI {
     }
 }
 
-function specialWrite(msg) {
-    if (!msg) return;
-
-    // 1. Core Fix: Clear old marks instantly via the native module API
-    if (msg.includes('q3lcc -v') && window.compilerDiagnostics) {
-        window.compilerDiagnostics.clear();
-    }
-
-    if (msg.includes('memory access out of bounds')) {
-        needsHeaders = true;
-    }
-
-    if (!window.runningCommand) {
-        window.runningCommand = true;
-        if (!window.detachedConsole && !window.alreadyWroteDetached) {
-            window.detachedConsole = true;
-            PREAMBLE = WARN_PREAMBLE;
-            console.warn('\n\rDetached console, awaiting terminate...');
-        }
-    }
-
-    let skipTerminal = false;
-    if (msg.includes('Assertion failed: lookup.node')) {
-        skipTerminal = true;
-    }
-    if (!skipTerminal && window.terminalWrite) {
-        window.terminalWrite(msg);
-    }
-}
-
 const language = new LanguageAPI({
-    hostWrite: specialWrite
+    hostWrite: window.specialWrite
 });
 
 const api = new WorkerAPI({
-    hostWrite: specialWrite
+    hostWrite: window.specialWrite
 });
 window.api = api;
 window.api.github_token = window.githubToken
