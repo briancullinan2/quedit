@@ -204,8 +204,7 @@ const SettingsManager = {
         config.currentValue = window[config.windowName] = value
         if (typeof config.set === 'function') {
             config.set(value);
-        }
-        if (config.elementId) {
+        } else if (config.elementId) {
             const el = document.getElementById(config.elementId);
             if (el) {
                 if (config.type === 'boolean' || el.type === 'checkbox') {
@@ -285,7 +284,7 @@ const SettingsManager = {
                     .find(c => settingKey instanceof Element
                         && c.elementId === settingKey.name
                         || c.elementId === settingKey)
-            if(!config)
+            if (!config)
                 return null;
         }
 

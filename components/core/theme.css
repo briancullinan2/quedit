@@ -1914,17 +1914,22 @@ body {
     visibility: visible !important;
 }
 
+#terminal-container .scrollbar.vertical>.slider
+{
+    max-height: 100%;
+}
 #terminal-container .scrollbar.vertical {
     position: absolute !important;
 
     /* Lock it strictly to the right side of the layout screen */
     top: 40px !important;
-    bottom: 0px !important;
+    bottom: 15px !important;
     right: 0px !important;
 
     /* Fix the sizing collapse */
     width: 14px !important;
     max-height: inherit !important;
+    height: auto !important;
     /* Forces it to match parent terminal bounding box height */
 
     /* Ensure it floats on top of passing code text blocks */

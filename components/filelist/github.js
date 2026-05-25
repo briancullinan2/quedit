@@ -385,8 +385,8 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
         }
 
         if (filePath.includes('tmp/')
-            || filePath.includes('build/release-')
-            || filePath.includes('build/debug-')) {
+            || filePath.includes(dirs.ENGINE_RELEASE)
+            || filePath.includes(dirs.ENGINE_DEBUG)) {
             if (FS.virtual[filePath]) {
                 writeLog(`Already compiled (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
                 return FS.virtual[filePath].contents

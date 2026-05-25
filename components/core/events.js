@@ -120,8 +120,8 @@ function hasChangedEditor() {
     }
 
     // TODO: currentFileId or getSession() file path
-    return window.currentFileChangesSha !== window.initialTextSha
-        && window.currentFileChangesSha !== currentSha;
+    return window.currentOpenFileId !== window.initialTextSha
+        && window.currentOpenFileId !== currentSha;
 }
 
 function hasChangesBuilder() {
@@ -228,7 +228,7 @@ window.addEventListener('beforeunload', async (event) => {
         // Gracefully route back to the panel that holds the un-saved work so the dev can see it
         const moduleConfig = IMPORT_MODULES[blockingModuleKey];
         if (moduleConfig && moduleConfig.panelId) {
-            renderToolbarCommand(moduleConfig.panelId);
+            renderToolbarCommand(moduleConfig.panelId, true);
         }
 
         // Execute standard cleanup instructions if any were defined

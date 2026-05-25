@@ -846,7 +846,6 @@
             break;
 
           case 2:
-            debugger
             classList.remove('treejs-node__halfchecked');
             classList.add('treejs-node__checked');
             break;

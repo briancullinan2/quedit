@@ -1,4 +1,6 @@
 
+
+
 window.terminalFrameLimiter = createFrameRater(25, (e, t, frame) => {
     // all of xterms request use the standard callback as the e parameter with nothing else
     e(t, frame) // doesn't even use these parameters
@@ -786,11 +788,13 @@ term.onRender(() => {
 });
 
 
+
 let terminalsDebouncer = null
 let terminalPanelId = null
 function renderTerminalsCommand(panelId, noBounce = false) {
 
     if (!panelId) return
+    if(!TERMINALS.includes(panelId)) return
     terminalPanelId = panelId
     if (!noBounce && terminalsDebouncer) return
     if (!noBounce) {

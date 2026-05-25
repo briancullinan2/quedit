@@ -151,9 +151,10 @@ async function putRecordInternal(storeName, record, dbName = null) {
         parent: record.parent
     }
 
+    
     if (!newRecord.path
-        || newRecord.path === 'build/release-wasm-js/cpp/lex.o'
-        || newRecord.path.includes('.qvm')
+    //    || newRecord.path === 'build/release-wasm-js/cpp/lex.o'
+    //    || newRecord.path.includes('.qvm')
     ) {
         debugger
     }

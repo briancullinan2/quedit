@@ -1,5 +1,5 @@
 
-async function renderToolbarCommand(buttonId) {
+async function renderToolbarCommand(buttonId, noBounce = false) {
 
     // ignore miniPaint file menu
     if (!buttonId || buttonId.startsWith('main_menu')) return true;
@@ -92,7 +92,7 @@ async function renderToolbarCommand(buttonId) {
     }
 
     // Handoff presentation layout transformations directly down the execution chain
-    renderTabsCommand(buttonId);
+    renderTabsCommand(buttonId, noBounce);
 }
 
 

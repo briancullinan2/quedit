@@ -243,7 +243,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                 let content
                 if (FS.virtual[src])
                     content = FS.virtual[src].contents
-                else if (!src.includes('build/'))
+                else if (!src.includes(config.BUILD_DIR + '/'))
                     content = await cacheFile(ownerName, repoName, src);
                 else {
                     FS.virtual[src] = await getRecord(DB_STORE_NAME, src, database)

@@ -240,9 +240,9 @@ const API = (function () {
 
     addFile(path, contents) {
       try {
-        if(!contents) {
+        if (!contents) {
           debugger
-          return 
+          return
         }
         // TODO: remove memfs after read input bug is figured out
         const dirPath = path.substring(0, path.lastIndexOf('/'));
@@ -1359,25 +1359,30 @@ const API = (function () {
     commonPaths(name) {
       let result = [
         name,
+        dirs.ENGINE_RELEASE + '/' + name,
+        dirs.ENGINE_DEBUG + '/' + name,
         'components/compiler/' + name,
-        'components/compiler/' + name.replace('.js.wasm', '.wasm'),
-        'build/release-wasm-js/' + name,
-        'build/debug-wasm-js/' + name,
       ]
       if (!name.endsWith('.js.wasm')) {
         result = result.concat(name + '.js.wasm',
-          'build/release-wasm-js/' + name + '.js.wasm',
-          'build/debug-wasm-js/' + name + '.js.wasm')
+          dirs.ENGINE_RELEASE + '/' + name + '.js.wasm',
+          dirs.ENGINE_DEBUG + '/' + name + '.js.wasm',
+        'components/compiler/' + name + '.js.wasm',
+        )
       }
       if (!name.endsWith('.wasm')) {
         result = result.concat(name + '.wasm',
-          'build/release-wasm-js/' + name + '.wasm',
-          'build/debug-wasm-js/' + name + '.wasm')
+          dirs.ENGINE_RELEASE + '/' + name + '.wasm',
+          dirs.ENGINE_DEBUG + '/' + name + '.wasm',
+        'components/compiler/' + name + '.wasm',
+        )
       }
       if (name.endsWith('.js.wasm')) {
         result = result.concat(name.replace('.js.wasm', '.wasm'),
-          'build/release-wasm-js/' + name.replace('.js.wasm', '.wasm'),
-          'build/debug-wasm-js/' + name.replace('.js.wasm', '.wasm'))
+          dirs.ENGINE_RELEASE + '/' + name.replace('.js.wasm', '.wasm'),
+          dirs.ENGINE_DEBUG + '/' + name.replace('.js.wasm', '.wasm'),
+          'components/compiler/' + name.replace('.js.wasm', '.wasm'),
+        )
       }
       return result
     }
@@ -1481,7 +1486,7 @@ const API = (function () {
         if (
           (up.message.includes('Response code: 404')
             || up.message.includes('HTTP status code is not ok'))
-            || up.message.includes('No module!')
+          || up.message.includes('No module!')
           && (this.toolsRepo || this.toolsRepo2 || this.database)
           && !alreadyTried
         ) {
@@ -1579,7 +1584,7 @@ const API = (function () {
         if (alwaysMkdir)
           writeLog('Header loading (worker): ' + filePath)
 
-        if (filePath.includes('build/release-') || filePath.includes('build/debug-')) {
+        if (filePath.includes(dirs.ENGINE_RELEASE) || filePath.includes(dirs.ENGINE_DEBUG)) {
           //debugger
         }
         await prepInputOutput(filePath, null, this.database, alwaysMkdir)

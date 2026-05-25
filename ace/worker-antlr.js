@@ -187,21 +187,21 @@ function setupInheritance() {
     AntlrWorkerBackend.prototype.setLanguageContext = setLanguageContext;
     AntlrWorkerBackend.prototype.onUpdate = onUpdate;
 }
-
-// =====================================================================
-// 3. CLEAN LISTENER COEXISTENCE BUS
-// =====================================================================
-
 self.addEventListener('message', function (e) {
     const msg = e.data;
-    msg.command ||= msg.event
+    if (!msg) return;
+
+    // Use a localized variable for routing so we don't mutate the raw event object 
+    // that Ace's worker-base.js expects to read further down the chain.
+    const commandName = msg.command || msg.event;
+
     // 1. FILTER HIGH-FIDELITY HOOKS
-    if (msg.command && ['customHighlightRoute', 'requestAST'].includes(msg.command)) {
+    if (commandName && ['customHighlightRoute', 'requestAST'].includes(commandName)) {
         e.stopImmediatePropagation();
         return;
     }
 
-    if (msg.command === "calculateActiveBlockRange") {
+    if (commandName === "calculateActiveBlockRange") {
         const cursorRow = msg.data.lineNumber; // 1-based lineNumber passed from front-end
         const codeString = antlrProcessor.doc.getValue(); // Get running buffer from doc wrapper
         const runningLangId = antlrProcessor.languageKey || "c";
@@ -214,23 +214,23 @@ self.addEventListener('message', function (e) {
             antlrProcessor.sender.emit("blockRange", {
                 startLine: blockMeta.startLine,
                 endLine: blockMeta.endLine
-            })
+            });
         } catch (err) {
             console.error("[Worker Block Trace Error]: ", err);
         }
         e.stopImmediatePropagation();
-        return
+        return;
     }
 
-
-    if (msg.command === 'getFoldRegions') {
-        e.stopImmediatePropagation()
-        return executeGetFoldRegionsCommand(msg, antlrProcessor.sender)
+    if (commandName === 'getFoldRegions') {
+        e.stopImmediatePropagation();
+        return executeGetFoldRegionsCommand(msg, antlrProcessor.sender);
     }
-
 
     // 2. SOVEREIGN BOOTSTRAP INITIALIZATION
-    if (msg.command === "importScripts") {
+    if (commandName === "importScripts") {
+        e.stopImmediatePropagation(); // Prevent Ace from trying to parse script imports
+
         // Let the worker thread download your dependencies cleanly
         self.importScripts(...msg.args);
         setupInheritance();
@@ -250,18 +250,57 @@ self.addEventListener('message', function (e) {
     // 3. AUTONOMOUS TUNNELING GATES
     // If your frontend worker client posts an explicit execution directive,
     // intercept it and apply it straight to your processor context.
-    if (antlrProcessor && typeof antlrProcessor[msg.command] === "function") {
-        antlrProcessor[msg.command].apply(antlrProcessor, msg.args);
+    if (antlrProcessor && typeof antlrProcessor[commandName] === "function") {
+        antlrProcessor[commandName].apply(antlrProcessor, msg.args);
         e.stopImmediatePropagation();
         return;
     }
 
     // 4. ACE CHANGE HOOK INTEGRATION
-    // Since worker-base.js handles "change" packets inside its own listener array,
-    // we mirror the incoming edits directly to your sovereign doc state tracker.
-    if (antlrProcessor && antlrProcessor.doc && msg.command === "change") {
-        antlrProcessor.doc.applyDeltas(msg.args[0]);
-        antlrProcessor.deferredUpdate.schedule(); // Trigger lookahead parse
+    // Mirror the edits to your state tracker, but DO NOT call stopImmediatePropagation().
+    // Ace's background engine relies on receiving this identical change event next.
+    if (antlrProcessor && antlrProcessor.doc && commandName === "change") {
+        // Rehydrate compressed delta structure back into the required standard format
+        const rawPayload = msg.data && msg.data.data;
+        if (Array.isArray(rawPayload) && rawPayload.length >= 2) {
+            const startPos = rawPayload[0]; // {"row":6,"column":28}
+            const secondParam = rawPayload[1]; // Can be {"row":6,"column":30} OR an Array of lines [";"]
+
+            let cleanDelta;
+
+            // 1. CHECK IF DELETION: If the second element has a 'row' property, it's an end position object
+            if (secondParam && typeof secondParam === "object" && "row" in secondParam) {
+                cleanDelta = {
+                    action: "remove",
+                    start: startPos,
+                    end: secondParam,
+                    // For a remove action, standard applyDeltas will slice out the text, 
+                    // but providing an empty array prevents crashes if the tracker demands the lines key
+                    lines: []
+                };
+            }
+            // 2. CHECK IF INSERTION: If the second element is an array of text lines
+            else if (Array.isArray(secondParam)) {
+                const endRow = startPos.row + secondParam.length - 1;
+                const endColumn = (secondParam.length === 1)
+                    ? startPos.column + secondParam[0].length
+                    : secondParam[secondParam.length - 1].length;
+
+                cleanDelta = {
+                    action: "insert",
+                    start: startPos,
+                    end: { row: endRow, column: endColumn },
+                    lines: secondParam
+                };
+            }
+
+            // 3. Apply the fixed delta to your tracker if valid
+            if (cleanDelta) {
+                antlrProcessor.doc.applyDeltas([cleanDelta]);
+                antlrProcessor.deferredUpdate.schedule(); // Trigger lookahead parse
+            }
+        }
+        // No stopImmediatePropagation() here! Let it pass straight through to Ace.
     }
 }, true);
 

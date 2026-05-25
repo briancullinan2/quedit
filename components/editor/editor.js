@@ -274,7 +274,7 @@ function debounceFileChange(editor, delay = 1000) {
         try {
             const currentContent = aceEditor.getValue();
             // Calculate the SHA asynchronously in the background
-            window.currentFileChangesSha = await window.getGitShaBrowser(currentContent);
+            window.currentOpenFileId = await window.getGitShaBrowser(currentContent);
             currentFileShaDebouncer = null
         } catch (err) {
             console.error("Failed to compute file SHA during debounce:", err);

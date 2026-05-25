@@ -138,11 +138,11 @@ async function setRepository(newRepo) {
         console.error('Assertion: newOwner set to Quake3e should be ec- or briancullinan2')
         debugger
     }
+    if (!ownerName || ownerName.trim() === '' || !repoName || repoName.trim === '') return
     if (ownerName && ownerName.trim())
         owner.value = ownerName;
     if (repoName)
         repository.value = repoName;
-    if (!ownerName || ownerName.trim() === '' || !repoName || repoName.trim === '') return
     const branches = await getBranches(owner.value, repository.value)
     updateSelectOptions('branch', branches)
 }

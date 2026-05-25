@@ -692,8 +692,8 @@ async function renderHashCommand(fileName, noBounce = false) {
         .querySelector(`[href="#${fileName}"]`)) {
         // give UX time to adjust to class change
         setTimeout(() => {
-            if (window.renderTerminalsCommand)
-                renderTerminalsCommand(fileName)
+            //if (window.renderTerminalsCommand)
+            renderTabsCommand(fileName)
         }, 200)
         return
     }
@@ -850,6 +850,9 @@ function getDocumentPanelFromClickId(panelId) {
     if (panelId === 'collapse')
         panelDocumentId = latestFilelistId || 'filelist'
 
+    if (TERMINALS.includes(panelId))
+        panelDocumentId = 'terminal-container'
+
     return [panelId, panelDocumentId]
 }
 
@@ -964,7 +967,7 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
             latestFileElement.classList.remove('hidden')
             latestFileElement.classList.add('not-hidden')
         } else if (latestFileElement
-            && (panelId === 'collapse' && panelDocumentId === latestFilelistId) 
+            && (panelId === 'collapse' && panelDocumentId === latestFilelistId)
             || panelId === latestFilelistId) {
             if (hadOpen && !latestFileElement.classList.contains('hidden')) {
                 latestFileElement.classList.add('hidden')
@@ -1043,6 +1046,16 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
         } else {
             await DependencyLoader.loadModule('q3');
         }
+    }
+
+    if (TERMINALS.includes(panelId)) {
+        if (typeof renderTerminalsCommand === 'undefined') {
+            await DependencyLoader.loadModule('terminal');
+            setTimeout(() => renderTerminalsCommand(panelId, true), 400)
+        } else {
+            renderTerminalsCommand(panelId, true)
+        }
+
     }
 }
 
