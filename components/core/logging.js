@@ -13,18 +13,42 @@ const colors = {
 let PREAMBLE = TOOLS_PREAMBLE
 
 function writeLog(msg, ...args) {
-    let skipTerminal = false
+    let skipTerminal = false;
     if (msg.includes('Assertion failed: lookup.node')) {
-        debugger
-        skipTerminal = true
+        debugger;
+        skipTerminal = true;
     }
-    if (!msg.includes) debugger
-    if (msg.includes && msg.includes('TypeError:')) debugger
-    let formatted = formatMessage(PREAMBLE, [msg, ...args])
-    if ((!window.api || window.api.worker) && window.terminalWrite && !skipTerminal) terminalWrite(formatted);
-    if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted);
-    if (typeof originalConsole != 'undefined') originalConsole.log(msg, ...args);
-    else console.log(msg, ...args)
+    if (msg.includes && msg.includes('TypeError:')) debugger;
+
+    // Unpack structural extensions
+    const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+
+    // source metadata matching array payload options
+    const source = [
+        category,          // <-- "build", "network", "worker"
+        ...trailingFiles,     // <-- ['make', 'shared', 'worker']
+        func,
+        rawFile.split('/').pop().replace('.js', ''),
+        rawFile
+    ];
+
+    if (trailingFiles.includes('github')) {
+        // network tracing intercept block hook...
+    }
+
+    let formatted = formatMessage(PREAMBLE, [msg, ...args]);
+
+    if ((!window.api || window.api.worker) && window.terminalWrite && !skipTerminal) {
+        terminalWrite(formatted, source);
+    }
+    if (typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) {
+        api.hostWrite(formatted, source);
+    }
+    if (typeof originalConsole !== 'undefined') {
+        originalConsole.log(msg, source, ...args);
+    } else {
+        console.log(msg, ...args);
+    }
 }
 
 function formatMessageItem(cache, arg) {
@@ -77,29 +101,45 @@ const originalConsole = {
 
 self.console.log = (...args) => {
     const formatted = formatMessage('log', args);
-    if (window.terminalWrite) terminalWrite(formatted, 'log');
-    else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
+    const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+    const source = [category, 'log', ...trailingFiles, func,
+        rawFile.split('/').pop().replace('.js', ''), rawFile
+    ];
+    if (window.terminalWrite) terminalWrite(formatted, source);
+    if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
     if (typeof originalConsole != 'undefined') originalConsole.log(...args);
 };
 
 self.console.warn = (...args) => {
     const formatted = formatMessage('warn', args);
-    if (window.terminalWrite) terminalWrite(formatted, 'warn');
-    else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
+    const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+    const source = [category, 'log', ...trailingFiles, func,
+        rawFile.split('/').pop().replace('.js', ''), rawFile
+    ];
+    if (window.terminalWrite) terminalWrite(formatted, source);
+    if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
     if (typeof originalConsole != 'undefined') originalConsole.warn(...args);
 };
 
 self.console.error = (...args) => {
     const formatted = formatMessage('error', args);
-    if (window.terminalWrite) terminalWrite(formatted, 'error');
-    else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
+    const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+    const source = [category, 'log', ...trailingFiles, func,
+        rawFile.split('/').pop().replace('.js', ''), rawFile
+    ];
+    if (window.terminalWrite) terminalWrite(formatted, source);
+    if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
     if (typeof originalConsole != 'undefined') originalConsole.error(...args);
 };
 
 self.console.info = (...args) => {
     const formatted = formatMessage('info', args);
-    if (window.terminalWrite) terminalWrite(formatted, 'info');
-    else if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !window.api.worker) api.hostWrite(formatted);
+    const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+    const source = [category, 'log', ...trailingFiles, func,
+        rawFile.split('/').pop().replace('.js', ''), rawFile
+    ];
+    if (window.terminalWrite) terminalWrite(formatted, source);
+    if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
     if (typeof originalConsole != 'undefined') originalConsole.info(...args);
 };
 
@@ -124,7 +164,7 @@ function terminalWrite(message, source, skipActualWrite = false) {
     }
 
     window.lineCount += (message.match(/\n/g) || []).length;
-    
+
     // 2. Core Fix: Pipe log data directly to our clean extension block
     if (window.compilerDiagnostics) {
         window.compilerDiagnostics.log(message);
@@ -132,12 +172,12 @@ function terminalWrite(message, source, skipActualWrite = false) {
 
     // Retain only structural diagnostic logging metadata mapping for the master array
     if (window.terminalLog) {
-        window.terminalLog.push({ 
-            render: render.includes('\n') ? forceLineWrap(render, 120) : '', 
-            source: source, 
-            text: message, 
-            index: window.terminalLog.length, 
-            line: lineCount 
+        window.terminalLog.push({
+            render: render.includes('\n') ? forceLineWrap(render, 120) : '',
+            source: source,
+            text: message,
+            index: window.terminalLog.length,
+            line: lineCount
         });
     }
 
@@ -195,7 +235,7 @@ function forceLineWrap(text, maxCharsPerRow = 80) {
 }
 
 
-function specialWrite(msg) {
+function specialWrite(msg, source) {
     if (!msg) return;
 
     // 1. Core Fix: Clear old marks instantly via the native module API
@@ -212,6 +252,7 @@ function specialWrite(msg) {
         if (!window.detachedConsole && !window.alreadyWroteDetached) {
             window.detachedConsole = true;
             PREAMBLE = WARN_PREAMBLE;
+            debugger
             console.warn('\n\rDetached console, awaiting terminate...');
         }
     }
@@ -221,6 +262,93 @@ function specialWrite(msg) {
         skipTerminal = true;
     }
     if (!skipTerminal && window.terminalWrite) {
-        window.terminalWrite(msg);
+        window.terminalWrite(msg, source);
     }
 }
+
+
+
+// Mapping system to identify active runtime environments based on trailing stack files
+const PIPELINE_CATEGORIES = {
+    'make': 'build',
+    'compiler': 'build',
+    'linker': 'build',
+    'github': 'network',
+    'p2p': 'network',
+    'worker': 'worker',
+    'shared': 'build'
+};
+
+function getCalleeInfoFromStackTrace() {
+    try {
+        throw new Error();
+    } catch (error) {
+        if (!error.stack) return ['unknown', [], 'unknown'];
+        const stackLines = error.stack.split('\n');
+
+        const parseLine = (line) => {
+            let match = line.match(/at\s+([^\s(]+)\s+\((.+):[0-9]+:[0-9]+\)/);
+            if (match) return { func: match[1], file: match[2] };
+
+            match = line.match(/at\s+(.+):[0-9]+:[0-9]+/);
+            if (match) return { func: 'global', file: match[1] };
+
+            return null;
+        };
+
+        // Identify internal logger context dynamically (e.g., logging.js)
+        let currentFile = null;
+        for (let i = 0; i < stackLines.length; i++) {
+            const parsed = parseLine(stackLines[i]);
+            if (parsed) {
+                currentFile = parsed.file;
+                break;
+            }
+        }
+
+        let immediateCalleeFunc = null;
+        let immediateCalleeFile = null;
+        const trailingFiles = [];
+        const uniqueNames = new Set();
+
+        // Scan the entire call stack structure
+        for (let i = 0; i < stackLines.length; i++) {
+            const parsed = parseLine(stackLines[i]);
+            if (!parsed) continue;
+
+            // Skip internal wrapper functions inside the logging script itself
+            if (parsed.file === currentFile) continue;
+
+            // The first file we hit outside of logging.js is our immediate caller
+            if (!immediateCalleeFunc) {
+                immediateCalleeFunc = parsed.func;
+                immediateCalleeFile = parsed.file;
+            }
+
+            // Isolate clean script names (e.g., "file:///path/make.js" -> "make")
+            const scriptName = parsed.file.split('/').pop().replace('.js', '');
+
+            if (!uniqueNames.has(scriptName)) {
+                uniqueNames.add(scriptName);
+                trailingFiles.push(scriptName);
+            }
+        }
+
+        // Determine the process category by looking up the captured trace names in our dictionary
+        let matchedCategory = 'unknown';
+        for (const name of trailingFiles) {
+            if (PIPELINE_CATEGORIES[name]) {
+                matchedCategory = PIPELINE_CATEGORIES[name];
+                break; // Break early to preserve highest-priority origin tracking (top-down)
+            }
+        }
+
+        return [
+            immediateCalleeFunc || 'global',
+            trailingFiles,
+            matchedCategory,
+            immediateCalleeFile || 'unknown'
+        ];
+    }
+}
+

@@ -28,15 +28,15 @@ aceEditor.on('change', () => {
 
 
 function updateModifierPressed(e) {
-    isModifierPressed = e.ctrlKey || e.metaKey;
+    window.isModifierPressed = e.ctrlKey || e.metaKey;
 
     const hasClass = document.body.classList.contains('modifier')
 
     // TODO: set engine to 1 FPS if debugger is open, not only because it runs
     //   slower but the nature of debugging is seeing the frames
-    if (!isModifierPressed && hasClass)
+    if (!window.isModifierPressed && hasClass)
         document.body.classList.remove('modifier')
-    if (isModifierPressed && !hasClass)
+    if (window.isModifierPressed && !hasClass)
         document.body.classList.add('modifier')
 }
 
@@ -154,6 +154,17 @@ function onAceMouseMove(event) {
     if (aceMoveDebounceTimer) return;
 
     aceMoveDebounceTimer = setTimeout(() => {
+
+        if (window.aceEditor && event.target
+            && (event.target === window.aceEditor.renderer.container
+                || event.target.parentElement === window.aceEditor.renderer.container
+                || event.target.closest('#editor'))
+        ) {
+            doAceEditorMouse(event)
+            return
+        }
+
+
         previousAceUpdate = detectAceEditorEvents(event);
         aceMoveDebounceTimer = null;
     }, 100); // Efficient 100ms calculation window
@@ -164,9 +175,9 @@ editorWrapper.addEventListener('mousemove', onAceMouseMove);
 editorWrapper.addEventListener('mouseup', () => {
     let hasClass = document.body.classList.contains('dragging')
     isDragging = false
-    if (!isModifierPressed && hasClass)
+    if (!window.isModifierPressed && hasClass)
         document.body.classList.remove('dragging')
-    if (isModifierPressed && !hasClass)
+    if (window.isModifierPressed && !hasClass)
         document.body.classList.add('dragging')
 });
 

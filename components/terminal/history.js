@@ -79,7 +79,7 @@ function getInternalTerminalLogColored() {
     const lines = [];
     const buffer = term.buffer.active;
     const endRow = buffer.baseY + buffer.cursorY;
-    const startRow = Math.max(0, endRow - linesToSave);
+    const startRow = Math.max(0, endRow - LINES_TO_SAVE);
 
     for (let i = startRow; i <= endRow; i++) {
         const line = buffer.getLine(i);

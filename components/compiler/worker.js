@@ -73,7 +73,9 @@ const apiOptions = {
         })
       }
 
-      if (!response.ok) throw new Error('Response code: ' + response.status);
+      if (!response.ok) {
+        throw new Error('Response code: ' + response.status);
+      }
 
       // Verify the MIME type matches the spec requirement for streaming
       const contentType = response.headers.get('Content-Type');
@@ -91,8 +93,8 @@ const apiOptions = {
   },
 
 
-  hostWrite(s) {
-    port.postMessage({ id: 'write', data: s });
+  hostWrite(s, source) {
+    port.postMessage({ id: 'write', data: { text: s, source: source } });
   }
 };
 

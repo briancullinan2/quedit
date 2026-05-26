@@ -173,6 +173,4 @@ const TERMINALS = (typeof document !== 'undefined'
     .concat(['language'])
     .filter((a, i, arr) => arr.indexOf(a) === i)
 
-let isModifierPressed
-let isDragging
 

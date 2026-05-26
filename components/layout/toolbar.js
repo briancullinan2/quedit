@@ -158,15 +158,6 @@ window.addEventListener('mousemove', e => {
         }
     }
 
-    if (window.aceEditor && e.target
-        && (e.target === window.aceEditor.renderer.container
-            || e.target.parentElement === window.aceEditor.renderer.container
-            || e.target.closest('#editor'))
-    ) {
-        doAceEditorMouse(e)
-        return
-    }
-
     globalTooltip.innerText = targetText
 
     if (!targetEl || !targetText) {

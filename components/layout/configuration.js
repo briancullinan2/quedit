@@ -404,6 +404,8 @@ async function navigateFile(filePath, lineNumber, noBounce = false, noHide = fal
         return
     }
 
+    if (filePath.startsWith('/'))
+        filePath = filePath.substring(1)
     const [selected, dbFile] = await clickFile(filePath, lineNumber, true, noHide)
 
     if (!selected) return
@@ -424,3 +426,6 @@ async function navigateFile(filePath, lineNumber, noBounce = false, noHide = fal
 
 }
 
+
+window.isModifierPressed = false
+window.isDragging = false

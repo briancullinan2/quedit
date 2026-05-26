@@ -4,73 +4,90 @@ let debounceTerminalMouse = null;
 let previousUpdate = null;
 
 
-/**
- * Resolves the string block context around coordinates, executing localized distance metrics.
- */
+
 function extractFiles(col, row) {
+    const buffer = term.buffer.active;
     const offsets = [-2, -1, 0, 1, 2];
-    const lines = offsets.map(off => ({
-        off,
-        text: term.buffer.active.getLine(row + off)?.translateToString(true) || ""
-    }));
+    
+    let unifiedText = '';
+    const charMap = []; // Maps characters in unifiedText back to original { col, row }
+    let absoluteMouseIndex = -1;
 
-    const lineText = lines.map(l => l.text).join('');
+    // 1. Construct a continuous structural string and map every index back to layout slots
+    offsets.forEach(off => {
+        const currentRowIdx = row + off;
+        const line = buffer.getLine(currentRowIdx);
+        if (!line) return;
 
-    let targetIndex = 0;
-    for (const line of lines) {
-        if (line.off === 0) {
-            targetIndex += col;
-            break;
+        const lineStr = line.translateToString(true);
+        
+        for (let x = 0; x < lineStr.length; x++) {
+            // Track where the mouse lands inside this unified stream string block
+            if (off === 0 && x === col) {
+                absoluteMouseIndex = unifiedText.length;
+            }
+            
+            unifiedText += lineStr[x];
+            charMap.push({ col: x, row: currentRowIdx });
         }
-        targetIndex += line.text.length;
-    }
-
-    const matches = [...lineText.matchAll(FILE_NAME_REGEX)].map(m => {
-        const fullPath = m[1];
-        const lineNo = m[2] || m[3] || m[4];
-
-        let filename = null;
-        if (fullPath) {
-            const parts = fullPath.split('/');
-            filename = parts[parts.length - 1];
+        
+        // Account for trailing row slice gap wrapping boundaries
+        // If xterm wrapped the line naturally, do not append spacing
+        if (line.isWrapped) {
+            // Mouse could be at the boundary of a wrapped line
+            if (off === 0 && col >= lineStr.length) {
+                absoluteMouseIndex = unifiedText.length;
+            }
+        } else {
+            // Explicit hard newline break: insert delimiter so regex matches don't cross rows
+            if (off === 0 && col >= lineStr.length) {
+                absoluteMouseIndex = unifiedText.length;
+            }
+            unifiedText += '\n';
+            charMap.push({ col: lineStr.length, row: currentRowIdx });
         }
-
-        const lineCountBeforeMatch = (lineText.substring(0, m.index).match(/\n/g) || []).length;
-        const originalLineContext = lines[lineCountBeforeMatch] || { off: 0, text: "" };
-
-        return Object.assign({
-            path: fullPath,
-            filename: filename,
-            line: lineNo ? parseInt(lineNo, 10) : null,
-            index: m.index - (targetIndex - col),
-            center: m.index + (m[0].length / 2),
-            isFallback: false
-        }, originalLineContext);
     });
 
-    const sortedMatches = matches
-        .map(match => ({
-            ...match,
-            distance: Math.abs(match.center - targetIndex)
-        }))
-        .sort((a, b) => a.distance - b.distance);
+    // 2. Scan unified string layout with the path parsing expression
+    let fileMatch;
+    FILE_NAME_REGEX.lastIndex = 0;
 
-    if (sortedMatches.length > 0) {
-        return sortedMatches;
+    while ((fileMatch = FILE_NAME_REGEX.exec(unifiedText)) !== null) {
+        const startIdx = fileMatch.index;
+        const endIdx = startIdx + fileMatch[0].length;
+
+        // 3. STRICT GUARD: Check if the absolute mouse index falls directly within the match boundaries
+        if (absoluteMouseIndex >= startIdx && absoluteMouseIndex < endIdx) {
+            const fullPath = fileMatch[1];
+            const lineNo = fileMatch[2] || fileMatch[3] || fileMatch[4];
+            
+            // Map the start character index of the match back to its terminal buffer slot
+            const mappedStart = charMap[startIdx] || { col: 0, row };
+
+            return [{
+                path: fullPath,
+                filename: fullPath ? fullPath.split('/').pop() : null,
+                line: lineNo ? parseInt(lineNo, 10) : null,
+                index: mappedStart.col,
+                text: fileMatch[0],
+                isFallback: false // Valid path hit underneath the precise cursor coordinates
+            }];
+        }
     }
 
+    // 4. Fallback execution block if the cursor wasn't hovering over a matching token
+    const baselineText = buffer.getLine(row)?.translateToString(true)?.trim() || "";
     return [{
-        off: 0,
-        text: lines.find(l => l.off === 0)?.text?.trim() || "",
         path: null,
         filename: null,
         line: null,
-        index: targetIndex - col,
-        center: targetIndex,
-        distance: 0,
+        index: 0,
+        text: baselineText,
         isFallback: true
     }];
 }
+
+
 
 /**
  * Updates text layout nodes reflecting active pointer indexes inside the current bounding view.
@@ -205,7 +222,7 @@ async function handleMouseDown(event) {
     const data = detectTerminalEvents(event, x, y);
 
     // Path Click Navigation Handler
-    if (data.filePath && !data.isFallback && data.col >= data.fileIndex && data.col <= data.fileIndex + data.filePath.length) {
+    if (data.filePath && !data.isFallback) {
         if (typeof writeLog === 'function') {
             writeLog(`File: ${data.filePath}, Line: ${data.lineNumber}, Fallback: ${data.isFallback}`);
         }

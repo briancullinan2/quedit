@@ -2,14 +2,14 @@ class LanguageAPI {
     constructor(options) {
         this.nextResponseId = 0;
         this.responseCBs = new Map();
-        
+
         // Target your dedicated ANTLR background worker thread
-        this.worker = new Worker('components/rosetta/worker-language.js'); 
-        
+        this.worker = new Worker('components/rosetta/worker-language.js');
+
         const channel = new MessageChannel();
         this.port = channel.port1;
         this.port.onmessage = this.onmessage.bind(this);
-        
+
         this.hostWrite = options.hostWrite;
         this.configuration = options.configuration || 'release';
 
@@ -39,6 +39,8 @@ class LanguageAPI {
      */
     async runAsync(id, options) {
         const responseId = ++this.nextResponseId;
+
+        window.runningCommand = true
 
         const responsePromise = new Promise((resolve, reject) => {
             const timeoutId = setTimeout(() => {
@@ -100,15 +102,15 @@ class LanguageAPI {
         switch (event.data.id) {
             case 'write':
                 if (this.hostWrite) {
-                    this.hostWrite(event.data.data);
+                    this.hostWrite(event.data.data.text || event.data.data, event.data.data.source);
                 }
                 break;
 
             case 'done':
                 window.detachedConsole = false;
-                window.runningCommand = false;
-                // Fall-through intended matching base pipeline patterns
-                
+                window.runningWorker = false;
+            // Fall-through intended matching base pipeline patterns
+
             case 'runAsync': {
                 const responseId = event.data.responseId;
                 const promise = this.responseCBs.get(responseId);
@@ -139,8 +141,8 @@ class WorkerAPI {
         const channel = new MessageChannel();
         this.port = channel.port1;
         this.port.onmessage = this.onmessage.bind(this);
-        this.configuration =
-            this.hostWrite = options.hostWrite
+        this.configuration = options.configuration || 'release';
+        this.hostWrite = options.hostWrite
 
         const remotePort = channel.port2;
         this.worker.postMessage({ id: 'constructor', data: remotePort },
@@ -262,12 +264,12 @@ class WorkerAPI {
     onmessage(event) {
         switch (event.data.id) {
             case 'write':
-                this.hostWrite(event.data.data)
+                this.hostWrite(event.data.data.text || event.data.data, event.data.data.source)
                 break;
 
             case 'done':
                 window.detachedConsole = false
-                window.runningCommand = false
+                window.runningWorker = false
             case 'runAsync': {
                 const responseId = event.data.responseId;
                 const promise = this.responseCBs.get(responseId);

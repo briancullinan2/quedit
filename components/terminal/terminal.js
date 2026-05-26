@@ -133,11 +133,9 @@ function tokenize(input) {
     return tokens;
 }
 
-/**
- * Debounced save queue writing changes down to disk stores.
- * @param {Object} historyEngine - Dependency reference pulling active trace logs.
- */
-function triggerIncrementalSave(historyEngine) {
+
+
+function triggerIncrementalSave() {
     if (incrementalDebouncer) return;
 
     incrementalDebouncer = setTimeout(() => {
@@ -150,8 +148,8 @@ function triggerIncrementalSave(historyEngine) {
             window.scanVisibleViewport(searchInput.value);
         }
 
-        if (historyEngine && window.terminalLog) {
-            const logs = window.terminalLog.slice(-linesToSave);
+        if (window.terminalLog) {
+            const logs = window.terminalLog.slice(-LINES_TO_SAVE);
             localStorage.setItem('terminal_log', JSON.stringify(logs));
         }
         incrementalDebouncer = null;
@@ -176,7 +174,7 @@ async function renderTerminalsCommand(panelId, noBounce = false) {
     if (!noBounce && terminalsDebouncer) return;
     if (!noBounce) {
         terminalsDebouncer = setTimeout(() => {
-            renderTerminalsTabCommand(terminalPanelId, true);
+            renderTerminalsCommand(terminalPanelId, true);
             terminalsDebouncer = null;
         }, 400);
         return;
@@ -204,7 +202,7 @@ async function renderTerminalsCommand(panelId, noBounce = false) {
 
     if (window.terminalLog) {
         const errorBuffer = window.terminalLog
-            .filter(l => (l.text || l || '').match(/error/) || l.source === 'error')
+            .filter(l => (l.text || l || '').match(/error/) || l.source === panelId || l.source?.includes(panelId))
             .map(l => (l.text || l || ''))
             .join('');
         term.write(errorBuffer);
@@ -229,6 +227,6 @@ const terminalsHeader = document.getElementById('terminals');
 if (terminalsHeader) {
     terminalsHeader.addEventListener('click', (e) => {
         const targetHash = e.target.href?.split('#').pop();
-        if (targetHash) renderTerminalsTabCommand(targetHash);
+        if (targetHash) renderTerminalsCommand(targetHash);
     });
 }

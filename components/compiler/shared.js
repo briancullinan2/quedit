@@ -1331,7 +1331,15 @@ const API = (function () {
     hostLog(message) {
       const timestamp = new Date().toLocaleTimeString();
       const yellowArrow = '\x1b[1;93m>\x1b[0m ';
-      this.hostWrite(`${colors.gray}[${timestamp}]${PREAMBLE}${yellowArrow}${colors.reset} ${message}`);
+      const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+      const source = [
+        category,          // <-- "build", "network", "worker"
+        ...trailingFiles,     // <-- ['make', 'shared', 'worker']
+        func,
+        rawFile.split('/').pop().replace('.js', ''),
+        rawFile
+      ];
+      this.hostWrite(`${colors.gray}[${timestamp}]${PREAMBLE}${yellowArrow}${colors.reset} ${message}`, source);
     }
 
     async hostLogAsync(message, promise) {
@@ -1342,7 +1350,8 @@ const API = (function () {
         this.hostWrite(' done.');
         return result;
       } catch (e) {
-        this.hostWrite(` failed.\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+        if (e.message && !e.message.includes('Response code: 404'))
+          this.hostWrite(` failed.\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
         throw e
       } finally {
         if (true || this.showTiming) {
@@ -1367,14 +1376,14 @@ const API = (function () {
         result = result.concat(name + '.js.wasm',
           dirs.ENGINE_RELEASE + '/' + name + '.js.wasm',
           dirs.ENGINE_DEBUG + '/' + name + '.js.wasm',
-        'components/compiler/' + name + '.js.wasm',
+          'components/compiler/' + name + '.js.wasm',
         )
       }
       if (!name.endsWith('.wasm')) {
         result = result.concat(name + '.wasm',
           dirs.ENGINE_RELEASE + '/' + name + '.wasm',
           dirs.ENGINE_DEBUG + '/' + name + '.wasm',
-        'components/compiler/' + name + '.wasm',
+          'components/compiler/' + name + '.wasm',
         )
       }
       if (name.endsWith('.js.wasm')) {
@@ -1454,7 +1463,11 @@ const API = (function () {
               break
             }
           } catch (e) {
-            console.warn(e)
+            if (e.message.includes('Response code: 404')) {
+              console.warn('Tried: ' + filePath + ' and got ' + e.message + ' in getModule()')
+            } else {
+              console.warn(e)
+            }
           }
 
 
