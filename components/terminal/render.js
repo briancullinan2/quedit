@@ -339,6 +339,53 @@ async function captureRenderToTerminalCorner() {
         cliRenderFrameLimiter.requestFrameUpdate();
 }
 
+
+// Clean global storage allocation array context tracking resizer handles
+let activeViewportDecorations = [];
+let renderMoved = true
+
+async function captureRenderToTerminalCorner() {
+    if (typeof getAvailableContext === 'undefined') {
+        await DependencyLoader.loadModule('toji');
+    }
+
+    let viewport = document.getElementById("viewport");
+    let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
+
+    const rows = Math.floor(term.rows / 2);
+    const canvasAspect = viewport.clientWidth / viewport.clientHeight;
+    const cols = Math.floor(rows * canvasAspect * 2);
+
+    const windowViewCols = terminalContainer.clientWidth / term._core._renderService._charSizeService.width;
+    const targetStartX = Math.floor(Math.max(0, windowViewCols - cols));
+    const targetStartY = 0;
+
+    // --- EXECUTION PUMP 1: Draw the full screen WebGL frame to terminal ---
+    const ansiStringFrame = captureFrameToCornerAnsi(
+        gl, cols, rows, targetStartX, targetStartY, 1.0, 0, 0
+    );
+    term.write(ansiStringFrame);
+
+    if (document.querySelector('#terminals a[href="#soft"].active') !== null)
+        cliRenderFrameLimiter.requestFrameUpdate();
+
+
+    // Rehydrate modern resize cursor coordinates mirroring the calculated image box footprint
+    if (renderMoved) {
+        activeViewportDecorations.forEach(dec => dec.dispose());
+        activeViewportDecorations = [];
+        createViewportBorderDecorations(
+            term,
+            cols,
+            rows,
+            targetStartX,
+            targetStartY,
+            activeViewportDecorations
+        );
+        renderMoved = false
+    }
+}
+
 async function captureRenderToTerminal() {
     if (typeof getAvailableContext === 'undefined') {
         await DependencyLoader.loadModule('toji')
@@ -378,7 +425,7 @@ function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY
     const startYInt = Math.floor(targetStartY);
 
     for (let r = 0; r < rows; r++) {
-        const destinationLine = startYInt + r + 1; 
+        const destinationLine = startYInt + r + 1;
 
         // CRITICAL FIX: Safe integer interpolation ensures valid ANSI syntax tracking
         ansiOutput += `\x1b[${destinationLine};${startXInt}H`;
@@ -403,4 +450,106 @@ function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY
 
     ansiOutput += "\x1b[u"; // Restore cursor position
     return ansiOutput;
+}
+
+/**
+ * Creates and registers interactive mouse resizing decorations mapping the boundaries of the viewport.
+ * @param {Terminal} terminalInstance - The active xterm.js Terminal object instance.
+ * @param {number} cols - Proportional column block width configuration.
+ * @param {number} rows - Proportional row block height configuration.
+ * @param {number} targetStartX - Integer column boundary offset on the terminal grid canvas.
+ * @param {number} targetStartY - Integer row boundary line index offset on the terminal grid canvas.
+ * @param {Array} storageArray - Target tracking array to push decorations into for lifecycle garbage collection cleanup.
+ */
+function createViewportBorderDecorations(terminalInstance, cols, rows, targetStartX, targetStartY, storageArray = []) {
+    const startXInt = Math.floor(targetStartX);
+    const startYInt = Math.floor(targetStartY);
+
+    // We fetch the current scroll base boundary. xterm registers markers relative to 
+    // the current view frame history, but layouts evaluate inside absolute row indexes.
+    const activeBaseLineY = terminalInstance.buffer.active.baseY;
+
+    // Construct the edge definitions blueprint mapping to our target layout profile shape:
+    // Left edge (resize-l), Right edge (resize-r), Top/Bottom edges, and Corner Nodes
+    const frameBlueprints = [];
+
+    // 1. Map Top & Bottom Borders (Horizontal Lines)
+    // Top border runs on row index startYInt, Bottom border runs on startYInt + rows - 1
+    const topRow = startYInt;
+    const bottomRow = startYInt + rows - 1;
+
+    //frameBlueprints.push({ lineY: topRow, x: startXInt + 1, length: cols - 2, type: 'resize-t' });
+    //frameBlueprints.push({ lineY: bottomRow, x: startXInt + 1, length: cols - 2, type: 'resize-b' });
+    // Left corners
+    frameBlueprints.push({ lineY: topRow, x: startXInt, length: 1, type: 'corner-tl' });
+    frameBlueprints.push({ lineY: bottomRow, x: startXInt, length: 1, type: 'corner-bl' });
+    // Right corners
+    frameBlueprints.push({ lineY: topRow, x: startXInt + cols - 1, length: 1, type: 'corner-tr' });
+    frameBlueprints.push({ lineY: bottomRow, x: startXInt + cols - 1, length: 1, type: 'corner-br' });
+
+
+    for (let r = 1; r < cols - 1; r++) {
+        frameBlueprints.push({ lineY: topRow, x: startXInt + r, length: 1, type: 'resize-t' });
+
+        frameBlueprints.push({ lineY: bottomRow, x: startXInt + r, length: 1, type: 'resize-b' });
+    }
+
+
+    // 2. Map Middle Row Boundaries (Vertical Lines)
+    for (let r = 1; r < rows - 1; r++) {
+        const currentLineY = startYInt + r;
+
+        // Left Resizer Edge (1 cell wide)
+        frameBlueprints.push({ lineY: currentLineY, x: startXInt, length: 1, type: 'resize-l' });
+
+        // Right Resizer Edge (1 cell wide at the terminal column border offset)
+        frameBlueprints.push({ lineY: currentLineY, x: startXInt + cols - 1, length: 1, type: 'resize-r' });
+    }
+
+    // 3. Commit elements straight to xterm's native rendering overlay tree
+    frameBlueprints.forEach(bp => {
+        // Calculate relative row spacing offset needed for the active instance pipeline register
+        const relativeMarkerDistance = bp.lineY - activeBaseLineY;
+        const marker = terminalInstance.registerMarker(relativeMarkerDistance);
+
+        if (marker) {
+            const decoration = terminalInstance.registerDecoration({
+                marker,
+                x: bp.x,
+                width: bp.length,
+                layer: 'top'
+            });
+
+            if (decoration) {
+                decoration.onRender(element => {
+                    element.style.pointerEvents = 'auto'; // Keep mouse triggers alive
+                    element.className = ''; // Reset stale states
+
+                    // --- CRITICAL FIX FOR HORIZONTAL BARS ---
+                    // If the handle spans multiple characters horizontally, force an 
+                    // explicit block display height so the layout engine doesn't drop it.
+                    if (bp.length > 1) {
+                        element.style.display = 'block';
+                        element.style.height = '100%'; // Forces it to fill the row height bounds
+                        element.style.minHeight = '10px'; // absolute minimal layout pixel track target
+                    }
+
+                    // Inject distinctive classes mapped straight to your custom CSS configurations
+                    if (bp.type === 'resize-l') {
+                        element.classList.add('terminal-box-resize-l');
+                    } else if (bp.type === 'resize-r') {
+                        element.classList.add('terminal-box-resize-r');
+                    } else if (bp.type === 'resize-t') {
+                        element.classList.add('terminal-box-resize-t');
+                    } else if (bp.type === 'resize-b') {
+                        element.classList.add('terminal-box-resize-b');
+                    } else if (bp.type.startsWith('corner-')) {
+                        element.classList.add('terminal-box-corner', `terminal-box-${bp.type}`);
+                    }
+                });
+
+                storageArray.push(decoration);
+            }
+        }
+    });
 }

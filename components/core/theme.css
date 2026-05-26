@@ -1974,7 +1974,7 @@ body {
 }
 */
 
-body.modifier .terminal-file-underline {
+body .terminal-file-underline {
     pointer-events: all !important;
 }
 

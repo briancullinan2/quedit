@@ -437,7 +437,7 @@ document.addEventListener('visibilitychange', refreshBlinker);
 window.addEventListener('focus', refreshBlinker);
 terminalContainer.addEventListener('click', () => {
 
-    if (document.querySelector('#terminals a[href="#soft"].active') !== null) {
+    if (document.querySelector('#terminals a[href="#soft"].active') !== null && isModifierPressed) {
         terminalContainer.requestPointerLock()
     }
     refreshBlinker()
@@ -887,7 +887,7 @@ function extractFiles(col, row) {
     }));
 
     // 1. Build the full string
-    const lineText = lines.map(l => l.text).join('\n\r');
+    const lineText = lines.map(l => l.text).join('');
 
     // 2. Calculate the targetIndex (where the click happened in lineText)
     let targetIndex = 0;
@@ -896,7 +896,7 @@ function extractFiles(col, row) {
             targetIndex += col;
             break;
         }
-        targetIndex += line.text.length + 2; // Line length + '\n\r'
+        targetIndex += line.text.length; // Line length + '\n\r'
     }
 
     // 3. Match all and parse capture groups
@@ -921,7 +921,7 @@ function extractFiles(col, row) {
             path: fullPath,
             filename: filename,
             line: lineNo ? parseInt(lineNo, 10) : null,
-            index: m.index,
+            index: m.index - (targetIndex - col),
             center: m.index + (m[0].length / 2),
             isFallback: false
         }, originalLineContext);
@@ -973,9 +973,11 @@ function detectTerminalEvents(event, x, y, updateStatus = true) {
     let filePath
     let lineNumber
     let isFallback
+    let fileIndex
     if (lineText && files.length > 0) {
         filePath = files[0].path
         lineNumber = files[0].line
+        fileIndex = files[0].index
         isFallback = files[0].isFallback
     }
 
@@ -1006,7 +1008,8 @@ function detectTerminalEvents(event, x, y, updateStatus = true) {
         event,
         x, y, activeRow,
         col, row,
-        lineText, filePath, lineNumber,
+        lineText, filePath,
+        lineNumber, fileIndex,
         isFallback,
         history,
     }
@@ -1084,8 +1087,6 @@ term.onScroll(debounceTerminalStatus);
 
 terminalContainer.addEventListener('mousedown', async (event) => {
 
-    if (!event.ctrlKey && !event.metaKey && !isModifierPressed) return false;
-
     event.preventDefault()
     const rect = terminalContainer.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -1093,13 +1094,19 @@ terminalContainer.addEventListener('mousedown', async (event) => {
 
     const {
         activeRow, col, row,
-        lineText, filePath, lineNumber,
+        lineText, filePath, 
+        lineNumber, fileIndex,
         isFallback, history,
     } = detectTerminalEvents(event, x, y)
 
-    if (filePath) {
+
+    if (filePath && !isFallback && col >= fileIndex && col <= fileIndex + filePath.length) {
         writeLog(`File: ${filePath}, Line: ${lineNumber}, Fallback: ${isFallback}`);
+        await navigateFile(filePath, lineNumber)
+        return false
     }
+
+    if (!event.ctrlKey && !event.metaKey && !isModifierPressed) return false;
 
 
     if (row === activeRow) {
@@ -1107,8 +1114,6 @@ terminalContainer.addEventListener('mousedown', async (event) => {
     } else if (history !== null && history !== -1) {
         historyIndex = history
         updateLineFromHistory()
-    } else if (filePath && !isFallback) {
-        await navigateFile(filePath, lineNumber)
     }
 
     return false

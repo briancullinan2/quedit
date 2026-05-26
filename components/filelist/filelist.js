@@ -951,13 +951,6 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
             notFilelist = previousPanelId
         }
 
-        // save previous not file list also
-        if (notFilelist !== latestPanelId
-            || previousPanelId !== previousFilelistId
-        ) {
-            previousNotFilelistId = notFilelist
-        }
-
 
         const latestFileElement = document.getElementById(latestFilelistId)
         if (latestFileElement
