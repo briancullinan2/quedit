@@ -916,6 +916,16 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
+@media all and (min-width: 1200px) {
+
+    #terminals li:nth-child(3),
+    #terminals li:nth-child(4),
+    #terminals li:nth-child(8),
+    #terminals li:nth-child(9) {
+        display: none;
+    }
+}
+
 #terminals li:last-child {
     width: 100%;
     max-width: none;
@@ -1128,12 +1138,20 @@ input[type="number"]::-webkit-inner-spin-button {
     cursor: ew-resize !important;
 }
 
-.terminal-box-resize-t,
+.terminal-box-resize-t {
+    cursor: move !important;
+}
+
 .terminal-box-resize-b {
     /* Horizontal east-west mapping cursor alignment */
     cursor: ns-resize !important;
 }
 
+.dragging,
+.dragging * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
 
 /* 3. Diagonal Corner Node Enforcements */
 
@@ -1491,7 +1509,12 @@ input[type="number"]::-webkit-inner-spin-button {
     }
 
 
-    #editor-container:has(#editor.not-hidden), #editor-container:has(#paint.not-hidden) {
+    #terminals li:nth-last-child(2) {
+        display: none;
+    }
+
+    #editor-container:has(#editor.not-hidden),
+    #editor-container:has(#paint.not-hidden) {
         flex-basis: 50%;
         width: 50%;
 

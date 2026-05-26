@@ -43,8 +43,8 @@ function onLoadTerminal() {
     // allow ux to adjust to class change and xterm to start
     setTimeout(() => {
 
-        setTerminalAceTheme()
-        forceFit()
+        syncThemeWithAce()
+        forceFitLayout()
         if (!window.terminalLoaded) {
             term.write(terminalLog.map(l => l.text || l).join(''))
             if (!terminalLoaded && terminalLog.length > 0)
@@ -57,8 +57,8 @@ function onLoadTerminal() {
     // Execute internal scan loops matching your terminal selections
     setTimeout(() => {
         const searchInput = document.getElementById('search-terminal');
-        if (typeof performSharedBufferScanInternal === 'function' && searchInput) {
-            performSharedBufferScanInternal(searchInput.value);
+        if (typeof scanVisibleViewport === 'function' && searchInput) {
+            scanVisibleViewport(searchInput.value);
         }
     }, 1000);
 }
@@ -248,8 +248,8 @@ let resizeDebounce = null
 function resizeDebouncer() {
     if (resizeDebounce) return
     resizeDebounce = setTimeout(() => {
-        if (window.forceFit)
-            forceFit();
+        if (window.forceFitLayout)
+            forceFitLayout();
         if (window.updatePainter)
             updatePainter()
 

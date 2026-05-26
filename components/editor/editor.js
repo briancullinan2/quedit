@@ -22,6 +22,9 @@ function getOrCreateAceSession(fileId, content) {
     const mode = getModeByFilename(fileId);
     session.setMode(mode);
 
+    bindBlockTrackerToSession(aceEditor.getSession());
+
+
     /*
     ace.config.loadModule(["mode", "antlr_worker"], function () {
         require(["ace/mode/antlr_worker"], function (mod) {
@@ -55,7 +58,7 @@ function currentSession() {
 const editorWrapper = document.getElementById('editor-container')
 const editorContainer = document.getElementById('editor')
 const initialCode = document.getElementById('editor').textContent
-let aceEditor = window.aceEditor = ace.edit("editor");
+const aceEditor = window.aceEditor = ace.edit("editor");
 aceEditor.setTheme(window.savedTheme);
 aceEditor.renderer.setShowGutter(true);
 aceEditor.renderer.$gutterLayer.setShowLineNumbers(true)
@@ -92,9 +95,9 @@ function setTheme(theme) {
     aceEditor.setTheme(theme);
     savedTheme = theme
     // wait for update on page so it can scan for colors out of css
-    if (window.setTerminalAceTheme)
+    if (window.syncThemeWithAce)
         setTimeout(() => {
-            setTerminalAceTheme()
+            syncThemeWithAce()
         }, 500);
 
 }
@@ -169,89 +172,6 @@ function handleWorkerBlockHighlight(session, response) {
 
 
 
-// Global tracking handles for debouncing and markers
-let navTimer;
-let currentBlockMarkerId = null;
-
-/**
- * Attaches the high-fidelity cursor look-around pipeline to an active session
- */
-function bindBlockTrackerToSession(session) {
-    if (!session || !session.selection) return;
-
-    // Remove any pre-existing tracker handle on this session to prevent duplicate fire leaks
-    session.selection.off("changeCursor", onBlockTrackerCursorChange);
-
-    // Bind the execution frame cleanly
-    session.selection.on("changeCursor", onBlockTrackerCursorChange);
-}
-
-/**
- * Core event execution logic frame
- */
-function onBlockTrackerCursorChange() {
-    if (typeof NavHistory !== 'undefined' && NavHistory.isNavigating) return;
-
-    clearTimeout(navTimer);
-    navTimer = setTimeout(() => {
-        const session = aceEditor.getSession();
-        const pos = aceEditor.getCursorPosition();
-        const currentFile = typeof window.currentOpenFileId !== 'undefined' ? window.currentOpenFileId : null;
-
-        const humanRow = pos.row + 1;
-        const humanCol = pos.column + 1;
-
-        const lastPoint = typeof NavHistory !== 'undefined' ? NavHistory.stack[NavHistory.index] : null;
-        if (!lastPoint || lastPoint.fileId !== currentFile || Math.abs(lastPoint.row - humanRow) > 5) {
-            if (typeof NavHistory !== 'undefined') NavHistory.push(currentFile, humanRow, humanCol);
-        }
-
-        if (typeof window.updateEditorLineIds === 'function') {
-            window.updateEditorLineIds();
-        }
-
-        // Emit block range calculations natively to the active web worker thread
-        if (session && session.$worker && session.$worker.$worker) {
-            session.$worker.$worker.postMessage({
-                event: "calculateActiveBlockRange",
-                data: { lineNumber: humanRow }
-            });
-
-            session.$worker.$worker.postMessage({
-                event: "getFoldRegions",
-                data: { fileId: session.workspaceFileId }
-            });
-        }
-
-    }, 150);
-}
-
-// ─── THE LIFECYCLE INTERCEPTOR ───
-// 1. Listen to global session swaps (Fires when changing files, tabs, or buffers)
-aceEditor.on("changeSession", function (e) {
-    console.log("[ACE SESSION SWAP] New file context mounted. Re-binding tracking listeners.");
-
-    // Clear out the old visual block marker from the dead session so it doesn't leave ghost artifacts
-    if (currentBlockMarkerId !== null && e.oldSession) {
-        e.oldSession.removeMarker(currentBlockMarkerId);
-        currentBlockMarkerId = null;
-    }
-
-    // Bind your look-around listener directly onto the incoming fresh session selection layer
-    bindBlockTrackerToSession(e.session);
-
-    // Instant execution trigger so the block highlights the moment the new file flashes open
-    onBlockTrackerCursorChange();
-});
-
-// 2. Boot-strapping initialization trigger for the very first file opened on page load
-bindBlockTrackerToSession(aceEditor.getSession());
-
-
-
-aceEditor.on('change', () => {
-    debounceFileChange(window.aceEditor);
-})
 
 aceEditor.commands.addCommand({
     name: "save",
@@ -357,37 +277,6 @@ const NavHistory = {
     }
 };
 
-function updateModifierPressed(e) {
-    isModifierPressed = e.ctrlKey || e.metaKey;
-
-    const hasClass = document.body.classList.contains('modifier')
-
-    // TODO: set engine to 1 FPS if debugger is open, not only because it runs
-    //   slower but the nature of debugging is seeing the frames
-    if (!isModifierPressed && hasClass)
-        document.body.classList.remove('modifier')
-    if (isModifierPressed && !hasClass)
-        document.body.classList.add('modifier')
-}
-
-
-window.addEventListener('keydown', (e) => {
-    if (e.altKey && e.key === 'ArrowLeft') NavHistory.back();
-    if (e.altKey && e.key === 'ArrowRight') NavHistory.forward();
-    if (e.ctrlKey && e.key === 's') {
-        e.preventDefault();
-        saveFile();
-    }
-    if (e.key === 'Escape') {
-        modal.classList.add('hidden')
-    }
-    updateModifierPressed(e)
-});
-
-
-window.addEventListener('keyup', (e) => {
-    updateModifierPressed(e)
-})
 
 async function newFile() {
     const session = getOrCreateAceSession('temp' + (++tempCount), '');
@@ -472,111 +361,12 @@ function updateMaxLines() {
 
 }
 
-
-function updatePainter() {
-    if (imageEditor.classList.contains('not-hidden') && typeof window.GUI !== 'undefined') {
-        const height = getFullScreenFit(1)
-        window.GUI.set_size(window.innerWidth - 60, height);
-        window.Layers.render();
-        window.GUI.prepare_canvas()
-        //window.GUI.render_main_gui()
-    }
-
-}
-
-
 /**
  * Ace Editor Real-Time Interaction and Telemetry Linker
  * Tracks token context beneath cursor on hotkey modifier hold.
  */
 
 // Global tracking references for throttling layout updates
-let lastTrackedRow = -1;
-let lastTrackedColumn = -1;
-let aceMoveDebounceTimer = null;
-/**
- * Main event processor for Ace mouse movements.
- * Converts screen positions into exact buffer coordinates.
- */
-function detectAceEditorEvents(event) {
-    if (!editor || !aceEditor.renderer) return null;
-
-    const canvasX = event.clientX;
-    const canvasY = event.clientY;
-
-    // 1. Map mouse screen pixels directly to Ace internal character coordinates
-    const screenPos = aceEditor.renderer.screenToTextCoordinates(canvasX, canvasY);
-    const row = screenPos.row;
-    const column = screenPos.column;
-
-    // Skip recalculation if the mouse is hovering over the exact same character slot
-    if (row === lastTrackedRow && column === lastTrackedColumn) {
-        return previousAceUpdate;
-    }
-
-    lastTrackedRow = row;
-    lastTrackedColumn = column;
-
-    // 2. Get the precise string token sitting under the mouse
-    const session = aceEditor.getSession();
-    const token = session.getTokenAt(row, column);
-
-    // Extract the full raw text line for debugging context
-    const lineText = session.getLine(row);
-
-    let tokenText = null;
-    let tokenType = null;
-    let isFunctionCall = false;
-
-    if (token) {
-        tokenText = token.value.trim();
-        tokenType = token.type;
-
-        // Peek ahead at the next token to check if it's an invocation paren
-        const nextToken = session.getTokenAt(row, column + token.value.length);
-        if (tokenType.includes("support.function") ||
-            tokenType.includes("entity.name.function") ||
-            (nextToken && nextToken.value.startsWith('('))) {
-            isFunctionCall = true;
-        }
-    }
-
-    // 3. CAPTURE ACTIVE COMPILER ERRORS FROM EXTENSION DATA TAGS
-    let compilerError = null;
-    const aceContainer = event.target.closest('.ace_editor');
-    if (aceContainer) {
-        compilerError = aceContainer.getAttribute('data-compiler-error');
-    }
-
-    // Convert internal zero-based indices to human-readable 1-based indices (+1)
-    const humanLine = row + 1;
-    const humanCol = column + 1;
-    const database = owner.value + '/' + repository.value;
-
-    let filePath = currentSession();
-    if (!filePath && window.trees && window.trees[database]) {
-        filePath = trees[database].nodesById[window.currentOpenFileId]?.path;
-    }
-
-    const updatePayload = {
-        event,
-        row: humanLine,
-        column: humanCol,
-        lineText,
-        tokenText,
-        tokenType,
-        isFunctionCall,
-        compilerError, // <-- Injected seamlessly into the tracking payload
-        id: typeof window.currentOpenFileId !== 'undefined' && window.currentOpenFileId != null ? window.currentOpenFileId : 'unknown',
-        file: filePath,
-    };
-
-    // Update global status readouts dynamically
-    updateAceStatus(updatePayload);
-
-    previousAceUpdate = updatePayload;
-    return updatePayload;
-}
 
 /**
  * Updates your shared application status bar layout element
@@ -633,58 +423,14 @@ function updateAceStatus(data) {
 /**
  * Throttle handler to guard performance during heavy mouse drag/sweep gestures
  */
-let previousAceUpdate = null;
-function onAceMouseMove(event) {
-    // Immediate early exit if modifier isn't engaged to ensure completely zero lag typing
-    //if (!event.ctrlKey && !event.metaKey) {
-    //    return;
-    //}
 
-    if (aceMoveDebounceTimer) return;
-
-    aceMoveDebounceTimer = setTimeout(() => {
-        previousAceUpdate = detectAceEditorEvents(event);
-        aceMoveDebounceTimer = null;
-    }, 100); // Efficient 100ms calculation window
-}
 
 // =========================================================================
 // EVENT REGISTRATION AND ATTACHMENTS
 // =========================================================================
 
 // Attach to the main content container renderer canvas layer of the Ace architecture
-editorWrapper.addEventListener('mousemove', onAceMouseMove);
 
-/**
- * Click handler execution block.
- * When a user clicks a function token with the modifier held, jump execution locations.
- */
-editorWrapper.addEventListener('mousedown', async (event) => {
-
-    // Intercept standard focus adjustments
-    event.preventDefault();
-
-    const telemetry = detectAceEditorEvents(event);
-    if (!telemetry || !telemetry.tokenText) return;
-
-    if (!event.ctrlKey && !event.metaKey) return;
-
-    if (typeof writeLog === 'function') {
-        writeLog(`Ace Intercept -> Token: ${telemetry.tokenText}, Line: ${telemetry.row}, Fn: ${telemetry.isFunctionCall}`);
-    }
-
-    debugger
-
-    // --- THE JUMP ENGINE EXTENSION HOOK ---
-    if (telemetry.isFunctionCall) {
-        if (typeof lookupFunctionDefinition === 'function') {
-            // Your future linker handler: parses function references across index trees
-            await lookupFunctionDefinition(telemetry.tokenText, telemetry.fileId);
-        } else {
-            console.log(`Ready to link function definition for: ${telemetry.tokenText}`);
-        }
-    }
-});
 
 aceEditor.commands.addCommand({
     name: "forceSystemCopy",
@@ -710,78 +456,7 @@ aceEditor.commands.addCommand({
 });
 
 // Keep track of the active gutter line row to prevent erratic multi-firing updates
-let lastTrackedGutterRow = null;
 
-
-// Clear out our row state cache whenever the mouse rolls out of the gutter strip completely
-window.aceEditor.on("guttermouseout", function () {
-    lastTrackedGutterRow = null;
-    if (globalTooltip) {
-        globalTooltip.style.display = 'none';
-    }
-});
-function doAceEditorMouse(e) {
-    if (!globalTooltip) return;
-
-    // 1. Calculate the active screen row focus block
-    let canvasY = e.clientY;
-    let row = window.aceEditor.renderer.screenToTextCoordinates(0, canvasY).row;
-
-    // 2. Fetch the true, fully aggregated annotation state array directly from Ace
-    const session = window.aceEditor.getSession();
-    let allActiveAnnotations = session.getAnnotations() || [];
-
-    // Filter down to error nodes matching this specific line focus pointer
-    let activeErrorsOnLine = allActiveAnnotations.filter(function (anno) {
-        return anno.row === row;
-    });
-
-    // If no diagnostics reside on this specific row, hide the global overlay panel cleanly
-    if (activeErrorsOnLine.length === 0) {
-        globalTooltip.style.display = 'none';
-        globalTooltip.style.opacity = 0;
-        globalTooltip.style.zIndex = -1;
-        lastTrackedGutterRow = null;
-        return;
-    }
-
-    // --- THE HASTY GATE ---
-    // If the tooltip is already correctly positioned on this row, drop out out to save cycles
-    if (row === lastTrackedGutterRow && globalTooltip.style.display === 'block') {
-        return;
-    }
-    lastTrackedGutterRow = row;
-
-    // 3. PACK & UNWRAP: Join multiple warning/error chunks on the same line into a clean string layout
-    let combinedDiagnosticText = activeErrorsOnLine.map(function (anno) {
-        // Strip away raw newline formatting if it's already a complex multiline string layout block
-        let textContent = anno.text || "";
-        let prefix = anno.type === "error" ? "❌ Error: " : (anno.type === "warning" ? "⚠️ Warning: " : "ℹ️ Info: ");
-
-        return prefix + textContent;
-    }).join("\n\n");
-
-    // Populate the clean string straight into your global overlay element layout view
-    globalTooltip.innerText = combinedDiagnosticText;
-
-    // Apply the display viewport positions
-    globalTooltip.style.position = 'absolute';
-    globalTooltip.style.display = 'block';
-    globalTooltip.style.opacity = 1;
-    globalTooltip.style.zIndex = 99999;
-
-    // Compute pixel positioning alignments against the editor's active layout grid
-    var rowCoords = window.aceEditor.renderer.textToScreenCoordinates(row, 0);
-    var gutterRect = window.aceEditor.renderer.$gutterLayer.element.getBoundingClientRect();
-    var absoluteGutterRight = gutterRect.right;
-
-    var correctedLeft = absoluteGutterRight + 10;
-    var rowHeight = window.aceEditor.renderer.layerConfig.lineHeight || 19;
-    var correctedTop = rowCoords.pageY + rowHeight;
-
-    globalTooltip.style.left = correctedLeft + "px";
-    globalTooltip.style.top = correctedTop + "px";
-}
 
 
 function forceEditorFoldByLine(targetStartLine) {

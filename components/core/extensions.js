@@ -52,16 +52,21 @@ const IMPORT_JS = {
     // Virtual Terminal Environment
     terminal: [
         '/components/terminal/xterm.js',
+        '/components/terminal/search.js',
+        '/components/terminal/history.js',
         '/components/terminal/utilities.js',
         '/components/terminal/render.js',
         '/components/terminal/commands.js',
-        '/components/terminal/terminal.js'
+        '/components/terminal/terminal.js',
+        '/components/terminal/events.js',
     ],
 
     // Code Workspace
     editor: [
         '/ace/ace.js',
-        '/components/editor/editor.js'
+        '/components/editor/core.js',
+        '/components/editor/editor.js',
+        '/components/editor/events.js',
     ],
 
     // Local QVM Compiler / Build Toolchain (Matches your Worker imports)
@@ -108,7 +113,8 @@ const IMPORT_JS = {
 
     // Image Editor Canvas
     paint: [
-        '/components/paint/paint.js'
+        '/components/paint/paint.js',
+        '/components/paint/utilities.js',
     ]
 };
 

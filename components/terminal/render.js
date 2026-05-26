@@ -300,49 +300,13 @@ function drawQuakeConfigDashboard(xtermInstance) {
 }
 
 
-async function captureRenderToTerminalCorner() {
-    if (typeof getAvailableContext === 'undefined') {
-        await DependencyLoader.loadModule('toji');
-    }
-
-    let viewport = document.getElementById("viewport");
-    let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
-
-    // 1. Constrain rows height to half the terminal real estate
-    const rows = Math.floor(term.rows / 2);
-
-    // 2. Calculate aspect ratio columns width
-    const canvasAspect = viewport.clientWidth / viewport.clientHeight;
-    const cols = Math.floor(rows * canvasAspect * 2);
-
-    // 3. Define corner destination alignment parameters (Top-Right positioning math)
-    const windowViewCols = terminalContainer.clientWidth / term._core._renderService._charSizeService.width
-    const targetStartX = Math.floor(Math.max(0, windowViewCols - cols));
-    const targetStartY = 0;                             // Fixed to the top row line of the terminal screen
-
-    // 4. Extract localized window matrix string block
-    const ansiStringFrame = captureFrameToCornerAnsi(
-        gl,
-        cols,
-        rows,
-        targetStartX,
-        targetStartY,
-        1.0, // Scale
-        0,   // Offset X
-        0    // Offset Y
-    );
-
-    // 5. Fire frame over the socket link stream
-    term.write(ansiStringFrame);
-
-    if (document.querySelector('#terminals a[href="#soft"].active') !== null)
-        cliRenderFrameLimiter.requestFrameUpdate();
-}
-
-
 // Clean global storage allocation array context tracking resizer handles
 let activeViewportDecorations = [];
 let renderMoved = true
+let targetStartX
+let targetStartY
+let targetWidth
+let targetHeight
 
 async function captureRenderToTerminalCorner() {
     if (typeof getAvailableContext === 'undefined') {
@@ -352,17 +316,17 @@ async function captureRenderToTerminalCorner() {
     let viewport = document.getElementById("viewport");
     let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
 
-    const rows = Math.floor(term.rows / 2);
+    targetHeight = Math.floor(term.rows / 2);
     const canvasAspect = viewport.clientWidth / viewport.clientHeight;
-    const cols = Math.floor(rows * canvasAspect * 2);
+    targetWidth = Math.floor(targetHeight * canvasAspect * 2);
 
     const windowViewCols = terminalContainer.clientWidth / term._core._renderService._charSizeService.width;
-    const targetStartX = Math.floor(Math.max(0, windowViewCols - cols));
-    const targetStartY = 0;
+    targetStartX = Math.floor(Math.max(0, windowViewCols - targetWidth));
+    targetStartY = 0;
 
     // --- EXECUTION PUMP 1: Draw the full screen WebGL frame to terminal ---
     const ansiStringFrame = captureFrameToCornerAnsi(
-        gl, cols, rows, targetStartX, targetStartY, 1.0, 0, 0
+        gl, targetWidth, targetHeight, targetStartX, targetStartY, 1.0, 0, 0
     );
     term.write(ansiStringFrame);
 
@@ -376,8 +340,8 @@ async function captureRenderToTerminalCorner() {
         activeViewportDecorations = [];
         createViewportBorderDecorations(
             term,
-            cols,
-            rows,
+            targetWidth,
+            targetHeight,
             targetStartX,
             targetStartY,
             activeViewportDecorations
@@ -408,6 +372,8 @@ async function captureRenderToTerminal() {
         cliRenderFrameLimiter.requestFrameUpdate()
 }
 
+
+
 function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY = 0, scale = 1.0, offsetX = 0, offsetY = 0) {
     const width = gl.drawingBufferWidth;
     const height = gl.drawingBufferHeight;
@@ -415,19 +381,25 @@ function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY
 
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixelBuffer);
 
-    let ansiOutput = "\x1b[s"; // Save cursor position
+    let ansiOutput = "\x1b[s"; 
 
     const sampleWidth = width / scale;
     const sampleHeight = height / scale;
 
-    // Enforce strict integer baselines for calculations
     const startXInt = Math.floor(targetStartX) + 1;
     const startYInt = Math.floor(targetStartY);
 
-    for (let r = 0; r < rows; r++) {
-        const destinationLine = startYInt + r + 1;
+    // Dynamic, high-fidelity density ramp
+    const asciiRamp = " .:-=+*#%@";
+    const rampLength = asciiRamp.length;
 
-        // CRITICAL FIX: Safe integer interpolation ensures valid ANSI syntax tracking
+    // Tuning parameter: Values < 1.0 lift dark mid-tones up, forcing the engine 
+    // to use complex, heavy characters (#, %, @) inside standard shadow maps.
+    // Try 0.5 or 0.6 for extreme retro terminal texture weight!
+    const gamma = 0.55; 
+
+    for (let r = 0; r < rows; r++) {
+        const destinationLine = startYInt + r + 1; 
         ansiOutput += `\x1b[${destinationLine};${startXInt}H`;
 
         const subY = ((rows - 1 - r) / rows) * sampleHeight;
@@ -443,14 +415,44 @@ function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY
             const green = pixelBuffer[pixelIdx + 1];
             const blue = pixelBuffer[pixelIdx + 2];
 
-            ansiOutput += `\x1b[48;2;${red};${green};${blue}m `;
+            // 1. Core luminance calculation
+            const rawLuminance = (0.2126 * red) + (0.7152 * green) + (0.0722 * blue);
+            
+            // 2. Normalize to a 0.0 - 1.0 baseline floating point range
+            const normalizedLumi = rawLuminance / 255;
+
+            // 3. Apply non-linear power curve distribution (Gamma stretch)
+            // This spreads out clustered low-light map details evenly across the whole ramp library
+            const stretchedLumi = Math.pow(normalizedLumi, gamma);
+
+            // 4. Map the newly balanced curves cleanly to an index integer
+            const rampIndex = Math.floor(stretchedLumi * (rampLength - 1));
+            const asciiChar = asciiRamp[rampIndex];
+
+            // 5. Balance foreground text colors dynamically
+            let textR, textG, textB;
+            if (rawLuminance < 110) {
+                // Amplify dark shadows so text glyph details register perfectly
+                textR = Math.min(255, Math.floor(red * 2.0) + 40);
+                textG = Math.min(255, Math.floor(green * 2.0) + 40);
+                textB = Math.min(255, Math.floor(blue * 2.0) + 40);
+            } else {
+                // High luminance: Sink the text to dark contrast silhouettes
+                textR = Math.floor(red * 0.25);
+                textG = Math.floor(green * 0.25);
+                textB = Math.floor(blue * 0.25);
+            }
+
+            // Stream background colors coupled with high-density textual contrast map shifts
+            ansiOutput += `\x1b[48;2;${red};${green};${blue}m\x1b[38;2;${textR};${textG};${textB}m${asciiChar}`;
         }
-        ansiOutput += "\x1b[0m";
+        ansiOutput += "\x1b[0m"; 
     }
 
-    ansiOutput += "\x1b[u"; // Restore cursor position
+    ansiOutput += "\x1b[u"; 
     return ansiOutput;
 }
+
 
 /**
  * Creates and registers interactive mouse resizing decorations mapping the boundaries of the viewport.
