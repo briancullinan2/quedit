@@ -45,6 +45,9 @@ const IMPORT_JS = {
         '/components/layout/toolbar.js',
         '/components/rosetta/binary.js',
         '/components/filelist/github.js',
+        '/components/filelist/vfs.js',
+        '/components/filelist/layout.js',
+        '/components/filelist/load-media.js',
         '/components/filelist/filelist.js',
         //'/unzip.js'
     ],

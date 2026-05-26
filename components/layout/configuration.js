@@ -198,234 +198,143 @@ function createFrameRater(targetFps, callback) {
     };
 }
 
+const TESTPATH_ROOTS = ['', 'demoq3/pak0.pk3dir', 'docs/demoq3/pak0.pk3dir'];
 
+/**
+ * High-level workspace resolver. Ingests raw window paths, hashes, or explicit links, 
+ * extracts line numbers, runs prefix multiplexing, scans active VFS/IDB spaces, 
+ * and maps the request to a final active file node.
+ * * @param {string} [hintPath] - Optional explicit file path to search instead of window state.
+ * @returns {Promise<Array>} [resolvedLocation, repositoryKey, fileNode, lineNumber]
+ */
+async function findFileTestPath(hintPath) {
+    // 1. Gather all raw potential source context vectors
+    const rawPathCandidates = [
+        hintPath,
+        window.location.hash?.substring(1),
+        window.location.pathname?.substring(1)
+    ].filter(loc => typeof loc === 'string' && loc.trim().length > 0);
 
+    if (rawPathCandidates.length === 0) return [null, null, null, null];
 
-async function findTestFilepath(filePath) {
+    // 2. Extract line anchors and cross-multiply candidates against TESTPATH_ROOTS
+    const lookupQueue = rawPathCandidates.flatMap(rawCandidate => {
+        const hasColon = rawCandidate.includes(':');
+        const cleanPathPart = hasColon ? rawCandidate.split(':')[0] : rawCandidate;
+        const extractedLine = hasColon ? parseInt(rawCandidate.split(':').pop(), 10) : null;
 
-    let selected
-    let dbFile
+        return TESTPATH_ROOTS.map(root => {
+            const delimiter = (root.length > 0 && !root.endsWith('/')) ? '/' : '';
+            return {
+                testPath: root + delimiter + cleanPathPart,
+                line: extractedLine
+            };
+        });
+    });
 
+    // 3. Compile list of repositories declared in your core settings
+    const activeRepositories = [
+        window.engineRepository,
+        window.gameRepository,
+        window.assetRepository,
+        window.toolsRepository,
+        window.tools2Repository
+    ].filter(Boolean);
 
-    if (!dbFile && files[engineRepository]) {
-        dbFile = files[engineRepository][filePath]
-        if (dbFile) {
-            trees[engineRepository].values = [dbFile.sha];
-            selected = engineRepository
-        }
-    }
-    if (!dbFile && files[gameRepository]) {
-        dbFile = files[gameRepository][filePath]
-        if (dbFile) {
-            trees[gameRepository].values = [dbFile.sha];
-            selected = gameRepository
-        }
-    }
-    if (!dbFile && files[assetRepository]) {
-        dbFile = files[assetRepository][filePath]
-        if (dbFile) {
-            trees[assetRepository].values = [dbFile.sha];
-            selected = assetRepository
-        }
-    }
+    // 4. Processing Loop: Evaluate every path variation against every storage layer
+    for (const item of lookupQueue) {
+        let selectedRepo = null;
+        let dbFile = null;
+        const currentPath = item.testPath;
 
-    if (!dbFile) {
-        if (!files[toolsRepository]) {
-            const parts = toolsRepository.split('/')
-            const ownerName = parts.length == 2 ? parts[0] : owner.value
-            const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
-            let branch = await getDefaultBranch(ownerName, repoName)
-            await loadGitHubTree(ownerName, repoName, branch)
-        }
-        if (files[toolsRepository][filePath]) {
-            selected = toolsRepository
-            dbFile = files[toolsRepository][filePath]
-        }
-    }
-
-
-    if (!dbFile) {
-        if (!files[tools2Repository]) {
-            const parts = tools2Repository.split('/')
-            const ownerName = parts.length == 2 ? parts[0] : owner.value
-            const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
-            let branch = await getDefaultBranch(ownerName, repoName)
-            await loadGitHubTree(ownerName, repoName, branch)
-        }
-        if (files[tools2Repository][filePath]) {
-
-            selected = tools2Repository
-            dbFile = files[tools2Repository][filePath]
-        }
-    }
-
-
-    // TODO: FS.virtual for IDB access and database
-    if (!dbFile) {
-
-        dbFile = FS.virtual[filePath]
-        // TODO: make this a kind of API setting thing
-        let databases = await getDatabaseMetadata()
-        let item
-
-        for (item of databases) {
-            const testFile = item.key + '/' + filePath
-
-            try {
-                if (trees['#database'].nodesById[testFile]) {
-                    dbFile = trees['#database'].nodesById[testFile]
-                    selected = item.key
-                    break;
+        // LAYER A: Check Memory-Cached Repositories
+        for (const repoKey of activeRepositories) {
+            // Dynamic on-demand lazy load if missing
+            if (!files[repoKey]) {
+                const parts = repoKey.split('/');
+                const ownerName = parts.length === 2 ? parts[0] : window.owner.value;
+                const repoName = parts.length === 2 ? parts[1] : (parts[0] || window.repository.value);
+                try {
+                    const branch = await getDefaultBranch(ownerName, repoName);
+                    await loadGitHubTree(ownerName, repoName, branch);
+                } catch (err) {
+                    console.warn(`Dynamic tree resolve failure for: ${repoKey}`, err);
+                    continue;
                 }
+            }
 
-                let record = await getRecord(DB_STORE_NAME, filePath, item.key)
-                if (record) {
-                    dbFile = trees['#database'].nodesById[testFile]
-                        = FS.virtual[filePath] = record
-                    selected = item.key
-                    break;
-                }
-            } catch (e) {
-                debugger
-                writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
+            if (files[repoKey] && files[repoKey][currentPath]) {
+                dbFile = files[repoKey][currentPath];
+                selectedRepo = repoKey;
+                if (trees[repoKey]) trees[repoKey].values = [dbFile.sha];
+                break;
             }
         }
 
+        // LAYER B: Check Client IndexedDB Database Contexts
+        if (!dbFile) {
+            const databases = await getDatabaseMetadata();
+            let dbMeta
+            for (dbMeta of databases) {
+                const testFileKey = `${dbMeta.key}/${currentPath}`;
+                try {
+                    if (trees['#database']?.nodesById[testFileKey]) {
+                        dbFile = trees['#database'].nodesById[testFileKey];
+                        selectedRepo = dbMeta.key;
+                        break;
+                    }
+                    const record = await getRecord(DB_STORE_NAME, currentPath, dbMeta.key);
+                    if (record) {
+                        if (trees['#database']) trees['#database'].nodesById[testFileKey] = record;
+                        FS.virtual[currentPath] = record;
+                        dbFile = record;
+                        selectedRepo = dbMeta.key;
+                        break;
+                    }
+                } catch (e) {
+                    if (typeof window.writeLog === 'function') window.writeLog(e.message);
+                }
+            }
+            if (dbFile && trees['#database'] && typeof dbMeta !== 'undefined') {
+                trees['#database'].values = [dbMeta.key];
+            }
+        }
 
+        // LAYER C: Parse Inline Explicit Repository Invocations ("owner/repo/path")
+        /*
+        if (!dbFile) {
+            const pathParts = currentPath.split('/');
+            const pathOwner = pathParts.length >= 2 ? pathParts[0] : null;
+            const pathRepo = pathParts.length >= 2 ? pathParts[1] : pathParts[0];
+
+            if (pathOwner && pathRepo && !pathOwner.includes('.') && !pathRepo.includes('.')) {
+                const dynamicRepoKey = `${pathOwner}/${pathRepo}`;
+                if (!files[dynamicRepoKey]) {
+                    try {
+                        const branch = await getDefaultBranch(pathOwner, pathRepo);
+                        await loadGitHubTree(pathOwner, pathRepo, branch);
+                    } catch (e) {}
+                }
+                if (files[dynamicRepoKey]) {
+                    selectedRepo = dynamicRepoKey;
+                    const strippedPath = pathParts.slice(2).join('/');
+                    if (files[selectedRepo][strippedPath]) {
+                        dbFile = files[selectedRepo][strippedPath];
+                    }
+                }
+            }
+        }
+        */
+
+        // If this round found a hit, return the composite metadata array immediately
         if (dbFile) {
-            trees['#database'].values = [item.key];
-        }
-
-    }
-
-
-    const pathParts = filePath.split('/')
-    const pathOwner = pathParts.length == 2 ? pathParts[0] : null
-    const pathRepo = pathParts.length == 2 ? pathParts[1] : pathParts[0]
-
-    if (pathOwner && pathRepo
-        && !pathOwner.includes('.') && !pathRepo.includes('.')
-    ) {
-        if (!files[pathOwner + '/' + pathRepo]) {
-            let branch = await getDefaultBranch(pathOwner, pathRepo)
-            await loadGitHubTree(pathOwner, pathRepo, branch)
-        }
-        if (files[pathOwner + '/' + pathRepo])
-            selected = pathOwner + '/' + pathRepo
-
-        filePath = pathParts.slice(2).join('/')
-
-        for (let location of TEST_LOCATIONS) {
-            let rewrittenPath = location + (location.length > 0 && !location.endsWith('/') ? '/' : '') + filePath
-            dbFile = files[selected][rewrittenPath]
-            if (dbFile) break
+            console.log(`[VFS Resolved] File: ${currentPath} | Line: ${item.line}`);
+            return [currentPath, selectedRepo, dbFile, item.line];
         }
     }
 
-
-    return [selected, dbFile]
+    return [null, null, null, null];
 }
-
-
-const TEST_LOCATIONS = ['', 'demoq3/pak0.pk3dir', 'docs/demoq3/pak0.pk3dir']
-
-let fileClickDebouncer = null
-
-async function clickFile(filePath, lineNumber, noBounce = false, noHide = false) {
-
-    if (fileClickDebouncer) {
-        clearTimeout(fileClickDebouncer)
-    }
-    if (!noBounce) {
-        fileClickDebouncer = setTimeout(() => clickFile(filePath, lineNumber, true, noHide), 500)
-        return
-    }
-
-    let selected
-    let dbFile
-
-
-    for (let location of TEST_LOCATIONS) {
-        let rewrittenPath = location + (location.length > 0 && !location.endsWith('/') ? '/' : '') + filePath
-        let [selected2, dbFile2] = await findTestFilepath(rewrittenPath)
-        selected = selected2
-        dbFile = dbFile2
-        if (dbFile) {
-            filePath = rewrittenPath
-            break
-        }
-    }
-
-
-    if (!dbFile || !selected) {
-        writeLog('File not found: ' + filePath)
-        return [,]
-    }
-
-    // do this once now to full reset
-    if (!noHide)
-        hideOpenPanels()
-    latestPanelId = previousPanelId = 'editor' // switch from terminal automatically
-
-    const parts = selected.split('/')
-    const ownerName = parts.length == 2 ? parts[0] : owner.value
-    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
-
-    if (!dbFile) dbFile = files[selected][filePath]
-
-    if (!dbFile) return [null, selected]
-
-    window.currentOpenFileId = dbFile.sha
-
-    await openFile(ownerName, repoName, filePath, dbFile.sha, false /* record history */, false /* show file list */)
-    recordFileHistory(filePath, dbFile.sha, lineNumber)
-    setTimeout(() => {
-        editorContainer.classList.remove('hidden')
-        editorContainer.classList.add('not-hidden')
-
-        aceEditor.focus();
-        if (lineNumber)
-            aceEditor.gotoLine(lineNumber, 0, true);
-        latestPanelId = 'editor'
-    }, 1000)
-    resizeDebouncer()
-    return [selected, dbFile]
-}
-
-
-let fileNavigationDebouncer
-async function navigateFile(filePath, lineNumber, noBounce = false, noHide = false) {
-
-    if (fileNavigationDebouncer) {
-        clearTimeout(fileNavigationDebouncer)
-    }
-    if (!noBounce) {
-        fileNavigationDebouncer = setTimeout(() => navigateFile(filePath, lineNumber, true, noHide), 500)
-        return
-    }
-
-    if (filePath.startsWith('/'))
-        filePath = filePath.substring(1)
-    const [selected, dbFile] = await clickFile(filePath, lineNumber, true, noHide)
-
-    if (!selected) return
-
-    hideOpenPanels()
-
-    if (selected === engineRepository)
-        renderTabsCommand('filelist', true, false)
-    if (selected === gameRepository)
-        renderTabsCommand('gamelist', true, false)
-    if (selected === assetRepository)
-        renderTabsCommand('assetlist', true, false)
-    if (selected === toolsRepository)
-        renderTabsCommand('database', true, false)
-    if (selected === tools2Repository)
-        renderTabsCommand('database', true, false)
-
-
-}
-
 
 window.isModifierPressed = false
 window.isDragging = false

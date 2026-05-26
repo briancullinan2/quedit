@@ -55,7 +55,6 @@ function currentSession() {
 }
 
 
-const editorWrapper = document.getElementById('editor-container')
 const editorContainer = document.getElementById('editor')
 const initialCode = document.getElementById('editor').textContent
 const aceEditor = window.aceEditor = ace.edit("editor");

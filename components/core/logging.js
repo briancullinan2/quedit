@@ -113,7 +113,7 @@ self.console.log = (...args) => {
 self.console.warn = (...args) => {
     const formatted = formatMessage('warn', args);
     const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
-    const source = [category, 'log', ...trailingFiles, func,
+    const source = [category, 'warn', ...trailingFiles, func,
         rawFile.split('/').pop().replace('.js', ''), rawFile
     ];
     if (window.terminalWrite) terminalWrite(formatted, source);
@@ -124,7 +124,7 @@ self.console.warn = (...args) => {
 self.console.error = (...args) => {
     const formatted = formatMessage('error', args);
     const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
-    const source = [category, 'log', ...trailingFiles, func,
+    const source = [category, 'error', ...trailingFiles, func,
         rawFile.split('/').pop().replace('.js', ''), rawFile
     ];
     if (window.terminalWrite) terminalWrite(formatted, source);
@@ -135,7 +135,7 @@ self.console.error = (...args) => {
 self.console.info = (...args) => {
     const formatted = formatMessage('info', args);
     const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
-    const source = [category, 'log', ...trailingFiles, func,
+    const source = [category, 'info', ...trailingFiles, func,
         rawFile.split('/').pop().replace('.js', ''), rawFile
     ];
     if (window.terminalWrite) terminalWrite(formatted, source);

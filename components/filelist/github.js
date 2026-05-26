@@ -87,6 +87,8 @@ async function getBranches(repoOwner, repoName) {
     }
 }
 
+
+
 async function githubGraphQL(query, variables = {}) {
     if (typeof SettingsManager != 'undefined' && window.api)
         window.api.github_token = SettingsManager.get('core', 'githubToken');
@@ -591,5 +593,39 @@ async function getAuthenticatedUser() {
         PREAMBLE = ERROR_PREAMBLE
         writeLog("Failed to fetch user data: " + err);
     }
+}
+
+
+async function searchGitHubRepositories(query, ownerName, repoName) {
+    let queryString = query;
+
+    // Append qualifiers cleanly inside the q parameter value
+    if (ownerName && repoName) {
+        queryString += ` repo:${ownerName}/${repoName}`;
+    } else if (ownerName) {
+        queryString += ` user:${ownerName}`;
+    }
+
+    // Now safely encode the entire combined query string
+    const fullUrl = `https://api.github.com/search/repositories?q=${encodeURIComponent(queryString)}`;
+
+    let token = typeof api !== 'undefined'
+        ? api.github_token
+        : localStorage.getItem('github_token');
+
+    const headers = {
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(fullUrl, { headers });
+    if (!response.ok) throw new Error(`Search failed: ${response.status}`);
+
+    const data = await response.json();
+    return data.items; // Array of matched repository objects containing names, owners, and shas
 }
 

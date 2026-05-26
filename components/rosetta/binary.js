@@ -2998,3 +2998,12 @@ function arrayBufferToDataUri(buffer, filename) {
 }
 
 
+
+// Quick helper to evaluate header buffers using your existing magics
+function isQuakeBinaryMagic(bytes) {
+    const magicStr = Array.from(bytes.subarray(0, 4)).map(b => String.fromCharCode(b)).join('');
+    // "IBSP" = Map, "IDP3" = Mesh, "EAAS" = Bot AI navigation
+    return ['IBSP', 'IDP3', 'EAAS'].includes(magicStr) ||
+        (bytes[0] === 0x44 && bytes[1] === 0x14 && bytes[2] === 0x72 && bytes[3] === 0x12); // QVM
+}
+

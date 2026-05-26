@@ -264,6 +264,7 @@ body,
 #token-modal input,
 #token-modal button,
 #search-terminal,
+#search,
 #toolbar input,
 #toolbar select,
 #toolbar select option,
@@ -348,6 +349,7 @@ select:has(option[value=""]:checked),
 #popups .popup .buttons button:focus,
 #token-modal input:focus,
 #search-terminal:focus,
+#searchlist #search:focus,
 #toolbar input:focus,
 #toolbar select:focus {
     border-color: var(--ace-blue);
@@ -357,6 +359,7 @@ select:has(option[value=""]:checked),
 #popups .popup input:not(:placeholder-shown),
 select:not(:has(option[value=""]:checked)),
 #token-modal input:not(:placeholder-shown),
+#search:not(:placeholder-shown),
 #toolbar input:not(:placeholder-shown),
 #search-terminal:not(:placeholder-shown) {
     border-color: var(--ace-blue);
@@ -364,6 +367,7 @@ select:not(:has(option[value=""]:checked)),
 }
 
 
+#search::-moz-placeholder,
 #toolbar input::-moz-placeholder,
 #toolbar input::-ms-input-placeholder {
     background-color: var(--ace-background);
@@ -378,6 +382,7 @@ select:not(:has(option[value=""]:checked)),
 #gh-token-input::placeholder,
 #search-terminal::placeholder,
 #token-modal input::placeholder,
+#search::placeholder,
 #toolbar input::placeholder {
     background-color: var(--ace-background);
     color: var(--ace-foreground);
@@ -1012,7 +1017,7 @@ input[type="number"]::-webkit-inner-spin-button {
 #database .treejs .treejs-checkbox,
 #assetlist .treejs .treejs-checkbox,
 #gamelist .treejs .treejs-checkbox,
-#searchlist .treejs .treejs-checkbox,
+#search .treejs .treejs-checkbox,
 #filelist .treejs .treejs-checkbox {
     display: none;
 }
@@ -1020,7 +1025,7 @@ input[type="number"]::-webkit-inner-spin-button {
 #database .treejs .treejs-node,
 #assetlist .treejs .treejs-node,
 #gamelist .treejs .treejs-node,
-#searchlist .treejs .treejs-node,
+#search .treejs .treejs-node,
 #filelist .treejs .treejs-node {
     overflow: visible;
     max-width: none;
@@ -1599,9 +1604,9 @@ input[type="number"]::-webkit-inner-spin-button {
     .previous-viewport-frame.panel-gamelist #viewport-frame,
     .previous-paint.panel-assetlist #viewport-frame,
     .previous-editor.panel-assetlist #viewport-frame,
-    .previous-viewport-frame.panel-searchlist #viewport-frame,
-    .previous-paint.panel-searchlist #viewport-frame,
-    .previous-editor.panel-searchlist #viewport-frame,
+    .previous-viewport-frame.panel-search #viewport-frame,
+    .previous-paint.panel-search #viewport-frame,
+    .previous-editor.panel-search #viewport-frame,
     .previous-viewport-frame.panel-database #viewport-frame,
     .previous-paint.panel-database #viewport-frame,
     .previous-editor.panel-database #viewport-frame {

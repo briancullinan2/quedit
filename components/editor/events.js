@@ -29,6 +29,7 @@ aceEditor.on('change', () => {
 
 function updateModifierPressed(e) {
     window.isModifierPressed = e.ctrlKey || e.metaKey;
+    window.isShiftPressed = e.shiftKey;
 
     const hasClass = document.body.classList.contains('modifier')
 
@@ -38,6 +39,16 @@ function updateModifierPressed(e) {
         document.body.classList.remove('modifier')
     if (window.isModifierPressed && !hasClass)
         document.body.classList.add('modifier')
+
+    
+    const hasShift = document.body.classList.contains('shift')
+    if (!window.isModifierPressed && hasShift)
+        document.body.classList.remove('shift')
+    if (window.isModifierPressed && !hasShift)
+        document.body.classList.add('shift')
+
+
+    isDevToolsOpen()
 }
 
 
@@ -119,7 +130,7 @@ function detectAceEditorEvents(event) {
     const database = owner.value + '/' + repository.value;
 
     let filePath = currentSession();
-    if (!filePath && window.trees && window.trees[database]) {
+    if (!filePath && trees && trees[database]) {
         filePath = trees[database].nodesById[window.currentOpenFileId]?.path;
     }
 
@@ -170,9 +181,9 @@ function onAceMouseMove(event) {
     }, 100); // Efficient 100ms calculation window
 }
 
-editorWrapper.addEventListener('mousemove', onAceMouseMove);
+editorContainer.addEventListener('mousemove', onAceMouseMove);
 
-editorWrapper.addEventListener('mouseup', () => {
+editorContainer.addEventListener('mouseup', () => {
     let hasClass = document.body.classList.contains('dragging')
     isDragging = false
     if (!window.isModifierPressed && hasClass)
@@ -185,10 +196,7 @@ editorWrapper.addEventListener('mouseup', () => {
  * Click handler execution block.
  * When a user clicks a function token with the modifier held, jump execution locations.
  */
-editorWrapper.addEventListener('mousedown', async (event) => {
-
-    // Intercept standard focus adjustments
-    event.preventDefault();
+editorContainer.addEventListener('mousedown', async (event) => {
 
     const telemetry = detectAceEditorEvents(event);
     if (!telemetry || !telemetry.tokenText) return;
@@ -203,6 +211,10 @@ editorWrapper.addEventListener('mousedown', async (event) => {
 
     // --- THE JUMP ENGINE EXTENSION HOOK ---
     if (telemetry.isFunctionCall) {
+
+        event.preventDefault();
+
+
         if (typeof lookupFunctionDefinition === 'function') {
             // Your future linker handler: parses function references across index trees
             await lookupFunctionDefinition(telemetry.tokenText, telemetry.fileId);

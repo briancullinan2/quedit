@@ -8,7 +8,7 @@ let previousUpdate = null;
 function extractFiles(col, row) {
     const buffer = term.buffer.active;
     const offsets = [-2, -1, 0, 1, 2];
-    
+
     let unifiedText = '';
     const charMap = []; // Maps characters in unifiedText back to original { col, row }
     let absoluteMouseIndex = -1;
@@ -20,17 +20,17 @@ function extractFiles(col, row) {
         if (!line) return;
 
         const lineStr = line.translateToString(true);
-        
+
         for (let x = 0; x < lineStr.length; x++) {
             // Track where the mouse lands inside this unified stream string block
             if (off === 0 && x === col) {
                 absoluteMouseIndex = unifiedText.length;
             }
-            
+
             unifiedText += lineStr[x];
             charMap.push({ col: x, row: currentRowIdx });
         }
-        
+
         // Account for trailing row slice gap wrapping boundaries
         // If xterm wrapped the line naturally, do not append spacing
         if (line.isWrapped) {
@@ -60,7 +60,7 @@ function extractFiles(col, row) {
         if (absoluteMouseIndex >= startIdx && absoluteMouseIndex < endIdx) {
             const fullPath = fileMatch[1];
             const lineNo = fileMatch[2] || fileMatch[3] || fileMatch[4];
-            
+
             // Map the start character index of the match back to its terminal buffer slot
             const mappedStart = charMap[startIdx] || { col: 0, row };
 
@@ -286,7 +286,7 @@ term.attachCustomKeyEventHandler((arg) => {
                 searchTerminal.focus();
                 const selection = term.getSelection();
                 if (selection) searchTerminal.value = selection;
-                if (search) search.trigger();
+                if (searchTerminal.value.length > 0) executeFindQuery();
             }
         }
 
@@ -301,8 +301,8 @@ term.attachCustomKeyEventHandler((arg) => {
             window.TERMINATE = true;
             if (window.building) term.write('\n\rStopping build...');
             writePrompt();
-            setCursorPosition(0);
-            setCurrentLine('');
+            cursorPosition = 0;
+            currentLine = '';
         }
 
         // --- Backspace: Inline Redraw Splicer ---
@@ -313,8 +313,8 @@ term.attachCustomKeyEventHandler((arg) => {
                 const leftSide = currentLine.slice(0, cursorPosition - 1);
                 const rightSide = currentLine.slice(cursorPosition);
 
-                setCurrentLine(leftSide + rightSide);
-                setCursorPosition(cursorPosition - 1);
+                currentLine = (leftSide + rightSide);
+                cursorPosition = cursorPosition - 1;
 
                 if (term.buffer.active.cursorX === 0) {
                     term.write(`\x1b[A\x1b[${term.cols}C`);
@@ -339,8 +339,8 @@ term.attachCustomKeyEventHandler((arg) => {
                         c >= String.fromCharCode(0x20) && c <= String.fromCharCode(0x7e)
                     ).join('');
 
-                    setCursorPosition(cursorPosition + filtered.length);
-                    setCurrentLine(currentLine + filtered);
+                    cursorPosition = cursorPosition + filtered.length;
+                    currentLine = (currentLine + filtered);
                     term.write(filtered);
                 }
             }).catch(err => console.error('Paste failed: ', err));
@@ -465,8 +465,8 @@ term.onData(async data => {
                 const leftSide = currentLine.slice(0, cursorPosition);
                 const rightSide = currentLine.slice(cursorPosition);
 
-                setCurrentLine(leftSide + data + rightSide);
-                setCursorPosition(cursorPosition + data.length);
+                currentLine = (leftSide + data + rightSide);
+                cursorPosition = (cursorPosition + data.length);
 
                 if (rightSide.length === 0) {
                     term.write(data);
