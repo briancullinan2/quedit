@@ -1,54 +1,6 @@
 
-/*
-function AntlrWorker(_this2, session, WorkerClient) {
-    var baseOrigin = window.location.origin;
-    var targetUrl = baseOrigin + "/ace/worker-antlr.js";
 
-    session.activeMarkerIds = [];
 
-    // 1. Invoke the parent constructor to set up the default Ace messaging layers
-    WorkerClient.call(_this2, ["ace"], "ace/mode/antlr_worker_actions", "AntlrWorker", targetUrl);
-
-    var aceBasePath = ace.config.get("basePath") || (baseOrigin + "/ace/");
-    if (aceBasePath.slice(-1) !== "/") {
-        aceBasePath += "/";
-    }
-
-    // 2. THE CHANNELS FIX: Safely resolve the true worker reference from either the sender proxy or the core instance
-    var realWorkerThread = _this2.$worker || (_this2.sender && _this2.sender.$worker);
-
-    if (realWorkerThread) {
-        console.log("[AntlrWorker] Native thread captured. Injecting sovereign runtime bundle arrays...");
-        realWorkerThread.postMessage({
-            command: "importScripts",
-            args: [
-                baseOrigin + '/preambles.js',
-                baseOrigin + '/rosetta.js',
-                baseOrigin + '/parsers.js',
-                aceBasePath + "worker-base.js",
-                baseOrigin + '/components/rosetta/antlr-languages.bundle.js',
-                baseOrigin + "/worker-language.js"
-            ]
-        });
-    } else {
-        console.warn("[AntlrWorker] Direct worker thread hook not populated yet. Falling back to deferred script execution proxy.");
-        // Fallback: Use the standard worker client sender mechanism to queue the imports
-        this.sender.postMessage("importScripts", [
-            baseOrigin + '/preambles.js',
-            baseOrigin + '/rosetta.js',
-            baseOrigin + '/parsers.js',
-            aceBasePath + "worker-base.js",
-            baseOrigin + '/components/rosetta/antlr-languages.bundle.js',
-            baseOrigin + "/worker-language.js"
-        ]);
-    }
-
-    this.attachToSession(session);
-}
-
-// Global prototype registration method
-AntlrWorker.prototype.setLanguageTarget = setLanguageTarget;
-*/
 
 function bridgeApplyCustomWorkerHighlights(tokenLines) {
     if (!this.activeEditor || !tokenLines) return;
@@ -240,8 +192,8 @@ define("ace/mode/antlr_worker", [
         var _this2 = this;
 
         this.on("highlight", function (response) {
-            if (typeof handleWorkerHighlight === 'function') {
-                handleWorkerHighlight(session, response);
+            if (typeof handleWorkerStreamHighlight === 'function') {
+                handleWorkerStreamHighlight(session, response.data);
             }
         });
         this.on("blockRange", function (response) {

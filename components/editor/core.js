@@ -1,4 +1,5 @@
 
+let navTimer;
 
 function onBlockTrackerCursorChange() {
     if (typeof NavHistory !== 'undefined' && NavHistory.isNavigating) return;

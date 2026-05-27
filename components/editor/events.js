@@ -1,7 +1,4 @@
 
-let navTimer;
-let currentBlockMarkerId = null;
-
 
 
 
@@ -123,6 +120,7 @@ function onAceMouseMove(event) {
 
     aceMoveDebounceTimer = setTimeout(() => {
 
+        aceMoveDebounceTimer = null;
         if (window.aceEditor && event.target
             && (event.target === window.aceEditor.renderer.container
                 || event.target.parentElement === window.aceEditor.renderer.container
@@ -134,7 +132,6 @@ function onAceMouseMove(event) {
 
 
         previousAceUpdate = detectAceEditorEvents(event);
-        aceMoveDebounceTimer = null;
     }, 100); // Efficient 100ms calculation window
 }
 
@@ -188,9 +185,13 @@ let lastTrackedGutterRow = null;
 window.aceEditor.on("guttermouseout", function () {
     lastTrackedGutterRow = null;
     if (globalTooltip) {
+        debugger
         globalTooltip.style.display = 'none';
     }
 });
+
+
+
 function doAceEditorMouse(e) {
     if (!globalTooltip) return;
 

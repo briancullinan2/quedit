@@ -134,6 +134,7 @@ window.addEventListener('mousemove', e => {
         if (targetText) {
             targetEl = aceContainer;
         }
+        return
     }
 
     // 2. STANDARD MINIPAINT DOM ATTR FALLBACKS

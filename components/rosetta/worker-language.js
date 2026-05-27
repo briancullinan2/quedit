@@ -84,7 +84,33 @@ function _safePreprocess(sourceText, languageKey, onResolveInclude, onErrorFound
 }
 
 
-function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer, antlr) {
+/**
+ * Pure transformation callback formatting incoming ANTLR syntax errors
+ */
+function processSyntaxError(lines, annotations, syntaxError) {
+    const zeroIndexedRow = syntaxError.line - 1;
+    const activeLineText = lines[zeroIndexedRow] || "";
+    const cleanLine = activeLineText.replace(/\t/g, '    ');
+
+    const leadingSpaces = ' '.repeat(Math.max(0, syntaxError.column));
+    const caretMarker = `${leadingSpaces}^~~~~`;
+
+    const clangDiagnosticText = [
+        `stdin.c:${syntaxError.line}:${syntaxError.column + 1}: error: ${syntaxError.message}`,
+        cleanLine.trimEnd(),
+        caretMarker
+    ].join('\n');
+
+    annotations.push({
+        row: zeroIndexedRow,
+        column: syntaxError.column,
+        text: clangDiagnosticText,
+        type: "error"
+    });
+}
+
+
+function _extractSemanticOverrides(lines, tokenStream, languageKey, annotations, lexer, emitter) {
     const semanticOverrides = new Map();
     if (!languageKey) return [semanticOverrides, null];
 
@@ -96,34 +122,43 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
     const parser = new ParserCtor(tokenStream);
     parser.removeErrorListeners();
 
-    // Set prediction mode to full LL context so it works smoothly with fallback grammars
     if (parser._interp && AntlrRegistry.antlr4?.atn?.PredictionMode) {
         parser._interp.predictionMode = AntlrRegistry.antlr4.atn.PredictionMode.LL;
     }
 
     // --- STEP 1: WIRE UP SYNTAX ERROR LISTENERS FOR THE UX ---
-    if (typeof onErrorFound === 'function') {
-        parser.addErrorListener({
-            reportAmbiguity: function (recognizer, dfa, startIndex, stopIndex, exact, ambigAlts, configs) {
-                // Absorb deep SLL prediction branching conflicts silently
-            },
-            reportContextSensitivity: function (recognizer, dfa, startIndex, stopIndex, prediction, configs) {
-                // Absorb fallback optimization logs smoothly
-            },
-            reportAttemptingFullContext: function (recognizer, dfa, startIndex, stopIndex, conflictingAlts, configs) {
-                // CRITICAL PROXIMATE GAP FIX: Satisfies the engine when dropping into deep LL validation
-            },
-            syntaxError: (recognizer, offendingSymbol, line, column, msg) => {
-                // This will catch unrecoverable errors and critical syntax issues
-                onErrorFound({ line, column, message: msg });
+    parser.addErrorListener({
+        reportAmbiguity: function (recognizer, dfa, startIndex, stopIndex, exact, ambigAlts, configs) {
+            // Absorb deep SLL prediction branching conflicts silently
+        },
+        reportContextSensitivity: function (recognizer, dfa, startIndex, stopIndex, prediction, configs) {
+            // Absorb fallback optimization logs smoothly
+        },
+        reportAttemptingFullContext: function (recognizer, dfa, startIndex, stopIndex, conflictingAlts, configs) {
+            // CRITICAL PROXIMATE GAP FIX: Satisfies the engine when dropping into deep LL validation
+        },
+        syntaxError: (recognizer, offendingSymbol, line, column, msg) => {
 
-                if (offendingSymbol && typeof offendingSymbol.start === 'number') {
-                    const errorScope = "text.syntax_error.err_notfound.annotation_required";
-                    semanticOverrides.set(offendingSymbol.start, errorScope);
-                }
+            // Pass the active lines array context and aggregate directly
+            // 'lines' must be available in scope or passed into 
+            if (typeof processSyntaxError === 'function' && typeof lines !== 'undefined') {
+                processSyntaxError(lines, annotations, { line, column, message: msg });
+            } else {
+                // Inline fallback if line parsing contexts are dropped
+                annotations.push({
+                    row: line - 1,
+                    column: column,
+                    text: msg,
+                    type: "error"
+                });
             }
-        });
-    }
+
+            if (offendingSymbol && typeof offendingSymbol.start === 'number') {
+                const errorScope = "text.syntax_error.err_notfound.annotation_required";
+                semanticOverrides.set(offendingSymbol.start, errorScope);
+            }
+        }
+    });
 
 
 
@@ -167,165 +202,230 @@ function _extractSemanticOverrides(tokenStream, languageKey, onErrorFound, lexer
 
     let tree = null;
     try {
-        // Fallback array evaluation: check the instance or constructor for rule maps
         const targetRules = parser.ruleNames || (parser.constructor && parser.constructor.ruleNames);
-
         if (targetRules && targetRules[0] && typeof parser[targetRules[0]] === 'function') {
             const rootRuleName = targetRules[0]; // Resolves straight to "json" or "compilationUnit"
             console.log(`[Worker] Dynamic execution target acquired: parser.${rootRuleName}()`);
             tree = parser[rootRuleName]();
         }
-    } catch (dynamicParseError) {
-        console.warn("[Worker] Dynamic root execution failed, falling back to legacy signature gates:", dynamicParseError);
+    } catch (err) {
+        console.warn("[Worker] Structural parse crash:", err);
     }
 
-
     if (tree) {
+        const transmittedLines = new Set();
+        const processTokenIntoChunk = (token, chunkObj) => {
+            let tokenText = token.text || "";
+            if (tokenText.endsWith('\r')) tokenText = tokenText.slice(0, -1);
+            if (tokenText === "") return;
+
+            const tokenRow = token.line - 1;
+            if (!chunkObj[tokenRow]) {
+                chunkObj[tokenRow] = [];
+            }
+
+            // 1. Check for deep AST walker context overrides first
+            let classification = semanticOverrides.get(token.start);
+
+            // 2. RESTORED FALLBACK: Drop into toRosettaToken exactly like your old code did
+            if (!classification) {
+                const rawTypeName = _resolveTokenTypeName ? _resolveTokenTypeName(lexer, token.type) : (lexer.constructor.symbolicNames[token.type] || "text");
+
+                classification = toRosettaToken(
+                    rawTypeName,
+                    token.tokenRule,
+                    lexer,
+                    parser,
+                    token,
+                    tokenStream,
+                    rawTypeName
+                );
+
+                // Sanitize edge-case token names leaking directly from native grammars
+                //const lowerClass = classification ? classification.toLowerCase() : "text";
+                //if (lowerClass.includes("comment")) {
+                //    classification = "comment.line";
+                //} else if (lowerClass.includes("include") || lowerClass.includes("define") || lowerClass.includes("preprocessor")) {
+                //    debugger
+                //    classification = "meta.preprocessor";
+                //}
+            }
+
+            if (tokenText.includes('\n')) {
+                const pieces = tokenText.split('\n');
+                pieces.forEach((piece, offset) => {
+                    const targetRow = tokenRow + offset;
+                    if (piece.endsWith('\r')) piece = piece.slice(0, -1);
+                    if (piece === "" && offset === pieces.length - 1) return;
+
+                    if (!chunkObj[targetRow]) chunkObj[targetRow] = [];
+                    chunkObj[targetRow].push({ type: classification, value: piece });
+                });
+            } else {
+                chunkObj[tokenRow].push({ type: classification, value: tokenText });
+            }
+        };
+
+        // High-level structural arrays used for chunk block aggregation
+        let activeBlockTokenLines = [];
+        let activeBlockAnnotations = [];
+
         const configurationListener = {
             enterEveryRule: function (ctx) {
                 const ruleName = parser.ruleNames[ctx.ruleIndex];
                 console.log(`Rule: ${ruleName} | Invoking State: ${ctx.invokingState}`);
             },
-            exitEveryRule: function (ctx) { },
 
             visitTerminal: function (node) {
                 const token = node.symbol;
-                let ctx = node.parentCtx;
+                const ctx = node.parentCtx;
 
-                // 1. ACCUMULATE ACCURATE INHERITANCE STRUCTURAL DATA
+                // 1. RE-ESTABLISH THE INHERITANCE TRACE FOR TO-ROSETTA-TOKEN
                 const ruleHistory = [];
                 let currentCtx = ctx;
-
                 while (currentCtx) {
                     if (currentCtx.ruleIndex !== undefined && parser.ruleNames[currentCtx.ruleIndex]) {
                         ruleHistory.push(parser.ruleNames[currentCtx.ruleIndex]);
                     }
-                    currentCtx = currentCtx.parentCtx; // Move up the syntax tree hierarchy
+                    currentCtx = currentCtx.parentCtx;
                 }
 
                 const ruleName = parser.ruleNames[ctx.ruleIndex];
-                const tokenStartChar = token.start;
                 const tokenText = token.text;
                 const tokenTypeString = lexer.constructor.symbolicNames[token.type] || "text";
 
-                // 2. ATTACH INHERITANCE TO THE PAYLOAD OBJECT
-                // We add 'ruleHistory' onto the token object so 'toRosettaToken' can inspect it natively.
+                // Attach payload metadata anchors so toRosettaToken works perfectly
                 token.ruleHistory = ruleHistory;
-                token.contextNode = ctx; // Pass the active parent context node along for deep walks
+                token.contextNode = ctx;
 
                 console.log(`Token: "${tokenText}" | Direct Rule: ${ruleName} | Inherited Trace Array:`, ruleHistory);
-
-                // Run your flattened pipeline with the newly enriched token payload
+                // 2. COMPUTE THE ACCURATE SCOPE OVERRIDE VALUE
+                if (token.text.includes('#include')) {
+                    debugger
+                }
                 const generalScope = toRosettaToken(tokenTypeString, ruleName, lexer, parser, token, tokenStream);
+                semanticOverrides.set(token.start, generalScope);
 
-                semanticOverrides.set(tokenStartChar, generalScope);
+                processStructuralFlags(annotations, token);
             },
 
-            visitErrorNode: function (node) {
-                const token = node.symbol;
-                //console.log(`Parser failed at token cursor: ${token.start} ("${token.text}")`);
-            }
+            exitEveryRule: function (ctx) {
+                const ruleName = parser.ruleNames[ctx.ruleIndex];
+
+                if (ruleName === 'functionBody' || ruleName === 'compoundStatement' || ruleName === 'block') {
+                    const startToken = ctx.start;
+                    const stopToken = ctx.stop;
+
+                    if (startToken && stopToken) {
+                        let startIdx = startToken.tokenIndex;
+                        while (startIdx > 0) {
+                            const prevToken = tokenStream.get(startIdx - 1);
+                            if (!prevToken || prevToken.line < startToken.line) {
+                                break;
+                            }
+                            startIdx--;
+                        }
+
+                        const blockAnnotations = annotations.filter(ann =>
+                            ann.row >= (startToken.line - 1) && ann.row <= (stopToken.line - 1)
+                        );
+
+                        const slicedTokenLines = {};
+                        const allBlockTokens = tokenStream.getTokens(startIdx, stopToken.tokenIndex);
+
+                        allBlockTokens.forEach(token => {
+                            processTokenIntoChunk(token, slicedTokenLines);
+                            transmittedLines.add(token.line - 1);
+                        });
+
+                        emitter.emit("highlight", {
+                            fileId: this.activeFileId,
+                            startLine: startToken.line,
+                            endLine: stopToken.line,
+                            tokenLinesChunk: slicedTokenLines,
+                            annotationsChunk: blockAnnotations
+                        });
+                    }
+                }
+            },
+
+            visitErrorNode: function (node) { }
         };
 
-        const walker = new antlr.tree.ParseTreeWalker();
+        const walker = new AntlrRegistry.antlr4.tree.ParseTreeWalker();
         walker.walk(configurationListener, tree);
 
+        // ─── FINAL BASELINE SWEEP ───
+        // Catch globals, includes, and remaining filespace that sit outside function blocks
+        const globalTokenLinesChunk = {};
 
+        // Use all tokens from the stream natively
+        let allTokens = [];
+        if (typeof tokenStream.getTokens === 'function') allTokens = tokenStream.getTokens();
+        if (!allTokens || allTokens.length === 0) allTokens = tokenStream.tokens || [];
+
+        allTokens.forEach(token => {
+            if (!token || token.type === AntlrRegistry.antlr4.Token.EOF) return;
+
+            const tokenRow = token.line - 1;
+
+            // Only capture if this line wasn't already updated by an inner block chunk pass
+            if (!transmittedLines.has(tokenRow)) {
+
+                // This call natively reads from your fully completed semanticOverrides Map!
+                processTokenIntoChunk(token, globalTokenLinesChunk);
+            }
+        });
+
+
+        // If there's any out-of-scope metadata found, push it over in one clean deployment strike
+        if (Object.keys(globalTokenLinesChunk).length > 0) {
+            emitter.emit("highlight", {
+                fileId: this.activeFileId,
+                startLine: 1,
+                endLine: lines.length,
+                tokenLinesChunk: globalTokenLinesChunk,
+                annotationsChunk: annotations.filter(ann => !transmittedLines.has(ann.row))
+            });
+        }
     }
 
     return [semanticOverrides, parser];
 }
 
-
-function getAllTokens(sourceText, languageKey, onErrorFound, onResolveInclude) {
-    const unifiedSourceBuffer = _safePreprocess(sourceText, languageKey, onResolveInclude, onErrorFound);
+/**
+ * Single-pass compilation token provider. 
+ * Spins up a single lexer/parser pipeline, executes the semantic override tree walk,
+ * and handles inline annotations directly.
+ */
+function runParserPipeline(sourceText, languageKey, annotations, emitter) {
     const antlr = AntlrRegistry.antlr4;
 
-    // ─── STAGE 1: SPIN UP THE VISUAL ROW BUFFER ENGINE ───
-    const visualLexer = createLexerInstance(unifiedSourceBuffer, languageKey);
-    if (!visualLexer) return [];
+    // 1. Safe preprocessing phase pass
+    const lines = sourceText.split('\n')
+    const unifiedSourceBuffer = _safePreprocess(sourceText, languageKey, null, (err) => {
+        annotations.push({ row: err.line - 1, column: err.column, text: err.message, type: "error" });
+    });
 
-    const BaseCommonStream = AntlrRegistry.CommonTokenStream || antlr.CommonTokenStream;
-    let StreamConstructor = antlr.BufferedTokenStream ? antlr.BufferedTokenStream : Object.getPrototypeOf(BaseCommonStream);
-    if (!StreamConstructor || typeof StreamConstructor !== 'function' || StreamConstructor === Function.prototype) {
-        StreamConstructor = BaseCommonStream;
-    }
+    // 2. Spin up ONE single Lexer instance
+    const pipelineLexer = createLexerInstance(unifiedSourceBuffer, languageKey);
+    if (!pipelineLexer) return null;
 
-    const visualTokenStream = new StreamConstructor(visualLexer);
+    // 3. Spin up ONE single standard token stream
+    const tokenStream = new antlr.CommonTokenStream(pipelineLexer);
 
-    try {
-        // Force-load all raw tokens natively into memory 
-        visualTokenStream.fill();
+    // 4. Run the deep semantic scanner walker
+    // This directly kicks off chunked streaming passes via your 'exitEveryRule' gates
+    const [semanticOverrides, parser] = _extractSemanticOverrides(
+        lines,
+        tokenStream,
+        languageKey,
+        annotations,
+        pipelineLexer, // Pass the active lexer for type resolution mapping
+        emitter
+    );
 
-        /*
-        const visualTokensArr = visualTokenStream.tokens || (typeof visualTokenStream.getTokens === 'function' ? visualTokenStream.getTokens() : []);
-        if (Array.isArray(visualTokensArr)) {
-            for (let i = 0; i < visualTokensArr.length; i++) {
-                const t = visualTokensArr[i];
-                if (t && (t._text === null || t._text === undefined)) {
-                    try {
-                        t.text = unifiedSourceBuffer.substring(t.start, t.stop + 1);
-                    } catch (err) {
-                        t.text = "";
-                    }
-                }
-            }
-        }
-        */
-    } catch (e) {
-        console.error("[Worker Visual Stream Fill Failure]:", e);
-    }
-
-
-    // ─── STAGE 2: SPIN UP THE ISOLATED AST PARSER ENGINE ───
-    const parserLexer = createLexerInstance(unifiedSourceBuffer, languageKey);
-    const parserTokenStream = new antlr.CommonTokenStream(parserLexer);
-
-    // Run the extraction matrix smoothly with clean channel 0 tokens
-    const [semanticOverrides, parser] = _extractSemanticOverrides(parserTokenStream, languageKey, onErrorFound, parserLexer, antlr);
-
-
-    // ─── STAGE 3: MAP THE SECURED BUFFERS DOWN THE WIRE ───
-    let allTokensArray = [];
-    if (typeof visualTokenStream.getTokens === 'function') allTokensArray = visualTokenStream.getTokens();
-    if (!allTokensArray || allTokensArray.length === 0) allTokensArray = visualTokenStream.tokens || [];
-
-    return [allTokensArray.map((token) => {
-        if (!token || token.type === antlr.Token.EOF) return null;
-
-        let text = token.text || "";
-
-        // Sanitize leading newlines out of raw whitespace blocks so they stream nicely into row buckets
-        if (token.channel === 1 && text.startsWith('\n')) {
-            text = text.substring(1);
-            if (text === "") return null;
-        }
-
-        const rawTypeName = _resolveTokenTypeName(visualLexer, token.type);
-        let baselineClassification = semanticOverrides.get(token.start);
-
-        if (!baselineClassification) {
-            baselineClassification = toRosettaToken(
-                rawTypeName,
-                token.tokenRule,
-                visualLexer,
-                parser,
-                token,
-                visualTokenStream,
-                rawTypeName
-            );
-        }
-
-        return _buildTokenPayload(
-            token,
-            baselineClassification,
-            baselineClassification,
-            rawTypeName.toLowerCase(),
-            visualLexer,
-            parser,
-            null
-        );
-    }).filter(Boolean), visualLexer, parser];
+    return parser;
 }
 
 
@@ -464,16 +564,11 @@ const onAnyMessage = async event => {
 
                 self.language = {
                     lineToken: async (text, language, line) => await self.onmessage({ id: 'lineToken', data: { text, language, line } }),
-                    getAllTokens: async (text, language) => await self.onmessage({ id: 'lineToken', data: { text, language } })
                 };
                 return;
 
             case 'lineToken':
                 output = getTokensForLine(data.text, data.language, data.line);
-                break;
-
-            case 'tokens':
-                output = getAllTokens(data.text, data.language, data.onErrorFound, data.onResolveInclude);
                 break;
 
             case 'folds':

@@ -17,7 +17,6 @@ function PipelineManager(options) {
 PipelineManager.prototype.clear = clear
 PipelineManager.prototype.mergeTokens = mergeTokens
 PipelineManager.prototype.syncTokensToAce = syncTokensToAce
-PipelineManager.prototype.handleWorkerHighlight = handleWorkerHighlight
 PipelineManager.prototype.handleWorkerAnnotate = handleWorkerAnnotate
 PipelineManager.prototype.refreshActiveEditorView = refreshActiveEditorView
 
@@ -104,45 +103,54 @@ function syncTokensToAce(session, startRow, endRow) {
     }
 }
 
-// =====================================================================
-// 2. INCOMING PIPELINE INTERCEPTORS
-// =====================================================================
 
-/**
- * Responds to high-fidelity ANTLR background worker highlighting events
- */
-function handleWorkerHighlight(session, e) {
-    // The Cancellation Gate (Prevents UI repaint thrashing during structural views)
-    if (window.currentActiveLayoutMode === 'navigation-override' || window.preventHighlightPaint) {
-        return;
+
+
+
+function handleWorkerStreamHighlight(session, responseData) {
+    if (!responseData || !responseData.tokenLinesChunk) return;
+
+    const { tokenLinesChunk, annotationsChunk, startLine, endLine } = responseData;
+    const bgTokenizer = session.bgTokenizer;
+
+    // Convert 1-based editor bounds to 0-indexed internal array rows
+    const startRow = startLine - 1;
+    const endRow = endLine - 1;
+
+    // --- LINEAR BOUNDARY OVERLAY LOOP ---
+    // Iterate strictly through the modified block range to prevent skipping slots
+    for (let rowIndex = startRow; rowIndex <= endRow; rowIndex++) {
+        const lineTokens = tokenLinesChunk[rowIndex];
+
+        if (Array.isArray(lineTokens)) {
+            // Ace breaks completely if an array is empty []. 
+            // If it's a blank line, give it a baseline plain text token type definition.
+            if (lineTokens.length === 0) {
+                bgTokenizer.lines[rowIndex] = [{ type: "text", value: "" }];
+            } else {
+                bgTokenizer.lines[rowIndex] = lineTokens;
+            }
+
+            // Invalidate the row's state layout frame explicitly
+            bgTokenizer.states[rowIndex] = "start"; 
+            bgTokenizer.fireUpdateEvent(rowIndex, rowIndex);
+        }
+        // If lineTokens is completely undefined for this index, we leave Ace's 
+        // existing background tokenizer cache completely untouched!
     }
 
-    let incomingLines = e.data.tokenLines || e.data.antlrTokensByLine;
-    if (!incomingLines) return;
-
-    // Semantic Transformation Pass
-    let enrichedTokenLines = incomingLines.map(function (rowTokens) {
-        if (!rowTokens) return rowTokens;
-
-        return rowTokens.map(function (token) {
-            // Feature A: Flag tracking markers inside comments
-            if (token.type === 'comment' && token.value.includes('TODO')) {
-                token.type += " spelling-error task-marker";
-            }
-
-            // Feature B: Enrich matching compiled interactive Quake 3 symbols
-            if (token.type === 'entity.name.function' && window.clickableSymbolsMap?.[token.value]) {
-                token.type += " clickable-engine-symbol";
-            }
-
-            return token;
-        });
-    });
-
-    // Atomic swap into our local cache engine, then render
-    session.tokenCache = enrichedTokenLines;
-    syncTokensToAce(session, 0, enrichedTokenLines.length - 1);
+    // 2. Stitch Annotations safely
+    if (Array.isArray(annotationsChunk)) {
+        const currentAnnotations = session.getAnnotations() || [];
+        const preservedAnnotations = currentAnnotations.filter(ann => 
+            ann.row < startRow || ann.row > endRow
+        );
+        session.setAnnotations([...preservedAnnotations, ...annotationsChunk]);
+    }
 }
+
+
+
 
 /**
  * Handles incoming background worker annotations

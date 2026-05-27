@@ -338,3 +338,29 @@ async function findFileTestPath(hintPath) {
 
 window.isModifierPressed = false
 window.isDragging = false
+
+
+
+
+function setTheme(theme) {
+    const themeName = theme.split('/').pop(); // Gets 'monokai' or 'dracula'
+
+    for (let cn of document.body.classList) {
+        if (cn.startsWith('theme-')) {
+            document.body.classList.remove(cn)
+        }
+    }
+
+    document.body.classList.add(`theme-${themeName.replace(/_/g, '-')}`);
+    // Actually tell Ace to change its internal theme too
+    if (typeof aceEditor !== 'undefined')
+        aceEditor.setTheme(theme);
+    savedTheme = theme
+    // wait for update on page so it can scan for colors out of css
+    if (window.syncThemeWithAce)
+        setTimeout(() => {
+            syncThemeWithAce()
+        }, 500);
+
+}
+

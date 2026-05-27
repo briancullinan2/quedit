@@ -14,31 +14,6 @@ function setLanguageContext(langKey, fileId) {
 }
 
 /**
- * Pure transformation callback formatting incoming ANTLR syntax errors
- */
-function processSyntaxError(lines, annotations, syntaxError) {
-    const zeroIndexedRow = syntaxError.line - 1;
-    const activeLineText = lines[zeroIndexedRow] || "";
-    const cleanLine = activeLineText.replace(/\t/g, '    ');
-
-    const leadingSpaces = ' '.repeat(Math.max(0, syntaxError.column));
-    const caretMarker = `${leadingSpaces}^~~~~`;
-
-    const clangDiagnosticText = [
-        `stdin.c:${syntaxError.line}:${syntaxError.column + 1}: error: ${syntaxError.message}`,
-        cleanLine.trimEnd(),
-        caretMarker
-    ].join('\n');
-
-    annotations.push({
-        row: zeroIndexedRow,
-        column: syntaxError.column,
-        text: clangDiagnosticText,
-        type: "error"
-    });
-}
-
-/**
  * Functional collector scanning for lingering tasks or preprocessor channels
  */
 function processStructuralFlags(annotations, token) {
@@ -63,109 +38,28 @@ function processStructuralFlags(annotations, token) {
     }
 }
 
-function mapToRowBucket(tokens, tokenLines, lexer, parser, semanticOverrides, token) {
-    const rawText = token.text || "";
-    let baseRowIndex = token.line - 1; // 0-indexed base coordinate
-
-    // Fetch your dynamic classification up front
-    let rosettaType = token.rosettaScope;// semanticOverrides.get(token.start);
-    //if (!rosettaType) {
-    //    const nativeSymbol = (lexer && lexer.constructor.symbolicNames) ? lexer.constructor.symbolicNames[token.type] : null;
-    //    const rawTypeName = nativeSymbol || `type_${token.type}`;
-    //    rosettaType = token.rosettaScope;
-    //}
-
-    // ─── THE MULTI-LINE SPLITTING LOOP ───
-    // If the token contains internal line breaks, distribute the pieces safely
-    if (rawText.includes('\n')) {
-        const structuralLines = rawText.split('\n');
-
-        structuralLines.forEach((lineText, offset) => {
-            const targetRow = baseRowIndex + offset;
-
-            // Strip trailing carriage returns if present on the split fragment
-            if (lineText.endsWith('\r')) {
-                lineText = lineText.slice(0, -1);
-            }
-
-            // Ensure the target row array exists
-            if (!tokenLines[targetRow]) {
-                tokenLines[targetRow] = [];
-            }
-
-            // Do not push empty string artifacts on trailing split lines
-            if (lineText === "" && offset === structuralLines.length - 1) {
-                return;
-            }
-
-            tokenLines[targetRow].push({
-                type: rosettaType,
-                value: lineText
-            });
-        });
-    } else {
-        // ─── STANDARD SINGLE-LINE TRACKING ───
-        let tokenText = rawText;
-        if (tokenText.endsWith('\r')) tokenText = tokenText.slice(0, -1);
-
-        if (!tokenLines[baseRowIndex]) {
-            tokenLines[baseRowIndex] = [];
-        }
-
-        tokenLines[baseRowIndex].push({
-            type: rosettaType,
-            value: tokenText
-        });
-    }
-}
 
 
-
-function onUpdate() {
-    // Safety check: if no document has been assigned yet, slide out
+async function onUpdate() {
     if (!this.doc) return;
 
     const fullText = this.doc.getValue();
-    const lines = fullText.split('\n');
     let annotations = [];
-    let tokenLines = [];
 
     try {
-        const errorBoundCallback = processSyntaxError.bind(null, lines, annotations);
-
-        // A. Extract baseline token streams
-        const [tokens, lexer, parser] = getAllTokens(fullText, this.languageKey, errorBoundCallback);
-
-        // B. RUN THE DEEP-SCANNER PASS TO HARVEST THE SEMANTIC OVERRIDES DICTIONARY
-        // We reuse the exact token stream configuration, reset it inside the method, and capture overrides
-        const tokenStream = parser.getInputStream(); // or parser._input depending on target bindings
-        const [semanticOverrides] = _extractSemanticOverrides(tokenStream, this.languageKey, errorBoundCallback, lexer, AntlrRegistry.antlr4);
-
-        // C. Process standard compilation flags
-        tokens.forEach(processStructuralFlags.bind(null, annotations));
-
-        // D. Pass your harvested semanticOverrides cache down into the mapper mapping execution loop
-        tokens.forEach(mapToRowBucket.bind(this, tokens, tokenLines, lexer, parser, semanticOverrides));
-
-        // Fill any empty line arrays so Ace has a stable line indexing sequence
-        for (let i = 0; i < lines.length; i++) {
-            if (!tokenLines[i]) tokenLines[i] = [];
-        }
-
-        this.sender.emit("highlight", {
-            tokenLines: tokenLines,
-            fileId: this.activeFileId
-        });
-    } catch (lexerError) {
-        debugger;
+        // Kick off the unified single-pass compiler pipeline
+        runParserPipeline(fullText, this.languageKey, annotations, this.sender);
+    } catch (pipelineCrash) {
+        console.error("[ANTLR Pipeline Crash]:", pipelineCrash);
         annotations.push({
             row: 0,
             column: 0,
-            text: "ANTLR Processing crash: " + lexerError.message,
+            text: "ANTLR Processing crash: " + pipelineCrash.message,
             type: "error"
         });
     }
 
+    // Send any remaining preprocessing or global syntax errors down to Ace
     this.sender.emit("annotate", annotations);
 }
 
@@ -183,10 +77,13 @@ function setupInheritance() {
     const Mirror = ace.require("ace/worker/mirror").Mirror;
     const oop = ace.require("ace/lib/oop");
     oop.inherits(AntlrWorkerBackend, Mirror);
-
     AntlrWorkerBackend.prototype.setLanguageContext = setLanguageContext;
     AntlrWorkerBackend.prototype.onUpdate = onUpdate;
 }
+
+
+
+
 self.addEventListener('message', function (e) {
     const msg = e.data;
     if (!msg) return;
@@ -233,7 +130,7 @@ self.addEventListener('message', function (e) {
 
         // Let the worker thread download your dependencies cleanly
         self.importScripts(...msg.args);
-        setupInheritance();
+        setupInheritance.apply(antlrProcessor);
 
         // Build a dedicated sender pipeline to post events straight back to our frontend instance
         const cleanSender = {

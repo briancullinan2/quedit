@@ -80,27 +80,6 @@ aceEditor.setSession(session);
 updateMaxLines()
 
 
-function setTheme(theme) {
-    const themeName = theme.split('/').pop(); // Gets 'monokai' or 'dracula'
-
-    for (let cn of document.body.classList) {
-        if (cn.startsWith('theme-')) {
-            document.body.classList.remove(cn)
-        }
-    }
-
-    document.body.classList.add(`theme-${themeName.replace(/_/g, '-')}`);
-    // Actually tell Ace to change its internal theme too
-    aceEditor.setTheme(theme);
-    savedTheme = theme
-    // wait for update on page so it can scan for colors out of css
-    if (window.syncThemeWithAce)
-        setTimeout(() => {
-            syncThemeWithAce()
-        }, 500);
-
-}
-
 // Utility to convert rgb/rgba strings to hex
 function parseToHex(colorStr, backgroundStr = null) {
     if (!colorStr || typeof colorStr !== 'string') return colorStr;
@@ -139,35 +118,46 @@ function parseToHex(colorStr, backgroundStr = null) {
     return `#${hexR}${hexG}${hexB}`; // ${hexA}
 }
 
+let currentBlockMarkerId = null;
+let lastRenderedBoundsKey = ""; // State tracking anchor to prevent redundant paint steps
 
-/**
- * Intercepts worker block range coordinates and forces visual layer renders
- */
-function handleWorkerBlockHighlight(session, response) {
+
+
+function handleWorkerBlockHighlight(session, responseData) {
+    if (!responseData) return;
+    
+    const { startLine, endLine } = responseData;
+    if (!startLine || !endLine) return;
+
+    // Create an atomic validation key representational snapshot
+    const boundsKey = `${startLine}:${endLine}`;
+    
+    // TARGET EFFICIENCY GATE: If the active stream hasn't shifted structural boundaries,
+    // bail out instantly. This saves thousands of microsecond paint operations while typing.
+    if (boundsKey === lastRenderedBoundsKey) {
+        return;
+    }
+    lastRenderedBoundsKey = boundsKey;
+
     const aceRange = ace.require("ace/range").Range;
 
-    // Clear the old background marker overlay if it exists
+    // Clear the old background marker layout overlay cleanly
     if (currentBlockMarkerId !== null) {
         session.removeMarker(currentBlockMarkerId);
         currentBlockMarkerId = null;
     }
 
-    // Extract the worker's 1-based bounds calculation
-    const { startLine, endLine } = response;
-    if (!startLine || !endLine) return;
-
     // Convert values back to Ace's internal 0-indexed column system
-    // Selects full lines cleanly from the first character of the start line to the end line
+    // Selects lines cleanly from the first character column to max line length boundary bounds
     const highlightRange = new aceRange(startLine - 1, 0, endLine - 1, Number.MAX_SAFE_INTEGER);
 
-    // Inject background marker layer (class name targets your theme CSS style)
+    // Inject background marker layer (class name targets your theme high-contrast CSS style sheet)
     currentBlockMarkerId = session.addMarker(
         highlightRange,
         "ace_active_block_scope_highlight",
         "fullLine"
     );
 }
-
 
 
 

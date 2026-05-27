@@ -79,6 +79,7 @@ const IMPORT_SETTINGS = {
             elementId: 'theme',
             set: (val) => {
                 if (typeof setTheme === 'function') setTheme(val);
+                theme.value = val
             }
         },
         savedKeyBinding: {
@@ -90,6 +91,7 @@ const IMPORT_SETTINGS = {
                 if (!val || val === 'null') {
                     window.aceEditor.setKeyboardHandler(null);
                 } else {
+                    keybinding.value = val
                     window.aceEditor.setKeyboardHandler(val);
                 }
             }
