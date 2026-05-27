@@ -21,6 +21,7 @@ Sys_ListFiles
 Sys_umask
 CL_Try_Fail_LoadJPG
 
+out_fd
 dup2
 getpid
 fork

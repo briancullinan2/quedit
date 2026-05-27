@@ -1103,22 +1103,25 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
                 let thisDatabase = database
                 let thisOwner = ownerName
                 let thisRepo = repoName
-
                 if (header.includes('wasm.syms')) {
+                    let localName = 'components/compiler/wasm.syms'
                     //let response = await fetch('wasm.syms');
                     //let contents = await response.arrayBuffer()
                     if (!files['briancullinan2/quedit']) {
                         await loadGitHubTree('briancullinan2', 'quedit', 'main')
                     }
-                    await cacheFile('briancullinan2', 'quedit', 'components/compiler/wasm.syms');
-                    
+                    await cacheFile('briancullinan2', 'quedit', localName);
+                    if(!FS.virtual[localName]) {
+                        debugger
+                        console.error('Goddamnit you suck at programming.')
+                    }
                     FS.virtual[header] =
                     {
                         timestamp: new Date(),
                         mode: FS_FILE,
-                        contents: FS.virtual['wasm.syms'].contents,
+                        contents: FS.virtual[localName].contents,
                         path: header,
-                        sha: FS.virtual['wasm.syms'].sha,
+                        sha: FS.virtual[localName].sha,
                         parent: header.substring(0, header.lastIndexOf('/'))
 
                     }
