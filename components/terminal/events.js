@@ -19,7 +19,7 @@ function extractFiles(col, row) {
         const line = buffer.getLine(currentRowIdx);
         if (!line) return;
 
-        const lineStr = line.translateToString(true);
+        const lineStr = line.translateToString(false);
 
         for (let x = 0; x < lineStr.length; x++) {
             // Track where the mouse lands inside this unified stream string block

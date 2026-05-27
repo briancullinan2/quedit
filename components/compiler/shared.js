@@ -421,7 +421,6 @@ const API = (function () {
       return new Uint8Array(this.mem.buffer, addr, size);
     }
 
-
     abort() { throw new AbortError(); }
 
     host_write(fd, iovs, iovs_len, nwritten_out) {
@@ -575,9 +574,11 @@ const API = (function () {
         debugger
         console.error('Goddamnit wheres the fucking module name?')
       }
-      let needMemfs = module.name.includes('lld')
-        || module.name.includes('clang')
+      let needMemfs = true; //module.name.includes('lld') || module.name.includes('clang')
 
+      if (!FS.pointers[0] || !FS.pointers[0][2]) {
+        debugger
+      }
       this.previousFd = FS.pointers[0][2].rewrite
       this.previousContents = FS.pointers[0][2].contents
       this.previousExports = Module.exports
@@ -586,7 +587,7 @@ const API = (function () {
       this.previousHeap = window.STD.sharedMemory || Module.__heap_base
       this.previousPid = this.api.pid
       if (this.api.memfs) {
-        this.previousHostMem = this.api.memfs.hostMem
+        this.previousHostMem = this.api.memfs.hostMem_
       }
 
       if (!needMemfs) {
@@ -638,7 +639,8 @@ const API = (function () {
         //Object.assign(wasi_unstable, FS);
       }
 
-
+      wasi_unstable.callsys = FS.callsys
+      wasi_unstable.getpid = FS.getpid
 
 
       Object.assign(env, wasi_unstable)
@@ -687,6 +689,9 @@ const API = (function () {
         window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
         if (this.exports.memory)
           ENV.memory = Module.memory = this.exports.memory
+        if (this.api.memfs) {
+          this.api.memfs.hostMem = this.mem;
+        }
         updateGlobalBufferAndViews()
         let result = this.runInternal()
         return result
@@ -711,7 +716,7 @@ const API = (function () {
 
     runInternal() {
       try {
-        ++this.api.pid
+        this.pid = ++this.api.pid;
         this.output = this.exports._start();
         return this.output || 0
       } catch (exn) {
@@ -767,55 +772,6 @@ const API = (function () {
     }
 
 
-    fd_renumber(from, to) {
-      this.mem.check();
-      const path = this.fdPathMap[from];
-
-      if (!path) {
-        console.error(`Renumber failed: No path found for FD ${from}`);
-        return 8; // WASI_EBADF
-      }
-
-      // 1. Close the target (usually stdout/FD 1)
-      this.exports.fd_close(to);
-
-      // 2. Prepare for the "Open Loop"
-      // WASI path_open always picks the lowest available FD.
-      // If 'to' (1) is lower than 'from' (10), simply opening the path
-      // again will naturally fill the '1' slot.
-      const pathPtr = this.exports.GetPathBuf();
-      this.mem.write(pathPtr, path);
-
-      const openedFdPtr = pathPtr + path.length + 1; // Use spare buffer space for the return pointer
-
-      const result = this.exports.path_open(
-        3,          // root dirfd
-        0,          // lookup flags (default)
-        pathPtr,
-        path.length,
-        0,          // oflags
-        0xffffffffn, // rights_base (grant all)
-        0xffffffffn, // rights_inheriting
-        0,          // fdflags
-        openedFdPtr
-      );
-
-      if (result === 0) {
-        const newFd = this.mem.readU32(openedFdPtr);
-        // If it didn't land on 'to', we have a logic gap in the WASM allocator
-        if (newFd !== to) {
-          console.warn(`Renumber Warning: Opened as ${newFd}, expected ${to}`);
-        }
-        this.fdPathMap[newFd] = path;
-      }
-
-      // 3. Close the original source
-      this.exports.fd_close(from);
-      delete this.fdPathMap[from];
-
-      return result;
-    }
-
     async run() {
       await this.ready;
       let result = await this.runSync();
@@ -825,6 +781,7 @@ const API = (function () {
     async runAsync() {
       await this.ready;
 
+      debugger
       //FS.virtual['/dev/stdin'].rewrite = 0
       //FS.virtual['/dev/stdout'].rewrite = 0
       //FS.virtual['/dev/stderr'].rewrite = 0
@@ -835,6 +792,10 @@ const API = (function () {
       window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value
       if (this.exports.memory)
         ENV.memory = Module.memory = this.exports.memory
+      if (this.api.memfs) {
+        this.api.memfs.hostMem = this.mem;
+      }
+
       updateGlobalBufferAndViews()
       let result = this.runInternal()
 
@@ -860,7 +821,7 @@ const API = (function () {
       }
       return 0;
     }
-      */
+    */
 
 
     proc_exit(code) {

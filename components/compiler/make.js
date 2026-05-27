@@ -659,6 +659,13 @@ function mkdirp(path, database) {
                 console.warn(`mkdirp segment failed: ${accumulated}`, e);
             }
         }
+
+        try {
+            if (api.memfs) {
+                api.memfs.mem.check()
+                api.memfs.mkdirp(accumulated)
+            }
+        } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
     }
 }
 
@@ -676,20 +683,19 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
         outDir = obj.substring(0, obj.lastIndexOf('/'))
 
 
-    if (makeDirs && !FS.virtual['/tmp'])
-        mkdirp('tmp', database)
-    if (makeDirs && !FS.virtual['/home'])
-        mkdirp('home', database)
-
+    if (makeDirs && !FS.virtual[config.TEMPDIR])
+        mkdirp(config.TEMPDIR, database)
+    if (makeDirs && !FS.virtual[config.HOMEDIR])
+        mkdirp(config.HOMEDIR, database)
 
     if (api.memfs) {
         await api.ready
         api.memfs.mem.check()
         try {
-            api.memfs.mkdirp('tmp')
+            api.memfs.mkdirp(config.TEMPDIR)
         } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
         try {
-            api.memfs.mkdirp('home')
+            api.memfs.mkdirp(config.HOMEDIR)
         } catch (e) { writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`) }
 
         try {

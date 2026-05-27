@@ -141,6 +141,7 @@ const config = {
     BUILD_DIR: "build",
     BINEXT: `.${COMPILE_ARCH}.${COMPILE_PLATFORM}`,
     TEMPDIR: '/tmp',
+    HOMEDIR: '/home',
     MOD: 'baseq3a'
 };
 

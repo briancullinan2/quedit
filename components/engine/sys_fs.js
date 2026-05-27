@@ -842,14 +842,6 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 				localPointer,
 				api?.pid || 42
 			]
-			//if (!FS.pointers[0][2].rewrite)
-			//	FS.pointers[fd][2].rewrite = []
-
-			//if(FS.pointers[fd][2].rewrite.length === 0)
-			debugger
-			//FS.pointers[0][2].rewrite.push(localPointer)
-			//if (!(oflags & O_TRUNC))
-			//	Sys_notify(FS.virtual[localName], localName)
 		}
 		return result;
 	}
