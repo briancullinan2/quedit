@@ -149,8 +149,6 @@ self.onmessage = async function(e) {
             const rawLineText = text.split('\n')[lineNo - 1] || '';
             const trimmedLineText = rawLineText.trim();
             
-            // Calculate exactly where the match starts inside the trimmed row string
-            // by subtracting the leading whitespace offset length
             const leadingWhitespaceLength = rawLineText.length - rawLineText.trimStart().length;
             const matchIndexInLine = lineParts[lineParts.length - 1].length - leadingWhitespaceLength;
 

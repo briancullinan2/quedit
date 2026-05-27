@@ -1833,16 +1833,22 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .search-card-header {
     background: var(--ace-bg);
-    padding: 8px 12px;
+    padding: 4px 16px 4px 4px;
     display: flex;
     justify-content: space-between;
     align-items: stretch; /* Stretch child elements to fill full card width */
     border-bottom: 2px solid var(--ace-gutter-bg);
     flex-direction: row;
     flex-wrap: wrap;
+    position: relative;
     gap: 4px; /* Optional: adds clean spacing between path and repo badge */
 }
-
+.search-card-header .bx-trash {
+    position: absolute;
+    right: 0;
+    top: 0;
+    font-size: medium;
+}
 .search-file-path {
     color: var(--ace-blue);
     font-weight: bold;
@@ -1861,7 +1867,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .search-repo-badge {
     font-size: 11px;
-    padding: 2px 6px;
+    padding: 2px 4px;
     background: var(--ace-gutter-bg);
     color: var(--ace-foreground);
     border-radius: 3px;
@@ -1869,11 +1875,11 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .search-card-body {
-    padding: 6px 0;
+    padding: 4px 0;
 }
 .search-match-row {
     display: flex;
-    padding: 1px 12px;
+    padding: 1px 4px;
     cursor: pointer;
     font-size: medium;
 }
@@ -1881,14 +1887,14 @@ input[type="number"]::-webkit-inner-spin-button {
     background: rgb(from var(--ace-selection-bg) r g b / 30%);
 }
 .search-line-number {
-    color: #858585;
+    color: rgb(from var(--ace-foreground) r g b / 50%);
     width: 45px;
     text-align: right;
-    padding-right: 12px;
+    padding-right: 8px;
     user-select: none;
 }
 .search-match-text {
-    color: #d4d4d4;
+    color: var(--ace-foreground);
     white-space: pre;
     overflow: hidden;
     text-overflow: ellipsis;

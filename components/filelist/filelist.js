@@ -614,6 +614,7 @@ function renderSearchResults(groupedItems, lastValidQuery) {
         header.innerHTML = `
             <span class="search-file-path" title="Click to open file">${group.path}</span>
             <span class="search-repo-badge">${group.repo}</span>
+            <span class="bx bx-trash" placeholder="Remove result" popovertarget="global-popup" onclick="this.parentElement.parentElement.remove()"></span>
         `;
 
         // Clicking the main card path defaults to opening line 1
