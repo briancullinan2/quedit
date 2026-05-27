@@ -637,9 +637,27 @@ function renderSearchResults(groupedItems, lastValidQuery) {
 
             // Check if this specific item is an explicit structural path hit from PASS 1
             const isFilenameHit = match.matchText.startsWith('[Filename Match]');
-            const displayCode = isFilenameHit
-                ? `<span class="filename-match-tag">📄 Filename match: "${filename}"</span>`
-                : Utils.escapeHtml(match.matchText); // Safe string converter
+            let displayCode = '';
+
+            if (isFilenameHit) {
+                displayCode = `<span class="filename-match-tag">📄 Filename match: "${filename}"</span>`;
+            } else if (match.matchIndex !== undefined) {
+                let startText = match.matchText.substring(0, match.matchIndex);
+                const highlightedToken = match.matchText.substring(match.matchIndex, match.matchIndex + match.matchLength);
+                const endText = match.matchText.substring(match.matchIndex + match.matchLength);
+
+                // --- STRUCTURAL TRUNCATION BOUND ZONE ---
+                // If the preceding text on this line exceeds our viewing zone threshold limit,
+                // chop off the front section and prepend an explicit ellipsis character tag block
+                const MAX_PRE_MATCH_CHARS = 25;
+                if (startText.length > MAX_PRE_MATCH_CHARS) {
+                    startText = '…' + startText.substring(startText.length - MAX_PRE_MATCH_CHARS);
+                }
+
+                displayCode = `${Utils.escapeHtml(startText)}<mark class="search-highlight">${Utils.escapeHtml(highlightedToken)}</mark>${Utils.escapeHtml(endText)}`;
+            } else {
+                displayCode = Utils.escapeHtml(match.matchText);
+            }
 
             row.innerHTML = `
                 <div class="search-line-number">${isFilenameHit ? '—' : match.line}</div>
@@ -647,16 +665,16 @@ function renderSearchResults(groupedItems, lastValidQuery) {
             `;
 
             // 3. Bind navigation telemetry click listener straight to the match row layout cell
-            row.addEventListener('click', () => {
+            row.addEventListener('click', async () => {
                 if (typeof window.openFile === 'function') {
                     // Navigate to the repository, pass line info anchors to center cursor inside Ace
-                    window.openFile(owner, repoName, group.path, match.sha, true);
+                    await window.openFile(owner, repoName, group.path, match.sha, true);
 
                     // If it's an actual text code block, tell your editor engine to slide focus cleanly
                     if (!isFilenameHit && window.aceEditor) {
                         setTimeout(() => {
                             window.aceEditor.gotoLine(match.line, 0, true);
-                        }, 300);
+                        }, 500);
                     }
                 }
             });

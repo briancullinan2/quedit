@@ -142,14 +142,26 @@ self.onmessage = async function(e) {
         regex.lastIndex = 0;
 
         while ((match = regex.exec(text)) !== null) {
-            const lineNo = text.substring(0, match.index).split('\n').length;
+            const upToMatch = text.substring(0, match.index);
+            const lineParts = upToMatch.split('\n');
+            const lineNo = lineParts.length;
             
+            const rawLineText = text.split('\n')[lineNo - 1] || '';
+            const trimmedLineText = rawLineText.trim();
+            
+            // Calculate exactly where the match starts inside the trimmed row string
+            // by subtracting the leading whitespace offset length
+            const leadingWhitespaceLength = rawLineText.length - rawLineText.trimStart().length;
+            const matchIndexInLine = lineParts[lineParts.length - 1].length - leadingWhitespaceLength;
+
             contentResults.push({
                 path: file.path,
                 sha: file.sha,
                 repoSource: file.repoSource,
                 line: lineNo,
-                matchText: text.split('\n')[lineNo - 1]?.trim() || '',
+                matchIndex: Math.max(0, matchIndexInLine), // <-- The index inside the trimmed snippet
+                matchLength: match[0].length,              // <-- Length of the matched token
+                matchText: trimmedLineText,
                 isDirty: false
             });
 
