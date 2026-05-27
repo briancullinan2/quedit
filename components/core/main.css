@@ -1074,7 +1074,8 @@ input[type="number"]::-webkit-inner-spin-button {
     bottom: auto;
 }
 
-
+[placeholder]:has(#search:active)::after,
+[placeholder]:has(#search:focus)::after, 
 [placeholder]:has(#search-terminal:active)::after,
 [placeholder]:has(#search-terminal:focus)::after {
     opacity: 1;
@@ -1820,3 +1821,61 @@ input[type="number"]::-webkit-inner-spin-button {
     }
 
 }
+
+
+.search-card {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    font-family: monospace;
+}
+.search-card-header {
+    background: #252526;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #333;
+}
+.search-file-path {
+    color: #4fc1ff;
+    font-weight: bold;
+    cursor: pointer;
+}
+.search-repo-badge {
+    font-size: 11px;
+    padding: 2px 6px;
+    background: #3a3a3a;
+    color: #cccccc;
+    border-radius: 3px;
+}
+.search-card-body {
+    padding: 6px 0;
+}
+.search-match-row {
+    display: flex;
+    padding: 4px 12px;
+    cursor: pointer;
+}
+.search-match-row:hover {
+    background: #2a2a2a;
+}
+.search-line-number {
+    color: #858585;
+    width: 45px;
+    text-align: right;
+    padding-right: 12px;
+    user-select: none;
+}
+.search-match-text {
+    color: #d4d4d4;
+    white-space: pre;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.filename-match-tag {
+    color: #6a9955;
+    font-style: italic;
+}
+

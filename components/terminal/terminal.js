@@ -202,7 +202,7 @@ async function renderTerminalsCommand(panelId, noBounce = false) {
 
     if (window.terminalLog) {
         const errorBuffer = window.terminalLog
-            .filter(l => (l.text || l || '').match(/error/) || l.source === panelId || l.source?.includes(panelId))
+            .filter(l => panelId === 'all' || (l.text || l || '').match(/error/) || l.source === panelId || l.source?.includes(panelId))
             .map(l => (l.text || l || ''))
             .join('');
         term.write(errorBuffer);

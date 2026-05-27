@@ -348,3 +348,336 @@ document.getElementById('tabs').addEventListener('click', async (e) => {
     renderTabsCommand(e.target.href?.split('#').pop())
 
 });
+
+
+const searchWorker = new Worker('/components/filelist/search-worker.js')
+
+// Keep your global caching structures active
+let aggregatedResults = { paths: [], contents: [], github: [] };
+
+searchWorker.onmessage = function (e) {
+    const { type, results } = e.data;
+
+    if (type === 'clear') {
+        aggregatedResults = { paths: [], contents: [], github: [] };
+        // Pass a clean empty state to the history fallback layer
+        return handleSearchWorkerResponse([], latestQueryVal);
+    }
+
+    // 1. Accumulate the current streaming web worker channel passes cleanly
+    aggregatedResults[type] = results;
+
+    const flatCombined = [
+        ...aggregatedResults.paths,
+        ...aggregatedResults.contents,
+        ...aggregatedResults.github
+    ];
+
+    // 2. Perform your standard grouping map array normalization
+    const groupedMap = new Map();
+
+    flatCombined.forEach(item => {
+        const key = `${item.repoSource}:${item.path}`;
+        if (!groupedMap.has(key)) {
+            groupedMap.set(key, {
+                path: item.path,
+                repo: item.repoSource,
+                localMatches: [],
+                remoteMatches: []
+            });
+        }
+
+        const group = groupedMap.get(key);
+        if (item.isRemote) {
+            group.remoteMatches.push(item);
+        } else {
+            if (!group.localMatches.some(l => l.line === item.line && l.matchText === item.matchText)) {
+                group.localMatches.push(item);
+            }
+        }
+    });
+
+    // 3. Hand the fully flattened and deduplicated map data to the fallback layout manager
+    // We pass `latestQueryVal` so it knows exactly what characters triggered this pass frame
+    handleSearchWorkerResponse(Array.from(groupedMap.values()), latestQueryVal);
+};
+
+
+// Bind the handler cleanly to your search element
+const searchInput = document.getElementById('search');
+const searchStatus = document.getElementById('search-status');
+
+
+function handleSearchWorkerResponse(incomingGroupedResults, rawQueryUsed) {
+    const container = document.getElementById('search-results');
+
+    if (incomingGroupedResults.length > 0) {
+
+        // Track this successful query and its matching payload snapshot state inside our history stack
+        // We filter out duplicates to keep the array history pristine
+        window.searchResultHistoryStack = window.searchResultHistoryStack.filter(h => h.query !== rawQueryUsed);
+        window.searchResultHistoryStack.push({
+            query: rawQueryUsed,
+            resultsSnapshot: incomingGroupedResults
+        });
+
+        // Cap history depth to prevent memory float leaks
+        if (window.searchResultHistoryStack.length > 10) {
+            window.searchResultHistoryStack.shift();
+        }
+
+        // Clear banner warnings and render the data linearly
+        searchInput.parentElement.setAttribute('placeholder', `Active Matches for: "${rawQueryUsed}"`);
+        renderSearchResults(incomingGroupedResults);
+        return;
+    }
+
+    // 2. SCENARIO B: We hit a complete text filter blowout (0 Results Found)
+    if (incomingGroupedResults.length === 0) {
+
+        // Peek at our history stack memory layer to locate the last word that actually worked
+        const lastValidState = window.searchResultHistoryStack[window.searchResultHistoryStack.length - 1];
+
+        if (lastValidState) {
+            // Calculate where the breakdown happened (e.g., query "lookupFunctoin" vs valid "lookup")
+            const brokenDiffText = rawQueryUsed.substring(lastValidState.query.length);
+
+            searchInput.parentElement.setAttribute('placeholder', '❌ 0 results found for ' + rawQueryUsed)
+
+            // CRITICAL: We DO NOT wipe the screen or call render with an empty array.
+            // We preserve the last functional dataset on-screen so they don't lose context!
+            debugger
+            renderSearchResults(lastValidState.resultsSnapshot, lastValidState.query);
+        } else {
+            // Absolute baseline fallback if even the first character yielded no matches
+            searchInput.parentElement.setAttribute('placeholder', `❌ 0 search results found for "${rawQueryUsed}"`);
+            container.innerHTML = `<div class="empty-placeholder">No assets matching workspace parameters.</div>`;
+        }
+    }
+}
+
+
+
+let federatedSearchTimer = null;
+let latestQueryVal = null;
+let lastExecutedQueryVal = null;
+
+// Structural history stack of queries that successfully yielded hits
+window.searchResultHistoryStack = [];
+
+function triggerFederatedSearch(queryVal) {
+    latestQueryVal = queryVal;
+
+    // --- ENHANCED LEAD LOCKING GATE ---
+    if (federatedSearchTimer) {
+        // If the user modified the text, but the timer lock is already engaged,
+        // do not spawn a new timer. However, if they stop typing right around the 
+        // expiration boundary, we need to ensure the final trailing state isn't abandoned.
+        return;
+    }
+
+    // Schedule the primary locking block execution frame
+    runLockingCycle();
+}
+
+function runLockingCycle() {
+    federatedSearchTimer = setTimeout(() => {
+        // Drop out entirely if empty or cleared
+        if (!latestQueryVal || latestQueryVal.trim().length < 2) {
+            federatedSearchTimer = null;
+            return;
+        }
+
+        // TARGET OPTIMIZATION FIXED: If the user was typing fast and the final state
+        // equals exactly what we just searched on the last tick cycle, do not re-run IDB scans.
+        if (latestQueryVal === lastExecutedQueryVal) {
+            federatedSearchTimer = null;
+            return;
+        }
+
+        lastExecutedQueryVal = latestQueryVal;
+
+        // Dispatch payload to background threads
+        searchWorker.postMessage({
+            query: latestQueryVal,
+            caseSensitive: false,
+            gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
+            activeRepositories: [
+                window.engineRepository,
+                window.gameRepository,
+                window.assetRepository,
+                window.toolsRepository,
+                window.tools2Repository
+            ].filter(Boolean)
+        });
+
+        // Clear the explicit locking reference handle
+        federatedSearchTimer = null;
+
+        // --- CATCH TRAILING EDGE MODIFICATIONS ---
+        // Right after resetting the lock, check if the user struck another key 
+        // during the execution frame window block. If they did, immediately 
+        // schedule a secondary trailing pass to pick it up.
+        if (latestQueryVal !== lastExecutedQueryVal) {
+            runLockingCycle();
+        }
+
+    }, 300);
+}
+
+
+
+searchInput.addEventListener('keydown', async (e) => {
+    // 1. Intercept explicit execution submissions (Enter key)
+    if (e.key === 'Enter') {
+        e.preventDefault(); // Stop native form layouts from flashing the page
+
+        const currentQuery = searchInput.value.trim();
+        if (currentQuery.length >= 2) {
+            // Force an immediate layout clear and lock bypass to override the throttling gates
+            if (window.federatedSearchTimer) {
+                clearTimeout(window.federatedSearchTimer);
+                window.federatedSearchTimer = null;
+            }
+
+            // Fire the query instantly
+            window.searchWorker.postMessage({
+                query: currentQuery,
+                caseSensitive: false,
+                gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
+                activeRepositories: [
+                    window.engineRepository,
+                    window.gameRepository,
+                    window.assetRepository,
+                    window.toolsRepository,
+                    window.tools2Repository
+                ].filter(Boolean)
+            });
+        }
+        return;
+    }
+
+    // 2. Continuous Typing Interceptor Pass
+    // Use a minor microtask delay to let the browser naturally update the input value string 
+    // inside the DOM element node object before evaluating its length
+    setTimeout(() => {
+        const currentQuery = searchInput.value.trim();
+
+        // Peek directly into your search history stack memory layer to check active density
+        const lastHistoryState = window.searchResultHistoryStack?.[window.searchResultHistoryStack.length - 1];
+        const activeResultCount = lastHistoryState?.resultsSnapshot?.length || 0;
+
+        // STRATEGY CONDITION GATE: 
+        // If the screen is empty (0 matches) OR the user cleared out the field, 
+        // continuously trigger the lead-locking query pass loop to narrow down typos.
+        // If we have a thick stack of valid results, return instantly and wait for 'Enter'.
+        if (activeResultCount === 0 || currentQuery.length < 2) {
+            triggerFederatedSearch(currentQuery);
+        }
+    }, 0);
+});
+
+
+
+function renderSearchResults(groupedItems, lastValidQuery) {
+    const container = document.getElementById('search-results');
+    if (!container) return;
+
+    // Clear old elements cleanly
+    container.innerHTML = '';
+
+    if (lastValidQuery) {
+        container.innerHTML = `<div class="search-history-fallback-breadcrumb">
+                    Showing last valid state for: <strong>"${lastValidQuery}"</strong> 
+                    <span class="typo-trace-tag">(Broken at: "+${brokenDiffText}")</span>
+                </div>
+            `
+    } else if (!groupedItems || groupedItems.length === 0) {
+        container.innerHTML = '<div class="empty-placeholder">No matching workspace references found.</div>';
+        return;
+    }
+
+    groupedItems.forEach(group => {
+        // Create the card item frame wrapper
+        const card = document.createElement('div');
+        card.className = 'search-card';
+
+        // Extract clean file identity metrics
+        const filename = group.path.split('/').pop();
+        const repoParts = group.repo.split('/');
+        const owner = repoParts[0];
+        const repoName = repoParts[1] || '';
+
+        // 1. Build Header Bar
+        const header = document.createElement('div');
+        header.className = 'search-card-header';
+        header.innerHTML = `
+            <span class="search-file-path" title="Click to open file">${group.path}</span>
+            <span class="search-repo-badge">${group.repo}</span>
+        `;
+
+        // Clicking the main card path defaults to opening line 1
+        header.querySelector('.search-file-path').addEventListener('click', () => {
+            if (typeof window.clickFile === 'function') {
+                window.clickFile(owner, repoName, group.path, group.localMatches[0]?.sha || '', true);
+            }
+        });
+        card.appendChild(header);
+
+        // 2. Build Card Body Content Container
+        const body = document.createElement('div');
+        body.className = 'search-card-body';
+
+        // Combine all match points to list inside this file container frame card
+        const allMatches = [...group.localMatches, ...group.remoteMatches];
+
+        allMatches.forEach(match => {
+            const row = document.createElement('div');
+            row.className = 'search-match-row';
+
+            // Check if this specific item is an explicit structural path hit from PASS 1
+            const isFilenameHit = match.matchText.startsWith('[Filename Match]');
+            const displayCode = isFilenameHit
+                ? `<span class="filename-match-tag">📄 Filename match: "${filename}"</span>`
+                : Utils.escapeHtml(match.matchText); // Safe string converter
+
+            row.innerHTML = `
+                <div class="search-line-number">${isFilenameHit ? '—' : match.line}</div>
+                <div class="search-match-text">${displayCode}</div>
+            `;
+
+            // 3. Bind navigation telemetry click listener straight to the match row layout cell
+            row.addEventListener('click', () => {
+                if (typeof window.openFile === 'function') {
+                    // Navigate to the repository, pass line info anchors to center cursor inside Ace
+                    window.openFile(owner, repoName, group.path, match.sha, true);
+
+                    // If it's an actual text code block, tell your editor engine to slide focus cleanly
+                    if (!isFilenameHit && window.aceEditor) {
+                        setTimeout(() => {
+                            window.aceEditor.gotoLine(match.line, 0, true);
+                        }, 300);
+                    }
+                }
+            });
+
+            body.appendChild(row);
+        });
+
+        card.appendChild(body);
+        container.appendChild(card);
+    });
+}
+
+// Simple HTML text escaping helper mapping system tags to raw codes safely
+const Utils = {
+    escapeHtml(str) {
+        if (typeof str !== 'string') return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+};
