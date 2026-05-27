@@ -137,77 +137,75 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
 
 
 
-
-
 async function openImage(content, filePath) {
     const filename = filePath.split('/').pop();
     const dataUri = arrayBufferToDataUri(content, filePath);
 
-    // 1. We MUST decode the image dimensions asynchronously first.
-    // miniPaint needs width/height for Autoresize_canvas_action.
-    const dimensions = await new Promise((resolve) => {
+    // Guarantee the asset is parsed and miniPaint has committed actions before resolving
+    await new Promise((resolve) => {
         const img = new Image();
+        img.crossOrigin = "Anonymous";
+
         img.onload = () => {
-            resolve({ width: img.naturalWidth, height: img.naturalHeight });
+            console.log(`[VFS Media] Decoded dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
+
+            // 1. Process EXIF hooks inline while the image memory context is active
+            if ((filename.includes('.jpg') || filename.includes('.jpeg')) && window.Layers?.extract_exif) {
+                try {
+                    const fakeFileObj = {
+                        name: filename,
+                        size: content.byteLength,
+                        type: 'image/jpeg',
+                        lastModified: Date.now()
+                    };
+                    window.layerSettings = window.layerSettings || {};
+                    window.layerSettings._exif = window.Layers.extract_exif(fakeFileObj);
+                } catch (exifErr) {
+                    console.warn("EXIF extraction skipped:", exifErr);
+                }
+            }
+
+            // 2. Dispatch straight into miniPaint engine pipeline using the SAME image object instance reference
+            if (window.State && window.Actions) {
+                try {
+                    const layerPayload = {
+                        name: filename || "Data URL",
+                        type: "image",
+                        link: img, // Pass the already loaded element directly
+                        width: img.naturalWidth,
+                        height: img.naturalHeight,
+                        width_original: img.naturalWidth,
+                        height_original: img.naturalHeight
+                    };
+
+                    window.State.do_action(
+                        new window.Actions.Bundle_action("open_file_data_url", "Open File Data URL", [
+                            new window.Actions.Insert_layer_action(layerPayload), 
+                            new window.Actions.Autoresize_canvas_action(img.naturalWidth, img.naturalHeight, null, true, true)
+                        ])
+                    );
+                } catch (err) {
+                    console.error("Failed executing miniPaint bundled actions:", err);
+                }
+            } else {
+                console.error("miniPaint core engine references missing during canvas load cycle.");
+            }
+
+            resolve(); // Resolution gate unlocked
         };
-        img.onerror = () => {
-            console.error("Failed to decode image data URI boundaries.");
-            resolve({ width: 800, height: 600 }); // Sanity fallback
+
+        img.onerror = (e) => {
+            console.error("Failed to decode image data stream.");
+            if (window.g && typeof window.g().error === 'function') {
+                window.g().error("Sorry, image could not be loaded.");
+            }
+            resolve(); // Avoid locking parent execution context threads on crash limits
         };
+
+        // Fire single data stream translation pass
         img.src = dataUri;
     });
-
-
-
-    // 3. Extract your custom EXIF parser hook if available
-    if ((filename.includes('.jpg') || filename.includes('.jpeg')) && window.Layers?.extract_exif) {
-        try {
-            const fakeFileObj = {
-                name: filename,
-                size: content.byteLength,
-                type: 'image/jpeg',
-                lastModified: Date.now()
-            };
-            layerSettings._exif = window.Layers.extract_exif(fakeFileObj)
-        } catch (exifErr) {
-            console.warn("EXIF extraction skipped:", exifErr);
-        }
-    }
-
-    // 4. Verify state pipeline and build the formal Webpack constructor instances
-    if (window.State && window.Actions) {
-        try {
-
-            var t = new Image;
-            t.crossOrigin = "Anonymous"
-            t.onload = function () {
-                var e = {
-                    name: "Data URL",
-                    type: "image",
-                    link: t,
-                    width: t.width,
-                    height: t.height,
-                    width_original: t.width,
-                    height_original: t.height
-                };
-                window.State.do_action(new window.Actions.Bundle_action("open_file_data_url", "Open File Data URL", [new window.Actions.Insert_layer_action(e), new window.Actions.Autoresize_canvas_action(t.width, t.height, null, !0, !0)])),
-                    t.onload = function () {
-                        //u.A.need_render = !0
-                    }
-            }
-            t.onerror = function (e) {
-                g().error("Sorry, image could not be loaded. Try copy image and paste it.")
-            }
-            t.src = dataUri
-
-        } catch (err) {
-            console.error("Failed executing miniPaint bundled actions:", err);
-        }
-    } else {
-        console.error("miniPaint core engine references (window.State / window.Actions) are missing.");
-    }
 }
-
 
 
 

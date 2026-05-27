@@ -170,7 +170,7 @@ body,
     --ace-gutter-bg: #3D3D3D;
     --ace-foreground: #E6E1DC;
     --ace-comment: #555555;
-    --ace-selection-bg: #221a0f;
+    --ace-selection-bg: #DDF0FF;
     --ace-pink: #c26230;
     /* Keywords */
     --ace-purple: #D3D0C8;
@@ -1392,8 +1392,8 @@ body {
 }
 
 #editor .ace_marker-layer .ace_active_block_scope_highlight {
-    background-color: rgb(from var(--ace-selection-bg, rgba(39, 95, 255, 0.3)) r g b / 15%) !important;
-    border-left: 3px solid rgb(from var(--ace-selection-bg, rgba(39, 95, 255, 0.3)) r g b / 70%) !important;
+    background-color: rgb(from var(--ace-selection-bg, rgba(39, 95, 255, 0.3)) r g b / 05%) !important;
+    border-left: 3px solid rgb(from var(--ace-selection-bg, rgba(39, 95, 255, 0.3)) r g b / 60%) !important;
     border-radius: 2px 0 0 2px;
     position: absolute;
 }
@@ -1455,7 +1455,8 @@ body {
 #database,
 #searchlist,
 #filelist {
-    background-color: var(--ace-gutter-bg);
+    /*background-color: var(--ace-gutter-bg);*/
+    background-color: transparent;
     /* Darker than editor */
     color: var(--ace-foreground);
 }

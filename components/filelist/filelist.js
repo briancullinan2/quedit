@@ -427,7 +427,7 @@ function handleSearchWorkerResponse(incomingGroupedResults, rawQueryUsed) {
         }
 
         // Clear banner warnings and render the data linearly
-        searchInput.parentElement.setAttribute('placeholder', `Active Matches for: "${rawQueryUsed}"`);
+        searchInput.parentElement.setAttribute('placeholder', `${incomingGroupedResults.length} matches for: "${rawQueryUsed}"`);
         renderSearchResults(incomingGroupedResults);
         return;
     }
@@ -674,7 +674,7 @@ function renderSearchResults(groupedItems, lastValidQuery) {
                     if (!isFilenameHit && window.aceEditor) {
                         setTimeout(() => {
                             window.aceEditor.gotoLine(match.line, 0, true);
-                        }, 500);
+                        }, 800);
                     }
                 }
             });
