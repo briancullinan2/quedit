@@ -327,7 +327,7 @@ const q3eCommonHeaders = [
 
     // --- System Layer ---
     "wasm/sys_overrides.h",
-    "wasm/setjmp.h",
+    //"wasm/setjmp.h",
     "wasm/gl.h",
     "wasm/glext.h",
     "wasm/sys_local.h",

@@ -128,17 +128,41 @@ const qvmHeaders = [
 ].map(file => path.join(config.MOUNT_DIR, file));
 
 
-/**
- * QVM Specific Flags
- * QVMs typically use -DQ3_VM and -S (to generate assembly files 
- * before being passed to q3asm)
- */
 const QVMLIB_CFLAGS = [
     "-cc1",
     "-emit-obj",
-    "-Wimplicit",
-    "-Wstrict-prototypes",
-    "-Werror-implicit-function-declaration",
+    "-triple", "wasm32-wasi",
+    "-O2",
+    "-mrelocation-model", "static", // Keep static since it proved it works!
+
+    "-isysroot", "/",
+    "-internal-isystem", "include/c++/v1",
+    "-internal-isystem", "include",
+    "-internal-isystem", "include/wasi-emulated-signal", // ◄◄ RESTORE THIS
+    "-internal-isystem", "lib/clang/8.0.1/include",
+
+    "-ftls-model=global-dynamic",                        // ◄◄ RESTORE THIS
+    "-D_Thread_local=",
+    "-DSIG_IGN=(void (*)(int))1",
+    "-Dsignal(s,h)=SIG_IGN",
+    "-D_WASI_EMULATED_MMAN=1",                           // ◄◄ RESTORE THIS
+    "-D_WASI_EMULATED_SIGNAL=1",                         // ◄◄ RESTORE THIS
+    "-D_XOPEN_SOURCE=700",
+    "-D__wasi__=1",
+    "-D__WASM__=1",
+    "-DGAME",
+    "-std=gnu11",
+
+    "-disable-free",
+    "-fno-common",
+    "-fno-rtti",
+    "-fno-use-init-array",
+    "-fno-threadsafe-statics",
+    "-ferror-limit", "100",
+
+    "-Icode/game",
+    "-Icode/cgame",
+    "-Icode/q3_ui"
 ];
 
 
@@ -544,9 +568,9 @@ async function buildGame(database = null, forceChanged = true) {
     const ownerName = parts.length == 2 ? parts[0] : owner.value
     const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
-    
 
-    
+
+
 
 
 }
@@ -558,7 +582,7 @@ async function buildCGame(database = null, forceChanged = true) {
     const ownerName = parts.length == 2 ? parts[0] : owner.value
     const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
-    
+
 
     await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged);
 
@@ -573,7 +597,7 @@ async function buildUI(database = null, forceChanged = true) {
     const ownerName = parts.length == 2 ? parts[0] : owner.value
     const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
-    
+
 
     await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI'], forceChanged);
 
@@ -586,7 +610,7 @@ async function buildUI(database = null, forceChanged = true) {
 async function buildUI(database = null, forceChanged = true) {
     if (!database) database = gameRepo || api.database;
 
-    
+
 
     await buildModule('ui', dirs.Q3UIDIR, uiFiles, database, ['UI'], forceChanged);
 
@@ -605,7 +629,7 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
     const ownerName = parts.length == 2 ? parts[0] : owner.value
     const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
 
-    
+
     PREAMBLE = QVM_PREAMBLE
 
 
@@ -625,7 +649,7 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
         // 3. Start building modules
         writeLog("Starting QVM compilation...", ['build', 'qvms']);
 
-        
+
         // CGAME
         await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged, false, true);
 

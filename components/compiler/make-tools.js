@@ -71,6 +71,7 @@ const LCC_CFLAGS = [
     "-D_WASI_EMULATED_SIGNAL=1",
     "-D_XOPEN_SOURCE=700",
     "-D__wasi__=1",
+    "-D__WASM__=1",
 
     '-disable-free',
     '-fno-common',
@@ -88,7 +89,6 @@ const LCC_CFLAGS = [
     //"-pthread",
     "-std=gnu11",
 
-    "-Isrc",
     ...(COMPILE_PLATFORM === 'darwin' ? ["-DMACOS_X"] : [])
 ];
 
@@ -569,6 +569,7 @@ async function linkCPP(database = null, forceChanged = false, noBuild = false) {
     await api.link({
         LDFLAGS: [
             ...toolLdFlags,
+            '--export=out_fd',
             "-o", cppExe,
             ...cppObjs,
             ...includeFlags

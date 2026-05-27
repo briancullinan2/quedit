@@ -617,97 +617,122 @@ function fd_fdstat_get(fd, bufPtr) {
 	return 0; // WASI_ESUCCESS
 }
 
+
 function fd_write(fd, iovs, iovsLen, nwritten) {
-	const view = new DataView(Module.memory.buffer);
-	let written = 0;
+    const view = new DataView(Module.memory.buffer);
+    let written = 0;
+    
+    // START REDIRECTION INTERCEPTION
+    let targetFd = fd;
 
-	// 1. Get the stream/pointer object for this FD
-	let stream = FS.pointers[fd];
-	if (!stream) return 8; // WASI_EBADF
-	if (stream[2].rewrite) {
-		stream = FS.pointers[stream[2].rewrite]
-	}
+    // If the binary is trying to write to standard stdout (1)...
+    if (fd === 1 && Module.exports && Module.exports.out_fd) {
+        try {
+            // 1. Resolve the memory location of the out_fd pointer symbol
+            const outFdSymbolPtr = Module.exports.out_fd.value || Module.exports.out_fd;
 
+            // 2. Read the 32-bit address stored inside out_fd out of active WASM linear memory
+            const actualFileStructureAddr = view.getUint32(outFdSymbolPtr, true);
 
-	// 2. Collect all bytes from iovs into one Uint8Array
-	// We do this first to calculate total 'written' size
-	const iovsList = [];
-	for (let i = 0; i < iovsLen; i++) {
-		let ptr = iovs + i * 8;
-		let buf = view.getUint32(ptr, true);
-		let bufLen = view.getUint32(ptr + 4, true);
-		iovsList.push(new Uint8Array(Module.memory.buffer, buf, bufLen));
-		written += bufLen;
-	}
+            // 3. If out_fd has been changed from NULL/stdout to a real file node structure pointer,
+            // grab the underlying file descriptor number mapped inside it!
+            if (actualFileStructureAddr !== 0) {
+                // In musl libc, the file descriptor integer is typically the first field in the struct
+                const mappedFd = view.getUint32(actualFileStructureAddr, true);
 
+                // If it successfully extracts a valid redirected file descriptor, swap the target track!
+                if (mappedFd > 2 && mappedFd < 1024) {
+                    targetFd = mappedFd;
+                }
+            }
+        } catch (err) {
+            // Silent fallback to standard stdout if structure parsing encounters unaligned offsets
+        }
+    }
+    // END REDIRECTION INTERCEPTION
 
-	// 3. Handle Standard I/O (fd 1 and 2)
-
-	if (fd <= 2 && !FS.pointers[fd][2].rewrite) {
-		// Concatenate for the host console/logs
-		let totalBuf = new Uint8Array(written);
-		let offset = 0;
-		for (let b of iovsList) {
-			totalBuf.set(b, offset);
-			offset += b.byteLength;
-		}
-
-		if (typeof Module.hostWrite !== 'undefined') {
-			const msg = String.fromCharCode.apply(null, totalBuf)
-			//if (msg.includes('$Id$')) {
-			//	debugger
-			//}
-			Module.hostWrite(msg);
-		}
-		view.setUint32(nwritten, written, true);
-		return 0;
-	}
+    // 1. Get the stream/pointer object for this FD (Using targetFd instead of fd)
+    let stream = FS.pointers[targetFd];
+    if (!stream) return 8; // WASI_EBADF
+    if (stream[2].rewrite) {
+        stream = FS.pointers[stream[2].rewrite];
+    }
 
 
-	// 4. Handle Actual File Write (fd > 2)
-	// stream layout: [position, mode, node, path, fd]
-	let pos = stream[0];
-	const node = stream[2]; // This is the object in FS.virtual[path]
+    // 2. Collect all bytes from iovs into one Uint8Array
+    // We do this first to calculate total 'written' size
+    const iovsList = [];
+    for (let i = 0; i < iovsLen; i++) {
+        let ptr = iovs + i * 8;
+        let buf = view.getUint32(ptr, true);
+        let bufLen = view.getUint32(ptr + 4, true);
+        iovsList.push(new Uint8Array(Module.memory.buffer, buf, bufLen));
+        written += bufLen;
+    }
 
-	if (!node) return 28; // WASI_EINVAL
 
-	// Ensure node.contents is a Uint8Array
-	if (!(node.contents instanceof Uint8Array)) {
-		node.contents = new Uint8Array(0);
-	}
+    // 3. Handle Standard I/O (Using original fd to check for terminal console streaming limits)
+    if (targetFd <= 2 && !FS.pointers[targetFd][2].rewrite) {
+        // Concatenate for the host console/logs
+        let totalBuf = new Uint8Array(written);
+        let offset = 0;
+        for (let b of iovsList) {
+            totalBuf.set(b, offset);
+            offset += b.byteLength;
+        }
 
-	// Expand buffer if writing beyond current capacity
-	if (pos + written > node.contents.byteLength) {
-		let newSize = pos + written;
-		let newBuf = new Uint8Array(newSize);
-		newBuf.set(node.contents);
-		node.contents = newBuf;
-	}
+        if (typeof Module.hostWrite !== 'undefined') {
+            const msg = String.fromCharCode.apply(null, totalBuf);
+            Module.hostWrite(msg);
+        }
+        view.setUint32(nwritten, written, true);
+        return 0;
+    }
 
-	// Copy each iov buffer into the node's contents at the current position
-	let currentOffset = pos;
-	for (let b of iovsList) {
-		node.contents.set(b, currentOffset);
-		currentOffset += b.byteLength;
-	}
 
-	// 5. Update the seek position for the next write
-	stream[0] = currentOffset;
+    // 4. Handle Actual File Write (fd > 2 or redirected targetFd > 2)
+    // stream layout: [position, mode, node, path, fd]
+    let pos = stream[0];
+    const node = stream[2]; // This is the object in FS.virtual[path]
 
-	// Write the number of bytes successfully written to nwritten pointer
-	view.setUint32(nwritten, written, true);
+    if (!node) return 28; // WASI_EINVAL
 
-	// Notify UI/Storage that the file has changed
-	if (typeof Sys_notify !== 'undefined') {
-		if (FS.pointers[fd][2].rewrite) {
-			//FS.pointers[node.rewrite][2].contents = node.contents
-			Sys_notify(FS.pointers[FS.pointers[fd][2].rewrite][2], FS.pointers[FS.pointers[fd][2].rewrite][3], fd);
-		}
-		else
-			Sys_notify(node, stream[3], fd);
-	}
+    // Ensure node.contents is a Uint8Array
+    if (!(node.contents instanceof Uint8Array)) {
+        node.contents = new Uint8Array(0);
+    }
 
-	return 0; // WASI_ESUCCESS
+    // Expand buffer if writing beyond current capacity
+    if (pos + written > node.contents.byteLength) {
+        let newSize = pos + written;
+        let newBuf = new Uint8Array(newSize);
+        newBuf.set(node.contents);
+        node.contents = newBuf;
+    }
+
+    // Copy each iov buffer into the node's contents at the current position
+    let currentOffset = pos;
+    for (let b of iovsList) {
+        node.contents.set(b, currentOffset);
+        currentOffset += b.byteLength;
+    }
+
+    // 5. Update the seek position for the next write
+    stream[0] = currentOffset;
+
+    // Write the number of bytes successfully written to nwritten pointer
+    view.setUint32(nwritten, written, true);
+
+    // Notify UI/Storage that the file has changed (Using targetFd to maintain the correct tracking index)
+    if (typeof Sys_notify !== 'undefined') {
+        if (FS.pointers[targetFd][2].rewrite) {
+            Sys_notify(FS.pointers[FS.pointers[targetFd][2].rewrite][2], FS.pointers[FS.pointers[targetFd][2].rewrite][3], targetFd);
+        }
+        else
+            Sys_notify(node, stream[3], targetFd);
+    }
+
+    return 0; // WASI_ESUCCESS
 }
 
 function poll_oneoff(in_ptr, out_ptr, nsubscriptions, nevents_out) {

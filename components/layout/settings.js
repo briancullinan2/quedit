@@ -43,7 +43,7 @@ const IMPORT_SETTINGS = {
         },
         gameRepository: {
             key: 'game_repository',
-            default: 'ec-/baseq3a',
+            default: 'briancullinan2/baseq3a',
             set: configureRepository
         },
         assetRepository: {

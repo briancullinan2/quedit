@@ -101,6 +101,10 @@ class LanguageAPI {
     onmessage(event) {
         switch (event.data.id) {
             case 'write':
+                if (event.data.data && typeof event.data.data.text !== 'undefined'
+                    && !event.data.data.text
+                ) return
+
                 if (this.hostWrite) {
                     this.hostWrite(event.data.data.text || event.data.data, event.data.data.source);
                 }
@@ -264,6 +268,9 @@ class WorkerAPI {
     onmessage(event) {
         switch (event.data.id) {
             case 'write':
+                if (event.data.data && typeof event.data.data.text !== 'undefined'
+                    && !event.data.data.text
+                ) return
                 this.hostWrite(event.data.data.text || event.data.data, event.data.data.source)
                 break;
 

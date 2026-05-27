@@ -444,7 +444,7 @@ async function handleCommand(input) {
     const database = owner.value + '/' + repository.value;
     const tokens = tokenize(input.trim());
 
-    if(window.api)
+    if (window.api)
         api.configuration = configuration.value === 'debug' ? 'debug' : 'release';
 
     if (tokens.length === 0) return;
@@ -1124,19 +1124,39 @@ rm /tmp/lcc420.i
         
                 */
 
-        await api.run({
-            tool: 'q3lcc.js.wasm',
-            args: [
-                'q3lcc', '-v', '-v', '-S','-Wf-g',  //  '-Wf-g', '-S',
-                ...QVM_CFLAGS,
-                ...DEFINE,
-                srcPath,
-                '-o', outPath,
-            ],
-            database: selected,
-            toolsRepo: toolsRepository,
-            paths: [outPath, srcPath],
-        })
+        if (configuration.value === 'qvms') {
+            await api.run({
+                tool: 'q3lcc.js.wasm',
+                args: [
+                    'q3lcc', '-v', '-v', '-S', '-Wf-g',  //  '-Wf-g', '-S',
+                    ...QVM_CFLAGS,
+                    ...DEFINE,
+                    srcPath,
+                    '-o', outPath,
+                ],
+                database: selected,
+                toolsRepo: toolsRepository,
+                paths: [outPath, srcPath],
+            })
+
+        } else {
+            await api.run({
+                tool: 'clang.wasm',
+                args: [
+                    'clang',
+                    ...QVMLIB_CFLAGS,
+                    ...QVM_CFLAGS,
+                    ...DEFINE,
+                    srcPath,
+                    '-o', obj,
+                ],
+                database: selected,
+                toolsRepo: toolsRepository,
+                paths: [obj, srcPath],
+            })
+
+        }
+
 
         return
     }
@@ -1144,7 +1164,7 @@ rm /tmp/lcc420.i
     return await api.compile({
         CFLAGS: [
             ...LCC_CFLAGS, `-Icode`, `-Isrc`,
-            ...(configuration.value == 'pre' ? [
+            ...(configuration.value === 'pre' ? [
                 '-o', obj.replace('.o', '.a')
             ] : ['-o', obj]),
             srcPath

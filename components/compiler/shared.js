@@ -206,6 +206,45 @@ const API = (function () {
       }
     }
 
+    /*
+    fd_write(fd, iovs, iovs_len, nwritten_out) {
+      this.mem.check(); // Ensure memory buffer references are live
+
+      let targetFd = fd;
+
+      // ─── THE OUT_FD REDIRECTION GHOST ───
+      // If the binary is trying to write to standard stdout (1)...
+      if (fd === 1 && this.exports.out_fd) {
+        try {
+          // 1. Resolve the memory location of the out_fd pointer symbol
+          const outFdSymbolPtr = this.exports.out_fd.value || this.exports.out_fd;
+
+          // 2. Read the 32-bit address stored inside out_fd
+          const view = new DataView(this.mem.buffer);
+          const actualFileStructureAddr = view.getUint32(outFdSymbolPtr, true);
+
+          // 3. If out_fd has been changed from NULL/stdout to a real file node structure pointer,
+          // grab the underlying file descriptor number mapped inside it!
+          if (actualFileStructureAddr !== 0) {
+            // In musl libc, the file descriptor integer is typically the first field in the struct,
+            // or found via fileno check offsets. Read it straight out of the structure:
+            const mappedFd = view.getUint32(actualFileStructureAddr, true);
+
+            // If it successfully extracts a valid redirected file descriptor, swap the target track!
+            if (mappedFd > 2 && mappedFd < 1024) {
+              targetFd = mappedFd;
+            }
+          }
+        } catch (err) {
+          // Silent fallback to standard stdout if structure parsing encounters unaligned offsets
+        }
+      }
+
+      // 4. Delegate to your existing memfs descriptor writing architecture
+      return this.exports.fd_write(targetFd, iovs, iovs_len, nwritten_out);
+    }
+    */
+
     mkdirp(path) {
       // Normalize: remove leading/trailing slashes for segmenting
       const parts = path.split('/').filter(Boolean);
@@ -475,6 +514,87 @@ const API = (function () {
       api.hostWrite(formatMessage('memfs', [message]));
     }
 
+    /*
+
+    copy_out(clang_dst, memfs_src, size) {
+      this.hostMem_.check();
+      this.mem.check();
+
+      const liveHostBuffer = this.hostMem_.buffer || Module.memory.buffer;
+      const liveMemfsBuffer = this.exports?.memory?.buffer || this.mem.buffer;
+
+      // ─── SCATTER-GATHER INTERCEPTION GHOST ───
+      // If memfs_src is a very small address (lower than standard heap limits like 64KB),
+      // it means the binary is passing an internal stack variable or an iovec structure list!
+      if (memfs_src < 65536 && size > 0) {
+        try {
+          const view = new DataView(liveMemfsBuffer);
+          
+          // In an iovec array layout, each block is 8 bytes wide (4 bytes base pointer, 4 bytes length)
+          // Look inside the structure to resolve where the TRUE file byte pointer is stored!
+          const realMemfsSrc = view.getUint32(memfs_src, true);
+          const realSize = view.getUint32(memfs_src + 4, true);
+
+          // If the dereferenced pointers are clean and aligned, swap them out before the blit
+          if (realMemfsSrc > 0 && realMemfsSrc + size <= liveMemfsBuffer.byteLength) {
+            memfs_src = realMemfsSrc;
+            if (realSize > 0 && realSize < size) {
+              size = realSize;
+            }
+          }
+        } catch (e) {
+          // Fallback to flat blit if memory boundaries are unaligned
+        }
+      }
+
+      // Final boundary guard safety check to stop RangeError panics
+      if (clang_dst + size > liveHostBuffer.byteLength || memfs_src + size > liveMemfsBuffer.byteLength) {
+        console.warn(`[VFS Boundary Intercept] Adjusting out-of-bounds copy size pass safely.`);
+        size = Math.min(size, liveHostBuffer.byteLength - clang_dst, liveMemfsBuffer.byteLength - memfs_src);
+      }
+
+      if (size > 0) {
+        const dst = new Uint8Array(liveHostBuffer, clang_dst, size);
+        const src = new Uint8Array(liveMemfsBuffer, memfs_src, size);
+        dst.set(src);
+      }
+    }
+
+    copy_in(memfs_dst, clang_src, size) {
+      this.mem.check();
+      this.hostMem_.check();
+
+      const liveMemfsBuffer = this.exports?.memory?.buffer || this.mem.buffer;
+      const liveHostBuffer = this.hostMem_.buffer || Module.memory.buffer;
+
+      if (clang_src < 65536 && size > 0) {
+        try {
+          const view = new DataView(liveHostBuffer);
+          const realClangSrc = view.getUint32(clang_src, true);
+          const realSize = view.getUint32(clang_src + 4, true);
+
+          if (realClangSrc > 0 && realClangSrc + size <= liveHostBuffer.byteLength) {
+            clang_src = realClangSrc;
+            if (realSize > 0 && realSize < size) {
+              size = realSize;
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (memfs_dst + size > liveMemfsBuffer.byteLength || clang_src + size > liveHostBuffer.byteLength) {
+        size = Math.min(size, liveMemfsBuffer.byteLength - memfs_dst, liveHostBuffer.byteLength - clang_src);
+      }
+
+      if (size > 0) {
+        const dst = new Uint8Array(liveMemfsBuffer, memfs_dst, size);
+        const src = new Uint8Array(liveHostBuffer, clang_src, size);
+        dst.set(src);
+      }
+    }
+
+    */
+
     copy_out(clang_dst, memfs_src, size) {
       this.hostMem_.check();
       const dst = new Uint8Array(this.hostMem_.buffer, clang_dst, size);
@@ -574,7 +694,7 @@ const API = (function () {
         debugger
         console.error('Goddamnit wheres the fucking module name?')
       }
-      let needMemfs = true; //module.name.includes('lld') || module.name.includes('clang')
+      let needMemfs = module.name.includes('lld') || module.name.includes('clang')
 
       if (!FS.pointers[0] || !FS.pointers[0][2]) {
         debugger
@@ -639,8 +759,8 @@ const API = (function () {
         //Object.assign(wasi_unstable, FS);
       }
 
-      wasi_unstable.callsys = FS.callsys
-      wasi_unstable.getpid = FS.getpid
+      //wasi_unstable.callsys = FS.callsys
+      //wasi_unstable.getpid = FS.getpid
 
 
       Object.assign(env, wasi_unstable)
