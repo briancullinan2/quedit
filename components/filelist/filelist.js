@@ -578,68 +578,66 @@ searchInput.addEventListener('keydown', async (e) => {
 });
 
 
-
 function renderSearchResults(groupedItems, lastValidQuery) {
     const container = document.getElementById('search-results');
     if (!container) return;
 
-    // Clear old elements cleanly
     container.innerHTML = '';
 
     if (lastValidQuery) {
-        container.innerHTML = `<div class="search-history-fallback-breadcrumb">
-                    Showing last valid state for: <strong>"${lastValidQuery}"</strong> 
-                    <span class="typo-trace-tag">(Broken at: "+${brokenDiffText}")</span>
-                </div>
-            `
+        container.innerHTML = `
+            <div class="search-history-fallback-breadcrumb">
+                Showing last valid state for: <strong>"${lastValidQuery}"</strong> 
+                <span class="typo-trace-tag">(Broken at: "+${brokenDiffText}")</span>
+            </div>
+        `;
     } else if (!groupedItems || groupedItems.length === 0) {
         container.innerHTML = '<div class="empty-placeholder">No matching workspace references found.</div>';
         return;
     }
 
     groupedItems.forEach(group => {
-        // Create the card item frame wrapper
         const card = document.createElement('div');
         card.className = 'search-card';
 
-        // Extract clean file identity metrics
         const filename = group.path.split('/').pop();
-        const repoParts = group.repo.split('/');
-        const owner = repoParts[0];
-        const repoName = repoParts[1] || '';
+        const [owner, repoName = ''] = group.repo.split('/');
+        const firstSha = group.localMatches[0]?.sha || '';
 
-        // 1. Build Header Bar
+        // 1. Render Header with dataset metadata tags attached directly to elements
         const header = document.createElement('div');
         header.className = 'search-card-header';
         header.innerHTML = `
-            <span class="search-file-path" title="Click to open file">${group.path}</span>
-            <span class="search-repo-badge">${group.repo}</span>
+            <span class="search-file-path" title="Click to open file"
+                  data-owner="${Utils.escapeHtml(owner)}"
+                  data-repo-name="${Utils.escapeHtml(repoName)}"
+                  data-path="${Utils.escapeHtml(group.path)}"
+                  data-sha="${Utils.escapeHtml(firstSha)}">${Utils.escapeHtml(group.path)}</span>
+            <span class="search-repo-badge">${Utils.escapeHtml(group.repo)}</span>
             <span class="bx bx-trash" placeholder="Remove result" popovertarget="global-popup" onclick="this.parentElement.parentElement.remove()"></span>
         `;
-
-        // Clicking the main card path defaults to opening line 1
-        header.querySelector('.search-file-path').addEventListener('click', () => {
-            if (typeof window.clickFile === 'function') {
-                window.clickFile(owner, repoName, group.path, group.localMatches[0]?.sha || '', true);
-            }
-        });
         card.appendChild(header);
 
-        // 2. Build Card Body Content Container
+        // 2. Render Card Body
         const body = document.createElement('div');
         body.className = 'search-card-body';
 
-        // Combine all match points to list inside this file container frame card
         const allMatches = [...group.localMatches, ...group.remoteMatches];
-
         allMatches.forEach(match => {
             const row = document.createElement('div');
             row.className = 'search-match-row';
 
-            // Check if this specific item is an explicit structural path hit from PASS 1
-            const isFilenameHit = match.matchText.startsWith('[Filename Match]');
-            let displayCode = '';
+            // Store metadata inside structural dataset properties for event extraction passes
+            row.dataset.owner = owner;
+            row.dataset.repoName = repoName;
+            row.dataset.path = group.path;
+            row.dataset.sha = match.sha;
+            row.dataset.line = match.line;
 
+            const isFilenameHit = match.matchText.startsWith('[Filename Match]');
+            row.dataset.isFilenameHit = isFilenameHit;
+
+            let displayCode = '';
             if (isFilenameHit) {
                 displayCode = `<span class="filename-match-tag">📄 Filename match: "${filename}"</span>`;
             } else if (match.matchIndex !== undefined) {
@@ -647,9 +645,6 @@ function renderSearchResults(groupedItems, lastValidQuery) {
                 const highlightedToken = match.matchText.substring(match.matchIndex, match.matchIndex + match.matchLength);
                 const endText = match.matchText.substring(match.matchIndex + match.matchLength);
 
-                // --- STRUCTURAL TRUNCATION BOUND ZONE ---
-                // If the preceding text on this line exceeds our viewing zone threshold limit,
-                // chop off the front section and prepend an explicit ellipsis character tag block
                 const MAX_PRE_MATCH_CHARS = 25;
                 if (startText.length > MAX_PRE_MATCH_CHARS) {
                     startText = '…' + startText.substring(startText.length - MAX_PRE_MATCH_CHARS);
@@ -665,21 +660,6 @@ function renderSearchResults(groupedItems, lastValidQuery) {
                 <div class="search-match-text">${displayCode}</div>
             `;
 
-            // 3. Bind navigation telemetry click listener straight to the match row layout cell
-            row.addEventListener('click', async () => {
-                if (typeof window.openFile === 'function') {
-                    // Navigate to the repository, pass line info anchors to center cursor inside Ace
-                    await window.openFile(owner, repoName, group.path, match.sha, true);
-
-                    // If it's an actual text code block, tell your editor engine to slide focus cleanly
-                    if (!isFilenameHit && window.aceEditor) {
-                        setTimeout(() => {
-                            window.aceEditor.gotoLine(match.line, 0, true);
-                        }, 800);
-                    }
-                }
-            });
-
             body.appendChild(row);
         });
 
@@ -687,6 +667,71 @@ function renderSearchResults(groupedItems, lastValidQuery) {
         container.appendChild(card);
     });
 }
+
+
+let debouceSearchClick = null
+let filePathEl
+let matchRowEl
+// Run this initialization ONCE at startup
+document.getElementById('search-results')?.addEventListener('click', searchResultsClick);
+
+
+async function searchResultsClick(event, noBounce = false) {
+    const target = event.target;
+    filePathEl ||= target.closest('.search-file-path');
+    matchRowEl ||= target.closest('.search-match-row');
+
+
+    if (!filePathEl && !matchRowEl) return
+
+    if (!noBounce && debouceSearchClick) return
+
+    if (!debouceSearchClick) {
+        debouceSearchClick = setTimeout(() => {
+            searchResultsClick(event, true)
+            debouceSearchClick = null
+            filePathEl = null
+            matchRowEl = null
+        }, 400)
+        return
+    }
+
+    // ─── CASE A: CLICKED A REPO FILE HEADER PATH ───
+    if (filePathEl) {
+        window.clickFile(
+            filePathEl.dataset.owner,
+            filePathEl.dataset.repoName,
+            filePathEl.dataset.path,
+            filePathEl.dataset.sha,
+            true
+        );
+        return;
+    }
+
+    // ─── CASE B: CLICKED AN INDIVIDUAL MATCH ROW ───
+    if (matchRowEl) {
+        const isFilenameHit = matchRowEl.dataset.isFilenameHit === 'true';
+        const lineNum = parseInt(matchRowEl.dataset.line, 10);
+
+        await window.openFile(
+            matchRowEl.dataset.owner,
+            matchRowEl.dataset.repoName,
+            matchRowEl.dataset.path,
+            matchRowEl.dataset.sha,
+            true, /* record in history */
+            true, /* hide other panels */
+            true  /* no bounce because we added it here */
+        );
+
+        if (!isFilenameHit && window.aceEditor) {
+            setTimeout(() => {
+                window.aceEditor.gotoLine(lineNum, 0, true);
+            }, 200);
+        }
+    }
+}
+
+
 
 // Simple HTML text escaping helper mapping system tags to raw codes safely
 const Utils = {
