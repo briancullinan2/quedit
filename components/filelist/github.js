@@ -406,6 +406,10 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
         // TODO: IF GITHUB, ALWAYS UPDATE
         if (!shouldDownload && FS.virtual[filePath]) {
+            if(filePath.includes('.syms')) {
+                debugger
+                console.error('No you fucking dont: ' + filePath)
+            }
             writeLog(`Already have cached (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
             return FS.virtual[filePath].contents
         }

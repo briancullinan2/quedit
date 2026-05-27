@@ -1110,7 +1110,8 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
                     if (!files['briancullinan2/quedit']) {
                         await loadGitHubTree('briancullinan2', 'quedit', 'main')
                     }
-                    await cacheFile('briancullinan2', 'quedit', 'wasm.syms');
+                    await cacheFile('briancullinan2', 'quedit', 'components/compiler/wasm.syms');
+                    
                     FS.virtual[header] =
                     {
                         timestamp: new Date(),
