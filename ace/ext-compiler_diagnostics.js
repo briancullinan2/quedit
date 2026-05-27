@@ -205,7 +205,10 @@ function initBridgeSession(bridgeInstance, session) {
     }
     return {
         log: function (msg) { bridgeInstance.log(msg); },
-        getBridge: function (session) {
+        clear: function() {
+            bridgeClear(session)
+        },
+        getBridge: function () {
             return ({
                 triggerBridgeRefresh: triggerBridgeRefresh.bind(bridgeInstance, session),
                 refreshActiveEditorView: refreshActiveEditorView

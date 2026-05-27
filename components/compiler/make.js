@@ -718,18 +718,23 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
         }
 
         // TODO!!!!! check if commit has changed or file has changed on disk
-        if (!FS.virtual[file] && makeDirs /* only load github if its a controlled file */) {
+        if ((!FS.virtual[file] || !FS.virtual[file].contents || FS.virtual[file].contents.length === 0) && makeDirs /* only load github if its a controlled file */) {
             writeLog(`Loading IDB/Github (${api.worker ? 'frontend' : 'worker'}): ${file}`)
             await cacheFile(ownerName, repoName, file, null, makeDirs)
-        } else if (FS.virtual[file] && (FS.virtual[file].mode >> 12) === ST_FILE) {
-            if (api.memfs) {
-                api.memfs.mem.check
-                api.memfs.addFile(file, FS.virtual[file].contents)
-            }
-            writeLog(`Already have from query (${api.worker ? 'frontend' : 'worker'}): ${file}`)
-        } else if (makeDirs) {
-            debugger
         }
+
+        if (FS.virtual[file] && (FS.virtual[file].mode >> 12) === ST_FILE) {
+            if (api.memfs) {
+                if (!api.memfs.exists(file)) {
+                    api.memfs.mem.check
+                    api.memfs.addFile(file, FS.virtual[file].contents)
+                } else
+                    writeLog(`Already have from query (${api.worker ? 'frontend' : 'worker'}): ${file}`)
+            }
+        }
+        // else if (makeDirs) {
+        //    debugger
+        //}
 
     } else {
         if ((FS.virtual[file].mode >> 12) === ST_DIR) {

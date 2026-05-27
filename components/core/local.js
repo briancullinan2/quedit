@@ -145,7 +145,7 @@ async function putRecordInternal(storeName, record, dbName = null) {
     const newRecord = {
         timestamp: record.timestamp,
         mode: record.mode,
-        contents: FS.virtual[record.path]?.contents || record.contents?.slice(0),
+        contents: (record.contents = FS.virtual[record.path]?.contents || record.contents?.slice(0)),
         path: record.path,
         sha: record.sha,
         parent: record.parent

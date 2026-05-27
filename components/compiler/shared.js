@@ -241,9 +241,33 @@ const API = (function () {
     addFile(path, contents) {
       try {
         if (!contents) {
-          debugger
-          return
+          debugger;
+          return;
         }
+
+        // --- DETACHED OR SHARED MEMORY DETECTOR HOOK ---
+        if (contents instanceof ArrayBuffer) {
+          // A byteLength of 0 on a non-empty expected asset means it's ALREADY detached!
+          if (contents.byteLength === 0) {
+            console.error(`[VFS CRITICAL] ${path} arrived with an ALREADY detached ArrayBuffer allocation!`);
+            debugger; // Snaps thread cursor right here
+          }
+        } else if (contents.buffer instanceof ArrayBuffer) {
+          // If it's a view (Uint8Array, etc.), check if its underlying buffer is dead or detached
+          if (contents.buffer.byteLength === 0) {
+            console.error(`[VFS CRITICAL] ${path} typed view container is backed by a detached ArrayBuffer!`);
+            debugger;
+          }
+
+          // CRITICAL PREVENTATIVE SAFEGUARD: 
+          // If this is a live WASM memory sub-view reference, FORCE a decoupled deep copy clone 
+          // right now so it survives if the parent WASM instance shuts down or grows pages!
+          if (contents.buffer === this.exports?.memory?.buffer || contents.buffer.detached) {
+            console.warn(`[VFS Warning] Cloning vulnerable shared WASM heap reference for: ${path}`);
+            contents = contents.slice(0); // Deep copies the bytes into isolated JS heap spaces
+          }
+        }
+
         // TODO: remove memfs after read input bug is figured out
         const dirPath = path.substring(0, path.lastIndexOf('/'));
         if (dirPath) {
@@ -252,15 +276,19 @@ const API = (function () {
 
         const length =
           contents instanceof ArrayBuffer ? contents.byteLength : contents.length;
+
         this.mem.check();
         this.mem.write(this.exports.GetPathBuf(), path);
         const inode = this.exports.AddFileNode(path.length, length);
         const addr = this.exports.GetFileNodeAddress(inode);
         this.mem.check();
+
+        // This is the line that currently crashes when writing a detached state reference
         this.mem.write(addr, contents);
       }
       catch (e) {
-        console.error(path + ' - ' + e)
+        console.error(path + ' - ' + e);
+        debugger; // Allow step-back lookup maps inside DevTools
       }
     }
 
@@ -543,6 +571,10 @@ const API = (function () {
       //  'errno': Module.errno
       //}
 
+      if (!module.name) {
+        debugger
+        console.error('Goddamnit wheres the fucking module name?')
+      }
       let needMemfs = module.name.includes('lld')
         || module.name.includes('clang')
 
@@ -1504,6 +1536,7 @@ const API = (function () {
           && !alreadyTried
         ) {
           const selected = this.toolsRepo || database || this.database
+          needsHeaders = true
 
           // TODO: try compiling ourselves if its a known module + result
           if (name.includes('q3lcc'))
@@ -1672,7 +1705,7 @@ const API = (function () {
         FS.virtual[obj] = {
           timestamp: new Date(),
           mode: FS_FILE,
-          contents: bytes,
+          contents: bytes.slice(),
           path: obj,
           parent: obj.substring(0, obj.lastIndexOf('/'))
         }
@@ -1930,6 +1963,11 @@ const API = (function () {
 
     async run(module, ...args) {
       await this.ready
+
+      if (module.args)
+        args = module.args
+      if (module.tool)
+        module = module.tool
 
       if (typeof module == 'string' || !module)
         module = await this.getModule(module);
