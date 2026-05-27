@@ -371,7 +371,10 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
             await loadGitHubTree(repoOwner, repoName, branch)
         }
 
-        if (!FS.virtual[filePath]) {
+        if (!FS.virtual[filePath]
+            || !FS.virtual[filePath].contents
+            || !FS.virtual[filePath].contents.length === 0
+        ) {
             FS.virtual[filePath] = await getRecord(DB_STORE_NAME, filePath, selected)
         }
         if (files[selected][filePath]
@@ -406,7 +409,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
         // TODO: IF GITHUB, ALWAYS UPDATE
         if (!shouldDownload && FS.virtual[filePath]) {
-            if(filePath.includes('.syms')) {
+            if (filePath.includes('.syms')) {
                 debugger
                 console.error('No you fucking dont: ' + filePath)
             }

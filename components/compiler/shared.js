@@ -288,21 +288,21 @@ const API = (function () {
         if (contents instanceof ArrayBuffer) {
           // A byteLength of 0 on a non-empty expected asset means it's ALREADY detached!
           if (contents.byteLength === 0) {
-            console.error(`[VFS CRITICAL] ${path} arrived with an ALREADY detached ArrayBuffer allocation!`);
-            debugger; // Snaps thread cursor right here
+            //console.error(`[VFS CRITICAL] ${path} arrived with an ALREADY detached ArrayBuffer allocation!`);
+            //debugger; // Snaps thread cursor right here
           }
         } else if (contents.buffer instanceof ArrayBuffer) {
           // If it's a view (Uint8Array, etc.), check if its underlying buffer is dead or detached
           if (contents.buffer.byteLength === 0) {
-            console.error(`[VFS CRITICAL] ${path} typed view container is backed by a detached ArrayBuffer!`);
-            debugger;
+            //console.error(`[VFS CRITICAL] ${path} typed view container is backed by a detached ArrayBuffer!`);
+            //debugger;
           }
 
           // CRITICAL PREVENTATIVE SAFEGUARD: 
           // If this is a live WASM memory sub-view reference, FORCE a decoupled deep copy clone 
           // right now so it survives if the parent WASM instance shuts down or grows pages!
           if (contents.buffer === this.exports?.memory?.buffer || contents.buffer.detached) {
-            console.warn(`[VFS Warning] Cloning vulnerable shared WASM heap reference for: ${path}`);
+            //console.warn(`[VFS Warning] Cloning vulnerable shared WASM heap reference for: ${path}`);
             contents = contents.slice(0); // Deep copies the bytes into isolated JS heap spaces
           }
         }
@@ -699,16 +699,17 @@ const API = (function () {
       if (!FS.pointers[0] || !FS.pointers[0][2]) {
         debugger
       }
-      this.previousFd = FS.pointers[0][2].rewrite
-      this.previousContents = FS.pointers[0][2].contents
+
+      //this.previousFd = FS.pointers[0][2].rewrite
+      //this.previousContents = FS.pointers[0][2].contents
       this.previousExports = Module.exports
       this.previousErrno = Module.errno.value
       this.previousMemory = ENV.memory || Module.memory
       this.previousHeap = window.STD.sharedMemory || Module.__heap_base
       this.previousPid = this.api.pid
-      if (this.api.memfs) {
-        this.previousHostMem = this.api.memfs.hostMem_
-      }
+      //if (this.api.memfs) {
+      //  this.previousHostMem = this.api.memfs.hostMem_
+      //}
 
       if (!needMemfs) {
 

@@ -134,7 +134,7 @@ const QVMLIB_CFLAGS = [
     "-triple", "wasm32-wasi",
     "-O2",
     "-mrelocation-model", "static", // Keep static since it proved it works!
-
+    //'-menable-no-nans',
     "-isysroot", "/",
     "-internal-isystem", "include/c++/v1",
     "-internal-isystem", "include",
@@ -180,13 +180,14 @@ const QVM_CFLAGS = [
 ];
 
 
-let QVM_MODE = true;
+let QVM_MODE = false;
 
 
 
 async function buildModule(name, sourceDir, filesList, database, extraDefines = [], forceChanged = false, noLinking = false /* called from linkModule */, noBounce = false) {
 
     PREAMBLE = QVM_PREAMBLE
+    QVM_MODE = typeof api !== 'undefined' ? api.configuration === 'qvms' : false
 
     if (buildDebounce) {
         clearTimeout(buildDebounce)
@@ -201,7 +202,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
     building = true
 
     try {
-        writeLog(`Compiling ${name} module...`, ['build', 'qvms']);
+        writeLog(`Compiling ${name} module...`);
 
 
         if (!database) database = gameRepo || api.database;
@@ -211,7 +212,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
         if (needsHeaders) {
-            writeLog("Syncing QVM Headers...", ['build', 'qvms']);
+            writeLog("Syncing QVM Headers...");
             await downloadHeaders(qvmHeaders, 10, database);
         }
 
@@ -221,7 +222,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
             ? dirs.ENGINE_RELEASE
             : dirs.ENGINE_DEBUG
 
-        writeLog(`Building ${name}.qvm...`, ['build', 'qvms']);
+        writeLog(`Building ${name}.qvm...`);
 
         if (!files[database]) {
             let branch = await getDefaultBranch(ownerName, repoName)
@@ -284,19 +285,19 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                     && FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
                     && !forceChanged
                 ) {
-                    writeLog(`${obj} already up to date...`, ['build', 'qvms'])
+                    writeLog(`${obj} already up to date...`)
                     continue
                 }
 
 
                 hasChanged = true
 
-                writeLog(`QVMCC: ${src}`, ['build', 'qvms']);
+                writeLog(`QVMCC: ${src}`);
 
                 let CCFLAGS = [
                     ...(QVM_MODE ? [] : QVMLIB_CFLAGS),
                     ...QVM_CFLAGS,
-                    ...(QVM_MODE ? [] : DEBUG_CFLAGS),
+                    //...(QVM_MODE ? [] : DEBUG_CFLAGS),
                     ...extraDefines.map(d => `-D${d}`),
                 ]
 
@@ -353,8 +354,13 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
                 }
                 else {
+                    debugger
                     await api.compile({
-                        CFLAGS: CCFLAGS,
+                        CFLAGS: [
+                            ...CCFLAGS,
+                            src,
+                            '-o', obj,
+                        ],
                         contents: content,
                         input: src,
                         database,
@@ -364,7 +370,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
             } catch (e) {
                 PREAMBLE = QVMERR_PREAMBLE
-                writeLog(`CC: ${src}: ${e.message}\n\r${e.stack || e.stacktrace}`, ['build', 'qvms']);
+                writeLog(`CC: ${src}: ${e.message}\n\r${e.stack || e.stacktrace}`);
             }
         }
 
@@ -647,7 +653,7 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
 
     try {
         // 3. Start building modules
-        writeLog("Starting QVM compilation...", ['build', 'qvms']);
+        writeLog("Starting QVM compilation...");
 
 
         // CGAME
@@ -677,7 +683,7 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
 
 
 
-        writeLog("QVM Build Process Finished.", ['build', 'qvms']);
+        writeLog("QVM Build Process Finished.");
     }
     finally {
         building = false

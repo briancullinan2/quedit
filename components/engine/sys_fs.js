@@ -134,7 +134,6 @@ function path_unlink_fileNew(dirfd, pathPtr, pathLen) {
 	const rawPath = new TextDecoder().decode(new Uint8Array(buffer, pathPtr, pathLen));
 	const localName = normalizeVfsPath(rawPath);
 
-	debugger
 	const file = FS.virtual[localName];
 	if (!file) return 44; // WASI_ENOENT
 

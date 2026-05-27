@@ -298,7 +298,7 @@ term.attachCustomKeyEventHandler((arg) => {
                 return false;
             }
             term.write('\n\rCTRL+C');
-            window.TERMINATE = true;
+            TERMINATE = true;
             if (window.building) term.write('\n\rStopping build...');
             writePrompt();
             cursorPosition = 0;
@@ -424,14 +424,14 @@ term.onData(async data => {
 
         case '\u001b[D': // Left Arrow
             if (cursorPosition > 0) {
-                setCursorPosition(cursorPosition - 1);
+                cursorPosition = (cursorPosition - 1);
                 term.write('\u001b[D');
             }
             break;
 
         case '\u001b[C': // Right Arrow
             if (cursorPosition < currentLine.length) {
-                setCursorPosition(cursorPosition + 1);
+                cursorPosition = (cursorPosition + 1);
                 term.write('\u001b[C');
             }
             break;
@@ -440,7 +440,7 @@ term.onData(async data => {
         case '\u001bOH':
             if (cursorPosition > 0) {
                 term.write(`\u001b[${cursorPosition}D`);
-                setCursorPosition(0);
+                cursorPosition = (0);
             }
             break;
 
@@ -448,7 +448,7 @@ term.onData(async data => {
         case '\u001bOF':
             if (cursorPosition < currentLine.length) {
                 term.write(`\u001b[${currentLine.length - cursorPosition}C`);
-                setCursorPosition(currentLine.length);
+                cursorPosition = (currentLine.length);
             }
             break;
 

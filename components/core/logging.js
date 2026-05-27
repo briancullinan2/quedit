@@ -51,43 +51,46 @@ function writeLog(msg, ...args) {
     }
 }
 
-function formatMessageItem(cache, arg) {
-    if (cache.has(arg)) return '[Circular]';
-    cache.add(arg);
-    // 1. Handle Errors (JSON.stringify ignores message/stack by default)
-    if (arg instanceof Error) {
-        return `${arg.name}: ${arg.message}\n\r${arg.stack || arg.stacktrace}\n\r${formatMessageItem(cache, { ...arg })}`;
-    }
-
-
+function formatMessageItem(arg) {
     if (typeof arg === 'string') {
-        return arg.trim()
-    }
-    if (typeof arg === 'object' && Object.keys(arg).length === 0) {
-        return (arg.name || arg.constructor.name || typeof arg) + ' ' + '{empty}'
+        return arg.trim();
     }
 
+    // 1. Handle Errors cleanly (Create isolated tracking wrapper if evaluating Error copies)
+    if (arg instanceof Error) {
+        return `${arg.name}: ${arg.message}\n\r${arg.stack || ''}\n\r${formatMessageItem({ ...arg })}`;
+    }
 
-    return (arg.name || arg.constructor.name || typeof arg) + ' ' + JSON.stringify(arg, (key, value) => {
-        // 2. Prevent "Circular reference" crashes
-        if (typeof value === 'object' && value !== null) {
-            if (cache.has(value)) return '[Circular]';
-            cache.add(value);
+    if (typeof arg === 'object' && arg !== null) {
+        if (Object.keys(arg).length === 0) {
+            return (arg.name || arg.constructor.name || typeof arg) + ' ' + '{empty}';
         }
-        return value;
-    }, 4);
+
+        // Create a local tracking set specifically for THIS object's internal property tree serialization pass
+        const stringifyCache = new Set();
+
+        return (arg.name || arg.constructor.name || typeof arg) + ' ' + JSON.stringify(arg, (key, value) => {
+            if (typeof value === 'object' && value !== null) {
+                // If it's a true cyclical reference down the current tree branch
+                if (stringifyCache.has(value)) {
+                    return '[Circular]';
+                }
+                stringifyCache.add(value);
+            }
+            return value;
+        }, 4);
+    }
+
+    return String(arg);
 }
-// ANSI Escape Code Definitions
 
 const formatMessage = (level, args) => {
     const timestamp = new Date().toLocaleTimeString();
-    const LOCAL_PREAMBLE = level.includes('\x1b') ? level : `${colors[level] || colors.gray}[${level.toUpperCase()}]${colors.reset} `
+    const LOCAL_PREAMBLE = level.includes('\x1b') ? level : `${colors[level] || colors.gray}[${level.toUpperCase()}]${colors.reset} `;
     const prefix = `${colors.gray}[${timestamp}]${LOCAL_PREAMBLE}${colors.reset}`;
 
-    const cache = new Set(); // To handle circular references
-
-    const processed = args.map(formatMessageItem.bind(null, cache));
-
+    // Clean execution pass: Map items down their own independent serialization windows
+    const processed = args.map(formatMessageItem);
 
     return `${prefix}${processed.join('\n\r')}\r\n`;
 };
@@ -150,6 +153,8 @@ let lastPartialLine = ''
 
 function terminalWrite(message, source, skipActualWrite = false) {
     if (!message) return;
+    if (message.includes('Array "[Circular]"'))
+        debugger
 
     let render = message;
     if (!message.endsWith('\n\r') && !message.endsWith('\n')) {
@@ -238,6 +243,8 @@ function forceLineWrap(text, maxCharsPerRow = 80) {
 function specialWrite(msg, source) {
     if (!msg) return;
 
+    if (msg.includes('Array "[Circular]"'))
+        debugger
     // 1. Core Fix: Clear old marks instantly via the native module API
     if (msg.includes('q3lcc -v') && window.compilerDiagnostics) {
         window.compilerDiagnostics.clear();

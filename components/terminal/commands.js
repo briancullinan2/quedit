@@ -278,7 +278,6 @@ const COMMAND_SCHEMA = {
     ld: { alias: "wasm" },
     terminal: { alias: "load" },
     editor: { alias: "load" },
-    build: { alias: "load" },
     q3: { alias: "load" },
     toji: { alias: "load" },
     paint: { alias: "load" },
