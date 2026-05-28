@@ -766,7 +766,7 @@ async function remove(argv, database) {
         terminalWrite(`Removing ${filename} from memory\n\r`);
     }
     try {
-        api.remove(filename)
+        await api.remove(filename)
     } catch (e) {
 
     }
@@ -886,19 +886,19 @@ async function link(argv, database) {
 
 
     if (mode === 'game' || mode === 'qvms' || mode === 'all')
-        await linkModule(mode === 'all' ? gameRepository : selected, 'game', dirs.QADIR, gameFiles, true)
+        await linkModule(mode === 'all' ? gameRepository : selected, 'game', dirs.QADIR, gameFiles, true, false, true)
 
     if (TERMINATE) return
     if (mode === 'cgame' || mode === 'qvms' || mode === 'all')
-        await linkModule(mode === 'all' ? gameRepository : selected, 'cgame', dirs.CGDIR, cgameFiles, true)
+        await linkModule(mode === 'all' ? gameRepository : selected, 'cgame', dirs.CGDIR, cgameFiles, true, false, true)
 
     if (TERMINATE) return
     if (mode === 'ui' || mode === 'qvms' || mode === 'all')
-        await linkModule(mode === 'all' ? gameRepository : selected, 'ui', dirs.UIDIR, uiFiles, true)
+        await linkModule(mode === 'all' ? gameRepository : selected, 'ui', dirs.UIDIR, uiFiles, true, false, true)
 
     if (TERMINATE) return
     if (mode === 'q3_ui' || mode === 'qvms' || mode === 'all')
-        await linkModule(mode === 'all' ? gameRepository : selected, 'q3_ui', dirs.Q3UIDIR, q3uiFiles, true)
+        await linkModule(mode === 'all' ? gameRepository : selected, 'q3_ui', dirs.Q3UIDIR, q3uiFiles, true, false, true)
 
     if (TERMINATE) return
 
@@ -1160,9 +1160,14 @@ rm /tmp/lcc420.i
         return
     }
 
+    const INCLUDES = selected === engineRepository
+        ? ["-Icode/wasm", "-Icode/qcommon", "-Icode/client", "-Icode/game"]
+        : ["-Isrc"]
+
     return await api.compile({
         CFLAGS: [
-            ...LCC_CFLAGS, `-Icode`, `-Isrc`,
+            ...LCC_CFLAGS, 
+            ...INCLUDES,
             ...(configuration.value === 'pre' ? [
                 '-o', obj.replace('.o', '.a')
             ] : ['-o', obj]),

@@ -28,8 +28,6 @@ const cgameFiles = [
 // Server Game (qagame) module file sequence
 const gameFiles = [
     'g_main.o', 'g_syscalls.o', // CRITICAL: Entry point and system trap must occupy index 0 and 1
-    'bg_misc.o', 'bg_lib.o', 'bg_pmove.o', 'bg_slidemove.o',
-    'q_math.o', 'q_shared.o',
     'ai_dmnet.o', 'ai_dmq3.o', 'ai_team.o', 'ai_main.o', 'ai_chat.o',
     'ai_cmd.o', 'ai_vcmd.o',
     'g_active.o', 'g_arenas.o', 'g_bot.o', 'g_client.o', 'g_cmds.o',
@@ -354,7 +352,6 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
                 }
                 else {
-                    debugger
                     await api.compile({
                         CFLAGS: [
                             ...CCFLAGS,
@@ -511,20 +508,18 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
         let exeRecord = await getRecord(DB_STORE_NAME, qvmOutput, database)
         FS.virtual[qvmOutput] = exeRecord
 
-        writeLog(`Assembling ${qvmOutput}...`, ['build', 'qvms', 'link']);
+        writeLog(`Assembling ${qvmOutput}...`);
 
-        if (FS.virtual[qvmOutput]
-            && !forceChanged
-        ) {
-            writeLog(qvmOutput + " already up to date...", ['build', 'qvms', 'link']);
+        if (FS.virtual[qvmOutput] && !forceChanged) {
+            writeLog(qvmOutput + " already up to date...");
             return
         }
 
-        writeLog(`LD: ${qvmOutput}`, ['build', 'qvms', 'link']);
+        writeLog(`LD: ${qvmOutput}`);
 
 
         let LDFLAGS = [
-            ...(QVM_MODE ? ['-vq3', '-r', '-m', '-v'] : ["--no-entry"]),
+            ...(QVM_MODE ? ['-vq3', '-r', '-m', '-v'] : baseLdFlags),
             "-o", qvmOutput, // (QVM_MODE ? name : qvmOutput),
             //...(QVM_MODE ? ['-f', path.join(config.BUILD_DIR, 'win32-qvm', name)] : qvmObjs),
         ]
@@ -555,10 +550,10 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
             });
         }
 
-        writeLog(`Success: ${qvmOutput}`, ['build', 'qvms', 'link']);
+        writeLog(`Success: ${qvmOutput}`);
     } catch (e) {
         PREAMBLE = QVMERR_PREAMBLE
-        writeLog(`Linker Error in ${name}\n\r${e.message}\n\r${e.stack || e.stacktrace}`, ['build', 'error', 'qvms', 'link']);
+        writeLog(`Linker Error in ${name}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
         throw e
     }
     finally {

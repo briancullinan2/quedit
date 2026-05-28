@@ -332,6 +332,7 @@ const q3eCommonHeaders = [
     "wasm/glext.h",
     "wasm/sys_local.h",
     "wasm/khrplatform.h",
+    "wasm/setjmp.h",
     "wasm/wasm.syms",
     //"sys/sys_local.h",      // System-specific (Win/Linux) low-level stuff
     //"sys/sys_loadlib.h"     // Dynamic library loading
@@ -743,12 +744,14 @@ async function prepInputOutput(file, obj, database, makeDirs = false) {
         //}
 
     } else {
-        if ((FS.virtual[file].mode >> 12) === ST_DIR) {
-            api.memfs.addDirectory(file)
-        }
-        else {
-            api.memfs.mem.check
-            api.memfs.addFile(file, FS.virtual[file].contents)
+        if (api.memfs) {
+            if ((FS.virtual[file].mode >> 12) === ST_DIR) {
+                api.memfs.addDirectory(file)
+            }
+            else {
+                //api.memfs.mem.check
+                api.memfs.addFile(file, FS.virtual[file].contents)
+            }
         }
         writeLog(`Already have contents (${api.worker ? 'frontend' : 'worker'}): ${file}`)
     }
@@ -1050,7 +1053,7 @@ async function buildShaders(database = null, forceChanged = false) {
 
             writeLog(`GLSL: ${obj}`)
 
-            const cCode = generateFallbackC(shader, FS.virtual[shader]);
+            const cCode = generateFallbackC(shader, FS.virtual[shader].contents);
 
             let hasChanged = true
 
@@ -1111,7 +1114,7 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
                         await loadGitHubTree('briancullinan2', 'quedit', 'main')
                     }
                     await cacheFile('briancullinan2', 'quedit', localName);
-                    if(!FS.virtual[localName]) {
+                    if (!FS.virtual[localName]) {
                         debugger
                         console.error('Goddamnit you suck at programming.')
                     }

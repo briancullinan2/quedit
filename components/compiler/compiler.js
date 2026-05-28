@@ -262,7 +262,7 @@ class WorkerAPI {
             filename: filename
         }
         this.inject(options)
-        this.port.postMessage({ id: 'remove', data: options });
+        this.runAsync('remove', options);
     }
 
     onmessage(event) {
