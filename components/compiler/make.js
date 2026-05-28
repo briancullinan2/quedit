@@ -366,7 +366,6 @@ const baseLdFlags = [
     "--import-table",
     '-z', `stack-size=${1024 * 1024}`,
     '-Llib/wasm32-wasi',
-    'lib/wasm32-wasi/crt1.o',
     //"--growable-table",
     // Link against the builtins and libc.a
     //path.join(vars.WASI_BUILTINS, "lib/wasi/libclang_rt.builtins-wasm32.a"),
@@ -428,6 +427,7 @@ const includeFlags = [
 // Final Assembly based on platform
 const LDFLAGS = [
     ...baseLdFlags,
+    'lib/wasm32-wasi/crt1.o',
     ...wasmPlatformFlags,
     ...exportFlags,
     ...undefinedFlags

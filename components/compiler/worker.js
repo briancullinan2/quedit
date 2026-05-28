@@ -327,29 +327,24 @@ const onAnyMessage = async event => {
             try {
 
 
-              /*
-              try {
-                if (api.memfs && api.memfs.exists(filePath)) {
-                  let bytes = api.memfs.getFileContents(filePath)
-                  if (bytes.length > 0) {
-                    FS.virtual[filePath] = {
-                      timestamp: new Date(),
-                      mode: FS_FILE,
-                      contents: bytes,
-                      path: filePath,
-                      sha: await getGitShaBrowser(bytes),
-                      parent: filePath.substring(0, filePath.lastIndexOf('/'))
-                    }
-
+              if (api.memfs && api.memfs.exists(filePath)) {
+                let bytes = api.memfs.getFileContents(filePath)
+                if (bytes.length > 0) {
+                  FS.virtual[filePath] = {
+                    timestamp: new Date(),
+                    mode: FS_FILE,
+                    contents: bytes.slice(),
+                    path: filePath,
+                    sha: await getGitShaBrowser(bytes),
+                    parent: filePath.substring(0, filePath.lastIndexOf('/'))
                   }
-                }
-                else if (api.memfs && FS.virtual[filePath].contents.length) {
-                  api.memfs.addFile(filePath, FS.virtual[filePath].contents)
-                }
-              } catch (e) {
 
+                }
               }
-              */
+              else if (api.memfs && FS.virtual[filePath].contents.length) {
+                api.memfs.addFile(filePath, FS.virtual[filePath].contents)
+              }
+
 
               if (FS.virtual[filePath] && FS.virtual[filePath].contents.length) {
                 writeLog('Run succeeded: ' + filePath + '\n\r')
@@ -414,7 +409,8 @@ const onAnyMessage = async event => {
           api.memfs.mem.check()
           debugger
           if (api.memfs.exists(filename)) {
-            const buf = this.exports.GetPathBuf()
+            api.memfs.mem.check()
+            const buf = api.memfs.exports.GetPathBuf()
             api.memfs.mem.write(buf, path);
             api.memfs.exports.path_unlink_file(buf)
           }

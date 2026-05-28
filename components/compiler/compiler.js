@@ -257,12 +257,12 @@ class WorkerAPI {
             [offscreenCanvas]);
     }
 
-    remove(filename) {
+    async remove(filename) {
         const options = {
             filename: filename
         }
         this.inject(options)
-        this.runAsync('remove', options);
+        return await this.runAsync('remove', options);
     }
 
     onmessage(event) {

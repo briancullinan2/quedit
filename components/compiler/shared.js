@@ -607,10 +607,12 @@ const API = (function () {
     copy_in(memfs_dst, clang_src, size) {
       this.mem.check();
       const dst = new Uint8Array(this.mem.buffer, memfs_dst, size);
-      this.hostMem_.check();
-      const src = new Uint8Array(this.hostMem_.buffer, clang_src, size);
-      // writeLog(`copy_in(${memfs_dst.toString(16)}, ${clang_src.toString(16)}, ${size})`);
-      dst.set(src);
+      if (this.hostMem_) {
+        this.hostMem_.check();
+        const src = new Uint8Array(this.hostMem_.buffer, clang_src, size);
+        // writeLog(`copy_in(${memfs_dst.toString(16)}, ${clang_src.toString(16)}, ${size})`);
+        dst.set(src);
+      }
     }
   }
 

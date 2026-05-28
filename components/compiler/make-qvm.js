@@ -148,7 +148,6 @@ const QVMLIB_CFLAGS = [
     "-D_XOPEN_SOURCE=700",
     "-D__wasi__=1",
     "-D__WASM__=1",
-    "-DGAME",
     "-std=gnu11",
 
     "-disable-free",
@@ -355,6 +354,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                     await api.compile({
                         CFLAGS: [
                             ...CCFLAGS,
+                            ...(src.includes('bg_lib.c') ? ['-DQ3_VM=1'] : []),
                             src,
                             '-o', obj,
                         ],
@@ -421,7 +421,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
         PREAMBLE = QVM_PREAMBLE
 
         // Link phase (q3asm)
-        const qvmOutput = path.join(CONFIGURATION, repoName || config.MOD, `${name === 'game' ? 'qagame' : name}.qvm`);
+        const qvmOutput = path.join(CONFIGURATION, repoName || config.MOD, `${name === 'game' ? 'qagame' : name}.${QVM_MODE ? 'qvm' : 'wasm'}`);
 
         let qvmObjs = filesList.map(file => path.join(CONFIGURATION, sourceDir, file))
         if (QVM_MODE)
@@ -542,6 +542,11 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
             await api.link({
                 LDFLAGS: [
                     ...LDFLAGS,
+                    ...baseLdFlags,
+                    '-lm',
+                    '--no-entry',
+                    '--export=vmMain',
+                    '--allow-undefined',
                     ...qvmObjs
                 ],
                 obj: qvmObjs,

@@ -1146,6 +1146,7 @@ rm /tmp/lcc420.i
                     ...QVMLIB_CFLAGS,
                     ...QVM_CFLAGS,
                     ...DEFINE,
+                    ...(srcPath.includes('bg_lib.c') ? ['-DQ3_VM=1'] : []),
                     srcPath,
                     '-o', obj,
                 ],
