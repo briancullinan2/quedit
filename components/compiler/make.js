@@ -356,7 +356,7 @@ function getBaseFlags() {
 
 
 // Base LDFLAGS shared across all modules
-const baseLdFlags = [
+const ENGINE_LDFLAGS = [
     //"-D__WASM__=1",
     //"--no-standard-libraries",
     '--no-threads',
@@ -426,25 +426,14 @@ const includeFlags = [
 
 // Final Assembly based on platform
 const LDFLAGS = [
-    ...baseLdFlags,
+    ...ENGINE_LDFLAGS,
     'lib/wasm32-wasi/crt1.o',
     ...wasmPlatformFlags,
     ...exportFlags,
     ...undefinedFlags
 ];
 
-// For the Shared Libs (Renderer/VMs)
-/*
-const shLibLdFlags = [
-    "--no-entry",
-    ...baseLdFlags,
-    "--export=malloc",
-    "--export=s_knownSfx",
-    "--export=stderr",
-    "--export=stdout",
-    ...undefinedFlags
-];
-*/
+
 function generateFallbackC(fileName, content) {
 
     const decoder = new TextDecoder();

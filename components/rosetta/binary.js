@@ -1379,7 +1379,7 @@ function getWasmFinalHeader(sampleBytes, content, filePath) {
                     totalTypesCount = decodeLEB128(sampleBytes, ptr).value;
                     break;
 
-                case 2: // Imports Section
+                case 2: // Imports Section (FIXED LIMITS DESERIALIZER)
                     importLength += sectionLength;
                     {
                         let sPtr = ptr;
@@ -1403,14 +1403,18 @@ function getWasmFinalHeader(sampleBytes, content, filePath) {
 
                             requestedImports.push(`${modName}.${fieldName} (${kindLabel})`);
 
-                            // Advance stream pointer based on standard type signatures
-                            if (importKind === 0x00 || importKind === 0x03) {
+                            if (importKind === 0x00) {
                                 const idxDec = decodeLEB128(sampleBytes, sPtr); sPtr += idxDec.bytes;
-                                if (importKind === 0x03) sPtr += 1; // Mutability byte
-                            } else {
+                            } else if (importKind === 0x03) {
+                                const idxDec = decodeLEB128(sampleBytes, sPtr); sPtr += idxDec.bytes;
+                                sPtr += 1; // Mutability byte
+                            } else if (importKind === 0x01 || importKind === 0x02) {
                                 if (importKind === 0x01) sPtr += 1; // Element Type
-                                const limitsDec = decodeLEB128(sampleBytes, sPtr); sPtr += limitsDec.bytes;
+                                const flags = sampleBytes[sPtr]; sPtr += 1;
                                 const initialDec = decodeLEB128(sampleBytes, sPtr); sPtr += initialDec.bytes;
+                                if ((flags & 1) === 1) {
+                                    const maxDec = decodeLEB128(sampleBytes, sPtr); sPtr += maxDec.bytes;
+                                }
                             }
                         }
                     }
@@ -1424,12 +1428,26 @@ function getWasmFinalHeader(sampleBytes, content, filePath) {
                 case 4: tableLength += sectionLength; break;
                 case 5: memoryLength += sectionLength; break;
 
-                case 6: // Global Variables Allocation
+                case 6: // Global Section (FIXED EXPRESSION PARSER)
                     globalLength += sectionLength;
-                    globalVariablesCount = decodeLEB128(sampleBytes, ptr).value;
+                    {
+                        let sPtr = ptr;
+                        const countDecode = decodeLEB128(sampleBytes, sPtr);
+                        globalVariablesCount = countDecode.value;
+                        sPtr += countDecode.bytes;
+
+                        // Safely step over initialization vector bytecode structures
+                        for (let i = 0; i < globalVariablesCount; i++) {
+                            sPtr += 2; // Step past Content Value Type and Mutability flag bytes
+                            while (sampleBytes[sPtr] !== 0x0B && sPtr < sectionEnd) {
+                                sPtr++;
+                            }
+                            sPtr += 1; // Leap past explicit 0x0B initialization termination marker
+                        }
+                    }
                     break;
 
-                case 7: // Exports Section
+                case 7: // Exports Section (STABILIZED STRUCTURAL ROUTING)
                     exportLength += sectionLength;
                     {
                         let sPtr = ptr;
@@ -1447,7 +1465,12 @@ function getWasmFinalHeader(sampleBytes, content, filePath) {
                             const idxDec = decodeLEB128(sampleBytes, sPtr); sPtr += idxDec.bytes;
 
                             const kindLabel = kind === 0 ? "Fn" : kind === 1 ? "Table" : kind === 2 ? "Mem" : "Global";
-                            exportedSymbols.push(`${expName} [Index ${idxDec.value} - ${kindLabel}]`);
+
+                            if (expName === "vmMain" || expName === "dllEntry") {
+                                exportedSymbols.push(`\x1b[33m${expName}\x1b[0m [Index ${idxDec.value} - ${kindLabel}]`);
+                            } else {
+                                exportedSymbols.push(`${expName} [Index ${idxDec.value} - ${kindLabel}]`);
+                            }
                         }
                     }
                     break;
@@ -1537,10 +1560,25 @@ function getWasmFinalHeader(sampleBytes, content, filePath) {
         }
         infoStack += `------------------------------------------------------------------------\n`;
 
-        // Exports Mapping Block
+        // Exports Mapping Block (OPTIMIZED WITH Q3 BOUNDARY CHECK)
         infoStack += `EXPORTED ACCESS SYMBOLS (PUBLIC INTERFACE HOOKS):\n`;
         if (exportedSymbols.length > 0) {
-            exportedSymbols.forEach(exp => infoStack += `  => export: ${exp}\n`);
+            const hasVmMain = exportedSymbols.some(e => e.includes("vmMain"));
+            const hasDllEntry = exportedSymbols.some(e => e.includes("dllEntry"));
+
+            infoStack += `  [ Q3 INTERFACE STATUS: vmMain -> ${hasVmMain ? "✔ FOUND" : "✘ MISSING"} | dllEntry -> ${hasDllEntry ? "✔ FOUND" : "✘ MISSING"} ]\n`;
+
+            const engineHooks = exportedSymbols.filter(e => e.includes("vmMain") || e.includes("dllEntry"));
+            const standardHooks = exportedSymbols.filter(e => !e.includes("vmMain") && !e.includes("dllEntry"));
+
+            // Put critical logic entries right at the top
+            engineHooks.forEach(exp => infoStack += `  ★ export: ${exp}\n`);
+
+            // Render a subset of standard entries so your console doesn't crawl
+            standardHooks.slice(0, 10).forEach(exp => infoStack += `  => export: ${exp}\n`);
+            if (standardHooks.length > 10) {
+                infoStack += `  ... and ${standardHooks.length - 10} other structural system interface gates.\n`;
+            }
         } else {
             infoStack += `  (Encapsulated context binary; structural access signatures hidden)\n`;
         }

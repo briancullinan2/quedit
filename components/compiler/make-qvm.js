@@ -109,6 +109,7 @@ const qvmHeaders = [
     "game/botlib.h",
 
     // --- CGame Module Interfaces ---
+    "cgame/cg_cvar.h",
     "cgame/cg_public.h",   // Engine interface for CGame
     "cgame/cg_local.h",    // CGame module internal state
     "cgame/tr_types.h",    // Renderer types shared with CGame
@@ -179,6 +180,23 @@ const QVM_CFLAGS = [
     "-Icode/q3_ui"
 ];
 
+// Base LDFLAGS shared across all modules
+const SHLIB_LDFLAGS = [
+    //"-D__WASM__=1",
+    //"--no-standard-libraries",
+    '--no-threads',
+    //"--export-dynamic",
+    //"-fvisibility", "hidden",
+    "--error-limit=200",
+    "--import-memory",
+    "--import-table",
+    '-z', `stack-size=${1024 * 1024}`,
+    '-Llib/wasm32-wasi',
+    //"--growable-table",
+    // Link against the builtins and libc.a
+    //path.join(vars.WASI_BUILTINS, "lib/wasi/libclang_rt.builtins-wasm32.a"),
+    //path.join(vars.WASISDK, "share/wasi-sysroot/lib/wasm32-wasi/libc.a")
+];
 
 let QVM_MODE = false;
 
@@ -540,7 +558,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
 
         let LDFLAGS = [
-            ...(QVM_MODE ? ['-vq3', '-r', '-m', '-v'] : baseLdFlags),
+            ...(QVM_MODE ? ['-vq3', '-r', '-m', '-v'] : SHLIB_LDFLAGS),
             "-o", qvmOutput, // (QVM_MODE ? name : qvmOutput),
             //...(QVM_MODE ? ['-f', path.join(config.BUILD_DIR, 'win32-qvm', name)] : qvmObjs),
         ]
@@ -563,10 +581,10 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
             await api.link({
                 LDFLAGS: [
                     ...LDFLAGS,
-                    ...baseLdFlags,
                     '-lm',
                     '--no-entry',
                     '--export=vmMain',
+                    '--export=dllEntry',
                     '--allow-undefined',
                     ...qvmObjs
                 ],
