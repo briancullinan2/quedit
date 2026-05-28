@@ -222,7 +222,7 @@ async function handleMouseDown(event) {
     const data = detectTerminalEvents(event, x, y);
 
     // Path Click Navigation Handler
-    if (data.filePath && !data.isFallback) {
+    if (data.filePath && !data.isFallback && event.button === 0) {
         if (typeof writeLog === 'function') {
             writeLog(`File: ${data.filePath}, Line: ${data.lineNumber}, Fallback: ${data.isFallback}`);
         }

@@ -21,14 +21,15 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
         // Only add auth if explicitly requested AND we have a token
         if (authorize && token) {
             // Using 'token ' works universally for both classic and fine-grained PATs
-            headers['Authorization'] = `Bearer ${token}`;
+            headers['Authorization'] = `Bearer  ${token}`;
         } else if (!token) {
             debugger
         }
 
         const response = await fetch(fullUrl, {
             method: 'GET',
-            cors: 'omit',
+            //mode: 'cors',
+            //credentials: 'omit',
             headers: headers
         });
 
@@ -96,7 +97,7 @@ async function githubGraphQL(query, variables = {}) {
     const response = await fetch('https://api.github.com/graphql', {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${api.github_token}`,
+            'Authorization': `Bearer  ${api.github_token}`,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({ query, variables })
@@ -581,7 +582,7 @@ async function getAuthenticatedUser() {
     try {
         const response = await fetch('https://api.github.com/user', {
             headers: {
-                'Authorization': `token ${token}`,
+                'Authorization': `Bearer ${token}`,
                 'Accept': 'application/vnd.github.v3+json'
             }
         });
@@ -626,13 +627,59 @@ async function searchGitHubRepositories(query, ownerName, repoName) {
     };
 
     if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+        headers['Authorization'] = `Bearer  ${token}`;
     }
 
-    const response = await fetch(fullUrl, { headers });
+    const response = await fetch(fullUrl, {
+        //mode: 'cors',
+        //credentials: 'omit',
+        headers
+    });
     if (!response.ok) throw new Error(`Search failed: ${response.status}`);
 
     const data = await response.json();
     return data.items; // Array of matched repository objects containing names, owners, and shas
 }
 
+
+/**
+ * Dispatches the safe GitHub global query pass
+ */
+async function searchGitHubCode(query, activeRepositories, token) {
+    // If no scopes are ready, drop out
+    if (activeRepositories.length === 0) return [];
+
+    // Use the first active repository context to scope the code query space safely
+    const primaryRepo = activeRepositories[0];
+    const queryString = `${query} repo:${primaryRepo}`;
+    const fullUrl = `https://api.github.com/search/code?q=${encodeURIComponent(queryString)}`;
+
+    const headers = {
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer  ${token}`;
+    }
+
+    try {
+        const response = await fetch(fullUrl, {
+            //mode: 'cors',
+            //credentials: 'omit',
+            headers
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+
+        return (data.items || []).map(item => ({
+            path: item.path,
+            sha: item.sha,
+            repoSource: primaryRepo,
+            matchText: `Remote Instance (Index Pointer: ${item.sha.substring(0, 7)})`,
+            isRemote: true
+        }));
+    } catch (err) {
+        console.error("Worker remote GitHub fetch aborted:", err);
+        return [];
+    }
+}

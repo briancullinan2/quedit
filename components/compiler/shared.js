@@ -1990,7 +1990,9 @@ const API = (function () {
       if (mode == 'cgame' || mode === 'qvms' || mode === 'all')
         await buildModule('cgame', dirs.CGDIR, cgameFiles, selected, ['CGAME'], mode === 'cgame', false, true);
       if (mode == 'ui' || mode === 'qvms' || mode === 'all')
-        await buildModule('ui', dirs.UIDIR, uiFiles, selected, ['UI'], mode === 'ui' || mode === 'q3_ui', false, true);
+        await buildModule('ui', dirs.UIDIR, uiFiles, selected, ['UI'], mode === 'ui', false, true);
+      if (mode == 'q3_ui' || mode === 'qvms' || mode === 'all')
+        await buildModule('q3_ui', dirs.Q3UIDIR, q3uiFiles, selected, ['UI'], mode === 'q3_ui', false, true);
 
 
     }

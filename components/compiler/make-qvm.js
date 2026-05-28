@@ -114,8 +114,15 @@ const qvmHeaders = [
     "cgame/tr_types.h",    // Renderer types shared with CGame
 
     // --- UI Module Interfaces ---
-    "ui/ui_public.h",      // Engine interface for UI
+    "q3_ui/ui_cvar.h",
     "q3_ui/ui_local.h",    // UI module internal state
+    "q3_ui/ui_public.h",      // Engine interface for UI
+    "q3_ui/keycodes.h",
+    "ui/menudef.h",
+    "ui/ui_local.h",
+    "ui/ui_cvar.h",
+    "ui/ui_public.h",
+    "ui/ui_shared.h",
     "ui/keycodes.h",
 
     // --- VM Syscall Definitions ---
@@ -156,10 +163,6 @@ const QVMLIB_CFLAGS = [
     "-fno-use-init-array",
     "-fno-threadsafe-statics",
     "-ferror-limit", "100",
-
-    "-Icode/game",
-    "-Icode/cgame",
-    "-Icode/q3_ui"
 ];
 
 
@@ -171,7 +174,7 @@ const QVM_CFLAGS = [
     //'-D__LCC__',
     //'-D__CHAR_UNSIGNED__',
     //'-U_CHAR_IS_SIGNED',
-    "-Icode/game",
+    ,
     "-Icode/cgame",
     "-Icode/q3_ui"
 ];
@@ -291,12 +294,29 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
                 writeLog(`QVMCC: ${src}`);
 
+                let DEFINE = extraDefines.map(d => `-D${d}`)
+                let vm = 'game'
+                if (src.includes('code/cgame')) {
+                    DEFINE = ['-DCGAME', "-Icode/cgame"]
+                    vm = 'cgame'
+                }
+                if (src.includes('code/q3_ui')) {
+                    DEFINE = ['-DUI', "-Icode/q3_ui"]
+                    vm = 'ui'
+                }
+                if (src.includes('code/ui')) {
+                    DEFINE = ['-DUI', "-Icode/ui"]
+                    vm = 'q3_ui'
+                }
+
+
                 let CCFLAGS = [
                     ...(QVM_MODE ? [] : QVMLIB_CFLAGS),
-                    ...QVM_CFLAGS,
+                    "-Icode/game",
                     //...(QVM_MODE ? [] : DEBUG_CFLAGS),
-                    ...extraDefines.map(d => `-D${d}`),
                 ]
+
+
 
                 if (QVM_MODE) {
 
@@ -305,7 +325,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                         tool: 'q3cpp.js.wasm',
                         args: [
                             'q3cpp', // '-v', '-v',
-                            ...QVM_CFLAGS,
+                            "-Icode/game",
                             ...extraDefines.map(d => `-D${d}`),
                             src,
                             tempPath,
@@ -340,8 +360,8 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                         args: [
                             'q3lcc', '-S', '-Wf-g',
                             '-v',
-                            ...QVM_CFLAGS,
-                            ...extraDefines.map(d => `-D${d}`),
+                            "-Icode/game",
+                            ...DEFINE,
                             src,
                             '-o', obj,
                         ],
@@ -355,6 +375,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
                         CFLAGS: [
                             ...CCFLAGS,
                             ...(src.includes('bg_lib.c') ? ['-DQ3_VM=1'] : []),
+                            ...DEFINE,
                             src,
                             '-o', obj,
                         ],
@@ -618,7 +639,7 @@ async function buildUI(database = null, forceChanged = true) {
 
 
 
-    await buildModule('ui', dirs.Q3UIDIR, uiFiles, database, ['UI'], forceChanged);
+    await buildModule('q3_ui', dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged);
 
 
 }

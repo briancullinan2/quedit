@@ -68,7 +68,7 @@ const COMMAND_SCHEMA = {
         args: [
             {
                 name: "mode",
-                type: ['release', 'debug', 'tools', 'qvms', 'client', 'engine', 'server', 'shaders', 'stringify', 'q3lcc', 'q3rcc', 'q3asm', 'lburg', 'game', 'cgame', 'ui'],
+                type: ['release', 'debug', 'tools', 'qvms', 'client', 'engine', 'server', 'shaders', 'stringify', 'q3lcc', 'q3rcc', 'q3asm', 'lburg', 'game', 'cgame', 'ui', 'q3_ui'],
                 description: "Target build execution configuration profile"
             },
             { name: "target_db", type: ARG_TYPES.DATABASE, description: "Override execution repository target" }
@@ -193,7 +193,7 @@ const COMMAND_SCHEMA = {
         args: [
             {
                 name: "mode",
-                type: ['release', 'debug', 'tools', 'qvms', 'client', 'engine', 'server', 'shaders', 'stringify', 'q3lcc', 'q3rcc', 'q3asm', 'lburg', 'game', 'cgame', 'ui'],
+                type: ['release', 'debug', 'tools', 'qvms', 'client', 'engine', 'server', 'shaders', 'stringify', 'q3lcc', 'q3rcc', 'q3asm', 'lburg', 'game', 'cgame', 'ui', 'q3_ui'],
                 description: "Target build execution configuration profile"
             },
             { name: "target_db", type: ARG_TYPES.DATABASE, description: "Override execution repository target" }
@@ -609,7 +609,8 @@ async function buildCommand(argv, database) {
 
     if (mode === 'cgame'
         || mode === 'game'
-        || mode === 'uid'
+        || mode === 'ui'
+        || mode === 'q3_ui'
         || mode === 'qvms'
     )
         selected = argv[1] || gameRepository
@@ -638,7 +639,8 @@ async function buildCommand(argv, database) {
 
     else if (mode === 'cgame'
         || mode === 'game'
-        || mode === 'uid'
+        || mode === 'ui'
+        || mode === 'q3_ui'
         || mode === 'qvms'
     )
         validMode = 'qvms'
@@ -741,9 +743,14 @@ async function buildCommand(argv, database) {
     if (TERMINATE) return
     if (mode === 'cgame' || mode === 'all' || mode === 'qvms')
         await buildModule('cgame', dirs.CGDIR, cgameFiles, mode === 'all' ? gameRepository : selected, ['CGAME'], mode === 'cgame', false, true);
+
     if (TERMINATE) return
     if (mode === 'ui' || mode === 'all' || mode === 'qvms')
-        await buildModule('ui', dirs.UIDIR, uiFiles, mode === 'all' ? gameRepository : selected, ['UI'], mode === 'ui' || mode === 'q3_ui', false, true);
+        await buildModule('ui', dirs.UIDIR, uiFiles, mode === 'all' ? gameRepository : selected, ['UI'], mode === 'ui', false, true);
+
+    if (TERMINATE) return
+    if (mode === 'q3_ui' || mode === 'all' || mode === 'qvms')
+        await buildModule('q3_ui', dirs.Q3UIDIR, q3uiFiles, mode === 'all' ? gameRepository : selected, ['UI'], mode === 'q3_ui', false, true);
 
 
 }
@@ -801,7 +808,8 @@ async function link(argv, database) {
 
     if (mode === 'cgame'
         || mode === 'game'
-        || mode === 'uid'
+        || mode === 'ui'
+        || mode === 'q3_ui'
         || mode === 'qvms'
     )
         selected = argv[1] || gameRepository
@@ -1059,12 +1067,16 @@ async function compileWorker(argv, database) {
         let DEFINE = ['-DGAME']
         let vm = 'game'
         if (file.includes('code/cgame')) {
-            DEFINE = ['-DCGAME']
+            DEFINE = ['-DCGAME', "-Icode/cgame"]
             vm = 'cgame'
         }
-        if (file.includes('code/q3_ui') || file.includes('code/ui')) {
-            DEFINE = ['-DUI']
+        if (file.includes('code/q3_ui')) {
+            DEFINE = ['-DUI', "-Icode/ui"]
             vm = 'ui'
+        }
+        if (file.includes('code/ui')) {
+            DEFINE = ['-DUI', "-Icode/q3_ui"]
+            vm = 'q3_ui'
         }
 
 
@@ -1089,7 +1101,7 @@ rm /tmp/lcc420.i
                     tool: 'q3cpp.js.wasm',
                     args: [
                         'q3cpp', // '-v', '-v',
-                        ...QVM_CFLAGS,
+                        "-Icode/game",
                         ...DEFINE,
                         srcPath,
                         tempPath,
@@ -1128,7 +1140,7 @@ rm /tmp/lcc420.i
                 tool: 'q3lcc.js.wasm',
                 args: [
                     'q3lcc', '-v', '-v', '-S', '-Wf-g',  //  '-Wf-g', '-S',
-                    ...QVM_CFLAGS,
+                    "-Icode/game",
                     ...DEFINE,
                     srcPath,
                     '-o', outPath,
@@ -1144,7 +1156,7 @@ rm /tmp/lcc420.i
                 args: [
                     'clang',
                     ...QVMLIB_CFLAGS,
-                    ...QVM_CFLAGS,
+                    "-Icode/game",
                     ...DEFINE,
                     ...(srcPath.includes('bg_lib.c') ? ['-DQ3_VM=1'] : []),
                     srcPath,
@@ -1167,7 +1179,7 @@ rm /tmp/lcc420.i
 
     return await api.compile({
         CFLAGS: [
-            ...LCC_CFLAGS, 
+            ...LCC_CFLAGS,
             ...INCLUDES,
             ...(configuration.value === 'pre' ? [
                 '-o', obj.replace('.o', '.a')
@@ -1183,6 +1195,11 @@ rm /tmp/lcc420.i
     })
 }
 async function clang(argv, database) {
+
+    let CONFIGURATION = api.configuration === 'release'
+        ? dirs.ENGINE_RELEASE
+        : dirs.ENGINE_DEBUG
+
     let file = argv[0] || currentSession()
     return await api.compile({
         CFLAGS: argv,
