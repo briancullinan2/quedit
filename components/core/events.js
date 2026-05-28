@@ -140,11 +140,11 @@ function hasChangesBuilder() {
 
 function onLoadEngine() {
     // Contextual renderer engine picker from localStorage
-    const preferredRenderer = SettingsManager.get('quake3e', 'preferredRendeer');
+    const preferredRenderer = SettingsManager.get('quake3e', 'preferredRenderer');
     if (preferredRenderer !== 'quake3e') {
         setTimeout(window.runTojiEngine, 100);
     } else {
-        if (typeof window.runEngine === 'function') window.runEngine();
+        setTimeout(window.runEngine, 100);
     }
 }
 

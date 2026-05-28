@@ -33,8 +33,8 @@ function normalizeVfsPath(path) {
 	localName = localName.replace(/\\/g, '/').replace(/\/+/g, '/');
 
 	// Strip trailing or helper roots to align with lookups
-	if (localName.startsWith('/')) localName = localName.substring(1);
-	if (localName.startsWith('base/')) localName = localName.substring(5);
+    if (!localName.startsWith('/')) localName = '/' + localName;
+    if (!localName.startsWith('/base')) localName = '/base' + localName;
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
 
@@ -84,6 +84,7 @@ function path_openNew(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base,
 	FS.filePointer++;
 	const currentFd = FS.filePointer;
 
+	debugger
 	FS.pointers[currentFd] = [
 		0, // Position seek tracking index
 		modeStr,
@@ -804,8 +805,8 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 	// 2. Resolve Full Path relative to dirfd
 	let localName = path.trim();
 	//writeLog(localName)
-	if (localName.startsWith('/')) localName = localName.substring(1);
-	if (localName.startsWith('base/')) localName = localName.substring(5);
+    if (!localName.startsWith('/')) localName = '/' + localName;
+    if (!localName.startsWith('/base')) localName = '/base' + localName;
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
 
@@ -858,6 +859,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 		if (result === 0) {
 
 			let localPointer = FS.filePointer = view.getUint32(openedFdPtr, true);
+			debugger
 			FS.pointers[localPointer] = [
 				0, // seek/tell
 				modeStr,
@@ -877,6 +879,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 		}
 		let createFP = function () {
 			FS.filePointer++
+			debugger
 			FS.pointers[FS.filePointer] = [
 				0, // seek/tell
 				modeStr,
@@ -906,8 +909,9 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 
 function _fd_close(fd) {
 	try {
-		if (fd === 0) debugger
+		//if (fd === 0) debugger
 		//if(fd < 4) debugger
+		debugger
 		if (fd < 4) {
 			if(!FS.pointers[fd]) {
 				//debugger
@@ -952,8 +956,8 @@ function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 	// 1. Normalize Path - MUST MATCH YOUR path_open LOGIC EXACTLY
 	let localName = path;
 	//writeLog(localName)
-	if (localName.startsWith('base/')) localName = localName.substring(5);
-	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
+    if (!localName.startsWith('/')) localName = '/' + localName;
+    if (!localName.startsWith('/base')) localName = '/base' + localName;
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
 	if (localName.startsWith('/')) localName = localName.substring(1);
 
@@ -1208,9 +1212,8 @@ function path_readlink(dirfd, pathPtr, pathLen, bufPtr, bufLen, nreadPtr) {
 	debugger
 	// 1. Normalize path
 	let localName = path;
-	if (localName.startsWith('/')) localName = localName.substring(1);
-	if (localName.startsWith('base/')) localName = localName.substring(5);
-	if (localName.startsWith('/')) localName = localName.substring(1);
+    if (!localName.startsWith('/')) localName = '/' + localName;
+    if (!localName.startsWith('/base')) localName = '/base' + localName;
 
 	const file = FS.virtual[localName];
 
@@ -1252,6 +1255,7 @@ function fd_renumber(fd, to) {
 	}
 
 
+	debugger
 	// 1. Validate the source descriptor
 	let stream = FS.pointers[fd];
 
@@ -1448,10 +1452,10 @@ function path_unlink_file(dirfd, pathPtr, pathLen) {
 
 	// 1. Normalize Path - Use the EXACT logic from filestat
 	let localName = path;
-	if (localName.startsWith('base/')) localName = localName.substring(5);
+    if (!localName.startsWith('/')) localName = '/' + localName;
+    if (!localName.startsWith('/base')) localName = '/base' + localName;
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
-	if (localName.startsWith('/')) localName = localName.substring(1);
 
 	const file = FS.virtual[localName];
 

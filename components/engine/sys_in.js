@@ -2,6 +2,7 @@
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024
 
 function GLimp_StartDriverAndSetMode(mode, modeFS, fullscreen, fallback) {
+
   // TODO: multiple windows like a DVR?
   //   what kind of game needs two screens for one player to switch back and forth?
   GL.canvas.setAttribute('width', GL.canvas.clientWidth)

@@ -300,12 +300,12 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
     // 6. Direct Canvas engine engine boot check
     if ((panelId === 'viewport-frame' || panelId === 'play') && !window.GL?.canvas) {
         // Read the user preference to decide if we pull down Toji's WebGL files or the native WASM engine
-        const preferredRenderer = SettingsManager.get('core', 'preferredRenderer');
+        const preferredRenderer = SettingsManager.get('quake3e', 'preferredRenderer');
 
         if (preferredRenderer !== 'quake3e') {
             await DependencyLoader.loadModule('toji');
         } else {
-            await DependencyLoader.loadModule('q3');
+            await DependencyLoader.loadModule('quake3e');
         }
     }
 

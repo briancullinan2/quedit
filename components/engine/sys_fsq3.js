@@ -300,8 +300,8 @@ function Sys_FOpen(filename, mode) {
     let localName = fileStr.trim()
 
     //writeLog(localName)
-    if (localName.startsWith('/')) localName = localName.substring(1);
-    if (localName.startsWith('base/')) localName = localName.substring(5);
+    if (!localName.startsWith('/')) localName = '/' + localName;
+    if (!localName.startsWith('/base')) localName = '/base' + localName;
     if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
     if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
 
@@ -314,12 +314,12 @@ function Sys_FOpen(filename, mode) {
             FS.virtual[localName], // internal virtual filesystem, path, contents, timestamp, mode === FS_DIR/FS_FILE, 
             localName, // file name
             FS.filePointer, // self index reference
-            api?.pid || 42
+            42
         ]
-        if (!FS.pointers[0][2].rewrite) {
-            FS.pointers[0][2].rewrite = []
-        }
-        FS.pointers[0][2].rewrite.push(FS.filePointer)
+        //if (!FS.pointers[0][2].rewrite) {
+        //    FS.pointers[0][2].rewrite = []
+        //}
+        //FS.pointers[0][2].rewrite.push(FS.filePointer)
         Sys_notify(FS.virtual[localName], localName)
         return FS.filePointer // not zero
     }
@@ -375,6 +375,7 @@ function Sys_FOpen(filename, mode) {
 
 function Sys_FTell(pointer) {
     if (typeof FS.pointers[pointer] == 'undefined') {
+        debugger
         throw new Error('File IO Error') // TODO: POSIX
     }
     return FS.pointers[pointer][0]
@@ -415,6 +416,8 @@ function Sys_FClose(pointer) {
         debugger
     }
     if (typeof FS.pointers[pointer] === 'undefined') {
+        return 0
+        debugger
         throw new Error('File IO Error') // TODO: POSIX
     }
     Sys_notify(FS.pointers[pointer][2], FS.pointers[pointer][3], FS.pointers[pointer][4])
@@ -602,8 +605,9 @@ function Sys_Mkdirp(pathname) {
 }
 
 function Sys_FRead(bufferAddress, byteSize, count, pointer) {
-    debugger
+
     if (typeof FS.pointers[pointer] == 'undefined') {
+        debugger
         throw new Error('File IO Error') // TODO: POSIX
     }
     let i = 0
@@ -745,7 +749,7 @@ function fork() {
 	if (forkToggle) {
 		return 0; // Trigger case 0: execvp()
 	} else {
-		return api?.pid || 42; // Skip to parent wait() block
+		return 42; // Skip to parent wait() block
 	}
 }
 
@@ -810,7 +814,7 @@ function wait(statusPtr) {
 	forkToggle = false;
 
 	// Return the fake PID (42) to signify the child process successfully reaped
-	return api?.pid || 42;
+	return 42;
 }
 
 

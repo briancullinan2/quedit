@@ -106,6 +106,7 @@ const IMPORT_JS = {
         '/components/engine/nipplejs.js',
         '/components/engine/sys_emgl.js',
         '/components/engine/sys_in.js',
+        '/components/engine/sys_fsq3.js',
         '/components/engine/sys_net.js',
         '/components/engine/sys_std.js',
         '/components/engine/sys_web.js',

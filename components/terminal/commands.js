@@ -1174,12 +1174,11 @@ rm /tmp/lcc420.i
     }
 
     const INCLUDES = selected === engineRepository
-        ? ["-Icode/wasm", "-Icode/qcommon", "-Icode/client", "-Icode/game"]
-        : ["-Isrc"]
+        ? [...CFLAGS, "-Icode/wasm", "-Icode/qcommon", "-Icode/client", "-Icode/game"]
+        : [...LCC_CFLAGS, "-Isrc"]
 
     return await api.compile({
         CFLAGS: [
-            ...LCC_CFLAGS,
             ...INCLUDES,
             ...(configuration.value === 'pre' ? [
                 '-o', obj.replace('.o', '.a')

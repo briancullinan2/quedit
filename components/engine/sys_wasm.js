@@ -44,12 +44,20 @@ function updateGlobalFunctions(GLOBAL) {
     let startValues = Object.values(GLOBAL)
     if (typeof window != 'undefined') {
         for (let i = 0; i < startKeys.length; i++) {
+            if (startKeys[i] === 'location') {
+                debugger
+                continue
+            }
             ENV[startKeys[i]] =
                 window[startKeys[i]] = startValues[i] //.apply(ENV.exports)
         }
         Object.assign(ENV, GLOBAL)
     } else if (typeof global != 'undefined') {
         for (let i = 0; i < startKeys.length; i++) {
+            if (startKeys[i] === 'location') {
+                debugger
+                continue
+            }
             ENV[startKeys[i]] =
                 global[startKeys[i]] = startValues[i] //.apply(ENV.exports)
         }
@@ -98,6 +106,7 @@ function updateEnvironment(program, ENV) {
     //   not to use a complex HEAP, just loop around on bytes[b % 128] and if 
     //   something isn't cleared out, crash
     // store some strings and crap
+    /*
     if (ENV.exports.stdout) {
         FS.pointers[HEAPU32[stdout >> 2]] = [
             0,
@@ -133,6 +142,7 @@ function updateEnvironment(program, ENV) {
             HEAPU32[stderr >> 2]
         ]
     }
+    */
     return program
 }
 
@@ -140,6 +150,7 @@ function updateEnvironment(program, ENV) {
 async function initEngine(program) {
     // ALL THE VARIABLES WE NEED SHOULD BE ASSIGNED TO GLOBAL BY NOW
     Module.startArgs = SYS.startArgs = getQueryCommands()
+    console.log("Starting with: " + Module.startArgs.join(' '))
     Module.environment = {
         USER: 'brian'
     }
@@ -182,7 +193,7 @@ async function runEngine(database = null, noBounce = false) {
     }
 
     if (!noBounce) {
-        runDebounce = setTimeout(() => run(database, true), 500)
+        runDebounce = setTimeout(() => runEngine(database, true), 500)
         return
     }
 
@@ -192,9 +203,8 @@ async function runEngine(database = null, noBounce = false) {
     if (!database)
         database = owner.value + '/' + repository.value
 
-    api.configuration = configuration.value === 'debug' ? 'debug' : 'release'
 
-    let CONFIGURATION = api.configuration === 'release'
+    let CONFIGURATION = configuration.value !== 'debug'
         ? dirs.ENGINE_RELEASE
         : dirs.ENGINE_DEBUG
 
@@ -248,8 +258,8 @@ async function runEngine(database = null, noBounce = false) {
             } catch (e) { }
         }
         const viewport = document.getElementById('viewport-frame')
-        GL.canvas = document.getElementsByTagName('canvas')[0]
-        GL.canvas2D = document.getElementsByTagName('canvas')[1]
+        GL.canvas = document.getElementById('viewport')
+        GL.canvas2D = document.getElementById('scratch')
         const ENGINE = initEnvironment({
             SYS: SYS,
             GL: GL,
