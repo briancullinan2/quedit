@@ -407,7 +407,6 @@ const onAnyMessage = async event => {
         if (api.memfs) {
           await api.ready
           api.memfs.mem.check()
-          debugger
           if (api.memfs.exists(filename)) {
             api.memfs.mem.check()
             const buf = api.memfs.exports.GetPathBuf()

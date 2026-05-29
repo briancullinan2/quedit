@@ -187,7 +187,7 @@ const SHLIB_LDFLAGS = [
     //"-D__WASM__=1",
     //"--no-standard-libraries",
     '--no-threads',
-    //"--export-dynamic",
+    "--export-dynamic",
     //"-fvisibility", "hidden",
     "-shared",
     "--error-limit=200",

@@ -516,6 +516,7 @@ function Sys_ListFiles(directory, extension, filter, numfiles, wantsubs) {
     //let matches = []
     // can't use utility because FS_* frees and moves stuff around
     let matches = Object.keys(FS.virtual).filter(function (key) {
+        if(!FS.virtual[key]) return false
         let subdirI = key.substring(localName.length + 1).indexOf('/')
         return (!extensionStr || key.endsWith(extensionStr)
             || (extensionStr == '/' && (FS.virtual[key].mode >> 12) === ST_DIR))

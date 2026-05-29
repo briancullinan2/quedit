@@ -45,7 +45,11 @@ function writeLog(msg, ...args) {
         api.hostWrite(formatted, source);
     }
     if (typeof originalConsole !== 'undefined') {
-        originalConsole.log(msg, source, ...args);
+        if (msg.includes('Error')) {
+            originalConsole.error(msg, source, ...args);
+        } else {
+            originalConsole.log(msg, source, ...args);
+        }
     } else {
         console.log(msg, ...args);
     }

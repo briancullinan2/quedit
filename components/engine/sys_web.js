@@ -148,7 +148,7 @@ function Sys_UnloadLibrary(namePtr) {
 // Keep track of loaded WASM modules to return distinct mock handles back to the C layer
 const loadedWasmModules = {};
 let nextModuleHandle = 0x1000; // Legacy-safe base pointer offset tracking
-function Sys_LoadLibrary(namePtr) {
+function Sys_LoadLibrary(namePtr, vmPtr) {
 	// 1. Resolve path string out of WASM memory
 	let sPtr = namePtr;
 	let filename = "";
@@ -274,13 +274,27 @@ function Sys_LoadLibrary(namePtr) {
 			instance: wasmInstance,
 			exports: wasmInstance.exports,
 			memoryBase: allocatedMemoryAddress,
-			memorySize: totalHunkRequested
+			memorySize: totalHunkRequested,
+			tableBase: allocatedTableAddress,
 		};
+		const dbOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("dataBase")) : 4;
+		const dlOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("dllHandle")) : 32;
+		const epOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("entryPoint")) : 36;
+		const maskOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("dataMask")) : 60;
+		const lenOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("dataLength")) : 64;
+		const allocOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("dataAlloc")) : 72;
 
-		//if (wasmInstance.exports) {
-		//	updateGlobalFunctions(wasmInstance.exports);
-		//}
+		const view = new DataView(ENV.memory.buffer);
 
+		// 1. Write the Core Link Vectors
+		view.setInt32(vmPtr + dbOffset, allocatedMemoryAddress, true); // vm->dataBase
+		view.setInt32(vmPtr + dlOffset, currentModuleHandle, true);     // vm->dllHandle
+		view.setInt32(vmPtr + epOffset, calculatedVmMainIndex, true);   // vm->entryPoint
+
+		// 2. Initialize Bound Masks & Allocations (Preserves raw pointer values inside VM_ArgPtr)
+		view.setUint32(vmPtr + maskOffset, 0xFFFFFFFF, true);           // vm->dataMask (~0U)
+		view.setUint32(vmPtr + lenOffset, totalHunkRequested, true);    // vm->dataLength
+		view.setUint32(vmPtr + allocOffset, 0xFFFFFFFF, true);
 		return currentHandle;
 	} catch (error) {
 		console.error(`[Sys_LoadLibrary] Instantiation failed:`, error);
@@ -288,10 +302,8 @@ function Sys_LoadLibrary(namePtr) {
 	}
 }
 
-/**
- * Asynchronously maps a requested symbol from an instantiated WASM dynamic library
- * and returns its numeric table index pointer back to the C runtime loop.
- */
+
+
 function Sys_LoadFunction(moduleHandle, functionNamePtr) {
 	let sPtr = functionNamePtr;
 	let funcName = "";
@@ -304,56 +316,139 @@ function Sys_LoadFunction(moduleHandle, functionNamePtr) {
 	}
 
 	const moduleRecord = loadedWasmModules[moduleHandle];
-	if (!moduleRecord) {
-		console.error(`[Sys_LoadFunction] Invalid tracking handle: 0x${moduleHandle.toString(16).toUpperCase()}`);
-		return 0;
-	}
+	if (!moduleRecord) return 0;
 
 	const targetExport = moduleRecord.exports[funcName];
 	if (!targetExport) {
-		console.warn(`[Sys_LoadFunction] Target export signature '${funcName}' missing inside ${moduleRecord.name}`);
+		console.warn(`[Sys_LoadFunction] Target export signature '${funcName}' was missing inside ${moduleRecord.name}`);
 		return 0;
 	}
 
-	// =========================================================================
-	// STEP 2: LOCATE THE FUNCTION'S ABSOLUTE NUMERIC TABLE INDEX
-	// =========================================================================
-	// WebAssembly side-modules compiled with PIC use a specific export element 
-	// array mapping. We can query the module's export manifest descriptors 
-	// to find the raw internal index, then offset it by the instance's active __table_base.
+	// Initialize an internal transaction cache for this module to prevent duplicate allocations
+	if (!moduleRecord.functionPointerCache) {
+		moduleRecord.functionPointerCache = {};
+	}
+	if (moduleRecord.functionPointerCache[funcName]) {
+		return moduleRecord.functionPointerCache[funcName];
+	}
+
 	let targetTableIndex = 0;
+	const masterTable = ENV.table;
+	const associatedTableBase = moduleRecord.tableBase;
 
-	// Fetch the structural binary reflections from your cached records
-	const wasmModuleInstance = moduleRecord.instance;
+	// Convert our target export to its native signature string block to bypass wrapper proxy mutations
+	const targetExportString = targetExport.toString();
 
-	// Fallback optimization: If your build toolchain outputs the function's table 
-	// index as a secondary numeric metadata property or global, we grab it directly.
-	if (typeof targetExport.index === 'number') {
-		targetTableIndex = targetExport.index;
-	} else {
-		// Trace the internal elements index manually via the module table base rules.
-		// For standard PIC modules, the functions are registered sequentially.
-		// We find the order of the function inside the module's export layout.
-		const exportedSymbols = Object.keys(wasmModuleInstance.exports);
-		const functionExportIndex = exportedSymbols.filter(x => typeof wasmModuleInstance.exports[x] === 'function').indexOf(funcName);
+	// =========================================================================
+	// PASS 1: SCAN COHERENT TABLE SLOTS WITH SIGNATURE MATCHING
+	// =========================================================================
+	// Scan up to 2048 positions inside the module's assigned hunk table block
+	for (let i = 0; i < 2048; i++) {
+		const checkIndex = associatedTableBase + i;
+		try {
+			const tableFunc = masterTable.get(checkIndex);
+			if (!tableFunc) continue;
 
-		if (functionExportIndex !== -1) {
-			// Your assigned offset boundary from your active Hunk allocation model
-			const associatedTableBase = moduleRecord.tableBase || ENV.table.length - 1024;
-			targetTableIndex = associatedTableBase + functionExportIndex;
+			// If reference equality works, or if the string signature mappings match, 
+			// we have verified the true physical underlying address.
+			if (tableFunc === targetExport || tableFunc.toString() === targetExportString) {
+				targetTableIndex = checkIndex;
+				break;
+			}
+		} catch (e) {
+			// Reached unallocated table boundaries safely
+			break;
 		}
 	}
 
+	// =========================================================================
+	// PASS 2: OBJECT FIELD COMPILER METADATA FALLBACK
+	// =========================================================================
+	if (targetTableIndex === 0 && typeof targetExport.index === 'number') {
+		targetTableIndex = targetExport.index;
+	}
+
+	// =========================================================================
+	// PASS 3: DYNAMIC RUNTIME INJECTION CAGE (GROW ON MISS)
+	// =========================================================================
+	// If the toolchain completely stripped it out of the elements table, 
+	// manually grow the table by 1 entry and hot-plug the export right here.
 	if (targetTableIndex === 0) {
-		console.error(`[Sys_LoadFunction] Failed to calculate valid table address for signature: ${funcName}`);
+		targetTableIndex = masterTable.length;
+		try {
+			masterTable.grow(1);
+			masterTable.set(targetTableIndex, targetExport);
+			console.log(`[Runtime Linker Link] Injected missing entry point '${funcName}' into Table Index: ${targetTableIndex}`);
+		} catch (error) {
+			console.error(`[Sys_LoadFunction] Failed to dynamically append function table slot for ${funcName}:`, error);
+			return 0;
+		}
+	}
+
+	// Save back to the transaction cache so subsequent lookups hit instantly
+	moduleRecord.functionPointerCache[funcName] = targetTableIndex;
+
+	console.log(`[Sys_LoadFunction] Resolved symbol '${funcName}' to numeric function pointer: ${targetTableIndex} (0x${targetTableIndex.toString(16).toUpperCase()})`);
+	return targetTableIndex;
+}
+
+/*
+function Sys_LoadFunction(moduleHandle, functionNamePtr) {
+	let sPtr = functionNamePtr;
+	let funcName = "";
+	const memoryView = new Uint8Array(ENV.memory.buffer);
+    
+	while (memoryView[sPtr] !== 0) {
+		funcName += String.fromCharCode(memoryView[sPtr]);
+		sPtr++;
+	}
+
+	const moduleRecord = loadedWasmModules[moduleHandle];
+	if (!moduleRecord) return 0;
+
+	const targetExport = moduleRecord.exports[funcName];
+	if (!targetExport) {
+		console.warn(`[Sys_LoadFunction] Symbol '${funcName}' not found in exports.`);
 		return 0;
 	}
 
-	console.log(`[Sys_LoadFunction] Resolved symbol '${funcName}' to numeric function pointer: ${targetTableIndex} (0x${targetTableIndex.toString(16).toUpperCase()})`);
+	// =========================================================================
+	// PARSING THE NATIVE WASM ELEMENT OFFSET
+	// =========================================================================
+	// To completely bypass JS wrapper opacity, we look at the order of the 
+	// exported function names. Standard LLVM side-modules append their functions 
+	// to the table segment in the precise order they appear in the export table definition list.
+	let targetTableIndex = 0;
+	const associatedTableBase = moduleRecord.tableBase;
+	//const associatedTableBase = moduleRecord.tableBase || ENV.table.length - 1024;
 
-	// Return the raw number! The WebAssembly layer maps this integer directly to *entryPoint.
+	// Get a clean list of all exported function signatures
+	const exportedSymbols = Object.keys(moduleRecord.exports);
+	const functionSymbols = exportedSymbols.filter(x => typeof moduleRecord.exports[x] === 'function');
+    
+	debugger
+	// Find where this function sits in the ordered export list
+	const exportPositionIndex = functionSymbols.indexOf(funcName);
+
+	if (exportPositionIndex !== -1) {
+		// Calculate the real index based on the dynamic table base your hunk allocated
+		targetTableIndex = associatedTableBase + exportPositionIndex;
+	}
+
+	// Double-check verification check: ensure the table slot isn't empty
+	try {
+		const verifiedSlot = ENV.table.get(targetTableIndex);
+		if (!verifiedSlot) {
+			console.warn(`[Sys_LoadFunction] Table slot ${targetTableIndex} is unpopulated.`);
+		}
+	} catch (e) {
+		console.error(`[Sys_LoadFunction] Out of bounds table access at index: ${targetTableIndex}`);
+	}
+
+	console.log(`[Sys_LoadFunction] Resolved symbol '${funcName}' via Export Map to index: ${targetTableIndex}`);
 	return targetTableIndex;
 }
+*/
 
 let messageTime = Date.now()
 function Sys_Print(message) {

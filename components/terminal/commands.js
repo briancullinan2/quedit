@@ -583,11 +583,13 @@ async function handleCommand(input) {
         terminalWrite(`Command not found: ${commandName}\n\r`);
     }
 
+    triggerIncrementalSave();
+
     // TODO: undetach the console by reporting "done" from the worker
     if (!window.detachedConsole) {
         window.runningCommand = false;
+        writePrompt()
     }
-    triggerIncrementalSave();
 
 }
 

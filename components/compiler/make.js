@@ -406,7 +406,7 @@ const emscriptenJsFlags = [
 
 // Symbols to export to the JS environment
 const exportFlags = [
-    "__stack_pointer", "sprintf", "malloc", "free", "stderr", "stdout", "errno", "_start",
+    "__stack_pointer", "Get_VM_Offset", "sprintf", "malloc", "free", "stderr", "stdout", "errno", "_start",
     "FS_CreatePath", "R_FindPalette", "Key_ClearStates", "Key_GetCatcher",
     "Key_SetCatcher", "CL_PacketEvent", "s_soundStarted", "s_soundMuted",
     "s_knownSfx", "dma", "S_SoundInfo", "Cbuf_ExecuteText", "Cbuf_AddText",
