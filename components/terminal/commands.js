@@ -857,6 +857,54 @@ async function buildCommand(argv, database) {
 async function remove(argv, database) {
     const databases = [database, engineRepository, assetRepository, gameRepository, toolsRepository, tools2Repository]
     const filename = argv[0]
+
+    const queryTarget = argv.join(' ');
+    const caseSensitiveActive = argv.includes('-c');
+    const cleanQuery = queryTarget.replace(/-c\s*/g, '').trim();
+
+
+    // Synchronize your search status tracking states so that fallback mirrors stay coherent
+    latestQueryVal = cleanQuery;
+    lastExecutedQueryVal = cleanQuery;
+
+    // Set up our execution promise callback resolver right before dispatching messages
+    const searchPromise = new Promise((resolve, reject) => {
+        terminalCommandDeferred = { resolve, reject };
+
+        // Safety timeout watchdog to prevent terminal lockups if background threads hang
+        setTimeout(() => {
+            if (terminalCommandDeferred) {
+                resolve([]);
+                terminalCommandDeferred = null;
+            }
+        }, 8000);
+    });
+
+    // Fire payload directly down to your background indexing threads
+    searchWorker.postMessage({
+        query: cleanQuery,
+        caseSensitive: caseSensitiveActive,
+        gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
+        activeRepositories: [
+            window.engineRepository,
+            window.gameRepository,
+            window.assetRepository,
+            window.toolsRepository,
+            window.tools2Repository
+        ].filter(Boolean)
+    });
+
+    const groupedMatches = await searchPromise;
+    const rx = globToRegex(filename);
+
+
+    await Promise.all(groupedMatches.map(async group => {
+        if (rx.test(group.path)) {
+            terminalWrite(`Removing ${group.path} on ${group.repo}\n\r`);
+            await deleteRecord(DB_STORE_NAME, group.path, group.repo)
+        }
+    }))
+
     for (let db of databases) {
         try {
             if (!db) continue

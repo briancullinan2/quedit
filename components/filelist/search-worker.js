@@ -87,6 +87,7 @@ self.onmessage = async function (e) {
                 repoSource: file.repoSource,
                 line: 1,
                 matchText: `[Filename Match] ${file.path}`,
+                filename: true,
                 isDirty: !!self.FS?.virtual?.[file.path] // Check against tracking state
             });
         }
