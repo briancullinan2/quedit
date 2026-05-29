@@ -395,12 +395,11 @@ async function readPreFS() {
 
     let [_, selected, dbFile] = await findFileTestPath('build/release-wasm-js/baseq3a/q3_ui.wasm')
     if (dbFile) {
-        debugger
         FS.virtual['/base/' + MODNAME + '/uijs.wasm'] = {
             timestamp: new Date(),
             mode: FS_FILE,
             contents: dbFile.contents,
-            path: nameStr,
+            path: '/base/' + MODNAME + '/uijs.wasm',
             parent: '/base/' + MODNAME
         }
     }

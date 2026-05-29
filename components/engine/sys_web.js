@@ -234,7 +234,7 @@ function Sys_LoadLibrary(namePtr) {
 	// Grow the engine table cushion block space for incoming pointers
 	ENV.table.grow(1024);
 
-	console.log(`[Hunk Mimic] Allocated memory for ${visualFileName}:`);
+	console.log(`[Hunk Mimic] Allocated memory for ${wasmFileRecord.path}:`);
 	console.log(`  -> __memory_base = 0x${allocatedMemoryAddress.toString(16).toUpperCase()} (${totalHunkRequested} bytes on Hunk)`);
 	console.log(`  -> __table_base  = ${allocatedTableAddress}`);
 
@@ -242,7 +242,14 @@ function Sys_LoadLibrary(namePtr) {
 	// STEP 4: INSTANTIATE POSITION INDEPENDENT MODULE
 	// =========================================================================
 	const sideModuleEnv = {};
-	Object.assign(sideModuleEnv, ENV);
+	//Object.assign(sideModuleEnv, ENV);
+	if (ENV.exports && ENV.exports.__stack_pointer) {
+		sideModuleEnv.__stack_pointer = ENV.exports.__stack_pointer;
+	} else if (!(ENV.__stack_pointer instanceof WebAssembly.Global)) {
+		// Fallback allocation cage if the upstream pipeline didn't provide one
+		ENV.__stack_pointer = new WebAssembly.Global({ value: 'i32', mutable: true }, 1024 * 64);
+		sideModuleEnv.__stack_pointer = ENV.__stack_pointer;
+	}
 
 	sideModuleEnv.memory = ENV.memory;
 	sideModuleEnv.__indirect_function_table = ENV.table;
@@ -250,6 +257,10 @@ function Sys_LoadLibrary(namePtr) {
 	// Feed the dynamic allocations directly to the PIC compiler fields
 	sideModuleEnv.__memory_base = allocatedMemoryAddress;
 	sideModuleEnv.__table_base = allocatedTableAddress;
+
+	sideModuleEnv.sin = Math.sin
+	sideModuleEnv.atan2 = Math.atan2
+	sideModuleEnv.cos = Math.cos
 
 	sideModuleEnv.env = sideModuleEnv.wasi_snapshot_preview1 = sideModuleEnv.wasi_unstable = sideModuleEnv;
 
@@ -266,9 +277,9 @@ function Sys_LoadLibrary(namePtr) {
 			memorySize: totalHunkRequested
 		};
 
-		if (wasmInstance.exports) {
-			updateGlobalFunctions(wasmInstance.exports);
-		}
+		//if (wasmInstance.exports) {
+		//	updateGlobalFunctions(wasmInstance.exports);
+		//}
 
 		return currentHandle;
 	} catch (error) {
@@ -278,14 +289,15 @@ function Sys_LoadLibrary(namePtr) {
 }
 
 /**
- * Complementary hook helper to mock Sys_LoadFunction.
- * When the C code calls Sys_LoadFunction(libHandle, "vmMain"), this resolves it.
+ * Asynchronously maps a requested symbol from an instantiated WASM dynamic library
+ * and returns its numeric table index pointer back to the C runtime loop.
  */
 function Sys_LoadFunction(moduleHandle, functionNamePtr) {
 	let sPtr = functionNamePtr;
 	let funcName = "";
-	debugger
 	const memoryView = new Uint8Array(ENV.memory.buffer);
+
+	// 1. Read the null-terminated function name string out of C memory
 	while (memoryView[sPtr] !== 0) {
 		funcName += String.fromCharCode(memoryView[sPtr]);
 		sPtr++;
@@ -293,21 +305,55 @@ function Sys_LoadFunction(moduleHandle, functionNamePtr) {
 
 	const moduleRecord = loadedWasmModules[moduleHandle];
 	if (!moduleRecord) {
-		console.error(`[Sys_LoadFunction] Invalid or unmapped tracking handle requested: 0x${moduleHandle.toString(16).toUpperCase()}`);
+		console.error(`[Sys_LoadFunction] Invalid tracking handle: 0x${moduleHandle.toString(16).toUpperCase()}`);
 		return 0;
 	}
 
 	const targetExport = moduleRecord.exports[funcName];
 	if (!targetExport) {
-		console.warn(`[Sys_LoadFunction] Target export signature '${funcName}' was missing inside ${moduleRecord.name}`);
+		console.warn(`[Sys_LoadFunction] Target export signature '${funcName}' missing inside ${moduleRecord.name}`);
 		return 0;
 	}
 
-	// WebAssembly functions exposed natively can be passed back via the indirect function table map.
-	// If your loader pipeline leverages direct mapping table arrays, we return the internal target here.
-	return targetExport;
-}
+	// =========================================================================
+	// STEP 2: LOCATE THE FUNCTION'S ABSOLUTE NUMERIC TABLE INDEX
+	// =========================================================================
+	// WebAssembly side-modules compiled with PIC use a specific export element 
+	// array mapping. We can query the module's export manifest descriptors 
+	// to find the raw internal index, then offset it by the instance's active __table_base.
+	let targetTableIndex = 0;
 
+	// Fetch the structural binary reflections from your cached records
+	const wasmModuleInstance = moduleRecord.instance;
+
+	// Fallback optimization: If your build toolchain outputs the function's table 
+	// index as a secondary numeric metadata property or global, we grab it directly.
+	if (typeof targetExport.index === 'number') {
+		targetTableIndex = targetExport.index;
+	} else {
+		// Trace the internal elements index manually via the module table base rules.
+		// For standard PIC modules, the functions are registered sequentially.
+		// We find the order of the function inside the module's export layout.
+		const exportedSymbols = Object.keys(wasmModuleInstance.exports);
+		const functionExportIndex = exportedSymbols.filter(x => typeof wasmModuleInstance.exports[x] === 'function').indexOf(funcName);
+
+		if (functionExportIndex !== -1) {
+			// Your assigned offset boundary from your active Hunk allocation model
+			const associatedTableBase = moduleRecord.tableBase || ENV.table.length - 1024;
+			targetTableIndex = associatedTableBase + functionExportIndex;
+		}
+	}
+
+	if (targetTableIndex === 0) {
+		console.error(`[Sys_LoadFunction] Failed to calculate valid table address for signature: ${funcName}`);
+		return 0;
+	}
+
+	console.log(`[Sys_LoadFunction] Resolved symbol '${funcName}' to numeric function pointer: ${targetTableIndex} (0x${targetTableIndex.toString(16).toUpperCase()})`);
+
+	// Return the raw number! The WebAssembly layer maps this integer directly to *entryPoint.
+	return targetTableIndex;
+}
 
 let messageTime = Date.now()
 function Sys_Print(message) {
