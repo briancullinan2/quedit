@@ -393,4 +393,15 @@ async function readPreFS() {
     putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repository.value)
 
 
+    let [_, selected, dbFile] = await findFileTestPath('build/release-wasm-js/baseq3a/q3_ui.wasm')
+    if (dbFile) {
+        debugger
+        FS.virtual['/base/' + MODNAME + '/uijs.wasm'] = {
+            timestamp: new Date(),
+            mode: FS_FILE,
+            contents: dbFile.contents,
+            path: nameStr,
+            parent: '/base/' + MODNAME
+        }
+    }
 }

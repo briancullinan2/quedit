@@ -73,115 +73,115 @@ const QUAKE3_FS = {
 
     // --- Extensions / Internal ---
     mkdirp: Sys_Mkdirp,
-	fork: fork,
-	wait: wait,
-	execv: execv,
-	_spawnvp: _spawnvp,
+    fork: fork,
+    wait: wait,
+    execv: execv,
+    _spawnvp: _spawnvp,
 }
 
 function Sys_StreamChecked(fd) {
-	debugger
-	// 1. Check if the file descriptor is within a valid range
-	// In your library, FS.pointers or a similar mapping tracks open files
-	let stream = FS.pointers[fd];
+    debugger
+    // 1. Check if the file descriptor is within a valid range
+    // In your library, FS.pointers or a similar mapping tracks open files
+    let stream = FS.pointers[fd];
 
-	if (!stream) {
-		// Return a standard POSIX EBADF (Bad File Descriptor) error
-		// WASI_EBADF is usually 8
-		throw new Error('ENOENT')
-	}
+    if (!stream) {
+        // Return a standard POSIX EBADF (Bad File Descriptor) error
+        // WASI_EBADF is usually 8
+        throw new Error('ENOENT')
+    }
 
-	return stream;
+    return stream;
 };
 
 function Sys_gettime(clk_id, precision, tp) {
-	// If the engine passes 3 args, 'tp' is the third argument slot (index 2)
-	// If an older tool pass only sent 2 args, fallback gracefully to the second slot
-	const tpAddr = arguments.length === 3 ? Number(tp) : Number(precision);
-	const id = Number(clk_id);
+    // If the engine passes 3 args, 'tp' is the third argument slot (index 2)
+    // If an older tool pass only sent 2 args, fallback gracefully to the second slot
+    const tpAddr = arguments.length === 3 ? Number(tp) : Number(precision);
+    const id = Number(clk_id);
 
-	let now;
-	if (id === 0) { // CLOCK_REALTIME
-		now = Date.now(); // Milliseconds since epoch
-	} else { // CLOCK_MONOTONIC / CLOCK_THREAD_CPUTIME_ID etc.
-		now = performance.now();
-	}
+    let now;
+    if (id === 0) { // CLOCK_REALTIME
+        now = Date.now(); // Milliseconds since epoch
+    } else { // CLOCK_MONOTONIC / CLOCK_THREAD_CPUTIME_ID etc.
+        now = performance.now();
+    }
 
-	// WASI standard: timestamp must be written as total nanoseconds since epoch/boot
-	// 1 millisecond = 1,000,000 nanoseconds
-	const totalNanoseconds = BigInt(Math.floor(now * 1e6));
+    // WASI standard: timestamp must be written as total nanoseconds since epoch/boot
+    // 1 millisecond = 1,000,000 nanoseconds
+    const totalNanoseconds = BigInt(Math.floor(now * 1e6));
 
-	// Write the 64-bit (8-byte) integer directly to the WebAssembly memory view
-	try {
-		const view = new DataView(Module.memory.buffer);
-		view.setBigUint64(tpAddr, totalNanoseconds, true); // true = Little Endian
-	} catch (err) {
-		// Fallback in case memory.buffer isn't immediately exposed on 'Module'
-		const heapView = new DataView(HEAPU8.buffer);
-		heapView.setBigUint64(tpAddr, totalNanoseconds, true);
-	}
+    // Write the 64-bit (8-byte) integer directly to the WebAssembly memory view
+    try {
+        const view = new DataView(Module.memory.buffer);
+        view.setBigUint64(tpAddr, totalNanoseconds, true); // true = Little Endian
+    } catch (err) {
+        // Fallback in case memory.buffer isn't immediately exposed on 'Module'
+        const heapView = new DataView(HEAPU8.buffer);
+        heapView.setBigUint64(tpAddr, totalNanoseconds, true);
+    }
 
-	return 0; // Success
+    return 0; // Success
 }
 
 function Sys_filestat_get(fd, bufPtr) {
 
 
-	let stream = FS.pointers[fd];
-	debugger
+    let stream = FS.pointers[fd];
+    debugger
 
-	if (!stream) return 8; // WASI_EBADF
-	if (stream[2].rewrite) {
-		stream = FS.pointers[stream[2].rewrite]
-	}
+    if (!stream) return 8; // WASI_EBADF
+    if (stream[2].rewrite) {
+        stream = FS.pointers[stream[2].rewrite]
+    }
 
-	//writeLog(stream[3])
+    //writeLog(stream[3])
 
-	const view = new DataView(Module.memory.buffer);
+    const view = new DataView(Module.memory.buffer);
 
-	// Clear 64 bytes
-	for (let i = 0; i < 64; i++) view.setUint8(bufPtr + i, 0);
+    // Clear 64 bytes
+    for (let i = 0; i < 64; i++) view.setUint8(bufPtr + i, 0);
 
-	// 1. Resolve Metadata from your FS.virtual layout
-	// stream[2] appears to be your 'node' containing the mode/size
-	const node = stream[2] || { mode: FS_FILE, contents: new Uint8Array(0) };
-	const modeType = node.mode >> 12;
+    // 1. Resolve Metadata from your FS.virtual layout
+    // stream[2] appears to be your 'node' containing the mode/size
+    const node = stream[2] || { mode: FS_FILE, contents: new Uint8Array(0) };
+    const modeType = node.mode >> 12;
 
-	// Map your ST_DIR/ST_FILE to WASI types
-	let type = 8; // regular_file
-	if (fd <= 3) {
-		type = (fd === 3) ? 4 : 3; // 4=dir, 3=char_device
-	} else if (modeType === ST_DIR) {
-		type = 4;
-	}
+    // Map your ST_DIR/ST_FILE to WASI types
+    let type = 8; // regular_file
+    if (fd <= 3) {
+        type = (fd === 3) ? 4 : 3; // 4=dir, 3=char_device
+    } else if (modeType === ST_DIR) {
+        type = 4;
+    }
 
-	// 2. Populate the Buffer
-	// Device and Inode (using 1 as placeholders)
-	view.setUint32(bufPtr + 0, 1, true);
-	view.setUint32(bufPtr + 8, fd, true); // Using FD as inode for simplicity
+    // 2. Populate the Buffer
+    // Device and Inode (using 1 as placeholders)
+    view.setUint32(bufPtr + 0, 1, true);
+    view.setUint32(bufPtr + 8, fd, true); // Using FD as inode for simplicity
 
-	// Filetype (Offset 16)
-	view.setUint8(bufPtr + 16, type);
+    // Filetype (Offset 16)
+    view.setUint8(bufPtr + 16, type);
 
-	// nlink (Offset 24)
-	view.setUint32(bufPtr + 24, 1, true);
+    // nlink (Offset 24)
+    view.setUint32(bufPtr + 24, 1, true);
 
-	// Size (Offset 32) - 64-bit
-	const size = node.contents.length || 0;
-	view.setUint32(bufPtr + 32, size, true);
-	view.setUint32(bufPtr + 36, 0, true);
+    // Size (Offset 32) - 64-bit
+    const size = node.contents.length || 0;
+    view.setUint32(bufPtr + 32, size, true);
+    view.setUint32(bufPtr + 36, 0, true);
 
-	// Timestamps (Offset 40, 48, 56)
-	// WASI expects nanoseconds. Convert JS ms to ns.
-	const nowNsLow = (Date.now() * 1000000) >>> 0;
-	const nowNsHigh = Math.floor((Date.now() * 1000000) / 0x100000000);
+    // Timestamps (Offset 40, 48, 56)
+    // WASI expects nanoseconds. Convert JS ms to ns.
+    const nowNsLow = (Date.now() * 1000000) >>> 0;
+    const nowNsHigh = Math.floor((Date.now() * 1000000) / 0x100000000);
 
-	for (let offset of [40, 48, 56]) {
-		view.setUint32(bufPtr + offset, nowNsLow, true);
-		view.setUint32(bufPtr + offset + 4, nowNsHigh, true);
-	}
+    for (let offset of [40, 48, 56]) {
+        view.setUint32(bufPtr + offset, nowNsLow, true);
+        view.setUint32(bufPtr + offset + 4, nowNsHigh, true);
+    }
 
-	return 0; // WASI_ESUCCESS
+    return 0; // WASI_ESUCCESS
 }
 /**
  * WASI fd_seek(fd, offset_low, offset_high, whence, new_offset_ptr)
@@ -189,49 +189,49 @@ function Sys_filestat_get(fd, bufPtr) {
  */
 function fd_seek(fd, offset, whence, newOffsetPtr) {
 
-	let stream = FS.pointers[fd];
-	if (!stream) return 8; // WASI_EBADF
-	if (!stream[2]) {
-		debugger
+    let stream = FS.pointers[fd];
+    if (!stream) return 8; // WASI_EBADF
+    if (!stream[2]) {
+        debugger
 
-	}
-	if (stream[2].rewrite && stream[2].rewrite.length > 0) {
-		stream = FS.pointers[stream[2].rewrite[stream[2].rewrite.length - 1]]
-	}
-	//writeLog(stream[3])
+    }
+    if (stream[2].rewrite && stream[2].rewrite.length > 0) {
+        stream = FS.pointers[stream[2].rewrite[stream[2].rewrite.length - 1]]
+    }
+    //writeLog(stream[3])
 
-	// 1. Force everything to BigInt for consistent 64-bit math
-	let bigOffset = BigInt(offset);
-	let currentPos = BigInt(stream[0]);
-	let fileSize = BigInt(stream[2].contents.length);
+    // 1. Force everything to BigInt for consistent 64-bit math
+    let bigOffset = BigInt(offset);
+    let currentPos = BigInt(stream[0]);
+    let fileSize = BigInt(stream[2].contents.length);
 
-	let newPos;
+    let newPos;
 
-	switch (whence) {
-		case 0: // SET
-			newPos = bigOffset;
-			break;
-		case 1: // CUR
-			newPos = currentPos + bigOffset;
-			break;
-		case 2: // END
-			newPos = fileSize + bigOffset;
-			break;
-		default:
-			return 28; // WASI_EINVAL
-	}
+    switch (whence) {
+        case 0: // SET
+            newPos = bigOffset;
+            break;
+        case 1: // CUR
+            newPos = currentPos + bigOffset;
+            break;
+        case 2: // END
+            newPos = fileSize + bigOffset;
+            break;
+        default:
+            return 28; // WASI_EINVAL
+    }
 
-	if (newPos < 0n) return 28; // WASI_EINVAL (can't seek before start)
+    if (newPos < 0n) return 28; // WASI_EINVAL (can't seek before start)
 
-	// 2. Update the internal pointer (back to Number if your FS expects it)
-	stream[0] = Number(newPos);
+    // 2. Update the internal pointer (back to Number if your FS expects it)
+    stream[0] = Number(newPos);
 
-	// 3. Write the result back to memory (64-bit)
-	const view = new DataView(Module.memory.buffer);
-	view.setUint32(newOffsetPtr, Number(newPos & 0xFFFFFFFFn), true);
-	view.setUint32(newOffsetPtr + 4, Number(newPos >> 32n), true);
+    // 3. Write the result back to memory (64-bit)
+    const view = new DataView(Module.memory.buffer);
+    view.setUint32(newOffsetPtr, Number(newPos & 0xFFFFFFFFn), true);
+    view.setUint32(newOffsetPtr + 4, Number(newPos >> 32n), true);
 
-	return 0; // WASI_ESUCCESS
+    return 0; // WASI_ESUCCESS
 }
 
 
@@ -349,8 +349,16 @@ function Sys_FOpen(filename, mode) {
             return createFP()
         } else if (typeof FS_GetCurrentGameDir != 'undefined') {
             let gamedir = addressToString(FS_GetCurrentGameDir())
-            if (localName.startsWith(gamedir + '/'))
+            if (localName.startsWith('/base'))
+                localName = localName.substring(5)
+            if (localName.startsWith('/home'))
+                localName = localName.substring(5)
+            if (localName.startsWith('/' + gamedir))
                 localName = localName.substring(gamedir.length + 1)
+            if (localName.startsWith('/pak0.pk3dir'))
+                localName = localName.substring('/pak0.pk3dir'.length)
+            if (localName.startsWith('/'))
+                localName = localName.substring(1)
 
             // TODO: if MD3/IQM try to load remotely
             if (typeof REMOTE_MODELS[localName] == 'undefined'
@@ -360,7 +368,7 @@ function Sys_FOpen(filename, mode) {
                 REMOTE_MODELS[localName.replace(extName, '')] = REMOTE_MODELS[localName] = true
 
                 let remoteFile = 'pak0.pk3dir/' + localName
-                Promise.resolve(Com_DL_Begin(gamedir + '/' + remoteFile, '/' + gamedir + '/' + remoteFile + '?alt')
+                Promise.resolve(Com_DL_Begin(gamedir + '/' + remoteFile, 'https://quake.games/' + gamedir + '/' + remoteFile + '?alt')
                     .then(function (responseData) {
                         Com_DL_Perform(gamedir + '/' + remoteFile, remoteFile, responseData)
                         Cvar_Set(stringToAddress('ui_breadCrumb'), stringToAddress(localName))
@@ -742,85 +750,85 @@ function Sys_feof(fp) {
 }
 
 function fork() {
-	// Alternating state machine behavior:
-	// First call inside _spawnvp returns 0 (Run the Child code block)
-	// Second call inside _spawnvp returns 42 (Run the Parent code block)
-	forkToggle = !forkToggle;
-	if (forkToggle) {
-		return 0; // Trigger case 0: execvp()
-	} else {
-		return 42; // Skip to parent wait() block
-	}
+    // Alternating state machine behavior:
+    // First call inside _spawnvp returns 0 (Run the Child code block)
+    // Second call inside _spawnvp returns 42 (Run the Parent code block)
+    forkToggle = !forkToggle;
+    if (forkToggle) {
+        return 0; // Trigger case 0: execvp()
+    } else {
+        return 42; // Skip to parent wait() block
+    }
 }
 
 function execv(pathPtr, argvPtr) {
-	const u8 = new Uint8Array(Module.memory.buffer);
-	const path = readStr(u8, pathPtr);
-	const cmdArgs = getStringsFromArgv(argvPtr);
-	const targetKey = path || cmdArgs[0];
+    const u8 = new Uint8Array(Module.memory.buffer);
+    const path = readStr(u8, pathPtr);
+    const cmdArgs = getStringsFromArgv(argvPtr);
+    const targetKey = path || cmdArgs[0];
 
-	if (api && api.moduleCache[targetKey]) {
-		// 1. Run the target compiler module synchronously RIGHT NOW
-		let result = api.runSync(targetKey, ...cmdArgs);
-		writeLog('Process resulted in: ' + result);
+    if (api && api.moduleCache[targetKey]) {
+        // 1. Run the target compiler module synchronously RIGHT NOW
+        let result = api.runSync(targetKey, ...cmdArgs);
+        writeLog('Process resulted in: ' + result);
 
-		// 2. Save the real exit code in our global virtual tracking state
-		virtualChildExitCode = result;
+        // 2. Save the real exit code in our global virtual tracking state
+        virtualChildExitCode = result;
 
-		// 3. FORCE a loop mutation: We recall _spawnvp dynamically to trigger the parent pass
-		// This forces fork() to toggle and return 42 next, skipping straight to wait()
-		Module.exports._spawnvp(0, pathPtr, argvPtr);
+        // 3. FORCE a loop mutation: We recall _spawnvp dynamically to trigger the parent pass
+        // This forces fork() to toggle and return 42 next, skipping straight to wait()
+        Module.exports._spawnvp(0, pathPtr, argvPtr);
 
-		// 4. Clean exit from the child fork branch
-		return 0;
-	}
-	else {
-		writeLog('Would have run: ' + [path, ...cmdArgs].join(' '));
-		Module.errno = 1; // EPERM / EINVAL
-		return -1;
-	}
+        // 4. Clean exit from the child fork branch
+        return 0;
+    }
+    else {
+        writeLog('Would have run: ' + [path, ...cmdArgs].join(' '));
+        Module.errno = 1; // EPERM / EINVAL
+        return -1;
+    }
 }
 
 
 
 function _spawnvp(mode, cmdnamePtr, argvPtr) {
-	const u8 = new Uint8Array(Module.memory.buffer);
-	const path = readStr(u8, cmdnamePtr);
-	try {
-		const cmdArgs = getStringsFromArgv(argvPtr)
-		const targetKey = path || cmdArgs[0];
+    const u8 = new Uint8Array(Module.memory.buffer);
+    const path = readStr(u8, cmdnamePtr);
+    try {
+        const cmdArgs = getStringsFromArgv(argvPtr)
+        const targetKey = path || cmdArgs[0];
 
-		// Await the execution of the WASM tool
-		let result = api.runSync(targetKey, ...cmdArgs);
-		writeLog('Process resulted in: ' + result);
+        // Await the execution of the WASM tool
+        let result = api.runSync(targetKey, ...cmdArgs);
+        writeLog('Process resulted in: ' + result);
 
-		return result;
-	} catch (e) {
-		console.error(`Execution failed for ${path}:`, e);
-		return 100; // Standard error exit for LCC
-	}
+        return result;
+    } catch (e) {
+        console.error(`Execution failed for ${path}:`, e);
+        return 100; // Standard error exit for LCC
+    }
 }
 
 
 function wait(statusPtr) {
-	// If a status memory pointer was passed by C, write our captured child status into it
-	// C expects the exit code to be shifted left by 8 bits: (status >> 8) & 0377
-	if (statusPtr && Module.memory) {
-		const view = new DataView(Module.memory.buffer);
-		view.setInt32(Number(statusPtr), (virtualChildExitCode << 8), true);
-	}
+    // If a status memory pointer was passed by C, write our captured child status into it
+    // C expects the exit code to be shifted left by 8 bits: (status >> 8) & 0377
+    if (statusPtr && Module.memory) {
+        const view = new DataView(Module.memory.buffer);
+        view.setInt32(Number(statusPtr), (virtualChildExitCode << 8), true);
+    }
 
-	// Reset our fork toggle tracking flag for the next compilation pass command
-	forkToggle = false;
+    // Reset our fork toggle tracking flag for the next compilation pass command
+    forkToggle = false;
 
-	// Return the fake PID (42) to signify the child process successfully reaped
-	return 42;
+    // Return the fake PID (42) to signify the child process successfully reaped
+    return 42;
 }
 
 
 Object.assign(FS, QUAKE3_FS)
 
 if (typeof module != 'undefined') {
-	// SOMETHING SOMETHING fs.writeFile
-	module.exports = FS
+    // SOMETHING SOMETHING fs.writeFile
+    module.exports = FS
 }

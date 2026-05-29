@@ -110,7 +110,6 @@ CL_Download
 CL_MenuModified
 Com_MaxFPSChanged
 Sys_SetStatus
-Sys_UnloadLibrary
 Sys_Remove
 Sys_Rename
 Sys_Mkdir
@@ -119,6 +118,7 @@ Sys_Offline
 Sys_Error
 Sys_Exit
 Sys_Print
+Sys_UnloadLibrary
 Sys_LoadLibrary
 Sys_LoadFunction
 FS_FOpenFileWriteAsync

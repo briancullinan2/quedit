@@ -57,6 +57,10 @@ function getQueryCommands() {
 		//'+set', 'r_deluxeMapping', '0',
 		//'+set', 'r_normalMapping', '0',
 		//'+set', 'r_specularMapping', '0',
+		'+set', 'fs_restrict', '0',
+		'+set', 'vm_ui', '0',
+		'+set', 'vm_game', '0',
+		'+set', 'vm_cgame', '0',
 	]
 	startup.push.apply(startup, window.preStart)
 	// TODO: full screen by default? I suppose someone might 
@@ -138,16 +142,170 @@ function getQueryCommands() {
 }
 
 
-function Sys_UnloadLibrary() {
+function Sys_UnloadLibrary(namePtr) {
+	debugger
+}
+// Keep track of loaded WASM modules to return distinct mock handles back to the C layer
+const loadedWasmModules = {};
+let nextModuleHandle = 0x1000; // Legacy-safe base pointer offset tracking
+function Sys_LoadLibrary(namePtr) {
+	// 1. Resolve path string out of WASM memory
+	let sPtr = namePtr;
+	let filename = "";
+	const memoryView = new Uint8Array(ENV.memory.buffer);
+	while (memoryView[sPtr] !== 0) {
+		filename += String.fromCharCode(memoryView[sPtr]);
+		sPtr++;
+	}
 
+	let searchPath = filename;
+	if (searchPath.endsWith('.so') || searchPath.endsWith('.dll')) {
+		searchPath = searchPath.substring(0, searchPath.lastIndexOf('.')) + '.wasm';
+	}
+
+	const wasmFileRecord = FS.virtual[searchPath];
+	if (!wasmFileRecord || !wasmFileRecord.contents) {
+		console.error(`[Sys_LoadLibrary] File missing: ${searchPath}`);
+		return 0;
+	}
+
+	const bytes = new Uint8Array(wasmFileRecord.contents);
+
+	// =========================================================================
+	// STEP 2: DISSECT WASM BINARY TO AUTOMATICALLY FIND REQUIRED DATA SIZE
+	// =========================================================================
+	let requiredDataSize = 0;
+	let ptr = 8; // Skip Magic and Version headers
+
+	while (ptr < bytes.length) {
+		if (ptr + 1 > bytes.length) break;
+		const sectionId = bytes[ptr];
+		ptr += 1;
+
+		const lengthDecode = decodeLEB128(bytes, ptr);
+		const sectionLength = lengthDecode.value;
+		ptr += lengthDecode.bytes;
+
+		const sectionEnd = ptr + sectionLength;
+
+		// Section 11 is the Data Section
+		if (sectionId === 11) {
+			let dPtr = ptr;
+			const segmentCountDec = decodeLEB128(bytes, dPtr);
+			dPtr += segmentCountDec.bytes;
+
+			// Read individual data segment offsets to figure out total memory spans
+			for (let i = 0; i < segmentCountDec.value; i++) {
+				if (bytes[dPtr] <= 2) dPtr += 1; // Step past flags byte
+
+				// Skip initializer expression bytecode until we hit the 0x0B marker
+				while (bytes[dPtr] !== 0x0B && dPtr < sectionEnd) dPtr++;
+				dPtr += 1;
+
+				const segmentSizeDec = decodeLEB128(bytes, dPtr);
+				requiredDataSize += segmentSizeDec.value;
+				break; // Top level segment block size captured
+			}
+		}
+		ptr = sectionEnd;
+	}
+
+	// Add a safe cushion block layout for the module's internal heap/stack 
+	// operations (similar to Q3 adding PROGRAM_STACK_SIZE)
+	if (requiredDataSize === 0) requiredDataSize = 1024 * 512; // 512KB fallback
+	const allocationPadding = 1024 * 1024 * 4; // Give it a 4MB operational heap/stack cushion
+	const totalHunkRequested = requiredDataSize + allocationPadding;
+
+	// =========================================================================
+	// STEP 3: INTERACT WITH THE NATIVE ENGINE HUNK ALLOCATOR
+	// =========================================================================
+	// Call your exposed Q3 engine allocator directly from JavaScript!
+	// Using h_high (type 1) matches Quake 3's native VM allocation strategy.
+	const h_high = 1;
+	const allocatedMemoryAddress = window.Hunk_Alloc(totalHunkRequested, h_high);
+
+	if (!allocatedMemoryAddress) {
+		console.error(`[Sys_LoadLibrary] Engine Hunk allocation failed for size: ${totalHunkRequested}`);
+		return 0;
+	}
+
+	// Dynamically calculate your sequential function table boundary top
+	const allocatedTableAddress = ENV.table.length;
+	// Grow the engine table cushion block space for incoming pointers
+	ENV.table.grow(1024);
+
+	console.log(`[Hunk Mimic] Allocated memory for ${visualFileName}:`);
+	console.log(`  -> __memory_base = 0x${allocatedMemoryAddress.toString(16).toUpperCase()} (${totalHunkRequested} bytes on Hunk)`);
+	console.log(`  -> __table_base  = ${allocatedTableAddress}`);
+
+	// =========================================================================
+	// STEP 4: INSTANTIATE POSITION INDEPENDENT MODULE
+	// =========================================================================
+	const sideModuleEnv = {};
+	Object.assign(sideModuleEnv, ENV);
+
+	sideModuleEnv.memory = ENV.memory;
+	sideModuleEnv.__indirect_function_table = ENV.table;
+
+	// Feed the dynamic allocations directly to the PIC compiler fields
+	sideModuleEnv.__memory_base = allocatedMemoryAddress;
+	sideModuleEnv.__table_base = allocatedTableAddress;
+
+	sideModuleEnv.env = sideModuleEnv.wasi_snapshot_preview1 = sideModuleEnv.wasi_unstable = sideModuleEnv;
+
+	try {
+		const wasmModule = new WebAssembly.Module(bytes);
+		const wasmInstance = new WebAssembly.Instance(wasmModule, { env: sideModuleEnv });
+
+		const currentHandle = nextModuleHandle++;
+		loadedWasmModules[currentHandle] = {
+			name: filename,
+			instance: wasmInstance,
+			exports: wasmInstance.exports,
+			memoryBase: allocatedMemoryAddress,
+			memorySize: totalHunkRequested
+		};
+
+		if (wasmInstance.exports) {
+			updateGlobalFunctions(wasmInstance.exports);
+		}
+
+		return currentHandle;
+	} catch (error) {
+		console.error(`[Sys_LoadLibrary] Instantiation failed:`, error);
+		return 0;
+	}
 }
 
-function Sys_LoadLibrary() {
+/**
+ * Complementary hook helper to mock Sys_LoadFunction.
+ * When the C code calls Sys_LoadFunction(libHandle, "vmMain"), this resolves it.
+ */
+function Sys_LoadFunction(moduleHandle, functionNamePtr) {
+	let sPtr = functionNamePtr;
+	let funcName = "";
+	debugger
+	const memoryView = new Uint8Array(ENV.memory.buffer);
+	while (memoryView[sPtr] !== 0) {
+		funcName += String.fromCharCode(memoryView[sPtr]);
+		sPtr++;
+	}
 
-}
+	const moduleRecord = loadedWasmModules[moduleHandle];
+	if (!moduleRecord) {
+		console.error(`[Sys_LoadFunction] Invalid or unmapped tracking handle requested: 0x${moduleHandle.toString(16).toUpperCase()}`);
+		return 0;
+	}
 
-function Sys_LoadFunction() {
+	const targetExport = moduleRecord.exports[funcName];
+	if (!targetExport) {
+		console.warn(`[Sys_LoadFunction] Target export signature '${funcName}' was missing inside ${moduleRecord.name}`);
+		return 0;
+	}
 
+	// WebAssembly functions exposed natively can be passed back via the indirect function table map.
+	// If your loader pipeline leverages direct mapping table arrays, we return the internal target here.
+	return targetExport;
 }
 
 

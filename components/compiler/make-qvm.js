@@ -51,7 +51,8 @@ const q3uiFiles = [
     'ui_startserver.o', 'ui_team.o', 'ui_video.o', 'ui_addbots.o',
     'ui_removebots.o', 'ui_teamorders.o', 'ui_loadconfig.o', 'ui_saveconfig.o',
     'ui_cdkey.o', 'ui_mods.o',
-    ...commonFiles
+    'bg_misc.o', 'bg_lib.o',
+    'q_math.o', 'q_shared.o'
 ];
 
 
@@ -62,7 +63,8 @@ const uiFiles = [
     'ui_gameinfo.o',
     'ui_players.o',
     'ui_shared.o',
-    ...commonFiles
+    'bg_misc.o', 'bg_lib.o',
+    'q_math.o', 'q_shared.o'
 ]
 
 
@@ -139,7 +141,7 @@ const QVMLIB_CFLAGS = [
     "-emit-obj",
     "-triple", "wasm32-wasi",
     "-O2",
-    "-mrelocation-model", "static", // Keep static since it proved it works!
+    "-mrelocation-model", "pic",
     //'-menable-no-nans',
     "-isysroot", "/",
     "-internal-isystem", "include/c++/v1",
@@ -187,6 +189,7 @@ const SHLIB_LDFLAGS = [
     '--no-threads',
     //"--export-dynamic",
     //"-fvisibility", "hidden",
+    "-shared",
     "--error-limit=200",
     "--import-memory",
     "--import-table",

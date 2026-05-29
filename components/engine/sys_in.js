@@ -25,13 +25,13 @@ function GLimp_StartDriverAndSetMode(mode, modeFS, fullscreen, fallback) {
       || GL.canvas.getContext('experimental-webgl'))
 
   GL.context2D = GL.canvas2D.getContext('2d', { willReadFrequently: true })
-  
+
   GL.context.viewport(0, 0, GL.canvas.width, GL.canvas.height);
   if (!GL.context) return 2
   if (typeof GL != 'undefined') {
     INPUT.handle = GL.registerContext(GL.context, webGLContextAttributes)
     GL.makeContextCurrent(INPUT.handle)
-    if(!EMGL.location) {
+    if (!EMGL.location) {
       // this causes the engine to crash, it doesn't like a random allocs
       //EMGL.location = Z_Malloc(rgba.length)
       EMGL.location = malloc(MAX_IMAGE_SIZE)
@@ -50,30 +50,30 @@ function GLimp_StartDriverAndSetMode(mode, modeFS, fullscreen, fallback) {
 }
 
 function CopyBiases() {
-	GL.screenXBias = 0.0;
-	GL.screenYBias = 0.0;
+  GL.screenXBias = 0.0;
+  GL.screenYBias = 0.0;
 
-	if ( GL.canvas.clientWidth * 480 > GL.canvas.clientHeight * 640 ) {
-		// wide screen, scale by height
-		GL.screenXScale = GL.screenYScale = GL.canvas.clientHeight * (1.0/480.0);
-		GL.screenXBias = 0.5 * ( GL.canvas.clientWidth - ( GL.canvas.clientHeight * (640.0/480.0) ) );
-	}
-	else {
-		// no wide screen, scale by width
-		GL.screenXScale = GL.screenYScale = GL.canvas.clientWidth * (1.0/640.0);
-		GL.screenYBias = 0.5 * ( GL.canvas.clientHeight - ( GL.canvas.clientWidth * (480.0/640.0) ) );
-	}
+  if (GL.canvas.clientWidth * 480 > GL.canvas.clientHeight * 640) {
+    // wide screen, scale by height
+    GL.screenXScale = GL.screenYScale = GL.canvas.clientHeight * (1.0 / 480.0);
+    GL.screenXBias = 0.5 * (GL.canvas.clientWidth - (GL.canvas.clientHeight * (640.0 / 480.0)));
+  }
+  else {
+    // no wide screen, scale by width
+    GL.screenXScale = GL.screenYScale = GL.canvas.clientWidth * (1.0 / 640.0);
+    GL.screenYBias = 0.5 * (GL.canvas.clientHeight - (GL.canvas.clientWidth * (480.0 / 640.0)));
+  }
 
-	GL.screenXmin = 0.0 - (GL.screenXBias / GL.screenXScale);
-	GL.screenXmax = 640.0 + (GL.screenXBias / GL.screenXScale);
+  GL.screenXmin = 0.0 - (GL.screenXBias / GL.screenXScale);
+  GL.screenXmax = 640.0 + (GL.screenXBias / GL.screenXScale);
 
-	GL.screenYmin = 0.0 - (GL.screenYBias / GL.screenYScale);
-	GL.screenYmax = 480.0 + (GL.screenYBias / GL.screenYScale);
+  GL.screenYmin = 0.0 - (GL.screenYBias / GL.screenYScale);
+  GL.screenYmax = 480.0 + (GL.screenYBias / GL.screenYScale);
 
-	GL.cursorScaleR = 1.0 / GL.screenXScale;
-	if ( GL.cursorScaleR < 0.5 ) {
-		GL.cursorScaleR = 0.5;
-	}
+  GL.cursorScaleR = 1.0 / GL.screenXScale;
+  if (GL.cursorScaleR < 0.5) {
+    GL.cursorScaleR = 0.5;
+  }
 }
 
 
@@ -93,7 +93,7 @@ function updateVideoCmd() {
   HEAP32[(INPUT.aspect >> 2) + 6]++;
   HEAP32[cvar_modifiedFlags >> 2] |= 0x40000000 // CVAR_MODIFIED
   */
- 	
+
   CopyBiases();
 
   WindowResize(GL.canvas.width, GL.canvas.height)
@@ -198,7 +198,7 @@ document.querySelector('element').bind('copy', function(event) {
 let TEMPORARY_TEXT
 
 function createTemporaryText() {
-  if(TEMPORARY_TEXT) {
+  if (TEMPORARY_TEXT) {
     document.body.appendChild(TEMPORARY_TEXT)
     return TEMPORARY_TEXT
   }
@@ -405,11 +405,11 @@ function InputPushWheelEvent(evt) {
 function InputPushMouseEvent(evt) {
   let down = evt.type == 'mousedown'
 
-  if(!HEAPU32[(INPUT.in_mouse>>2) + 8]) {
+  if (!HEAPU32[(INPUT.in_mouse >> 2) + 8]) {
     return
   }
 
-  if (Key_GetCatcher() === 0 && HEAPU32[(INPUT.in_joystick>>2) + 8]) {
+  if (Key_GetCatcher() === 0 && HEAPU32[(INPUT.in_joystick >> 2) + 8]) {
     return
   }
 
@@ -438,7 +438,7 @@ function InputPushMouseEvent(evt) {
     }
   }
 
-  if(down) {
+  if (down) {
     createTemporaryText()
     TEMPORARY_TEXT.focus()
   }
@@ -479,13 +479,13 @@ function Com_MaxFPSChanged() {
   }
   INPUT.fpsModified = HEAPU32[(INPUT.fps >> 2) + 6]
   INPUT.fpsUnfocusedModified = HEAPU32[(INPUT.fpsUnfocused >> 2) + 6]
-  let fps = Math.ceil(1000.0 / HEAPU32[(INPUT.fps>>2)+8])
+  let fps = Math.ceil(1000.0 / HEAPU32[(INPUT.fps >> 2) + 8])
   SYS.frameInterval = setInterval(Sys_Frame, fps)
 }
 
 function Sys_ConsoleInput() {
   let command = window.location.hash
-  if(command.length > 0) {
+  if (command.length > 0) {
     window.location.hash = ''
     return stringToAddress(command)
   }
@@ -512,10 +512,10 @@ function IN_Init() {
   INPUT.fps = Cvar_Get(stringToAddress('com_maxfps'), stringToAddress('250'), 0);
   INPUT.fpsModified = HEAPU32[(INPUT.fps >> 2) + 6]
   INPUT.fpsUnfocusedModified = HEAPU32[(INPUT.fpsUnfocused >> 2) + 6]
-  INPUT.in_keyboardDebug = Cvar_Get(stringToAddress('in_keyboardDebug'), 
-      stringToAddress('0'), CVAR_ARCHIVE)
+  INPUT.in_keyboardDebug = Cvar_Get(stringToAddress('in_keyboardDebug'),
+    stringToAddress('0'), CVAR_ARCHIVE)
   INPUT.in_mouse = Cvar_Get(stringToAddress('in_mouse'), stringToAddress('1'), CVAR_ARCHIVE)
-  HEAPU32[(INPUT.in_mouse>>2) + 8] = 1
+  HEAPU32[(INPUT.in_mouse >> 2) + 8] = 1
   Cvar_CheckRange(INPUT.in_mouse, stringToAddress('-1'), stringToAddress('1'), CV_INTEGER)
 
   // ~ and `, as keys and characters
@@ -587,7 +587,7 @@ function IN_Init() {
 }
 
 function InputPushTouchEvent(id, evt, data) {
-  if(!HEAPU32[(INPUT.in_mouse>>2) + 8]) {
+  if (!HEAPU32[(INPUT.in_mouse >> 2) + 8]) {
     return
   }
 
@@ -650,14 +650,14 @@ function InputPushTouchEvent(id, evt, data) {
     if ((Key_GetCatcher() & KEYCATCH_UI) && id == 3) {
       Sys_QueEvent(Sys_Milliseconds(), SE_MOUSE_ABS, x, y, 0, null);
     }
-    if(Key_GetCatcher() !== 0) {
+    if (Key_GetCatcher() !== 0) {
       Sys_QueEvent(Sys_Milliseconds(), SE_FINGER_DOWN, INPUT.keystrings['MOUSE1'], id, 0, null);
     }
   }
 
   if (evt.type == 'end') {
     //Sys_QueEvent( in_eventTime+1, SE_KEY, K_MOUSE1, qfalse, 0, null );
-    if(Key_GetCatcher() !== 0) {
+    if (Key_GetCatcher() !== 0) {
       Sys_QueEvent(Sys_Milliseconds(), SE_FINGER_UP, INPUT.keystrings['MOUSE1'], id, 0, null);
     }
     INPUT.touchhats[id][0] = 0;
@@ -879,7 +879,7 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
   if (localName.startsWith(gamedir + '/'))
     localName = localName.substring(gamedir.length  +1)
   */
-  if(!EMGL.locationBuffer) {
+  if (!EMGL.locationBuffer) {
     throw new Error('EMGL.locationBuffer not initialized')
   }
   HEAPU32[EMGL.locationBuffer >> 2] = 0
@@ -893,16 +893,16 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
   //  }
   //}
 
-  
+
 
   if (!thisImage) {
     let length = FS_ReadFile(stringToAddress(filenameStripped + '.png'), EMGL.locationBuffer)
     let mime = 'png'
-    if(!HEAPU32[EMGL.locationBuffer >> 2]) {
+    if (!HEAPU32[EMGL.locationBuffer >> 2]) {
       length = FS_ReadFile(stringToAddress(filenameStripped + '.jpg'), EMGL.locationBuffer)
       mime = 'jpg'
     }
-    if(!HEAPU32[EMGL.locationBuffer >> 2]) {
+    if (!HEAPU32[EMGL.locationBuffer >> 2]) {
       length = FS_ReadFile(stringToAddress(filenameStripped + '.jpeg'), EMGL.locationBuffer)
       mime = 'jpg'
     }
@@ -914,7 +914,7 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
       length = FS_ReadFile(filename.replace(/\..*?$/, '.pcx'), EMGL.locationBuffer)
     }
     */
-    if(HEAPU32[EMGL.locationBuffer >> 2]) {
+    if (HEAPU32[EMGL.locationBuffer >> 2]) {
       imageView = Array.from(HEAPU8.slice(HEAPU32[EMGL.locationBuffer >> 2],
         HEAPU32[EMGL.locationBuffer >> 2] + length))
       thisImage = createImageFromBuffer(filenameStr, imageView, mime)
@@ -928,35 +928,35 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
 
     let mimes = []
     let responseData = (await Promise.all([
-      Com_DL_Begin(remoteFile, '/' + remoteFile + '.jpg?alt')
+      Com_DL_Begin(remoteFile, 'https://quake.games/' + remoteFile + '.jpg?alt')
         .then(responseData => {
-          if(!responseData) {
+          if (!responseData) {
             return
           }
           mimes[0] = 'jpg'
           Com_DL_Perform(remoteFile + '.jpg', remoteFile, responseData)
           return responseData
         }),
-      Com_DL_Begin(remoteFile, '/' + remoteFile + '.png?alt')
+      Com_DL_Begin(remoteFile, 'https://quake.games/' + remoteFile + '.png?alt')
         .then(responseData => {
-          if(!responseData) {
+          if (!responseData) {
             return
           }
           mimes[1] = 'png'
           Com_DL_Perform(remoteFile + '.png', remoteFile, responseData)
           return responseData
-    })]))
+        })]))
 
-    if(responseData[0]) {
+    if (responseData[0]) {
       thisImage = createImageFromBuffer(filenameStr, Array.from(new Uint8Array(responseData[0])), mimes[0])
     } else
-    if(responseData[1]) {
-      thisImage = createImageFromBuffer(filenameStr, Array.from(new Uint8Array(responseData[1])), mimes[1])
-    }
+      if (responseData[1]) {
+        thisImage = createImageFromBuffer(filenameStr, Array.from(new Uint8Array(responseData[1])), mimes[1])
+      }
 
   }
 
-  if(!thisImage) {
+  if (!thisImage) {
     return
   }
 
@@ -964,15 +964,15 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
     GL.canvas2D.width = thisImage.width
     GL.canvas2D.height = thisImage.height
     GL.context2D.drawImage(thisImage, 0, 0)
-    const rgba = GL.context2D.getImageData( 
-      0, 0, thisImage.width, thisImage.height 
+    const rgba = GL.context2D.getImageData(
+      0, 0, thisImage.width, thisImage.height
     ).data;
     HEAPU8.set(rgba.slice(0, MAX_IMAGE_SIZE), EMGL.location)
 
     HEAP32[widthAddress >> 2] = thisImage.width
-    if(rgba.length > MAX_IMAGE_SIZE) {
+    if (rgba.length > MAX_IMAGE_SIZE) {
       // truncate image because what else can we do?
-      thisImage.height = HEAP32[heightAddress >> 2] = floor(MAX_IMAGE_SIZE / 4 / thisImage.width) 
+      thisImage.height = HEAP32[heightAddress >> 2] = floor(MAX_IMAGE_SIZE / 4 / thisImage.width)
     } else
       HEAP32[heightAddress >> 2] = thisImage.height
     // notify engine that pixel data is ready
