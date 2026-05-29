@@ -370,6 +370,7 @@ const ENGINE_LDFLAGS = [
     '-z', `stack-size=${1024 * 1024}`,
     '-Llib/wasm32-wasi',
     "-mllvm", "-mattr=+mutable-globals",
+    "--global-base=50331648",
     //"--growable-table",
     // Link against the builtins and libc.a
     //path.join(vars.WASI_BUILTINS, "lib/wasi/libclang_rt.builtins-wasm32.a"),
@@ -406,7 +407,7 @@ const emscriptenJsFlags = [
 
 // Symbols to export to the JS environment
 const exportFlags = [
-    "__stack_pointer", "Get_VM_Offset", "sprintf", "malloc", "free", "stderr", "stdout", "errno", "_start",
+    "__stack_pointer", "sprintf", "malloc", "free", "stderr", "stdout", "errno", "_start",
     "FS_CreatePath", "R_FindPalette", "Key_ClearStates", "Key_GetCatcher",
     "Key_SetCatcher", "CL_PacketEvent", "s_soundStarted", "s_soundMuted",
     "s_knownSfx", "dma", "S_SoundInfo", "Cbuf_ExecuteText", "Cbuf_AddText",

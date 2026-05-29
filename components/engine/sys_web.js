@@ -142,13 +142,16 @@ function getQueryCommands() {
 }
 
 
+
+
 function Sys_UnloadLibrary(namePtr) {
-	debugger
+	debugger;
 }
-// Keep track of loaded WASM modules to return distinct mock handles back to the C layer
+
 const loadedWasmModules = {};
-let nextModuleHandle = 0x1000; // Legacy-safe base pointer offset tracking
-function Sys_LoadLibrary(namePtr, vmPtr) {
+let nextModuleHandle = 0x1000;
+
+function Sys_LoadLibrary(namePtr) {
 	// 1. Resolve path string out of WASM memory
 	let sPtr = namePtr;
 	let filename = "";
@@ -170,103 +173,69 @@ function Sys_LoadLibrary(namePtr, vmPtr) {
 	}
 
 	const bytes = new Uint8Array(wasmFileRecord.contents);
+	const allocatedMemoryAddress = 32;
 
 	// =========================================================================
-	// STEP 2: DISSECT WASM BINARY TO AUTOMATICALLY FIND REQUIRED DATA SIZE
+	// STEP 2: PROVISION ISOLATED TABLE & BACKFILL CORE ENGINE HOOKS
 	// =========================================================================
-	let requiredDataSize = 0;
-	let ptr = 8; // Skip Magic and Version headers
+	const localSideModuleTable = new WebAssembly.Table({
+		element: "anyfunc",
+		initial: 4096,
+		maximum: 8192
+	});
 
-	while (ptr < bytes.length) {
-		if (ptr + 1 > bytes.length) break;
-		const sectionId = bytes[ptr];
-		ptr += 1;
-
-		const lengthDecode = decodeLEB128(bytes, ptr);
-		const sectionLength = lengthDecode.value;
-		ptr += lengthDecode.bytes;
-
-		const sectionEnd = ptr + sectionLength;
-
-		// Section 11 is the Data Section
-		if (sectionId === 11) {
-			let dPtr = ptr;
-			const segmentCountDec = decodeLEB128(bytes, dPtr);
-			dPtr += segmentCountDec.bytes;
-
-			// Read individual data segment offsets to figure out total memory spans
-			for (let i = 0; i < segmentCountDec.value; i++) {
-				if (bytes[dPtr] <= 2) dPtr += 1; // Step past flags byte
-
-				// Skip initializer expression bytecode until we hit the 0x0B marker
-				while (bytes[dPtr] !== 0x0B && dPtr < sectionEnd) dPtr++;
-				dPtr += 1;
-
-				const segmentSizeDec = decodeLEB128(bytes, dPtr);
-				requiredDataSize += segmentSizeDec.value;
-				break; // Top level segment block size captured
+	const masterTableSize = ENV.table.length;
+	for (let i = 0; i < masterTableSize; i++) {
+		try {
+			const engineFunc = ENV.table.get(i);
+			if (engineFunc) {
+				localSideModuleTable.set(i, engineFunc);
 			}
+		} catch (e) {
+			// Safe escape vector for sparse/empty indices in the master table
 		}
-		ptr = sectionEnd;
 	}
 
-	// Add a safe cushion block layout for the module's internal heap/stack 
-	// operations (similar to Q3 adding PROGRAM_STACK_SIZE)
-	if (requiredDataSize === 0) requiredDataSize = 1024 * 512; // 512KB fallback
-	const allocationPadding = 1024 * 1024 * 4; // Give it a 4MB operational heap/stack cushion
-	const totalHunkRequested = requiredDataSize + allocationPadding;
-
-	// =========================================================================
-	// STEP 3: INTERACT WITH THE NATIVE ENGINE HUNK ALLOCATOR
-	// =========================================================================
-	// Call your exposed Q3 engine allocator directly from JavaScript!
-	// Using h_high (type 1) matches Quake 3's native VM allocation strategy.
-	const h_high = 1;
-	const allocatedMemoryAddress = window.Hunk_Alloc(totalHunkRequested, h_high);
-
-	if (!allocatedMemoryAddress) {
-		console.error(`[Sys_LoadLibrary] Engine Hunk allocation failed for size: ${totalHunkRequested}`);
-		return 0;
-	}
-
-	// Dynamically calculate your sequential function table boundary top
-	const allocatedTableAddress = ENV.table.length;
-	// Grow the engine table cushion block space for incoming pointers
-	ENV.table.grow(1024);
-
-	console.log(`[Hunk Mimic] Allocated memory for ${wasmFileRecord.path}:`);
-	console.log(`  -> __memory_base = 0x${allocatedMemoryAddress.toString(16).toUpperCase()} (${totalHunkRequested} bytes on Hunk)`);
-	console.log(`  -> __table_base  = ${allocatedTableAddress}`);
-
-	// =========================================================================
-	// STEP 4: INSTANTIATE POSITION INDEPENDENT MODULE
-	// =========================================================================
 	const sideModuleEnv = {};
-	//Object.assign(sideModuleEnv, ENV);
 	if (ENV.exports && ENV.exports.__stack_pointer) {
 		sideModuleEnv.__stack_pointer = ENV.exports.__stack_pointer;
 	} else if (!(ENV.__stack_pointer instanceof WebAssembly.Global)) {
-		// Fallback allocation cage if the upstream pipeline didn't provide one
 		ENV.__stack_pointer = new WebAssembly.Global({ value: 'i32', mutable: true }, 1024 * 64);
 		sideModuleEnv.__stack_pointer = ENV.__stack_pointer;
 	}
 
 	sideModuleEnv.memory = ENV.memory;
-	sideModuleEnv.__indirect_function_table = ENV.table;
-
-	// Feed the dynamic allocations directly to the PIC compiler fields
+	sideModuleEnv.__indirect_function_table = localSideModuleTable;
 	sideModuleEnv.__memory_base = allocatedMemoryAddress;
-	sideModuleEnv.__table_base = allocatedTableAddress;
+	sideModuleEnv.__table_base = 0;
 
-	sideModuleEnv.sin = Math.sin
-	sideModuleEnv.atan2 = Math.atan2
-	sideModuleEnv.cos = Math.cos
-
+	sideModuleEnv.sin = Math.sin;
+	sideModuleEnv.atan2 = Math.atan2;
+	sideModuleEnv.cos = Math.cos;
 	sideModuleEnv.env = sideModuleEnv.wasi_snapshot_preview1 = sideModuleEnv.wasi_unstable = sideModuleEnv;
 
 	try {
 		const wasmModule = new WebAssembly.Module(bytes);
 		const wasmInstance = new WebAssembly.Instance(wasmModule, { env: sideModuleEnv });
+
+		// =========================================================================
+		// STEP 3: EXPORT SUB-MODULE ENTRY POINTS BACK TO MASTER TABLE
+		// =========================================================================
+		const allocatedTableAddress = ENV.table.length;
+		ENV.table.grow(2); // Make room for exactly two incoming main entry vectors
+
+		const vmMainIndex = allocatedTableAddress;
+		const dllEntryIndex = allocatedTableAddress + 1;
+
+		if (wasmInstance.exports.vmMain) {
+			ENV.table.set(vmMainIndex, wasmInstance.exports.vmMain);
+		} else {
+			console.error(`[Sys_LoadLibrary] Critical: vmMain export missing from ${filename}`);
+		}
+
+		if (wasmInstance.exports.dllEntry) {
+			ENV.table.set(dllEntryIndex, wasmInstance.exports.dllEntry);
+		}
 
 		const currentHandle = nextModuleHandle++;
 		loadedWasmModules[currentHandle] = {
@@ -274,31 +243,86 @@ function Sys_LoadLibrary(namePtr, vmPtr) {
 			instance: wasmInstance,
 			exports: wasmInstance.exports,
 			memoryBase: allocatedMemoryAddress,
-			memorySize: totalHunkRequested,
-			tableBase: allocatedTableAddress,
+			memorySize: 0,
+			tableBase: 0,
 		};
-		const dbOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("dataBase")) : 4;
-		const dlOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("dllHandle")) : 32;
-		const epOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("entryPoint")) : 36;
-		const maskOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("dataMask")) : 60;
-		const lenOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("dataLength")) : 64;
-		const allocOffset = ENV.exports.Get_VM_Offset ? ENV.exports.Get_VM_Offset(allocateWasmString("dataAlloc")) : 72;
 
-		const view = new DataView(ENV.memory.buffer);
-
-		// 1. Write the Core Link Vectors
-		view.setInt32(vmPtr + dbOffset, allocatedMemoryAddress, true); // vm->dataBase
-		view.setInt32(vmPtr + dlOffset, currentModuleHandle, true);     // vm->dllHandle
-		view.setInt32(vmPtr + epOffset, calculatedVmMainIndex, true);   // vm->entryPoint
-
-		// 2. Initialize Bound Masks & Allocations (Preserves raw pointer values inside VM_ArgPtr)
-		view.setUint32(vmPtr + maskOffset, 0xFFFFFFFF, true);           // vm->dataMask (~0U)
-		view.setUint32(vmPtr + lenOffset, totalHunkRequested, true);    // vm->dataLength
-		view.setUint32(vmPtr + allocOffset, 0xFFFFFFFF, true);
 		return currentHandle;
 	} catch (error) {
 		console.error(`[Sys_LoadLibrary] Instantiation failed:`, error);
 		return 0;
+	}
+}
+
+
+
+function dllEntry(syscall) {
+	
+}
+
+
+
+/**
+ * Manual diagnostic scanner to extract and decode raw 32-bit integer arguments
+ * directly out of the WebAssembly shared linear stack canvas.
+ * * Paste this directly into your browser's Developer Tools Console.
+ */
+function debugWasmSyscallArgs(memBase, targetArgsArrayAddress) {
+	// 1. Grab your configuration targets out of your active state variables
+	//const memBase = 309716736; // Your module record memoryBase
+	const memoryBuffer = ENV.memory.buffer;
+
+	// Set this to the exact absolute stack array address you caught entering CL_UISystemCalls 
+	// e.g., the $var0 value (like 33168064 or 33168108) right before it dissolves
+	//const targetArgsArrayAddress = 33168108; 
+
+	if (!memoryBuffer) {
+		console.error("❌ Critical: WebAssembly linear memory context is missing or inaccessible.");
+		return;
+	}
+
+	const view = new DataView(memoryBuffer);
+	const u8View = new Uint8Array(memoryBuffer);
+
+	console.log(`%c=== MANUAL WASM ARGS DECODER ===`, "color: #00ff00; font-weight: bold;");
+	console.log(`Analyzing local stack array address: ${targetArgsArrayAddress} (0x${targetArgsArrayAddress.toString(16).toUpperCase()})`);
+
+	// Extract the raw slots sequentially exactly like the C array mapping expects
+	const parsedSlots = [];
+	for (let i = 0; i < 6; i++) {
+		const byteOffset = targetArgsArrayAddress + (i * 4);
+		if (byteOffset + 4 <= view.byteLength) {
+			parsedSlots.push(view.getInt32(byteOffset, true)); // True = Little Endian execution profile
+		} else {
+			parsedSlots.push(null);
+		}
+	}
+
+	console.log(`\n%cRaw Extracted Array Slots (Integers):`, "color: #00ffff; font-weight: bold;");
+	parsedSlots.forEach((val, idx) => {
+		console.log(`  args[${idx}]: ${val} (0x${val ? val.toString(16).toUpperCase() : '0'})`);
+	});
+
+	// Attempt to string decode the paths using both relative and absolute coordinates
+	const potentialStringPointer = parsedSlots[2]; // Slot 2 is your target string parameter input
+
+	if (potentialStringPointer) {
+		const readString = (absoluteAddress) => {
+			let str = "";
+			let p = absoluteAddress;
+			while (p < u8View.length && u8View[p] !== 0 && str.length < 128) {
+				str += String.fromCharCode(u8View[p]);
+				p++;
+			}
+			return str || "[Empty/Null Pointer Territory]";
+		};
+
+		console.log(`\n%cEvaluating String Translation Vectors for args[2]:`, "color: #ffaa00; font-weight: bold;");
+		console.log(`  -> If treated as ABSOLUTE address (${potentialStringPointer}):`);
+		console.log(`     "${readString(potentialStringPointer)}"`);
+
+		console.log(`  -> If treated as RELATIVE offset (${potentialStringPointer} + memBase):`);
+		console.log(`     "${readString(potentialStringPointer + memBase)}"`);
 	}
 }
 
@@ -315,8 +339,10 @@ function Sys_LoadFunction(moduleHandle, functionNamePtr) {
 		sPtr++;
 	}
 
+
 	const moduleRecord = loadedWasmModules[moduleHandle];
 	if (!moduleRecord) return 0;
+
 
 	const targetExport = moduleRecord.exports[funcName];
 	if (!targetExport) {
@@ -338,6 +364,7 @@ function Sys_LoadFunction(moduleHandle, functionNamePtr) {
 
 	// Convert our target export to its native signature string block to bypass wrapper proxy mutations
 	const targetExportString = targetExport.toString();
+
 
 	// =========================================================================
 	// PASS 1: SCAN COHERENT TABLE SLOTS WITH SIGNATURE MATCHING

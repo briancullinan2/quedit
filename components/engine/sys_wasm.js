@@ -13,6 +13,7 @@ function initEnvironment(ENGINE) {
             maximum: 32000,
             /* 'shared': true */
         })
+        ENV.__memory_base = 50331648
     }
 
     // weird stuff WebAssembly requires
