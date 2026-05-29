@@ -428,3 +428,28 @@ async function readAll(dbName, callback) {
         };
     });
 }
+
+function findVirtualFiles(globPattern) {
+    const filePaths = Object.keys(FS.virtual);
+    const rx = globToRegex(globPattern);
+    
+    return filePaths.reduce((accumulator, path) => {
+        if (rx.test(path)) {
+            accumulator[path] = FS.virtual[path];
+        }
+        return accumulator;
+    }, {});
+}
+
+function globToRegex(pattern) {
+    // Escape standard regex characters except for our glob wildcards
+    let regexStr = pattern
+        .replace(/([.+^=!:${}()|\[\]\/\\])/g, "\\$1") // Escape regex specials
+        .replace(/\x2A\x2A/g, ".*")                   // ** -> match anything including slashes
+        .replace(/\x2A/g, "[^\\/]*")                  // * -> match anything except slashes
+        .replace(/\x3F/g, ".");                       // ?  -> match exactly one character
+
+    return new RegExp(`^${regexStr}$`, "i"); // Case-insensitive matching
+}
+
+

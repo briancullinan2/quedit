@@ -18,6 +18,18 @@ const COMMAND_SCHEMA = {
             { cmd: "help build", desc: "Profile parameters, targets, and modes for the build compiler pipeline" }
         ]
     },
+    find: {
+        execute: find,
+        description: "Execute a workspace-wide structural glob pattern or deep content text match via background workers.",
+        args: [{ name: "query", type: ARG_TYPES.STRING, description: "Text string or glob pattern to locate across repositories" }],
+        flags: {
+            "-c": "Force strict case-sensitive parameter validation profiling rules"
+        },
+        demos: [
+            { cmd: "find baseq3/*.wasm", desc: "Locate WebAssembly side modules inside your baseq3 layout" },
+            { cmd: "find trap_SnapVector", desc: "Scan all asset repository code spaces for active occurrences of a code symbol" }
+        ]
+    },
     clear: {
         execute: clear,
         description: "Clear active terminal screen scrollback history layers.",
@@ -433,6 +445,93 @@ async function help(argv) {
 }
 
 
+
+
+/**
+ * Asynchronous terminal worker searching interface gateway.
+ * Maps over the shared background worker registry.
+ */
+async function find(argv) {
+    // Reconstruct query argument string securely if user input spans unquoted spaces
+    const queryTarget = argv.join(' ');
+    const caseSensitiveActive = argv.includes('-c');
+    const cleanQuery = queryTarget.replace(/-c\s*/g, '').trim();
+
+    if (!cleanQuery || cleanQuery.length < 2) {
+        terminalWrite(`\x1b[1;38;5;196mError:\x1b[0m Search query parameter context must span at least 2 characters.\n\r`);
+        return;
+    }
+
+    terminalWrite(`\x1b[38;5;242m[Worker Thread] Querying repositories for matching traces: "${cleanQuery}"...\x1b[0m\n\r`);
+
+    // Synchronize your search status tracking states so that fallback mirrors stay coherent
+    latestQueryVal = cleanQuery;
+    lastExecutedQueryVal = cleanQuery;
+
+    // Set up our execution promise callback resolver right before dispatching messages
+    const searchPromise = new Promise((resolve, reject) => {
+        activeTerminalSearchDeferred = { resolve, reject };
+
+        // Safety timeout watchdog to prevent terminal lockups if background threads hang
+        setTimeout(() => {
+            if (activeTerminalSearchDeferred) {
+                resolve([]);
+                activeTerminalSearchDeferred = null;
+            }
+        }, 8000);
+    });
+
+    // Fire payload directly down to your background indexing threads
+    searchWorker.postMessage({
+        query: cleanQuery,
+        caseSensitive: caseSensitiveActive,
+        gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
+        activeRepositories: [
+            window.engineRepository,
+            window.gameRepository,
+            window.assetRepository,
+            window.toolsRepository,
+            window.tools2Repository
+        ].filter(Boolean)
+    });
+
+    // Put the terminal command router thread to sleep until the worker completes its pass
+    const groupedMatches = await searchPromise;
+
+    if (groupedMatches.length === 0) {
+        terminalWrite(`\n\r\x1b[1;38;5;208m[!] 0 results returned matching parameter targets.\x1b[0m\n\r`);
+        return;
+    }
+
+    // =========================================================================
+    // HIGH-DENSITY TERMINAL TELEMETRY LAYOUT RENDERING
+    // =========================================================================
+    terminalWrite(`\n\r\x1b[1;38;5;118m=== WORKSPACE SEARCH RESULTS (${groupedMatches.length} files hit) ===\x1b[0m\n\r`);
+
+    groupedMatches.forEach(group => {
+        // Output file header block track info
+        terminalWrite(`\x1b[1;38;5;45m📁 repo: [${group.repo}] -> ${group.path}\x1b[0m\n\r`);
+
+        // Render explicit line hits if deep content results exist
+        if (group.localMatches.length > 0) {
+            group.localMatches.forEach(match => {
+                const lineLabel = `   Line ${match.line}: `.padEnd(14);
+                // Highlight structural text highlights
+                terminalWrite(`\x1b[38;5;246m${lineLabel}\x1b[0m \x1b[38;5;253m${match.matchText}\x1b[0m\n\r`);
+            });
+        } else {
+            // It was a pure filename path match structure or direct glob reference match hit
+            terminalWrite(`   \x1b[38;5;242m=> structural path pattern footprint match verified\x1b[0m\n\r`);
+        }
+
+        // Micro boundary rule lines isolating file targets
+        terminalWrite(`\x1b[38;5;236m${'-'.repeat(80)}\x1b[0m\n\r`);
+    });
+
+    terminalWrite(`\n\rSearch operations completed successfully.\n\r`);
+}
+
+
 const CWD = ''
 const HISTORY = []
 
@@ -452,8 +551,6 @@ async function handleCommand(input) {
         TERMINATE = false
         window.alreadyWroteDetached = false
     }
-    window.runningCommand = true;
-
 
     const [commandName, ...args] = tokens;
 
@@ -464,16 +561,17 @@ async function handleCommand(input) {
         resolvedCommandKey = schemaMatch.alias;
     }
 
-
-    if (schemaMatch.prereqs) {
-        for (let importFirst of schemaMatch.prereqs) {
-            await DependencyLoader.loadModule(importFirst);
-        }
-    }
-
-    const targetExecutionRoute = COMMAND_SCHEMA[resolvedCommandKey].execute;
+    const targetExecutionRoute = COMMAND_SCHEMA[resolvedCommandKey]?.execute;
 
     if (targetExecutionRoute) {
+        window.runningCommand = true;
+
+        if (schemaMatch && schemaMatch.prereqs) {
+            for (let importFirst of schemaMatch.prereqs) {
+                await DependencyLoader.loadModule(importFirst);
+            }
+        }
+
         try {
             await targetExecutionRoute(args, database, commandName);
         } catch (execError) {

@@ -352,7 +352,8 @@ document.getElementById('tabs').addEventListener('click', async (e) => {
 
 const searchWorker = new Worker('/components/filelist/search-worker.js')
 
-// Keep your global caching structures active
+// Global execution tracking hooks
+let activeTerminalSearchDeferred = null;
 let aggregatedResults = { paths: [], contents: [], github: [] };
 
 searchWorker.onmessage = function (e) {
@@ -360,8 +361,13 @@ searchWorker.onmessage = function (e) {
 
     if (type === 'clear') {
         aggregatedResults = { paths: [], contents: [], github: [] };
-        // Pass a clean empty state to the history fallback layer
-        return handleSearchWorkerResponse([], latestQueryVal);
+        handleSearchWorkerResponse([], latestQueryVal);
+
+        if (activeTerminalSearchDeferred) {
+            activeTerminalSearchDeferred.resolve([]);
+            activeTerminalSearchDeferred = null;
+        }
+        return;
     }
 
     // 1. Accumulate the current streaming web worker channel passes cleanly
@@ -373,7 +379,7 @@ searchWorker.onmessage = function (e) {
         ...aggregatedResults.github
     ];
 
-    // 2. Perform your standard grouping map array normalization
+    // 2. Perform standard grouping map array normalization
     const groupedMap = new Map();
 
     flatCombined.forEach(item => {
@@ -397,11 +403,19 @@ searchWorker.onmessage = function (e) {
         }
     });
 
-    // 3. Hand the fully flattened and deduplicated map data to the fallback layout manager
-    // We pass `latestQueryVal` so it knows exactly what characters triggered this pass frame
-    handleSearchWorkerResponse(Array.from(groupedMap.values()), latestQueryVal);
-};
+    const finalGroupedArray = Array.from(groupedMap.values());
 
+    // 3. Hand data back to standard HTML layout manager
+    handleSearchWorkerResponse(finalGroupedArray, latestQueryVal);
+
+    // 4. TERMINAL CALLBACK INTERACTION HOOK:
+    // If an asynchronous terminal thread is waiting on this search iteration, 
+    // and we've processed the contents payload or hit an empty blowout, resolve the promise.
+    if (activeTerminalSearchDeferred && (type === 'contents' || finalGroupedArray.length === 0)) {
+        activeTerminalSearchDeferred.resolve(finalGroupedArray);
+        activeTerminalSearchDeferred = null; // Flush handler reference
+    }
+};
 
 // Bind the handler cleanly to your search element
 const searchInput = document.getElementById('search');

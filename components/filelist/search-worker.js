@@ -28,27 +28,15 @@ async function getAllLocalFiles(activeRepositories) {
                 continue;
             }
 
-            await new Promise((resolve, reject) => {
-                const tx = db.transaction(DB_STORE_NAME, 'readonly');
-                const store = tx.objectStore(DB_STORE_NAME);
-                const request = store.getAll();
+            await readAll(dbName, file => allFiles.push({
+                ...file,
+                repoSource: dbName,
+                // Ensure contents are text strings if stored as array buffers/blobs
+                textContent: file.contents instanceof Uint8Array
+                    ? new TextDecoder().decode(file.contents)
+                    : (file.contents || '')
+            }))
 
-                request.onsuccess = () => {
-                    // Normalize records to ensure they carry their source repository identifier
-                    const records = request.result.map(file => ({
-                        ...file,
-                        repoSource: dbName,
-                        // Ensure contents are text strings if stored as array buffers/blobs
-                        textContent: file.contents instanceof Uint8Array
-                            ? new TextDecoder().decode(file.contents)
-                            : (file.contents || '')
-                    }));
-                    allFiles.push(...records);
-                    resolve();
-                };
-                request.onerror = () => reject(request.error);
-            });
-            db.close();
         } catch (err) {
             console.warn(`Worker IDB fetch skipped for ${dbName}:`, err);
         }
@@ -67,19 +55,32 @@ self.onmessage = async function (e) {
         return self.postMessage({ type: 'clear', results: [] });
     }
 
-    const flags = caseSensitive ? 'g' : 'gi';
-    const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+    // Determine if the query is intended to be processed as a path glob
+    const isGlobPattern = query.includes('*') || query.includes('?');
+
+    let regex;
+    if (isGlobPattern) {
+        regex = globToRegex(query, caseSensitive);
+    } else {
+        const flags = caseSensitive ? 'g' : 'gi';
+        regex = new RegExp(query.replace(/[.*+?^${}()|\[\]\\]/g, '\\$&'), flags);
+    }
 
     // 1. Fetch unified array elements across all IndexedDB stores concurrently
     const localFiles = await getAllLocalFiles(activeRepositories || []);
 
     // -----------------------------------------------------------------
-    // PASS 1: Fast Filename Path String Search
+    // PASS 1: Filename Path String Search (Supports Regex & Glob Modes)
     // -----------------------------------------------------------------
     const pathResults = [];
     for (const file of localFiles) {
         regex.lastIndex = 0;
-        if (regex.test(file.path)) {
+
+        // If it's a glob, we match the *entire* path string. 
+        // If it's a regular search query, we perform a standard substring test.
+        const isMatch = isGlobPattern ? regex.test(file.path) : regex.test(file.path);
+
+        if (isMatch) {
             pathResults.push({
                 path: file.path,
                 sha: file.sha,
@@ -96,6 +97,11 @@ self.onmessage = async function (e) {
     // -----------------------------------------------------------------
     // PASS 2: Deep File Content String Parsing Loop
     // -----------------------------------------------------------------
+    // Bypassed if the user is explicitly executing a structural file-path glob query
+    if (isGlobPattern) {
+        return self.postMessage({ type: 'contents', results: [] });
+    }
+
     const contentResults = [];
     for (const file of localFiles) {
         const text = file.textContent;
