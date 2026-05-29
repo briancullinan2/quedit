@@ -349,39 +349,47 @@ document.getElementById('tabs').addEventListener('click', async (e) => {
 
 });
 
+const searchWorker = new Worker('/components/filelist/search-worker.js');
 
-const searchWorker = new Worker('/components/filelist/search-worker.js')
-
-// Global execution tracking hooks
-let activeTerminalSearchDeferred = null;
-let aggregatedResults = { paths: [], contents: [], github: [] };
+// Track concurrent worker transactions completely independently
+const activeSearchTransactions = new Map();
+let terminalCommandDeferred = null; 
 
 searchWorker.onmessage = function (e) {
-    const { type, results } = e.data;
+    const { type, results, callbackId, query } = e.data;
 
     if (type === 'clear') {
-        aggregatedResults = { paths: [], contents: [], github: [] };
-        handleSearchWorkerResponse([], latestQueryVal);
+        activeSearchTransactions.delete(callbackId);
+        handleSearchWorkerResponse([], query);
 
-        if (activeTerminalSearchDeferred) {
-            activeTerminalSearchDeferred.resolve([]);
-            activeTerminalSearchDeferred = null;
+        if (terminalCommandDeferred && terminalCommandDeferred.callbackId === callbackId) {
+            terminalCommandDeferred.resolve([]);
+            terminalCommandDeferred = null;
         }
         return;
     }
 
-    // 1. Accumulate the current streaming web worker channel passes cleanly
-    aggregatedResults[type] = results;
+    // 1. Initialize or pull the isolated aggregation state bucket for this specific transaction
+    if (!activeSearchTransactions.has(callbackId)) {
+        activeSearchTransactions.set(callbackId, {
+            paths: [],
+            contents: [],
+            github: []
+        });
+    }
+    
+    const txn = activeSearchTransactions.get(callbackId);
+    txn[type] = results;
 
+    // 2. Flatten only the results belonging strictly to this callback ID
     const flatCombined = [
-        ...aggregatedResults.paths,
-        ...aggregatedResults.contents,
-        ...aggregatedResults.github
+        ...txn.paths,
+        ...txn.contents,
+        ...txn.github
     ];
 
-    // 2. Perform standard grouping map array normalization
+    // 3. Perform standard grouping map normalization
     const groupedMap = new Map();
-
     flatCombined.forEach(item => {
         const key = `${item.repoSource}:${item.path}`;
         if (!groupedMap.has(key)) {
@@ -405,15 +413,17 @@ searchWorker.onmessage = function (e) {
 
     const finalGroupedArray = Array.from(groupedMap.values());
 
-    // 3. Hand data back to standard HTML layout manager
-    handleSearchWorkerResponse(finalGroupedArray, latestQueryVal);
-
-    // 4. TERMINAL CALLBACK INTERACTION HOOK:
-    // If an asynchronous terminal thread is waiting on this search iteration, 
-    // and we've processed the contents payload or hit an empty blowout, resolve the promise.
-    if (activeTerminalSearchDeferred && (type === 'contents' || finalGroupedArray.length === 0)) {
-        activeTerminalSearchDeferred.resolve(finalGroupedArray);
-        activeTerminalSearchDeferred = null; // Flush handler reference
+    // 4. Determine Routing Destination
+    if (terminalCommandDeferred && terminalCommandDeferred.callbackId === callbackId) {
+        // If this matches the terminal command track, resolve only when deep content loop checks complete
+        if (type === 'contents' || finalGroupedArray.length === 0) {
+            terminalCommandDeferred.resolve(finalGroupedArray);
+            terminalCommandDeferred = null;
+            activeSearchTransactions.delete(callbackId); // Cleanup allocation trace
+        }
+    } else {
+        // Hand standard UI/Sidebar keystroke queries down to the HTML layout engine
+        handleSearchWorkerResponse(finalGroupedArray, query);
     }
 };
 
@@ -421,89 +431,56 @@ searchWorker.onmessage = function (e) {
 const searchInput = document.getElementById('search');
 const searchStatus = document.getElementById('search-status');
 
-
 function handleSearchWorkerResponse(incomingGroupedResults, rawQueryUsed) {
     const container = document.getElementById('search-results');
 
     if (incomingGroupedResults.length > 0) {
-
-        // Track this successful query and its matching payload snapshot state inside our history stack
-        // We filter out duplicates to keep the array history pristine
         window.searchResultHistoryStack = window.searchResultHistoryStack.filter(h => h.query !== rawQueryUsed);
         window.searchResultHistoryStack.push({
             query: rawQueryUsed,
             resultsSnapshot: incomingGroupedResults
         });
 
-        // Cap history depth to prevent memory float leaks
         if (window.searchResultHistoryStack.length > 10) {
             window.searchResultHistoryStack.shift();
         }
 
-        // Clear banner warnings and render the data linearly
         searchInput.parentElement.setAttribute('placeholder', `${incomingGroupedResults.length} matches for: "${rawQueryUsed}"`);
         renderSearchResults(incomingGroupedResults);
         return;
     }
 
-    // 2. SCENARIO B: We hit a complete text filter blowout (0 Results Found)
     if (incomingGroupedResults.length === 0) {
-
-        // Peek at our history stack memory layer to locate the last word that actually worked
         const lastValidState = window.searchResultHistoryStack[window.searchResultHistoryStack.length - 1];
 
         if (lastValidState) {
-            // Calculate where the breakdown happened (e.g., query "lookupFunctoin" vs valid "lookup")
-            const brokenDiffText = rawQueryUsed.substring(lastValidState.query.length);
-
-            searchInput.parentElement.setAttribute('placeholder', '❌ 0 results found for ' + rawQueryUsed)
-
-            // CRITICAL: We DO NOT wipe the screen or call render with an empty array.
-            // We preserve the last functional dataset on-screen so they don't lose context!
-            debugger
+            searchInput.parentElement.setAttribute('placeholder', '❌ 0 results found for ' + rawQueryUsed);
             renderSearchResults(lastValidState.resultsSnapshot, lastValidState.query);
         } else {
-            // Absolute baseline fallback if even the first character yielded no matches
             searchInput.parentElement.setAttribute('placeholder', `❌ 0 search results found for "${rawQueryUsed}"`);
             container.innerHTML = `<div class="empty-placeholder">No assets matching workspace parameters.</div>`;
         }
     }
 }
 
-
-
 let federatedSearchTimer = null;
 let latestQueryVal = null;
 let lastExecutedQueryVal = null;
-
-// Structural history stack of queries that successfully yielded hits
 window.searchResultHistoryStack = [];
 
 function triggerFederatedSearch(queryVal) {
     latestQueryVal = queryVal;
-
-    // --- ENHANCED LEAD LOCKING GATE ---
-    if (federatedSearchTimer) {
-        // If the user modified the text, but the timer lock is already engaged,
-        // do not spawn a new timer. However, if they stop typing right around the 
-        // expiration boundary, we need to ensure the final trailing state isn't abandoned.
-        return;
-    }
-
-    // Schedule the primary locking block execution frame
+    if (federatedSearchTimer) return;
     runLockingCycle();
 }
 
 function runLockingCycle() {
     federatedSearchTimer = setTimeout(() => {
-        // Drop out entirely if empty or cleared
         if (!latestQueryVal || latestQueryVal.trim().length < 2) {
             federatedSearchTimer = null;
             return;
         }
 
-        // TARGET OPTIMIZATION FIXED: If the user was typing fast and the final state
-        // equals exactly what we just searched on the last tick cycle, do not re-run IDB scans.
         if (latestQueryVal === lastExecutedQueryVal) {
             federatedSearchTimer = null;
             return;
@@ -511,8 +488,9 @@ function runLockingCycle() {
 
         lastExecutedQueryVal = latestQueryVal;
 
-        // Dispatch payload to background threads
+        // Tag UI interactions with an explicit 'sidebar' tracking string
         searchWorker.postMessage({
+            callbackId: 'ui-sidebar-search',
             query: latestQueryVal,
             caseSensitive: false,
             gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
@@ -525,21 +503,13 @@ function runLockingCycle() {
             ].filter(Boolean)
         });
 
-        // Clear the explicit locking reference handle
         federatedSearchTimer = null;
 
-        // --- CATCH TRAILING EDGE MODIFICATIONS ---
-        // Right after resetting the lock, check if the user struck another key 
-        // during the execution frame window block. If they did, immediately 
-        // schedule a secondary trailing pass to pick it up.
         if (latestQueryVal !== lastExecutedQueryVal) {
             runLockingCycle();
         }
-
     }, 300);
 }
-
-
 
 searchInput.addEventListener('keydown', async (e) => {
     // 1. Intercept explicit execution submissions (Enter key)
@@ -555,7 +525,7 @@ searchInput.addEventListener('keydown', async (e) => {
             }
 
             // Fire the query instantly
-            window.searchWorker.postMessage({
+            searchWorker.postMessage({
                 query: currentQuery,
                 caseSensitive: false,
                 gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
@@ -622,7 +592,7 @@ function renderSearchResults(groupedItems, lastValidQuery) {
         const header = document.createElement('div');
         header.className = 'search-card-header';
         header.innerHTML = `
-            <span class="search-file-path" title="Click to open file"
+            <span class="search-file-path" popovertarget="global-popup" placeholder="${group.path}"
                   data-owner="${Utils.escapeHtml(owner)}"
                   data-repo-name="${Utils.escapeHtml(repoName)}"
                   data-path="${Utils.escapeHtml(group.path)}"

@@ -297,6 +297,10 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
         showDatabases();
     }
 
+    if (panelId === 'searchlist') {
+        setTimeout(() => search.focus(), 200)
+    } 
+
     // 6. Direct Canvas engine engine boot check
     if ((panelId === 'viewport-frame' || panelId === 'play') && !window.GL?.canvas) {
         // Read the user preference to decide if we pull down Toji's WebGL files or the native WASM engine
@@ -316,7 +320,6 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
         } else {
             renderTerminalsCommand(panelId, true)
         }
-
     }
 }
 

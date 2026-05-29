@@ -470,13 +470,13 @@ async function find(argv) {
 
     // Set up our execution promise callback resolver right before dispatching messages
     const searchPromise = new Promise((resolve, reject) => {
-        activeTerminalSearchDeferred = { resolve, reject };
+        terminalCommandDeferred = { resolve, reject };
 
         // Safety timeout watchdog to prevent terminal lockups if background threads hang
         setTimeout(() => {
-            if (activeTerminalSearchDeferred) {
+            if (terminalCommandDeferred) {
                 resolve([]);
-                activeTerminalSearchDeferred = null;
+                terminalCommandDeferred = null;
             }
         }, 8000);
     });
