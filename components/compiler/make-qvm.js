@@ -189,6 +189,8 @@ const SHLIB_LDFLAGS = [
     //"--no-standard-libraries",
     '--no-threads',
     "--export-dynamic",
+    '--export=dllEntry',
+    '--export=vmMain',
     //"-fvisibility", "hidden",
     //"--experimental-pic",
     //"-shared",
@@ -199,7 +201,7 @@ const SHLIB_LDFLAGS = [
     //"--stack-first",
     '-Llib/wasm32-wasi',
     "--global-base=32",
-    "--table-base=1024",
+    //"--table-base=1024",
     //"--growable-table",
     // Link against the builtins and libc.a
     //path.join(vars.WASI_BUILTINS, "lib/wasi/libclang_rt.builtins-wasm32.a"),

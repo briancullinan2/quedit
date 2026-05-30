@@ -7,7 +7,7 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
     PREAMBLE = GITHUB_PREAMBLE
 
     const fullUrl = `https://api.github.com/repos/${ownerName}/${repoName}`
-        + (url.startsWith('/') || url.trim().length == 0 ? '' : '/') + url
+        + (url.startsWith('/') || url.trim().length == 0 ? '' : '/') + url + (url.includes('?') ? '&' : '?') + `t=${Date.now()}`
     try {
         const headers = {
             'Accept': 'application/vnd.github+json',
