@@ -207,7 +207,7 @@ function debounceTerminalStatus(event) {
         debounceTerminalMouse = null;
     }, 200);
 
-    return false;
+    return true;
 }
 
 /**

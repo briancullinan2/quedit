@@ -144,6 +144,7 @@ body,
     scroll-margin-left: revert;
 }
 
+#github,
 #assetlist,
 #gamelist,
 #database,
@@ -234,6 +235,8 @@ body,
     align-items: center;
 }
 
+
+#github .treejs>.treejs-nodes,
 #assetlist .treejs>.treejs-nodes,
 #gamelist .treejs>.treejs-nodes,
 #database .treejs>.treejs-nodes,
@@ -1014,6 +1017,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
+
+#github .treejs .treejs-checkbox,
 #database .treejs .treejs-checkbox,
 #assetlist .treejs .treejs-checkbox,
 #gamelist .treejs .treejs-checkbox,
@@ -1022,6 +1027,8 @@ input[type="number"]::-webkit-inner-spin-button {
     display: none;
 }
 
+
+#github .treejs .treejs-node,
 #database .treejs .treejs-node,
 #assetlist .treejs .treejs-node,
 #gamelist .treejs .treejs-node,
@@ -1457,6 +1464,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 #terminal-container,
+#github,
 #editor,
 #assetlist,
 #gamelist,
@@ -1625,6 +1633,7 @@ input[type="number"]::-webkit-inner-spin-button {
 */
 
 
+#github.not-hidden,
 #assetlist.not-hidden,
 #gamelist.not-hidden,
 #database.not-hidden,
@@ -1737,6 +1746,7 @@ input[type="number"]::-webkit-inner-spin-button {
     #terminal-container,
     #editor,
     #assetlist,
+    #github,
     #gamelist,
     #database,
     #searchlist,

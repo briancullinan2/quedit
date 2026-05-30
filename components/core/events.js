@@ -44,16 +44,15 @@ function onLoadTerminal() {
 
     // allow ux to adjust to class change and xterm to start
     setTimeout(() => {
-
         syncThemeWithAce()
         forceFitLayout()
         if (!window.terminalLoaded) {
             term.write(terminalLog.map(l => l.text || l).join(''))
-            if (!terminalLoaded && terminalLog.length > 0)
-                writePrompt()
+            if (!window.terminalLoaded && terminalLog.length > 0)
+                setTimeout(() => writePrompt(), 200)
             window.terminalLoaded = true
         }
-
+        terminalContainer.focus()
     }, 200)
 
     // Execute internal scan loops matching your terminal selections

@@ -24,7 +24,7 @@ const term = new Terminal({
 
 // Open terminal session within the destination block
 term.open(terminalContainer);
-terminalLoaded = true;
+window.terminalLoaded = false;
 
 /**
  * Pulls computed styles from the active editor container and mutates the xterm context theme layout.

@@ -857,7 +857,8 @@ async function buildCommand(argv, database) {
 
 
 async function remove(argv, database) {
-    const databases = [database, engineRepository, assetRepository, gameRepository, toolsRepository, tools2Repository]
+    const metas = await getDatabaseMetadata()
+    const databases = [database].concat(metas.map(m => m.key))
     const filename = argv[0]
 
     const queryTarget = argv.join(' ');
@@ -887,13 +888,7 @@ async function remove(argv, database) {
         query: cleanQuery,
         caseSensitive: caseSensitiveActive,
         gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
-        activeRepositories: [
-            window.engineRepository,
-            window.gameRepository,
-            window.assetRepository,
-            window.toolsRepository,
-            window.tools2Repository
-        ].filter(Boolean)
+        activeRepositories: databases.filter(Boolean)
     });
 
     const groupedMatches = await searchPromise;
@@ -907,19 +902,13 @@ async function remove(argv, database) {
         }
     }))
 
-    for (let db of databases) {
-        try {
-            if (!db) continue
-            terminalWrite(`Removing ${filename} on ${db}\n\r`);
-            await deleteRecord(DB_STORE_NAME, filename, db)
-        } catch (e) {
-
+    for (let path of Object.keys(FS.virtual)) {
+        if (rx.test(path)) {
+            delete FS.virtual[filename]
+            terminalWrite(`Removing ${filename} from memory\n\r`);
         }
     }
-    if (FS.virtual[filename]) {
-        delete FS.virtual[filename]
-        terminalWrite(`Removing ${filename} from memory\n\r`);
-    }
+
     try {
         await api.remove(filename)
     } catch (e) {

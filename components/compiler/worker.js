@@ -388,21 +388,15 @@ const onAnyMessage = async event => {
     // 
     case 'remove':
       api.extract(event.data.data)
-      const databases = [this.database, this.engineRepo, this.assetRepo, this.gameRepo, this.toolsRepo, this.toolsRepo2]
-      const filename = event.data.data.filename
-      for (let db of databases) {
-        try {
-          if (!db) continue
-          writeLog(`Removing working file ${filename} from ${db}`);
-          await deleteRecord(DB_STORE_NAME, filename, db)
-        } catch (e) {
-          console.error(r)
+      const rx = globToRegex(filename);
+      for (let path of Object.keys(FS.virtual)) {
+        if (rx.test(path)) {
+          delete FS.virtual[filename]
+          terminalWrite(`Removing ${filename} from worker memory\n\r`);
         }
       }
-      if (FS.virtual[filename]) {
-        delete FS.virtual[filename]
-        writeLog(`Removing working file ${filename} from memory`);
-      }
+
+      // TODO: fix this
       try {
         if (api.memfs) {
           await api.ready

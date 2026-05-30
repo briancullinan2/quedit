@@ -98,7 +98,7 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
 
 document.getElementById('toolbar').addEventListener('change', async (e) => {
     return renderToolbarCommand(
-        e.target.id || e.target.href?.split('#').pop())
+        e.target.id || e.target.name || e.target.href?.split('#').pop())
 
 });
 
@@ -107,7 +107,7 @@ document.getElementById('toolbar').addEventListener('click', async (e) => {
     if (e.target.nodeName.toUpperCase() === 'SELECT')
         return
     return renderToolbarCommand(
-        e.target.id || e.target.href?.split('#').pop())
+        e.target.id || e.target.name || e.target.href?.split('#').pop())
 
 });
 

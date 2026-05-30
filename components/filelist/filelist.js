@@ -332,6 +332,8 @@ function treeHandler(selector, e) {
     }
 }
 
+
+document.getElementById('github').addEventListener('click', treeHandler.bind(null, '#github'));
 document.getElementById('filelist').addEventListener('click', treeHandler.bind(null, '#filelist'));
 document.getElementById('gamelist').addEventListener('click', treeHandler.bind(null, '#gamelist'));
 document.getElementById('assetlist').addEventListener('click', treeHandler.bind(null, '#assetlist'));
@@ -339,7 +341,7 @@ document.getElementById('database').addEventListener('click', treeHandler.bind(n
 
 
 
-const FILELIST_IDS = ['searchlist', 'filelist', 'gamelist', 'assetlist', 'database']
+const FILELIST_IDS = ['searchlist', 'filelist', 'gamelist', 'assetlist', 'database', 'github']
 
 let panels = document.querySelectorAll('#paint, #token-modal, #viewport-frame, #terminal-container, #editor, #searchlist, #filelist, #gamelist, #assetlist, #database, #github')
 

@@ -1451,6 +1451,7 @@ body {
 
 */
 
+#github,
 #assetlist,
 #gamelist,
 #database,
@@ -1987,11 +1988,11 @@ body .terminal-file-underline {
 }
 
 
-#main-body:not(:has(#filelist.not-hidden)):not(:has(#gamelist.not-hidden)):not(:has(#assetlist.not-hidden)):not(:has(#database.not-hidden)) a[href="#collapse"]::before {
+#main-body:not(:has(#github.not-hidden)):not(:has(#filelist.not-hidden)):not(:has(#gamelist.not-hidden)):not(:has(#assetlist.not-hidden)):not(:has(#database.not-hidden)) a[href="#collapse"]::before {
     content: "\f16e";
 }
 
-#main-body:not(:has(#filelist.not-hidden)):not(:has(#gamelist.not-hidden)):not(:has(#assetlist.not-hidden)):not(:has(#database.not-hidden)) a[href="#collapse"]::after {
+#main-body:not(:has(#github.not-hidden)):not(:has(#filelist.not-hidden)):not(:has(#gamelist.not-hidden)):not(:has(#assetlist.not-hidden)):not(:has(#database.not-hidden)) a[href="#collapse"]::after {
     content: "Expand";
 }
 
@@ -2102,6 +2103,7 @@ body .terminal-file-underline {
 
 
 
+#github .treejs .treejs-switcher:before,
 #assetlist .treejs .treejs-switcher:before,
 #gamelist .treejs .treejs-switcher:before,
 #database .treejs .treejs-switcher:before,

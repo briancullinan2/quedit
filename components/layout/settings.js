@@ -4,7 +4,7 @@ const IMPORT_SETTINGS = {
             key: 'github_token',
             default: '',
             set: (val) => {
-                modal.classList.add('hidden');
+                //modal.classList.add('hidden');
                 if (!window.api) return
                 window.api.github_token = val; // share with worker
             }
