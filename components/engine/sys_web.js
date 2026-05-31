@@ -173,7 +173,11 @@ function Sys_LoadLibrary(namePtr) {
 	}
 
 	const bytes = new Uint8Array(wasmFileRecord.contents);
-	const allocatedMemoryAddress = 32;
+	let allocatedMemoryAddress = UI_MEMORY_BASE;
+	if (filename.includes('cgame'))
+		allocatedMemoryAddress = CGAME_MEMORY_BASE;
+	if (filename.includes('game'))
+		allocatedMemoryAddress = GAME_MEMORY_BASE;
 
 	// =========================================================================
 	// STEP 2: PROVISION ISOLATED TABLE & BACKFILL CORE ENGINE HOOKS
@@ -257,51 +261,51 @@ function Sys_LoadLibrary(namePtr) {
 
 
 function dllEntry(engineSyscallTableIndex) {
-    console.log(`%c[Static dllEntry] Intercepted Engine Syscall Table Index: ${engineSyscallTableIndex}`, "color: #00ff00; font-weight: bold;");
-    
-    // 1. Identify the active module record using your handle tracking map
-    // (Assuming you track the initializing module context globally or can infer it)
-    const activeHandle = nextModuleHandle - 1; 
-    const moduleRecord = loadedWasmModules[activeHandle];
-    
-    if (!moduleRecord) {
-        console.error("[dllEntry] Critical Error: No active WASM module record found to bridge.");
-        return;
-    }
+	console.log(`%c[Static dllEntry] Intercepted Engine Syscall Table Index: ${engineSyscallTableIndex}`, "color: #00ff00; font-weight: bold;");
 
-    const sideModuleTable = moduleRecord.table;
-    const realEngineSyscallFunction = ENV.table.get(engineSyscallTableIndex);
+	// 1. Identify the active module record using your handle tracking map
+	// (Assuming you track the initializing module context globally or can infer it)
+	const activeHandle = nextModuleHandle - 1;
+	const moduleRecord = loadedWasmModules[activeHandle];
 
-    if (!realEngineSyscallFunction) {
-        console.error(`[dllEntry] Engine Table Index ${engineSyscallTableIndex} returned null or uninitialized function reference.`);
-        return;
-    }
+	if (!moduleRecord) {
+		console.error("[dllEntry] Critical Error: No active WASM module record found to bridge.");
+		return;
+	}
 
-    // =========================================================================
-    // STEP 2: CHOOSE BRIDGING MODEL
-    // =========================================================================
-    
-    // Mode A: Overwrite-Match (If your side-module compiler expects the SAME index)
-    if (engineSyscallTableIndex >= sideModuleTable.length) {
-        sideModuleTable.grow((engineSyscallTableIndex + 1) - sideModuleTable.length);
-    }
-    sideModuleTable.set(engineSyscallTableIndex, realEngineSyscallFunction);
-    console.log(`   -> Bridged to Side-Module Table Slot [${engineSyscallTableIndex}] natively.`);
+	const sideModuleTable = moduleRecord.table;
+	const realEngineSyscallFunction = ENV.table.get(engineSyscallTableIndex);
 
-    // Mode B: Index 0 Fallback Alignment (Only if side-module hardcoded syscalls to index 0)
-    // sideModuleTable.set(0, realEngineSyscallFunction);
+	if (!realEngineSyscallFunction) {
+		console.error(`[dllEntry] Engine Table Index ${engineSyscallTableIndex} returned null or uninitialized function reference.`);
+		return;
+	}
 
-    // =========================================================================
-    // STEP 3: EXECUTE THE TRUE VM ENTRY
-    // =========================================================================
-    // Now that the side-module's private table possesses the engine's execution function,
-    // pass the correct index straight into the compiled binary's true entry export point.
-    if (moduleRecord.instance.exports.dllEntry) {
-        console.log(`[Static dllEntry] Invoking compiled WASM dllEntry...`);
-        moduleRecord.instance.exports.dllEntry(engineSyscallTableIndex);
-    } else {
-        console.error(`[dllEntry] Compiled module is missing native dllEntry export hook.`);
-    }
+	// =========================================================================
+	// STEP 2: CHOOSE BRIDGING MODEL
+	// =========================================================================
+
+	// Mode A: Overwrite-Match (If your side-module compiler expects the SAME index)
+	if (engineSyscallTableIndex >= sideModuleTable.length) {
+		sideModuleTable.grow((engineSyscallTableIndex + 1) - sideModuleTable.length);
+	}
+	sideModuleTable.set(engineSyscallTableIndex, realEngineSyscallFunction);
+	console.log(`   -> Bridged to Side-Module Table Slot [${engineSyscallTableIndex}] natively.`);
+
+	// Mode B: Index 0 Fallback Alignment (Only if side-module hardcoded syscalls to index 0)
+	// sideModuleTable.set(0, realEngineSyscallFunction);
+
+	// =========================================================================
+	// STEP 3: EXECUTE THE TRUE VM ENTRY
+	// =========================================================================
+	// Now that the side-module's private table possesses the engine's execution function,
+	// pass the correct index straight into the compiled binary's true entry export point.
+	if (moduleRecord.instance.exports.dllEntry) {
+		console.log(`[Static dllEntry] Invoking compiled WASM dllEntry...`);
+		moduleRecord.instance.exports.dllEntry(engineSyscallTableIndex);
+	} else {
+		console.error(`[dllEntry] Compiled module is missing native dllEntry export hook.`);
+	}
 }
 
 

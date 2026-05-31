@@ -4,6 +4,7 @@
 
 const HEADER_BATCH = 10
 
+
 const CFLAGS = [
     "-cc1",
     "-emit-obj",
@@ -370,7 +371,7 @@ const ENGINE_LDFLAGS = [
     '-z', `stack-size=${1024 * 1024}`,
     '-Llib/wasm32-wasi',
     "-mllvm", "-mattr=+mutable-globals",
-    "--global-base=50331648",
+    "--global-base=" + ENGINE_MEMORY_BASE,
     //"--growable-table",
     // Link against the builtins and libc.a
     //path.join(vars.WASI_BUILTINS, "lib/wasi/libclang_rt.builtins-wasm32.a"),

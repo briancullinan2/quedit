@@ -76,6 +76,12 @@ const IMPORT_SETTINGS = {
             description: 'Repository handling the graphical subsystems and pipeline routines tasked with translating engine calculations to browser contexts.',
             set: configureRepository
         },
+        environmentRepository: {
+            key: 'environment_repository',
+            default: 'briancullinan2/quedit',
+            description: 'Repository for this workspace, the entire IDE, code editor and engine runner, for editing the environment inside the workspace.',
+            set: configureRepository
+        },
         workspaceDefault: {
             key: 'workspace_default',
             default: 'editor',

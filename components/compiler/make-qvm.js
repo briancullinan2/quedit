@@ -200,7 +200,6 @@ const SHLIB_LDFLAGS = [
     '-z', `stack-size=${1024 * 1024}`,
     //"--stack-first",
     '-Llib/wasm32-wasi',
-    "--global-base=32",
     //"--table-base=1024",
     //"--growable-table",
     // Link against the builtins and libc.a
@@ -566,7 +565,13 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
         writeLog(`LD: ${qvmOutput}`);
 
-
+        let memoryBase = "--global-base=" + UI_MEMORY_BASE
+        if (name === 'cgame') {
+            memoryBase = "--global-base=" + CGAME_MEMORY_BASE
+        }
+        if (name === 'game') {
+            memoryBase = "--global-base=" + GAME_MEMORY_BASE
+        }
         let LDFLAGS = [
             ...(QVM_MODE ? ['-vq3', '-r', '-m', '-v'] : SHLIB_LDFLAGS),
             "-o", qvmOutput, // (QVM_MODE ? name : qvmOutput),
@@ -591,6 +596,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
             await api.link({
                 LDFLAGS: [
                     ...LDFLAGS,
+                    memoryBase,
                     '-lm',
                     '--no-entry',
                     '--export=vmMain',

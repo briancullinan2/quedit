@@ -1,3 +1,6 @@
+
+
+
 function initEnvironment(ENGINE) {
     if (!ENV.table) {
         const importTable = new WebAssembly.Table({
@@ -13,7 +16,7 @@ function initEnvironment(ENGINE) {
             maximum: 32000,
             /* 'shared': true */
         })
-        ENV.__memory_base = 50331648
+        ENV.__memory_base = ENGINE_MEMORY_BASE
     }
 
     // weird stuff WebAssembly requires

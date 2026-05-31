@@ -175,3 +175,7 @@ const TERMINALS = (typeof document !== 'undefined'
     .filter((a, i, arr) => arr.indexOf(a) === i)
 
 
+const ENGINE_MEMORY_BASE = 48 * 1024 * 1024
+const UI_MEMORY_BASE = 32
+const CGAME_MEMORY_BASE = 16 * 1024 * 1024
+const GAME_MEMORY_BASE = 32 * 1024 * 1024
