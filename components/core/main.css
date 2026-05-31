@@ -144,26 +144,6 @@ body,
     scroll-margin-left: revert;
 }
 
-#github,
-#assetlist,
-#gamelist,
-#database,
-#searchlist,
-#filelist {
-    overflow: scroll;
-    flex-basis: 300px;
-}
-
-
-.treejs .treejs-node {
-    white-space: nowrap;
-    overflow: visible;
-}
-
-.treejs .treejs-node__close>.treejs-nodes {
-    overflow: hidden;
-}
-
 #main {
     height: 100vh;
     max-height: calc(100vh);
@@ -222,6 +202,7 @@ body,
     flex-basis: 60px;
 }
 
+#list-wrapper ul.toolbar,
 #statusbar,
 #toolbar {
     flex-shrink: 0;
@@ -268,6 +249,10 @@ body,
 #token-modal button,
 #search-terminal,
 #search,
+#list-wrapper ul.toolbar input,
+#list-wrapper ul.toolbar select,
+#list-wrapper ul.toolbar select option,
+#list-wrapper ul.toolbar button,
 #toolbar input,
 #toolbar select,
 #toolbar select option,
@@ -300,6 +285,10 @@ body,
 }
 
 
+#list-wrapper ul.toolbar input:not([type="checkbox"]),
+#list-wrapper ul.toolbar select,
+#list-wrapper ul.toolbar select option,
+#list-wrapper ul.toolbar button,
 #toolbar input:not([type="checkbox"]),
 #toolbar select,
 #toolbar select option,
@@ -316,6 +305,7 @@ body,
     width: 140px;
 }
 
+#list-wrapper ul.toolbar input:placeholder-shown,
 #popups .popup input:placeholder-shown,
 select:has(option[value=""]:checked),
 #search-terminal input:placeholder-shown,
@@ -326,6 +316,10 @@ select:has(option[value=""]:checked),
     color: var(--ace-foreground);
 }
 
+#list-wrapper ul.toolbar input:hover,
+#list-wrapper ul.toolbar select:hover,
+#list-wrapper ul.toolbar select option:hover,
+#list-wrapper ul.toolbar button:hover,
 #popups .popup input:hover,
 #popups .popup .buttons button:hover,
 #token-modal input:hover,
@@ -340,6 +334,8 @@ select:has(option[value=""]:checked),
 }
 
 
+#list-wrapper ul.toolbar button:hover,
+#list-wrapper ul.toolbar select option:hover,
 #token-modal .actions button:hover,
 #toolbar select option:hover,
 #toolbar button:hover {
@@ -353,6 +349,8 @@ select:has(option[value=""]:checked),
 #token-modal input:focus,
 #search-terminal:focus,
 #searchlist #search:focus,
+#list-wrapper ul.toolbar input:focus,
+#list-wrapper ul.toolbar select:focus,
 #toolbar input:focus,
 #toolbar select:focus {
     border-color: var(--ace-blue);
@@ -363,6 +361,7 @@ select:has(option[value=""]:checked),
 select:not(:has(option[value=""]:checked)),
 #token-modal input:not(:placeholder-shown),
 #search:not(:placeholder-shown),
+#list-wrapper ul.toolbar input:not(:placeholder-shown),
 #toolbar input:not(:placeholder-shown),
 #search-terminal:not(:placeholder-shown) {
     border-color: var(--ace-blue);
@@ -370,6 +369,7 @@ select:not(:has(option[value=""]:checked)),
 }
 
 
+#list-wrapper ul.toolbar input::-moz-placeholder,
 #search::-moz-placeholder,
 #toolbar input::-moz-placeholder,
 #toolbar input::-ms-input-placeholder {
@@ -385,6 +385,7 @@ select:not(:has(option[value=""]:checked)),
 #gh-token-input::placeholder,
 #search-terminal::placeholder,
 #token-modal input::placeholder,
+#list-wrapper ul.toolbar input::placeholder,
 #search::placeholder,
 #toolbar input::placeholder {
     background-color: var(--ace-background);
@@ -402,6 +403,7 @@ select:not(:has(option[value=""]:checked)),
 
 #popups .popup button:active,
 #token-modal button:active,
+#list-wrapper ul.toolbar button:active,
 #toolbar select option:hover,
 #toolbar button:active {
     background: var(--ace-bg);
@@ -431,6 +433,9 @@ select:not(:has(option[value=""]:checked)),
     min-width: min-content;
 }
 
+
+
+#list-wrapper ul.toolbar>li:not(:has(:not(a:empty))),
 #toolbar>ul>li>ul>li:not(:has(:not(a:empty))),
 #toolbar>ul>li:not(:has(:not(a:empty))),
 #main_menu>ul.menu_bar>li {
@@ -797,6 +802,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
+#list-wrapper ul.toolbar,
 #toolbar>ul>li>ul,
 #toolbar>ul {
     display: inline-flex;
@@ -813,6 +819,7 @@ input[type="number"]::-webkit-inner-spin-button {
     padding: 2px 5px;
 }
 
+#list-wrapper ul.toolbar>li,
 #toolbar>ul>li>ul>li,
 #toolbar>ul>li {
     flex-shrink: 1;
@@ -862,6 +869,7 @@ input[type="number"]::-webkit-inner-spin-button {
     pointer-events: none;
 }
 
+#list-wrapper ul.toolbar,
 #terminals ul,
 #toolbar>ul,
 #tabs ul {
@@ -870,6 +878,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
+#list-wrapper ul.toolbar,
+#list-wrapper ul.toolbar>li,
 #terminals ul,
 #terminals li,
 #toolbar>ul,
@@ -1463,6 +1473,29 @@ input[type="number"]::-webkit-inner-spin-button {
     box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.4);
 }
 
+
+#github,
+#assetlist,
+#gamelist,
+#database,
+#searchlist,
+#filelist {
+    overflow: scroll;
+    flex-basis: 300px;
+    flex-direction: column;
+}
+
+
+.treejs .treejs-node {
+    white-space: nowrap;
+    overflow: visible;
+}
+
+.treejs .treejs-node__close>.treejs-nodes {
+    overflow: hidden;
+}
+
+
 #terminal-container,
 #github,
 #editor,
@@ -1623,14 +1656,62 @@ input[type="number"]::-webkit-inner-spin-button {
     }
 }
 
-
-/*
-#editor-container:has(.not-hidden ~ .not-hidden) #viewport-frame.not-hidden,
-#editor-container:has(.not-hidden ~ .not-hidden) #editor.not-hidden {
-    flex-basis: 50%;
-    width: 50%;
+#list-wrapper {
+    min-width: 200px;
+    max-width: 200px;
+    /* Parent collapses/expands at 0.5s */
+    transition: max-width 0.3s ease-in-out, min-width 0.3s ease-in-out;
 }
-*/
+
+#list-wrapper:not(:has(>.not-hidden)) {
+    min-width: 0;
+    max-width: 0;
+}
+
+/* ==========================================
+   THE OPENING STATE (Reappear Slowly)
+============================================= */
+#list-wrapper ul.toolbar {
+    display: flex;
+    opacity: 1;
+    
+    /* On Open: Take 0.5s to fade in, and WAIT 0.5s for the parent wrapper to expand first */
+    transition: display 0.3s allow-discrete, opacity 0.3s ease-in-out;
+    transition-delay: 0.3s; 
+    min-width: 200px;
+}
+
+/* ==========================================
+   THE CLOSING STATE (Disappear Quickly)
+============================================= */
+#list-wrapper:not(:has(>.not-hidden)) ul.toolbar {
+    display: none;
+    opacity: 0;
+    
+    /* On Close: Fade out instantly (0.1s) with NO delay (0s) so it vanishes before parent shrinks */
+    transition: display 0.1s allow-discrete, opacity 0.1s ease-in-out;
+    transition-delay: 0s;
+}
+
+/* 3. Entry hook for display swap */
+@starting-style {
+    #list-wrapper ul.toolbar {
+        opacity: 0;
+    }
+}
+
+#list-wrapper {
+    display:flex;
+    flex-direction: column;
+    min-width: 200px;
+    max-width: 200px;
+    flex-basis: 200px;
+    transition: max-width ease-in-out 0.5s, min-width ease-in-out 0.5s;
+}
+
+#list-wrapper ul.toolbar {
+    flex-basis: 50px;
+}
 
 
 #github.not-hidden,
@@ -1641,7 +1722,7 @@ input[type="number"]::-webkit-inner-spin-button {
 #searchlist.not-hidden {
     display: block;
     min-width: 200px;
-    flex-basis: 200px;
+    flex-basis: 100%;
     visibility: visible;
 }
 

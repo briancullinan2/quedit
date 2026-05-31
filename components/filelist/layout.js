@@ -126,7 +126,7 @@ function getDocumentPanelFromClickId(panelId) {
 
 
 const DOESNT_AFFECT_UI = [
-    'github', 'back', 'next', 'fullscreen',
+    'github-login', 'back', 'next', 'fullscreen',
     'layout', 'share', 'pause', 'stop', 'save',
     'configuration', 'theme', 'repository',
     'wasi', 'theme', 'keybinding', 'reload',

@@ -801,13 +801,17 @@
                 </li>
                 <li>
                     <ul>
-                        <li><a name="github" alt="Github login" class="bx bx-arrow-in-right-square-half" target="_new"
+                        <li><a id="github-login" alt="Github login" class="bx bx-arrow-in-right-square-half" target="_new"
                                 href="https://github.com/settings/tokens?type=beta"></a></li>
                         <li><a alt="Console" href="#terminal-container" class="bx bx-terminal"></a></li>
                         <li><a alt="Edit settings" href="#settings" class="bx bx-gear"></a></li>
                         <li><a alt="Sharable game link" href="#share" class="bx bx-share"></a></li>
                         <li><a alt="Toggle layout" href="#layout" class="bx bx-iframe"></a></li>
                         <li><a alt="Fullscreen mode" href="#fullscreen" class="bx bx-fullscreen"></a></li>
+                    </ul>
+                </li>
+                <li>
+                    <ul>
                         <li>
                             <a alt="Compile" href="#compile" class="bx bx-code"></a>
                         </li>
@@ -815,6 +819,10 @@
                         <li><a alt="Pause" href="#pause" class="bx bx-pause"></a></li>
                         <li><a alt="Stop" href="#stop" class="bx bx-stop"></a></li>
                         <li><a alt="Reload" href="#reload" class="bx bx-refresh-cw-alt"></a></li>
+                    </ul>
+                </li>
+                <li>
+                    <ul>
                         <li>
                             <a alt="New file" href="#new" class="bx bx-file-plus"></a>
                         </li>
@@ -960,30 +968,7 @@
                         </optgroup>
                     </select>
                 </li>
-                <li class="setting">
-                    <ul>
-                        <li class="setting" placeholder="Repository owner">
-                            <select required name="owner" id="owner">
-                                <option value="" selected disabled>Repository owner</option>
-                                <option value="briancullinan2">briancullinan2</option>
-                                <option value="ec-">ec-</option>
-                            </select>
-                        </li>
-                        <li class="setting" placeholder="Current repository">
-                            <select required name="repository" id="repository">
-                                <option value="" selected disabled>Current repository</option>
-                                <option value="Quake3e">Quake3e</option>
-                                <option value="baseq3a">baseq3a</option>
-                            </select>
-                        </li>
-                        <li class="setting" placeholder="Current branch">
-                            <select required name="branch" id="branch">
-                                <option value="" selected disabled>Current branch</option>
-                                <option value="main">main</option>
-                            </select>
-                        </li>
-                    </ul>
-                </li>
+                
                 <li class="engine">
                     <ul>
                         <li placeholder="Spawn point">
@@ -1020,31 +1005,60 @@
 
             <div id="toggle-wrapper" class="panel-row">
                 <div id="editor-container" class="panel-row">
-                    <div id="searchlist" class="hidden">
-                        <div placeholder="Search many...">
-                            <input type="text" id="search" name="search" placeholder="Search many..." />
-                        </div>
-                        <div id="search-status">
+                    <div id="list-wrapper">
+                        <ul class="toolbar">
+                            <li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
+                            <li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
+                            <li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
+                            <li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
+                            <li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
+                            <li class="setting" placeholder="Repository owner">
+                                <select required name="owner" id="owner">
+                                    <option value="" selected disabled>Repository owner</option>
+                                    <option value="briancullinan2">briancullinan2</option>
+                                    <option value="ec-">ec-</option>
+                                </select>
+                            </li>
+                            <li class="setting" placeholder="Current repository">
+                                <select required name="repository" id="repository">
+                                    <option value="" selected disabled>Current repository</option>
+                                    <option value="Quake3e">Quake3e</option>
+                                    <option value="baseq3a">baseq3a</option>
+                                </select>
+                            </li>
+                            <li class="setting" placeholder="Current branch">
+                                <select required name="branch" id="branch">
+                                    <option value="" selected disabled>Current branch</option>
+                                    <option value="main">main</option>
+                                </select>
+                            </li>
+                        </ul>
+                        <div id="searchlist" class="hidden">
+                            <div placeholder="Search many...">
+                                <input type="text" id="search" name="search" placeholder="Search many..." />
+                            </div>
+                            <div id="search-status">
 
+                            </div>
+                            <div id="search-results">
+                                
+                            </div>
                         </div>
-                        <div id="search-results">
+                        <div id="filelist" class="not-hidden" data-repository="briancullinan2/Quake3e">
                             
                         </div>
-                    </div>
-                    <div id="filelist" class="not-hidden" data-repository="briancullinan2/Quake3e">
+                        <div id="gamelist" data-repository="ec-/baseq3a" class="hidden">
 
-                    </div>
-                    <div id="gamelist" data-repository="ec-/baseq3a" class="hidden">
+                        </div>
+                        <div id="assetlist" class="hidden">
 
-                    </div>
-                    <div id="assetlist" class="hidden">
+                        </div>
+                        <div id="database" class="hidden">
 
-                    </div>
-                    <div id="database" class="hidden">
+                        </div>
+                        <div id="github" class="hidden">
 
-                    </div>
-                    <div id="github" class="hidden">
-
+                        </div>
                     </div>
 <div id="editor">
 #include &lt;stdio.h&gt;

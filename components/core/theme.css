@@ -2005,6 +2005,8 @@ body .terminal-file-underline {
 #terminals a:active,
 #terminals a.active,
 #terminals a:hover,
+#list-wrapper ul.toolbar a:hover,
+#list-wrapper ul.toolbar a:active,
 #tabs a.active,
 #toolbar a.active,
 #tabs a:active,
@@ -2026,6 +2028,7 @@ body .terminal-file-underline {
 #paint [class*="menu"] button:empty:hover:active,
 [class*="menu"] button:empty:hover:active,
 #terminals a:hover:active,
+#list-wrapper ul.toolbar a:hover:active,
 #tabs a:hover:active,
 #toolbar a:hover:active,
 #terminals a:active,
@@ -2043,6 +2046,7 @@ body .terminal-file-underline {
     border-top-color: #333;
 }
 
+#list-wrapper ul.toolbar a:active,
 #tabs a.active,
 #toolbar a.active,
 #tabs a:active,

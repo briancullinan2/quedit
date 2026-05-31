@@ -3,9 +3,10 @@ const IMPORT_SETTINGS = {
         githubToken: {
             key: 'github_token',
             default: '',
+            description: 'Personal GitHub Access Token used to authenticate API requests, bypass rate limits, and securely fetch repository source files or assets.',
             set: (val) => {
                 //modal.classList.add('hidden');
-                if (!window.api) return
+                if (!window.api) return;
                 window.api.github_token = val; // share with worker
             }
         },
@@ -14,6 +15,7 @@ const IMPORT_SETTINGS = {
             default: ['briancullinan2', 'ec-'],
             elementId: 'owner',
             type: 'csv', // Semicolon separated array mapping
+            description: 'A list of authorized GitHub organization names or usernames hosting the source code and forks relevant to this project environment.',
             set: (val) => {
                 updateSelectOptions('owner', val);
             }
@@ -23,6 +25,7 @@ const IMPORT_SETTINGS = {
             default: ['Quake3e', 'baseq3a'],
             elementId: 'repository',
             type: 'csv',
+            description: 'Comma/semicolon-separated list of target GitHub repository names available for compilation selection.',
             set: (val) => {
                 updateSelectOptions('repository', val);
             }
@@ -31,6 +34,7 @@ const IMPORT_SETTINGS = {
             key: 'default_repository',
             default: 'briancullinan2/Quake3e',
             elementId: 'repository',
+            description: 'The fallback or preferred primary repository string formatted as "owner/repo" used when loading the workspace workspace initial state.',
             get: (storage, defaultRepo) => owner.value && repository.value
                 ? owner.value + '/' + repository.value
                 : storage || defaultRepo,
@@ -39,36 +43,43 @@ const IMPORT_SETTINGS = {
         engineRepository: {
             key: 'engine_repository',
             default: 'briancullinan2/Quake3e',
+            description: 'The specific Git repository designated for compiling the core Quake 3 WebAssembly engine architecture.',
             set: configureRepository
         },
         gameRepository: {
             key: 'game_repository',
             default: 'briancullinan2/baseq3a',
+            description: 'The repository source housing the game logic mod components, including cgame, game, and ui modules.',
             set: configureRepository
         },
         assetRepository: {
             key: 'asset_repository',
             default: '',
+            description: 'Optional storage repository dedicated to static game assets, maps, texturing bundles, or audio assets required to run the game.',
             set: configureRepository
         },
         toolsRepository: {
             key: 'tools_repository',
             default: 'briancullinan2/q3lcc',
+            description: 'Primary compiler tooling repository containing components such as q3lcc (the Quake 3 ANSI C compiler targeting virtual machine bytecode).',
             set: configureRepository
         },
         tools2Repository: {
             key: 'tools_repository',
             default: 'ec-/q3asm',
+            description: 'Secondary toolchain repository hosting utilities like q3asm to assemble the intermediate bytecode files into final .qvm files.',
             set: configureRepository
         },
         rendererRepository: {
             key: 'renderer_repository',
             default: 'briancullinan2/Quake3e',
+            description: 'Repository handling the graphical subsystems and pipeline routines tasked with translating engine calculations to browser contexts.',
             set: configureRepository
         },
         workspaceDefault: {
             key: 'workspace_default',
-            default: 'editor'
+            default: 'editor',
+            description: 'Specifies the default active panel or system layout view presented to users upon launching the application interface.'
         }
     },
 
@@ -77,21 +88,23 @@ const IMPORT_SETTINGS = {
             key: 'theme',
             default: 'ace/theme/monokai',
             elementId: 'theme',
+            description: 'The visual theme layout package used to style the interactive Ace code editor window background and syntax colors.',
             set: (val) => {
                 if (typeof setTheme === 'function') setTheme(val);
-                theme.value = val
+                theme.value = val;
             }
         },
         savedKeyBinding: {
             key: 'keybinding',
             default: 'ace/keybinding/vim',
             elementId: 'keybinding',
+            description: 'Defines the keyboard mapping protocol (e.g., standard, Vim, or Emacs configurations) utilized inside the script editor workspace.',
             set: (val) => {
                 if (!window.aceEditor) return;
                 if (!val || val === 'null') {
                     window.aceEditor.setKeyboardHandler(null);
                 } else {
-                    keybinding.value = val
+                    keybinding.value = val;
                     window.aceEditor.setKeyboardHandler(val);
                 }
             }
@@ -103,12 +116,14 @@ const IMPORT_SETTINGS = {
             key: 'configuration',
             default: 'client',
             elementId: 'configuration',
+            description: 'Determines the target compilation profile rules, distinguishing targets such as full client builds or dedicated server binaries.'
         },
         hotReload: {
             key: 'hot_reload',
             default: true,
             elementId: 'reload',
-            type: 'boolean'
+            type: 'boolean',
+            description: 'When true, enables immediate compilation triggers and injection changes directly into the live executable WASM state upon saving files.'
         }
     },
 
@@ -117,8 +132,9 @@ const IMPORT_SETTINGS = {
             key: 'history',
             default: [],
             type: 'array',
+            description: 'An indexed collection tracking sequential command strings typed into the text interface console for fast history scrolling.',
             set: (val) => {
-                const newValue = val.slice(0)
+                const newValue = val.slice(0);
                 if (!window.commandHistory) window.commandHistory = [];
                 window.commandHistory.length = 0;
                 if (Array.isArray(newValue)) {
@@ -127,39 +143,108 @@ const IMPORT_SETTINGS = {
             }
         },
         terminalLog: {
-            edit: false,
             key: 'terminal_log',
+            edit: false,
             default: [],
-            type: 'json'
+            type: 'json',
+            description: 'Persistent text logging buffer retaining runtime system updates, build logs, and standard out/error print operations.'
         }
     },
 
     paint: {
-        transparency: { key: 'paint_transparency', default: false, elementId: 'pop_data_transparency', type: 'boolean' },
-        transparencyType: { key: 'paint_transparency_type', default: 'squares', elementId: 'pop_data_transparency_type' },
-        theme: { key: 'paint_theme', default: 'dark', elementId: 'pop_data_theme' },
-        units: { key: 'paint_units', default: 'pixels', elementId: 'pop_data_default_units' },
-        resolution: { key: 'paint_resolution', default: '72', elementId: 'pop_data_resolution' },
-        enableSnap: { key: 'paint_snap', default: true, elementId: 'pop_data_snap', type: 'boolean' },
-        enableGuides: { key: 'paint_guides', default: true, elementId: 'pop_data_guides', type: 'boolean' },
-        safeSearch: { key: 'paint_safe_search', default: true, elementId: 'pop_data_safe_search', type: 'boolean' },
-        exitConfirm: { key: 'paint_exit_confirm', default: true, elementId: 'pop_data_exit_confirm', type: 'boolean' },
-        thickGuides: { key: 'paint_thick_guides', default: false, elementId: 'pop_data_thick_guides', type: 'boolean' },
-        enableAutoResize: { key: 'paint_autoresize', default: true, elementId: 'pop_data_enable_autoresize', type: 'boolean' },
-        quickSaveData: { key: 'quicksave_data', default: '' }
+        transparency: {
+            key: 'paint_transparency',
+            default: false,
+            elementId: 'pop_data_transparency',
+            type: 'boolean',
+            description: 'Toggles visibility transparent handling states inside the built-in textures/imaging application paint tools.'
+        },
+        transparencyType: {
+            key: 'paint_transparency_type',
+            default: 'squares',
+            elementId: 'pop_data_transparency_type',
+            description: 'The background grid visualization graphic style (e.g., standard checkerboard squares) representing empty transparent canvas regions.'
+        },
+        theme: {
+            key: 'paint_theme',
+            default: 'dark',
+            elementId: 'pop_data_theme',
+            description: 'Sets the user interface background aesthetic layout configuration choice for custom asset creation modules.'
+        },
+        units: {
+            key: 'paint_units',
+            default: 'pixels',
+            elementId: 'pop_data_default_units',
+            description: 'Establishes the default evaluation metric scaling standard used during positioning calculations (e.g., pixels or percentages).'
+        },
+        resolution: {
+            key: 'paint_resolution',
+            default: '72',
+            elementId: 'pop_data_resolution',
+            description: 'Target rasterization resolution value tracking pixel denseness outputs across generated texturing operations.'
+        },
+        enableSnap: {
+            key: 'paint_snap',
+            default: true,
+            elementId: 'pop_data_snap',
+            type: 'boolean',
+            description: 'Locks brush positions, vertex points, or element placement edges directly onto active layout grid thresholds.'
+        },
+        enableGuides: {
+            key: 'paint_guides',
+            default: true,
+            elementId: 'pop_data_guides',
+            type: 'boolean',
+            description: 'Displays vector overlay target alignment lines to assist canvas item configuration balancing structures.'
+        },
+        safeSearch: {
+            key: 'paint_safe_search',
+            default: true,
+            elementId: 'pop_data_safe_search',
+            type: 'boolean',
+            description: 'Filters external asset lookups and image integration components to enforce content security constraints.'
+        },
+        exitConfirm: {
+            key: 'paint_exit_confirm',
+            default: true,
+            elementId: 'pop_data_exit_confirm',
+            type: 'boolean',
+            description: 'Prompts users with confirmation modals to prevent unintended layout asset progress data loss when navigating away.'
+        },
+        thickGuides: {
+            key: 'paint_thick_guides',
+            default: false,
+            elementId: 'pop_data_thick_guides',
+            type: 'boolean',
+            description: 'Increases the contrast weight and visibility profile thickness lines of canvas coordinate target alignment helpers.'
+        },
+        enableAutoResize: {
+            key: 'paint_autoresize',
+            default: true,
+            elementId: 'pop_data_enable_autoresize',
+            type: 'boolean',
+            description: 'Automatically stretches or compresses the editing canvas frame sizes relative to shifts in screen display boundaries.'
+        },
+        quickSaveData: {
+            key: 'quicksave_data',
+            default: '',
+            description: 'Temporary serialization string containing emergency restore snapshots of the local design layout configuration state.'
+        }
     },
 
     quake3e: {
         preferredRenderer: {
             key: 'renderer_preference',
-            default: 'toji'
+            default: 'toji',
+            description: 'Instructs the underlying Quake3e engine wrapper build profile to leverage specific WebGL pipeline optimizations (e.g., Brandon Jones\' Toji renderer optimizations).'
         }
     },
 
     toji: {
         preferredRenderer: {
             key: 'renderer_preference',
-            default: 'toji'
+            default: 'toji',
+            description: 'Specific configuration preferences passed to the WebGL vertex array and custom shading target context.'
         }
     }
 };
@@ -333,7 +418,7 @@ let previousSettings = null
 
 async function settings() {
     const database = owner.value + '/' + repository.value;
-    const filePath = 'settings.json' + (++tempCount);
+    const filePath = `settings${++tempCount}.json`;
 
     if (window.engineRepo?.startsWith('Quake3e')) {
         console.error('Assertion owner set to Quake3e instead of briancullinan');
