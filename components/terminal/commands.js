@@ -588,7 +588,7 @@ async function handleCommand(input) {
     // TODO: undetach the console by reporting "done" from the worker
     if (!window.detachedConsole) {
         window.runningCommand = false;
-        writePrompt()
+        //writePrompt() stop fucking writing this here and look at case '\r': // Enter / Return
     }
 
 }

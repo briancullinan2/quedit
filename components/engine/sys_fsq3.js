@@ -4,7 +4,7 @@ const REMOTE_MODELS = {}
 const QUAKE3_FS = {
     Sys_ListFiles: Sys_ListFiles,
     Sys_FTell: Sys_FTell,
-    Sys_FSeek: fd_seek,
+    Sys_FSeek: Sys_FSeek,
     Sys_llseek: Sys_llseek,
     Sys_FClose: Sys_FClose,
     Sys_FWrite: Sys_FWrite,
@@ -50,9 +50,9 @@ const QUAKE3_FS = {
     // --- Stream IO (Stdio.h) ---
     fopen: Sys_FOpen,
     fclose: Sys_FClose,
-    fread: Sys_FRead,
+    //fread: Sys_FRead,
     fwrite: Sys_FWrite,
-    fseek: fd_seek,
+    fseek: Sys_FSeek,
     ftell: Sys_FTell,
     fflush: Sys_FFlush,
     fgets: Sys_fgets,
@@ -187,7 +187,7 @@ function Sys_filestat_get(fd, bufPtr) {
  * WASI fd_seek(fd, offset_low, offset_high, whence, new_offset_ptr)
  * Clang/WASI usually passes the i64 offset as two 32-bit ints or a BigInt
  */
-function fd_seek(fd, offset, whence, newOffsetPtr) {
+function Sys_FSeek(fd, offset, whence, newOffsetPtr) {
 
     let stream = FS.pointers[fd];
     if (!stream) return 8; // WASI_EBADF
@@ -370,7 +370,7 @@ function Sys_FOpen(filename, mode) {
                 let remoteFile = 'pak0.pk3dir/' + localName
                 Promise.resolve(Com_DL_Begin(gamedir + '/' + remoteFile, 'https://quake.games/' + gamedir + '/' + remoteFile + '?alt')
                     .then(function (responseData) {
-                        Com_DL_Perform(gamedir + '/' + remoteFile, remoteFile, responseData)
+                        Com_DL_Perform(config.RUNBASE + '/' + gamedir + '/' + remoteFile, remoteFile, responseData)
                         Cvar_Set(stringToAddress('ui_breadCrumb'), stringToAddress(localName))
                         if (responseData)
                             FS_RecordFile(stringToAddress(localName))
@@ -437,11 +437,13 @@ function Sys_FClose(pointer) {
         }
     }
 
+    /*
     const trimmedArray = FS.pointers.filter(() => true);
     if (trimmedArray.length < FS.filePointer) {
         FS.filePointer = trimmedArray.length
         FS.pointers.length = trimmedArray.length
     }
+    */
     return 0
 }
 

@@ -934,7 +934,7 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
             return
           }
           mimes[0] = 'jpg'
-          Com_DL_Perform(remoteFile + '.jpg', remoteFile, responseData)
+          Com_DL_Perform(config.RUNBASE + '/' + remoteFile + '.jpg', remoteFile, responseData)
           return responseData
         }),
       Com_DL_Begin(remoteFile, 'https://quake.games/' + remoteFile + '.png?alt')
@@ -943,7 +943,7 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
             return
           }
           mimes[1] = 'png'
-          Com_DL_Perform(remoteFile + '.png', remoteFile, responseData)
+          Com_DL_Perform(config.RUNBASE + '/' + remoteFile + '.png', remoteFile, responseData)
           return responseData
         })]))
 

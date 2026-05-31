@@ -8,16 +8,16 @@ const isoGitFS = {
         /**
          * Reads the full binary snapshot contents of a file path.
          */
-        readFile: async function(path, options) {
+        readFile: async function (path, options) {
             const localPath = normalizeVfsPath(path);
             const node = FS.virtual[localPath];
-            
+
             if (!node || (node.mode >> 12) === ST_DIR) {
                 throw createFsError('ENOENT', `No such file: ${path}`);
             }
 
             const data = node.contents || new Uint8Array(0);
-            
+
             // Isomorphic-git expects a Buffer/Uint8Array unless encoding is explicitly specified
             if (options === 'utf8' || (options && options.encoding === 'utf8')) {
                 return new TextDecoder().decode(data);
@@ -28,7 +28,7 @@ const isoGitFS = {
         /**
          * Writes a binary chunk or string payload directly to a flat virtual path node.
          */
-        writeFile: async function(path, data, options) {
+        writeFile: async function (path, data, options) {
             const localPath = normalizeVfsPath(path);
             let binaryData;
 
@@ -62,7 +62,7 @@ const isoGitFS = {
         /**
          * Deletes a file entry key from the flat map memory context.
          */
-        unlink: async function(path) {
+        unlink: async function (path) {
             const localPath = normalizeVfsPath(path);
             const node = FS.virtual[localPath];
 
@@ -84,7 +84,7 @@ const isoGitFS = {
         /**
          * Creates a standardized directory map placeholder.
          */
-        mkdir: async function(path, mode) {
+        mkdir: async function (path, mode) {
             const localPath = normalizeVfsPath(path);
 
             if (FS.virtual[localPath]) {
@@ -106,7 +106,7 @@ const isoGitFS = {
         /**
          * Deletes a targeted empty directory path record.
          */
-        rmdir: async function(path) {
+        rmdir: async function (path) {
             const localPath = normalizeVfsPath(path);
             const node = FS.virtual[localPath];
 
@@ -120,7 +120,7 @@ const isoGitFS = {
             // Enforce safe directory deletion constraints
             const searchPrefix = localPath === '/' ? '/' : localPath + '/';
             const holdsChildren = Object.keys(FS.virtual).some(k => k.startsWith(searchPrefix) && k !== localPath);
-            
+
             if (holdsChildren) {
                 throw createFsError('ENOTEMPTY', `Directory containing assets: ${path}`);
             }
@@ -133,13 +133,13 @@ const isoGitFS = {
          * Scans the flat keys of your registry context, returning only 
          * the immediate child names relative to the directory path.
          */
-        readdir: async function(path) {
+        readdir: async function (path) {
             const localPath = normalizeVfsPath(path);
-            
+
             // Build trailing path matching signature 
             let prefix = localPath;
             if (!prefix.endsWith('/')) prefix += '/';
-            if (localPath === '/' || localPath === '/base') prefix = '/base/';
+            if (localPath === '/' || localPath === config.RUNBASE) prefix = config.RUNBASE + '/';
 
             const collectedEntries = new Set();
 
@@ -163,14 +163,14 @@ const isoGitFS = {
         /**
          * Generates metadata objects matching Node-style stats signatures.
          */
-        stat: async function(path) {
+        stat: async function (path) {
             return isoGitFS._statEngine(path);
         },
 
         /**
          * Maps symlink tracking structures; falls back to standard stat rules for this flat environment.
          */
-        lstat: async function(path) {
+        lstat: async function (path) {
             return isoGitFS._statEngine(path);
         }
     },
@@ -178,7 +178,7 @@ const isoGitFS = {
     /**
      * Shared Internal Node Translation Engine
      */
-    _statEngine: function(path) {
+    _statEngine: function (path) {
         const localPath = normalizeVfsPath(path);
         const node = FS.virtual[localPath];
 

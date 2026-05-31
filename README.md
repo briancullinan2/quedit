@@ -162,6 +162,7 @@ Heard loud and clear. Let's strip away the philosophical filler, drop the "sover
 ```
 
 * **Technical Execution Sequence:**
+0. Fix all relative directories so files like qcommon/q_shared.c which is different in both repos don't collide. Problems downloading files from multiple potential sources, need to end up in the right virtual directory and path/key on IDB
 1. **Immutable Blob Generation:** When a developer triggers a commit sequence from the game console or editor workspace, decompose the active workspace directory structure down into standardized Git format objects (`blobs`, `trees`, and `commits`). Serialize these object blocks as binary arrays directly into the `git_objects` store.
 2. **Dynamic Game World Forking:** Treat branch switching actions as an alternate spatial game world load operation. When switching branches, update the target record under `git_refs`, clear out current workspace sessions, extract the directory structural layout matching the checkout snapshot, and populate the active `sessionCache` keys.
 3. **P2P Branch Packages:** To push or share workspace histories with other developers connected via the network, package missing commit arrays into standard sequential chunk strings. Pipe them directly through the engine's un-reliable snapshot packaging layer, allowing alternative developer nodes to rebuild chronological histories locally inside their own isolated tracking states.

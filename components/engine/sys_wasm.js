@@ -282,6 +282,11 @@ async function runEngine(database = null, noBounce = false) {
 
         let program = await initWasm(FS.virtual[enginePath].contents, ENGINE)
         await updateEnvironment(program, ENGINE)
+        await readAll(window.engineRepository, (r => {
+            if(r.path.includes(config.RUNBASE)) {
+                FS.virtual[r.path] = r
+            }
+        }))
         await initEngine(program)
     } catch (e) {
         console.error(e)
@@ -364,16 +369,16 @@ async function readPreFS() {
     // TODO: CL_Download(, 'pak0', )
     let responseData = await Com_DL_Begin(basegame + '/pak0.pk3',
         'https://quake.games/maps/' + basegame + '/pak0.pk3')
-    Com_DL_Perform('/base/' + basegame + '/pak0.pk3',
+    Com_DL_Perform(config.RUNBASE + '/' + basegame + '/pak0.pk3',
         basegame + '/pak0.pk3', responseData)
     let responseData2 = await Com_DL_Begin(basegame + '/pak1.pk3',
         'https://quake.games/maps/' + basegame + '/pak1.pk3')
-    Com_DL_Perform('/base/' + basegame + '/pak1.pk3',
+    Com_DL_Perform(config.RUNBASE + '/' + basegame + '/pak1.pk3',
         basegame + '/pak1.pk3', responseData2)
 
     // write description to pk3dir so that it loads as a pak when the engine starts
     //   this is key to making async work on fresh loads
-    let nameStr = '/base/' + MODNAME + '/pak0.pk3dir/description.txt'
+    let nameStr = config.RUNBASE + '/' + MODNAME + '/pak0.pk3dir/description.txt'
     FS_CreatePath(stringToAddress(nameStr))
     FS.virtual[nameStr] = {
         timestamp: new Date(),
@@ -385,7 +390,7 @@ async function readPreFS() {
     putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repository.value)
 
     // write it in multiple places because of async startup
-    nameStr = '/base/' + MODNAME + '/pak2.pk3dir/description.txt'
+    nameStr = config.RUNBASE + '/' + MODNAME + '/pak2.pk3dir/description.txt'
     FS_CreatePath(stringToAddress(nameStr))
     FS.virtual[nameStr] = {
         timestamp: new Date(),
@@ -399,12 +404,12 @@ async function readPreFS() {
 
     let [_, selected, dbFile] = await findFileTestPath('build/release-wasm-js/baseq3a/q3_ui.wasm')
     if (dbFile) {
-        FS.virtual['/base/' + MODNAME + '/uijs.wasm'] = {
+        FS.virtual[config.RUNBASE + '/' + MODNAME + '/uijs.wasm'] = {
             timestamp: new Date(),
             mode: FS_FILE,
             contents: dbFile.contents,
-            path: '/base/' + MODNAME + '/uijs.wasm',
-            parent: '/base/' + MODNAME
+            path: config.RUNBASE + '/' + MODNAME + '/uijs.wasm',
+            parent: config.RUNBASE + '/' + MODNAME
         }
     }
 }

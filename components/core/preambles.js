@@ -142,6 +142,7 @@ const config = {
     BINEXT: `.${COMPILE_ARCH}.${COMPILE_PLATFORM}`,
     TEMPDIR: '/tmp',
     HOMEDIR: '/home',
+    RUNBASE: '/base',
     MOD: 'baseq3a'
 };
 

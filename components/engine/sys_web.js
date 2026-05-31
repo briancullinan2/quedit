@@ -117,13 +117,13 @@ function getQueryCommands() {
 			'+set', 'fs_basegame', MODNAME,
 			'+set', 'fs_game', MODNAME,
 		])
-		if (typeof FS.virtual['/base/' + MODNAME] == 'undefined') {
-			FS.virtual['/base/' + MODNAME] = {
+		if (typeof FS.virtual[config.RUNBASE + '/' + MODNAME] == 'undefined') {
+			FS.virtual[config.RUNBASE + '/' + MODNAME] = {
 				timestamp: new Date(),
 				mode: FS_DIR,
 				size: 4096,
-				path: '/base/' + MODNAME,
-				parent: '/base'
+				path: config.RUNBASE + '/' + MODNAME,
+				parent: config.RUNBASE
 			}
 		}
 	}

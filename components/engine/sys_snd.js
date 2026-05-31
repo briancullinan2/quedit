@@ -62,7 +62,7 @@ function S_CodecLoad (name, info) {
     let remoteFile = 'pak0.pk3dir/' + filenameStr
     Promise.resolve(Com_DL_Begin(gamedir + '/' + remoteFile, '/' + gamedir + '/' + remoteFile + '?alt')
         .then(function (responseData) {
-          Com_DL_Perform(gamedir + '/' + remoteFile, remoteFile, responseData)
+          Com_DL_Perform(config.RUNBASE + '/' + gamedir + '/' + remoteFile, remoteFile, responseData)
           if(!responseData) {
             REMOTE_SOUNDS[filenameStr] = false
           }
