@@ -400,10 +400,13 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
         ) {
             FS.virtual[filePath] = await getRecord(DB_STORE_NAME, filePath, selected)
         }
-        if (files[selected][filePath]
-            && FS.virtual[filePath]
-        )
-            FS.virtual[filePath].timestamp = files[selected][filePath].timestamp
+        if (files[selected][filePath] && FS.virtual[filePath]) {
+            if(FS.virtual[filePath].timestamp > files[selected][filePath].timestamp) {
+                writeLog(`Skipping changed (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+                return FS.virtual[filePath].contents
+            }
+            //FS.virtual[filePath].timestamp = files[selected][filePath].timestamp
+        }
 
         try {
             if (typeof api !== 'undefined' && api.memfs && FS.virtual[filePath] && !api.memfs.exists(filePath))
