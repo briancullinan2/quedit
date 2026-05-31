@@ -1433,6 +1433,10 @@ async function clone(argv) {
     terminalWrite('Checked out: ' + branch + ' from ' + ownerName + '/' + repoName + '\n\r');
 
     // TODO: switch to aux filelist and display
+    await git.init({
+        fs: isoGitFS,
+        dir: '/base'
+    });
 }
 async function lcc(argv) {
     return commands['clang'](argv)

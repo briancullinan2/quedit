@@ -1858,6 +1858,7 @@ body {
 
 .ace_editor {
     /*background-color: transparent !important;*/
+    background-color:  rgb(from var(--ace-bg) r g b / 90%);
 }
 
 /* Ensure the outer wrapper container doesn't hard-clip the sub-components */
@@ -1879,7 +1880,7 @@ body {
 
 /* Push the text layer canvas up slightly so text never hides underneath the scrollbar */
 .ace_editor .ace_scroller {
-    bottom: 15px !important;
+    bottom: 11px !important;
     /* Must match the height of your scrollbar exactly */
 }
 

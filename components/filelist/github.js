@@ -91,13 +91,16 @@ async function getBranches(repoOwner, repoName) {
 
 
 async function githubGraphQL(query, variables = {}) {
-    if (typeof SettingsManager != 'undefined' && window.api)
-        window.api.github_token = SettingsManager.get('core', 'githubToken');
+
+    let token = typeof api !== 'undefined'
+        ? api.github_token
+        : SettingsManager.get('core', 'githubToken')
+
 
     const response = await fetch('https://api.github.com/graphql', {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer  ${api.github_token}`,
+            'Authorization': `Bearer  ${token}`,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({ query, variables })
@@ -140,21 +143,20 @@ async function loadGitHubTree(repoOwner, repoName, branch) {
 }
 
 
-
-
 /**
  * Main Orchestrator: Instantiates an in-memory virtual filesystem cache
- * populated with accurate historical mtimes from Git history.
+ * populated with accurate historical mtimes from Git history via recursive GraphQL.
+ * * @param {string} repoOwner - The owner of the GitHub repository.
+ * @param {string} repoName - The repository name.
+ * @param {string} branch - The branch target (defaults to 'main').
+ * @param {string} initialPath - Optional directory subdirectory path to scope the initialization tree.
  */
-async function loadGitHubTreeNew(repoOwner, repoName, branch) {
+async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '') {
     const database = `${repoOwner}/${repoName}`;
     const branchName = branch || 'main';
 
-    // We explicitly target the branch root via expression syntax to force complete recursion
-    const expressionString = `${branchName}:`;
-
     const treeQuery = `
-    query GetRecursiveTree($owner: String!, $name: String!, $expression: String!) {
+    query GetFolderEntries($owner: String!, $name: String!, $expression: String!) {
       repository(owner: $owner, name: $name) {
         object(expression: $expression) {
           ... on Tree {
@@ -172,45 +174,64 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch) {
     }`;
 
     try {
-        // --- PHASE 1: Fetch the complete flat recursive file system structure ---
-        const treeData = await githubGraphQL(treeQuery, {
-            owner: repoOwner,
-            name: repoName,
-            expression: expressionString
-        });
-
-        const entries = treeData?.repository?.object?.entries;
-        if (!entries) {
-            throw new Error(`Could not resolve repository tree layout for branch: ${branchName}`);
+        // Initialize the tracking database allocation if it hasn't happened yet
+        if (typeof files[database] === 'undefined') {
+            files[database] = {};
         }
 
-        // Create the base map inside memory
-        if (typeof files[database] === 'undefined')
-            files[database] = {};
         const filesToHydrate = [];
+        
+        // --- PHASE 1: Breadth-First Search Queue Recursion ---
+        // Seed our queue with the initial explicit target path
+        const directoryQueue = [initialPath];
 
-        for (const entry of entries) {
-            const isFile = entry.type === 'blob';
-            files[database][entry.path] = {
-                path: entry.path,
-                sha: entry.oid,
-                type: isFile ? 'file' : 'dir',
-                mode: isFile ? FS_FILE : FS_DIR,
-                size: entry.object?.byteSize || 0,
-                timestamp: null, // Will be populated in Phase 2
-                parent: path.substring(0, path.lastIndexOf('/'))
-            };
+        while (directoryQueue.length > 0) {
+            const currentSubPath = directoryQueue.shift();
+            
+            // Format Git expression rule: "branch:" for root, or "branch:path/to/dir"
+            const expressionString = currentSubPath === '' 
+                ? `${branchName}:` 
+                : `${branchName}:${currentSubPath}`;
 
-            if (isFile) {
-                filesToHydrate.push(entry.path);
-            } else {
-                // Directories do not require historical commit logs, assign current execution fallback
-                files[database][entry.path].timestamp = new Date();
+            const treeData = await githubGraphQL(treeQuery, {
+                owner: repoOwner,
+                name: repoName,
+                expression: expressionString
+            });
+
+            const entries = treeData?.repository?.object?.entries;
+            if (!entries) {
+                // If a subfolder fails, log it and continue instead of crashing the entire build run
+                console.warn(`Could not resolve repository sub-tree entries at expression: ${expressionString}`);
+                continue;
+            }
+
+            for (const entry of entries) {
+                const isFile = entry.type === 'blob';
+                
+                // Map out the flat file cache signature
+                files[database][entry.path] = {
+                    path: entry.path,
+                    sha: entry.oid,
+                    type: isFile ? 'file' : 'dir',
+                    mode: isFile ? FS_FILE : FS_DIR,
+                    size: entry.object?.byteSize || 0,
+                    timestamp: null, // Will be hydrated later if file
+                    parent: entry.path.includes('/') ? entry.path.substring(0, entry.path.lastIndexOf('/')) : ''
+                };
+
+                if (isFile) {
+                    filesToHydrate.push(entry.path);
+                } else {
+                    // Set directory runtime fallback timestamp
+                    files[database][entry.path].timestamp = new Date();
+                    // Push the newly uncovered subdirectory straight into the queue loop to look deeper
+                    directoryQueue.push(entry.path);
+                }
             }
         }
 
         // --- PHASE 2: Dynamic Batch Log Hydration via GraphQL Aliasing ---
-        // We chunk file updates to prevent generating a massive query payload that gets rejected
         const BATCH_SIZE = 50;
         const batchPromises = [];
 
@@ -219,16 +240,17 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch) {
             batchPromises.push(hydrateFileMTimes(repoOwner, repoName, branchName, chunk, files[database]));
         }
 
-        // Wait for all batch chunks to finish pulling history concurrently
+        // Concurrently populate file modification records across all chunks
         await Promise.all(batchPromises);
 
         return files[database];
 
     } catch (error) {
-        console.error('Robust GitHub tree load failed:', error);
+        console.error('Robust GraphQL recursive tree load failed:', error);
         throw error;
     }
 }
+
 
 /**
  * Compiles and runs an aliased GraphQL query targeting a specific array of paths.
