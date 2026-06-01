@@ -967,6 +967,9 @@ input[type="number"]::-webkit-inner-spin-button {
     border: 2px solid transparent;
 }
 
+#paint .layers_list .visibility,
+#paint .layers_list .delete,
+#paint .layers_list .visible,
 #paint [class*="menu"] button:empty,
 [class*="menu"] button:empty,
 [class^="bx"],
@@ -985,6 +988,9 @@ input[type="number"]::-webkit-inner-spin-button {
 
 }
 
+#paint .layers_list .visibility:before,
+#paint .layers_list .delete:before,
+#paint .layers_list .visible:before,
 #paint [class*="menu"] button:empty,
 [class*="menu"] button:empty,
 #paint [class*="menu"] button:empty::before,
@@ -1003,7 +1009,36 @@ input[type="number"]::-webkit-inner-spin-button {
 #toolbar a:empty,
 #toolbar a:empty::before {
     text-shadow: 1px 2px 3px rgb(from var(--ace-gutter-bg) r g b / 100%);
-    color: var(--ace-foreground)
+    color: var(--ace-foreground);
+    font-family: boxicons !important;
+}
+
+#paint .layers_list .delete:after,
+#paint .layers_list .visible:after,
+#paint .layers_list .visibility:after
+{
+    display:none;
+}
+
+#paint .layers_list .visibility,
+#paint .layers_list .delete,
+#paint .layers_list .visible
+{
+    font-size: small;
+    padding: 1px;
+    margin: 1px;
+    width: auto;
+}
+#paint .layers_list .delete:before {
+    content: "\f7d3";
+}
+
+#paint .layers_list .visibility.visible:before,
+#paint .layers_list .visible:before {
+    content: "\f3f5";
+}
+#paint .layers_list .visibility:before {
+    content: "\f3f6";
 }
 
 
@@ -1092,7 +1127,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 [placeholder]:has(#search:active)::after,
-[placeholder]:has(#search:focus)::after, 
+[placeholder]:has(#search:focus)::after,
 [placeholder]:has(#search-terminal:active)::after,
 [placeholder]:has(#search-terminal:focus)::after {
     opacity: 1;
@@ -1674,10 +1709,10 @@ input[type="number"]::-webkit-inner-spin-button {
 #list-wrapper ul.toolbar {
     display: flex;
     opacity: 1;
-    
+
     /* On Open: Take 0.5s to fade in, and WAIT 0.5s for the parent wrapper to expand first */
     transition: display 0.3s allow-discrete, opacity 0.3s ease-in-out;
-    transition-delay: 0.3s; 
+    transition-delay: 0.3s;
     min-width: 200px;
 }
 
@@ -1687,7 +1722,7 @@ input[type="number"]::-webkit-inner-spin-button {
 #list-wrapper:not(:has(>.not-hidden)) ul.toolbar {
     display: none;
     opacity: 0;
-    
+
     /* On Close: Fade out instantly (0.1s) with NO delay (0s) so it vanishes before parent shrinks */
     transition: display 0.1s allow-discrete, opacity 0.1s ease-in-out;
     transition-delay: 0s;
@@ -1701,7 +1736,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 #list-wrapper {
-    display:flex;
+    display: flex;
     flex-direction: column;
     min-width: 200px;
     max-width: 200px;
@@ -1750,7 +1785,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
-#editor-container:not(:has(> :not(.hidden))) {
+#editor-container:not(:has(> .not-hidden)):not(:has(> #list-wrapper>.not-hidden)) {
     display: none;
     visibility: collapse;
 }
@@ -1922,31 +1957,36 @@ input[type="number"]::-webkit-inner-spin-button {
     font-family: monospace;
     max-width: 100%;
 }
+
 .search-card-header {
     background: var(--ace-bg);
     padding: 4px 16px 4px 4px;
     display: flex;
     justify-content: space-between;
-    align-items: stretch; /* Stretch child elements to fill full card width */
+    align-items: stretch;
+    /* Stretch child elements to fill full card width */
     border-bottom: 2px solid var(--ace-gutter-bg);
     flex-direction: row;
     flex-wrap: wrap;
     position: relative;
-    gap: 4px; /* Optional: adds clean spacing between path and repo badge */
+    gap: 4px;
+    /* Optional: adds clean spacing between path and repo badge */
 }
+
 .search-card-header .bx-trash {
     position: absolute;
     right: 0;
     top: 0;
     font-size: medium;
 }
+
 .search-file-path {
     color: var(--ace-blue);
     font-weight: bold;
     cursor: pointer;
-    
+
     /* 1. Force word wrapping across slashes and long names */
-    word-break: break-all; 
+    word-break: break-all;
     overflow-wrap: break-word;
 
     /* 2. Enforce the hard 2-line maximum clamping boundary */
@@ -1962,21 +2002,25 @@ input[type="number"]::-webkit-inner-spin-button {
     background: var(--ace-gutter-bg);
     color: var(--ace-foreground);
     border-radius: 3px;
-    align-self: flex-start; /* Keeps the repo badge from stretching full-width */
+    align-self: flex-start;
+    /* Keeps the repo badge from stretching full-width */
 }
 
 .search-card-body {
     padding: 4px 0;
 }
+
 .search-match-row {
     display: flex;
     padding: 1px 4px;
     cursor: pointer;
     font-size: medium;
 }
+
 .search-match-row:hover {
     background: rgb(from var(--ace-selection-bg) r g b / 30%);
 }
+
 .search-line-number {
     color: rgb(from var(--ace-foreground) r g b / 50%);
     width: 45px;
@@ -1984,14 +2028,15 @@ input[type="number"]::-webkit-inner-spin-button {
     padding-right: 8px;
     user-select: none;
 }
+
 .search-match-text {
     color: var(--ace-foreground);
     white-space: pre;
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 .filename-match-tag {
     color: #6a9955;
     font-style: italic;
 }
-

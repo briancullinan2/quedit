@@ -163,7 +163,9 @@
 #popups .popup .buttons {
     display: flex;
     gap: 10px;
-    margin-top: 1.5rem;
+    margin-top: 2px !important;
+    height: unset !important;
+    line-height: unset !important;
     justify-content: flex-end;
 }
 
