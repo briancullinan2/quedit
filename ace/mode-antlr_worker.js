@@ -107,7 +107,7 @@ function setLanguageTarget(_worker, langKey, fileId) {
 
 
 /*
-define("ace/mode/antlr_worker", [
+ace.define("ace/mode/antlr_worker", [
     "require",
     "exports",
     "module",
@@ -132,7 +132,7 @@ define("ace/mode/antlr_worker", [
 });
 
 */
-define("ace/mode/antlr_worker", [
+ace.define("ace/mode/antlr_worker", [
     "require",
     "exports",
     "module",
@@ -181,7 +181,7 @@ define("ace/mode/antlr_worker", [
                     baseOrigin + '/components/core/preambles.js',
                     baseOrigin + '/components/rosetta/rosetta.js',
                     baseOrigin + '/components/rosetta/parsers.js',
-                    aceBasePath + "worker-base.js",
+                    baseOrigin + "/ace/worker-base.js",
                     baseOrigin + '/components/rosetta/antlr-languages.bundle.js',
                     baseOrigin + "/components/rosetta/worker-language.js"
                 ]

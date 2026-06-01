@@ -51,6 +51,7 @@ body {
     font-size: 0;
 }
 
+#nunu,
 #terminal,
 #paint,
 #viewport-frame {
@@ -1544,6 +1545,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
+#nunu.not-hidden,
 #terminal-container.not-hidden #terminal,
 #paint.not-hidden,
 #editor-container:not(:has(.not-hidden))~#paint:not(.hidden) {

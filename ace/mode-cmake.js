@@ -1,4 +1,4 @@
-define("ace/mode/cmake_highlight_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
+ace.define("ace/mode/cmake_highlight_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
     "use strict";
     var r = e("../lib/oop"),
         i = e("./text_highlight_rules").TextHighlightRules,
@@ -130,7 +130,7 @@ define("ace/mode/cmake_highlight_rules", ["require", "exports", "module", "ace/l
     r.inherits(s, i), t.CMakeHighlightRules = s;
 });
 
-define("ace/mode/cmake", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/cmake_highlight_rules"], function (e, t, n) {
+ace.define("ace/mode/cmake", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/cmake_highlight_rules"], function (e, t, n) {
     "use strict";
     var r = e("../lib/oop"),
         i = e("./text").Mode,
@@ -146,7 +146,7 @@ define("ace/mode/cmake", ["require", "exports", "module", "ace/lib/oop", "ace/mo
 });
 
 (function () {
-    window.require(["ace/mode/cmake"], function (m) {
+    ace.require(["ace/mode/cmake"], function (m) {
         if (typeof module == "object" && typeof exports == "object" && module) {
             module.exports = m;
         }

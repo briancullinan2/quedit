@@ -282,8 +282,16 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
             setRepository(newRepo || database)
     }
 
+
+    if (panelId === 'nunu') {
+        await DependencyLoader.loadModule('nunu');
+    }
+
+    if (panelId === 'editor') {
+        await DependencyLoader.loadModule('editor');
+    }
+
     if (panelId === 'paint' || panelId === 'terminal' || panelId === 'compile') {
-        // Dynamically guarantee terminal dependencies are present, then trigger its scan
         await DependencyLoader.loadModule('paint');
     }
 

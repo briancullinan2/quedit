@@ -55,6 +55,7 @@ function currentSession() {
 }
 
 
+ace.config.set('basePath', './ace')
 const editorContainer = document.getElementById('editor')
 const initialCode = document.getElementById('editor').textContent
 const aceEditor = window.aceEditor = ace.edit("editor");
@@ -303,7 +304,7 @@ async function saveFile() {
         trees[database].nodesById[newSha] = files[database][filePath]
     }
 
-    if (filePath.includes('settings.json'))
+    if (filePath.includes('settings') && filePath.endsWith('.json'))
         saveSettings(content)
 }
 

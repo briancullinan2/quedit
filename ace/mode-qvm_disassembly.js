@@ -1,4 +1,4 @@
-define("ace/mode/qvm_disassembly_highlight_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
+ace.define("ace/mode/qvm_disassembly_highlight_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
     "use strict";
     var r = e("../lib/oop"),
         i = e("./text_highlight_rules").TextHighlightRules,
@@ -68,7 +68,7 @@ define("ace/mode/qvm_disassembly_highlight_rules", ["require", "exports", "modul
     r.inherits(s, i), t.QVMDisassemblyHighlightRules = s;
 });
 
-define("ace/mode/qvm_disassembly", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/qvm_disassembly_highlight_rules"], function (e, t, n) {
+ace.define("ace/mode/qvm_disassembly", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/qvm_disassembly_highlight_rules"], function (e, t, n) {
     "use strict";
     var r = e("../lib/oop"),
         i = e("./text").Mode,
@@ -84,7 +84,7 @@ define("ace/mode/qvm_disassembly", ["require", "exports", "module", "ace/lib/oop
 });
 
 (function () {
-    window.require(["ace/mode/qvm_disassembly"], function (m) {
+    ace.require(["ace/mode/qvm_disassembly"], function (m) {
         if (typeof module == "object" && typeof exports == "object" && module) {
             module.exports = m;
         }

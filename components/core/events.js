@@ -90,7 +90,7 @@ function tryLoadingTerminalEditorBridge() {
 
     // Force Ace to locate, download, and compile the extension module asynchronously
     ace.config.loadModule(["ext", "compiler_diagnostics"], function () {
-        window.require(["ace/ext/compiler_diagnostics"], function (moduleExports) {
+        ace.require(["ace/ext/compiler_diagnostics"], function (moduleExports) {
             if (!moduleExports) {
                 console.error("[Ace Lazy] Failed to initialize compiler_diagnostics extension.");
                 return;
@@ -261,7 +261,8 @@ function resizeDebouncer() {
 
         resizeDebounce = null
 
-        debounceFileChange()
+        if(typeof debounceFileChange !== 'undefined')
+            debounceFileChange()
 
         if (window.aceEditor && window.terminalWrite && !window.compilerDiagnostics) {
             tryLoadingTerminalEditorBridge()

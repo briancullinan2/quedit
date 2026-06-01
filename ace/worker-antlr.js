@@ -153,6 +153,7 @@ self.addEventListener('message', function (e) {
         return;
     }
 
+    /*
     // 4. ACE CHANGE HOOK INTEGRATION
     // Mirror the edits to your state tracker, but DO NOT call stopImmediatePropagation().
     // Ace's background engine relies on receiving this identical change event next.
@@ -199,6 +200,7 @@ self.addEventListener('message', function (e) {
         }
         // No stopImmediatePropagation() here! Let it pass straight through to Ace.
     }
+    */
 }, true);
 
 

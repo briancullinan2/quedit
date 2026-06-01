@@ -1,4 +1,4 @@
-define("ace/mode/q3_cam_highlight_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
+ace.define("ace/mode/q3_cam_highlight_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
     "use strict";
 
     var r = e("../lib/oop"),
@@ -53,7 +53,7 @@ define("ace/mode/q3_cam_highlight_rules", ["require", "exports", "module", "ace/
     t.Q3CamHighlightRules = s;
 });
 
-define("ace/mode/q3_cam", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/q3_cam_highlight_rules"], function (e, t, n) {
+ace.define("ace/mode/q3_cam", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/q3_cam_highlight_rules"], function (e, t, n) {
     "use strict";
 
     var r = e("../lib/oop"),
@@ -77,7 +77,7 @@ define("ace/mode/q3_cam", ["require", "exports", "module", "ace/lib/oop", "ace/m
 });
 
 (function () {
-    window.require(["ace/mode/q3_cam"], function (m) {
+    ace.require(["ace/mode/q3_cam"], function (m) {
         if (typeof module == "object" && typeof exports == "object" && module) {
             module.exports = m;
         }

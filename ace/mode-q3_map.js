@@ -1,4 +1,4 @@
-define("ace/mode/q3_map_highlight_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
+ace.define("ace/mode/q3_map_highlight_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
     "use strict";
 
     var r = e("../lib/oop"),
@@ -44,7 +44,7 @@ define("ace/mode/q3_map_highlight_rules", ["require", "exports", "module", "ace/
     t.Q3MapHighlightRules = s;
 });
 
-define("ace/mode/q3_map", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/q3_map_highlight_rules"], function (e, t, n) {
+ace.define("ace/mode/q3_map", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/q3_map_highlight_rules"], function (e, t, n) {
     "use strict";
 
     var r = e("../lib/oop"),
@@ -67,7 +67,7 @@ define("ace/mode/q3_map", ["require", "exports", "module", "ace/lib/oop", "ace/m
 });
 
 (function () {
-    window.require(["ace/mode/q3_map"], function (m) {
+    ace.require(["ace/mode/q3_map"], function (m) {
         if (typeof module == "object" && typeof exports == "object" && module) {
             module.exports = m;
         }

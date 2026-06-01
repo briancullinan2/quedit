@@ -33,7 +33,9 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
             // Spins up Virtual Terminal I/O environments
             await DependencyLoader.loadModule('terminal');
             break;
-
+        case 'nunu':
+            await DependencyLoader.loadModule('nunu');
+            break;
         case 'paint':
         case 'paint-container':
             // Lazy load the full layout styles and script package for miniPaint

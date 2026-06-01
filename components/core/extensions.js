@@ -26,7 +26,13 @@ const IMPORT_CSS = {
         '/components/paint/css/theme.css'
     ],
 
-    editor: [] // Handled internally by Ace's DOM-injected themes
+    editor: [], // Handled internally by Ace's DOM-injected themes
+
+    nunu: [
+        '/components/map-editor/codemirror.css',
+        '/components/map-editor/styles.css'
+    ]
+
 };
 
 const IMPORT_JS = {
@@ -68,7 +74,7 @@ const IMPORT_JS = {
 
     // Code Workspace
     editor: [
-        '/ace/ace.js',
+        '/ace/ace-noconflict.js',
         '/components/editor/core.js',
         '/components/editor/editor.js',
         '/components/editor/events.js',
@@ -121,6 +127,17 @@ const IMPORT_JS = {
     paint: [
         '/components/paint/paint.js',
         '/components/paint/utilities.js',
+    ],
+
+
+    nunu: [
+        '/components/map-editor/codemirror.js',
+        '/components/map-editor/bundle.js',
+        '/components/map-editor/acorn.js',
+        '/components/map-editor/tern.js',
+        '/components/map-editor/jshint.js',
+        '/components/map-editor/draco_encoder.js',
+        //'/components/map-editor/Q3BSPLoader.js'
     ]
 };
 
@@ -169,6 +186,14 @@ const IMPORT_MODULES = {
         js: IMPORT_JS['paint'],
         onLoad: onLoadPaint,
         hasChanges: hasChangesPaint
-    }
+    },
+
+    
+    nunu: {
+        panelId: 'nunu',
+        js: IMPORT_JS['nunu'],
+        css: IMPORT_CSS['nunu'],
+        onLoad: () => {}
+    },
 };
 

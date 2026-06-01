@@ -1,4 +1,4 @@
-define("ace/mode/wasm_disassembly_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
+ace.define("ace/mode/wasm_disassembly_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
     "use strict";
     var r = e("../lib/oop"),
         i = e("./text_highlight_rules").TextHighlightRules,
@@ -51,7 +51,7 @@ define("ace/mode/wasm_disassembly_rules", ["require", "exports", "module", "ace/
     r.inherits(s, i), t.WasmBlueprintHighlightRules = s;
 });
 
-define("ace/mode/wasm_disassembly", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/wasm_disassembly_rules"], function (e, t, n) {
+ace.define("ace/mode/wasm_disassembly", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/wasm_disassembly_rules"], function (e, t, n) {
     "use strict";
     var r = e("../lib/oop"),
         i = e("./text").Mode,
@@ -67,7 +67,7 @@ define("ace/mode/wasm_disassembly", ["require", "exports", "module", "ace/lib/oo
 });
 
 (function () {
-    window.require(["ace/mode/wasm_disassembly"], function (m) {
+    ace.require(["ace/mode/wasm_disassembly"], function (m) {
         if (typeof module == "object" && typeof exports == "object" && module) {
             module.exports = m;
         }

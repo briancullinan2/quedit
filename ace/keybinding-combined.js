@@ -1,4 +1,4 @@
-define("ace/keyboard/combined", ["require", "exports", "module", "ace/keyboard/hash_handler"], function(e, t, n) {
+ace.define("ace/keyboard/combined", ["require", "exports", "module", "ace/keyboard/hash_handler"], function(e, t, n) {
     "use strict";
 
     var HashHandler = e("../keyboard/hash_handler").HashHandler;

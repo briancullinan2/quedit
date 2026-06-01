@@ -238,7 +238,8 @@ async function findFileTestPath(hintPath) {
         window.gameRepository,
         window.assetRepository,
         window.toolsRepository,
-        window.tools2Repository
+        window.tools2Repository,
+        window.environmentRepository
     ].filter(Boolean);
 
     // 4. Processing Loop: Evaluate every path variation against every storage layer

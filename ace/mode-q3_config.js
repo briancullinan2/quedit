@@ -1,4 +1,4 @@
-define("ace/mode/q3_config_highlight_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
+ace.define("ace/mode/q3_config_highlight_rules", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text_highlight_rules"], function (e, t, n) {
     "use strict";
     var r = e("../lib/oop"),
         i = e("./text_highlight_rules").TextHighlightRules,
@@ -42,7 +42,7 @@ define("ace/mode/q3_config_highlight_rules", ["require", "exports", "module", "a
     r.inherits(s, i), t.Q3ConfigHighlightRules = s;
 });
 
-define("ace/mode/q3_config", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/q3_config_highlight_rules"], function (e, t, n) {
+ace.define("ace/mode/q3_config", ["require", "exports", "module", "ace/lib/oop", "ace/mode/text", "ace/mode/q3_config_highlight_rules"], function (e, t, n) {
     "use strict";
     var r = e("../lib/oop"),
         i = e("./text").Mode,
@@ -58,7 +58,7 @@ define("ace/mode/q3_config", ["require", "exports", "module", "ace/lib/oop", "ac
 });
 
 (function () {
-    window.require(["ace/mode/q3_config"], function (m) {
+    ace.require(["ace/mode/q3_config"], function (m) {
         if (typeof module == "object" && typeof exports == "object" && module) {
             module.exports = m;
         }
