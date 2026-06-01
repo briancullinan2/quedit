@@ -3,7 +3,6 @@ let tempCount = 1;
 
 
 
-const statusBar = document.getElementById('statusbar')
 const sessionCache = {};
 
 function getOrCreateAceSession(fileId, content) {
@@ -306,20 +305,6 @@ async function saveFile() {
 
     if (filePath.includes('settings') && filePath.endsWith('.json'))
         saveSettings(content)
-}
-
-function fullScreenLayout() {
-    const width = window.document.body.clientWidth - SCROLLBAR_WIDTH
-        - (window.document.body.clientWidth < 800 ? 60 : 0);
-    return width < 800
-}
-
-function getFullScreenFit(defaultFactor = 0.25) {
-    const isFull = fullScreenLayout()
-    const tools = document.getElementById('toolbar').clientHeight
-        + statusBar.clientHeight;
-    const height = (window.innerHeight - tools) * defaultFactor
-    return height
 }
 
 

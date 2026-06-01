@@ -365,3 +365,20 @@ function setTheme(theme) {
 
 }
 
+
+const statusBar = document.getElementById('statusbar')
+
+function getFullScreenFit(defaultFactor = 0.25) {
+    const isFull = fullScreenLayout()
+    const tools = document.getElementById('toolbar').clientHeight
+        + statusBar.clientHeight;
+    const height = (window.innerHeight - tools) * defaultFactor
+    return height
+}
+
+function fullScreenLayout() {
+    const width = window.document.body.clientWidth - SCROLLBAR_WIDTH
+        - (window.document.body.clientWidth < 800 ? 60 : 0);
+    return width < 800
+}
+

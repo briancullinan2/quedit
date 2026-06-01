@@ -142438,8 +142438,8 @@
         Object.defineProperties(mp, {
             size: {
                 get: function () {
-                    return this._size.set(window.innerWidth, window.innerHeight),
-                        this._size
+                    //return this._size.set(window.innerWidth, window.innerHeight),
+                    //    this._size
                 },
                 set: function () { }
             }
@@ -145785,7 +145785,7 @@
                 this.searchIcon = new _p(this),
                 this.searchIcon.setImage(vp + "icons/misc/search.png")
         }
-        Fp.path = "files/icons/",
+        Fp.path = "/components/map-editor/icons/",
             Fp.default = Fp.path + "misc/question.png",
             Fp.locked = Fp.path + "misc/padlock.png",
             Fp.icons = new Map([["Kinect", Fp.path + "hw/kinect.png"], ["LeapDevice", Fp.path + "hw/leap.png"], ["Sky", Fp.path + "lights/sky.png"], ["SpotLight", Fp.path + "lights/spot.png"], ["PointLight", Fp.path + "lights/point.png"], ["HemisphereLight", Fp.path + "lights/hemisphere.png"], ["DirectionalLight", Fp.path + "lights/directional.png"], ["AmbientLight", Fp.path + "lights/ambient.png"], ["RectAreaLight", Fp.path + "lights/rectarea.png"], ["LightProbe", Fp.path + "misc/probe.png"], ["PerspectiveCamera", Fp.path + "camera/prespective.png"], ["OrthographicCamera", Fp.path + "camera/orthographic.png"], ["SpineAnimation", Fp.path + "misc/spine.png"], ["InstancedMesh", Fp.path + "models/cubes.png"], ["SkinnedMesh", Fp.path + "misc/skeleton.png"], ["Mesh", Fp.path + "models/cube.png"], ["ParticleEmiter", Fp.path + "misc/particles.png"], ["Sprite", Fp.path + "misc/image.png"], ["Points", Fp.path + "models/points.png"], ["Line", Fp.path + "misc/nodes.png"], ["LineSegments", Fp.path + "misc/nodes.png"], ["Script", Fp.path + "script/javascript.png"], ["PythonScript", Fp.path + "script/python.png"], ["NodeScript", Fp.path + "script/workflow.png"], ["TextMesh", Fp.path + "text/textmesh.png"], ["TextBitmap", Fp.path + "text/text.png"], ["TextSprite", Fp.path + "text/textcanvas.png"], ["Program", Fp.path + "script/script.png"], ["Scene", Fp.path + "models/models.png"], ["Audio", Fp.path + "misc/audio.png"], ["PositionalAudio", Fp.path + "misc/audio_positional.png"], ["Physics", Fp.path + "misc/physics.png"], ["Object3D", Fp.path + "misc/scene.png"], ["CubeCamera", Fp.path + "misc/probe.png"], ["Bone", Fp.path + "misc/bone.png"], ["Group", Fp.path + "misc/container.png"], ["Measurement", Fp.path + "misc/ruler.png"], ["BillboardGroup", Fp.path + "misc/rotate.png"], ["LensFlare", Fp.path + "misc/flare.png"], ["OrbitControls", Fp.path + "misc/orbit.png"], ["FirstPersonControls", Fp.path + "misc/crosshair.png"]]),
@@ -158382,8 +158382,8 @@
                     this.canvas.updateInterface()
             }
             ,
-            am.ARROW_DOWN = "files/icons/misc/arrow_down.png",
-            am.ARROW_RIGHT = "files/icons/misc/arrow_right.png",
+            am.ARROW_DOWN = "/components/map-editor/icons/misc/arrow_down.png",
+            am.ARROW_RIGHT = "/components/map-editor/icons/misc/arrow_right.png",
             am.NONE = -1,
             am.INSIDE = 0,
             am.ABOVE = 1,
@@ -164769,10 +164769,12 @@
                     K_.ternDefinitions.push(JSON.parse(qh.readFile(vp + "tern/threejs.json"))),
                     K_.ternDefinitions.push(JSON.parse(qh.readFile(vp + "tern/browser.json"))),
                     K_.ternDefinitions.push(JSON.parse(qh.readFile(vp + "tern/ecmascript.json"))),
+                    /*
                     document.body.style.overflow = "hidden",
                     document.body.style.fontFamily = "var(--font-main-family)",
                     document.body.style.color = "var(--font-main-color)",
                     document.body.style.fontSize = "var(--font-main-size)",
+                    */
                     document.body.oncontextmenu = function () {
                         return !1
                     }
@@ -165186,9 +165188,9 @@
             }
             ,
             K_.setOpenFile = function (t) {
-                null != t ? (t instanceof window.File ? Xh.runningOnDesktop() ? K_.openFile = t.path : K_.openFile = t.name : K_.openFile = t,
-                    document.title = Xh.NAME + " 0.98.47 (2025-10-22T10:19:29.022Z) (" + K_.openFile + ")") : (K_.openFile = null,
-                        document.title = Xh.NAME + " 0.98.47 (2025-10-22T10:19:29.022Z)")
+                //null != t ? (t instanceof window.File ? Xh.runningOnDesktop() ? K_.openFile = t.path : K_.openFile = t.name : K_.openFile = t,
+                //    document.title = Xh.NAME + " 0.98.47 (2025-10-22T10:19:29.022Z) (" + K_.openFile + ")") : (K_.openFile = null,
+                //        document.title = Xh.NAME + " 0.98.47 (2025-10-22T10:19:29.022Z)")
             }
             ,
             K_.confirm = function (t) {

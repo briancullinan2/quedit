@@ -24,6 +24,33 @@ body {
 }
 
 
+#nunu > div > div {
+    width: 100% !important;
+    height: 100% !important;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+
+}
+
+#nunu > div:last-child {
+    width: 100% !important;
+    display:none;
+}
+
+#nunu > div:first-child {
+    position: static;
+    width: 100% !important;
+    height: 100% !important;
+    top: 0 !important;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    
+}
+
+
 #editor-container {
     flex: 1 1 auto;
     flex-basis: min-content;

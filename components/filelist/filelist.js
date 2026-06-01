@@ -266,8 +266,11 @@ function recordFileHistory(filePath, sha, lineNumber = null) {
         else
             selector.appendChild(option);
     }
-    const pos = aceEditor.getCursorPosition();
-    NavHistory.push(sha, pos.row, pos.column);
+
+    if (typeof aceEditor !== 'undefined') {
+        const pos = aceEditor.getCursorPosition();
+        NavHistory.push(sha, pos.row, pos.column);
+    }
     if (lineNumber)
         history.pushState({ location: window.location.toString() }, filePath, '#' + filePath + ':' + lineNumber)
     else
@@ -343,7 +346,7 @@ document.getElementById('database').addEventListener('click', treeHandler.bind(n
 
 const FILELIST_IDS = ['searchlist', 'filelist', 'gamelist', 'assetlist', 'database', 'github']
 
-let panels = document.querySelectorAll('#paint, #token-modal, #viewport-frame, #terminal-container, #editor, #searchlist, #filelist, #gamelist, #assetlist, #database, #github')
+let panels = document.querySelectorAll('#nunu, #paint, #token-modal, #viewport-frame, #terminal-container, #editor, #searchlist, #filelist, #gamelist, #assetlist, #database, #github')
 
 document.getElementById('tabs').addEventListener('click', async (e) => {
 
@@ -355,7 +358,7 @@ const searchWorker = new Worker('/components/filelist/search-worker.js');
 
 // Track concurrent worker transactions completely independently
 const activeSearchTransactions = new Map();
-let terminalCommandDeferred = null; 
+let terminalCommandDeferred = null;
 
 searchWorker.onmessage = function (e) {
     const { type, results, callbackId, query } = e.data;
@@ -379,7 +382,7 @@ searchWorker.onmessage = function (e) {
             github: []
         });
     }
-    
+
     const txn = activeSearchTransactions.get(callbackId);
     txn[type] = results;
 

@@ -67,7 +67,10 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
 
         // Optionally fall back to text hexDump or return early so Ace Editor doesn't choke
         latestPanelId = latestNotFilelist = 'paint'
-        previousNotFilelistId = 'editor'
+        if (typeof getOrCreateAceSession !== 'undefined')
+            previousNotFilelistId = 'editor'
+        else
+            previousNotFilelistId = null
         str = "[Binary Image Layer Inserted]";
     } else if (hasSequentialBinaryRegex.test(sampleStr)) {
         if (filePath.endsWith('.bsp')) {
@@ -98,21 +101,24 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     }
 
 
-
-    // 2. Ace Session
-    const session = getOrCreateAceSession(filePath, str);
-    //const mode = getModeByFilename(filePath);
-    //session.setMode(mode);
-    aceEditor.setSession(session);
-
-
     if (hidePanels)
         hideOpenPanels(image)
 
     updateBodyPanelIds()
 
-    editorContainer.classList.remove('hidden')
-    editorContainer.classList.add('not-hidden')
+
+    if (typeof getOrCreateAceSession !== 'undefined') {
+        // 2. Ace Session
+        const session = getOrCreateAceSession(filePath, str);
+        //const mode = getModeByFilename(filePath);
+        //session.setMode(mode);
+        aceEditor.setSession(session);
+
+        editorContainer.classList.remove('hidden')
+        editorContainer.classList.add('not-hidden')
+    } else if (image) {
+        previousPanelId = null
+    }
 
     if (image) {
         imageEditor.classList.remove('hidden')
@@ -134,7 +140,6 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         document.getElementById('filename').value == filePath
     }
 }
-
 
 
 async function openImage(content, filePath) {
@@ -168,6 +173,25 @@ async function openImage(content, filePath) {
             // 2. Dispatch straight into miniPaint engine pipeline using the SAME image object instance reference
             if (window.State && window.Actions) {
                 try {
+                    const actionsBuffer = [];
+
+                    // Step A: Accumulate layer deletion actions to flush current document state cleanly
+                    if (window.Layers && typeof window.Layers.get_layers === 'function') {
+                        const existingLayers = window.Layers.get_layers();
+                        // Loop backwards to cleanly handle splicing indices out of the state trees
+                        for (let i = existingLayers.length - 1; i >= 0; i--) {
+                            actionsBuffer.push(new window.Actions.Delete_layer_action(existingLayers[i].id));
+                        }
+                    }
+
+                    // Step B: Set the canvas dimensions cleanly for a pristine scene file boundary
+                    actionsBuffer.push(new window.Actions.Prepare_canvas_action({
+                        width: img.naturalWidth,
+                        height: img.naturalHeight,
+                        clear: true
+                    }));
+
+                    // Step C: Construct the baseline payload for our incoming image layer
                     const layerPayload = {
                         name: filename || "Data URL",
                         type: "image",
@@ -175,15 +199,21 @@ async function openImage(content, filePath) {
                         width: img.naturalWidth,
                         height: img.naturalHeight,
                         width_original: img.naturalWidth,
-                        height_original: img.naturalHeight
+                        height_original: img.naturalHeight,
+                        x: 0,
+                        y: 0
                     };
 
+                    actionsBuffer.push(new window.Actions.Insert_layer_action(layerPayload));
+
+                    // Step D: Commit the entire atomic change sequence via a single history bundle
                     window.State.do_action(
                         new window.Actions.Bundle_action("open_file_data_url", "Open File Data URL", [
-                            new window.Actions.Insert_layer_action(layerPayload), 
+                            new window.Actions.Insert_layer_action(layerPayload),
                             new window.Actions.Autoresize_canvas_action(img.naturalWidth, img.naturalHeight, null, true, true)
                         ])
                     );
+
                 } catch (err) {
                     console.error("Failed executing miniPaint bundled actions:", err);
                 }
@@ -206,7 +236,6 @@ async function openImage(content, filePath) {
         img.src = dataUri;
     });
 }
-
 
 
 let hasUntared = false
@@ -370,17 +399,19 @@ async function clickFile(filePath, lineNumber, noBounce = false, noHide = false)
 
     window.currentOpenFileId = dbFile.sha
 
-    await openFile(ownerName, repoName, filePath, dbFile.sha, false /* record history */, false /* show file list */)
+    await openFile(ownerName, repoName, filePath, dbFile.sha, false /* record history */, false /* show file list */, true)
     recordFileHistory(filePath, dbFile.sha, lineNumber)
-    setTimeout(() => {
-        editorContainer.classList.remove('hidden')
-        editorContainer.classList.add('not-hidden')
+    if (typeof editorContainer !== 'undefined') {
+        setTimeout(() => {
+            editorContainer.classList.remove('hidden')
+            editorContainer.classList.add('not-hidden')
 
-        aceEditor.focus();
-        if (lineNumber)
-            aceEditor.gotoLine(lineNumber, 0, true);
-        latestPanelId = 'editor'
-    }, 1000)
+            aceEditor.focus();
+            if (lineNumber)
+                aceEditor.gotoLine(lineNumber, 0, true);
+            latestPanelId = 'editor'
+        }, 1000)
+    }
     resizeDebouncer()
     return [selected, dbFile]
 }
