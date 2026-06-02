@@ -105,6 +105,12 @@ body {
 #nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(3)>div:nth-child(2)>div {
     width: 100% !important;
     height: 100% !important;
+    overflow: hidden !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(3)>div:nth-child(2)>div>div:nth-child(7) {
+    left: 50% !important;
+    margin-left: -140px;
 }
 
 #nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(3)>div:nth-child(2) {
@@ -129,6 +135,7 @@ body {
     display: flex !important;
     height: 100% !important;
     background-color: transparent !important;
+    overflow: hidden !important;
 }
 
 #nunu>div:nth-child(1)>div>div:nth-child(1) {
@@ -2068,6 +2075,8 @@ input[type="number"]::-webkit-inner-spin-button {
     transition: display 0.3s allow-discrete, opacity 0.3s ease-in-out;
     transition-delay: 0.3s;
     min-width: 200px;
+    flex-shrink: 0;
+    min-height: min-content;
 }
 
 /* ==========================================
