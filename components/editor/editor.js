@@ -79,45 +79,6 @@ aceEditor.setSession(session);
 
 updateMaxLines()
 
-
-// Utility to convert rgb/rgba strings to hex
-function parseToHex(colorStr, backgroundStr = null) {
-    if (!colorStr || typeof colorStr !== 'string') return colorStr;
-    if (colorStr.startsWith('#')) return colorStr;
-
-    const match = colorStr.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
-    if (!match) return colorStr;
-
-    const r = parseInt(match[1], 10);
-    const g = parseInt(match[2], 10);
-    const b = parseInt(match[3], 10);
-    const a = match[4] !== undefined ? parseFloat(match[4]) : 1;
-
-    // OPTION A: If xterm fails to render transparency properly, 
-    // flatten the color over the background color.
-    if (backgroundStr && a < 1) {
-        const bgMatch = backgroundStr.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-        if (bgMatch) {
-            const bgR = parseInt(bgMatch[1], 16);
-            const bgG = parseInt(bgMatch[2], 16);
-            const bgB = parseInt(bgMatch[3], 16);
-
-            const blendedR = Math.round((1 - a) * bgR + a * r).toString(16).padStart(2, '0');
-            const blendedG = Math.round((1 - a) * bgG + a * g).toString(16).padStart(2, '0');
-            const blendedB = Math.round((1 - a) * bgB + a * b).toString(16).padStart(2, '0');
-            return `#${blendedR}${blendedG}${blendedB}`;
-        }
-    }
-
-    // OPTION B: Standard 8-digit hex conversion (#RRGGBBAA)
-    const hexR = r.toString(16).padStart(2, '0');
-    const hexG = g.toString(16).padStart(2, '0');
-    const hexB = b.toString(16).padStart(2, '0');
-    const hexA = Math.round(a * 255).toString(16).padStart(2, '0');
-
-    return `#${hexR}${hexG}${hexB}`; // ${hexA}
-}
-
 let currentBlockMarkerId = null;
 let lastRenderedBoundsKey = ""; // State tracking anchor to prevent redundant paint steps
 
@@ -125,13 +86,13 @@ let lastRenderedBoundsKey = ""; // State tracking anchor to prevent redundant pa
 
 function handleWorkerBlockHighlight(session, responseData) {
     if (!responseData) return;
-    
+
     const { startLine, endLine } = responseData;
     if (!startLine || !endLine) return;
 
     // Create an atomic validation key representational snapshot
     const boundsKey = `${startLine}:${endLine}`;
-    
+
     // TARGET EFFICIENCY GATE: If the active stream hasn't shifted structural boundaries,
     // bail out instantly. This saves thousands of microsecond paint operations while typing.
     if (boundsKey === lastRenderedBoundsKey) {
