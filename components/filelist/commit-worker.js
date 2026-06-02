@@ -10,14 +10,14 @@ importScripts('/components/engine/sys_fs.js');
 importScripts('/components/filelist/github.js');
 
 
-async function pushLocalChangesToGitHub(repoOwner, repoName, branch, commitMessage) {
+async function pushLocalChangesToGitHub(repoOwner, repoName, branch, commitMessage, staging) {
     // 1. Fetch current branch parent pointer references
     const commitData = await githubRequest(repoOwner, repoName, `commits/${branch}`);
     const parentCommitSha = commitData.sha;
     const baseTreeSha = commitData.commit.tree.sha;
 
     // 2. Get the exact same staging layout calculated dynamically
-    const staging = await calculateStagedChanges(repoOwner, repoName, branch);
+    staging ||= await calculateStagedChanges(repoOwner, repoName, branch);
 
     if (staging.treeEntries.length === 0) {
         writeLog("No discrete variations detected between local working layer and remote branch head.");
@@ -26,6 +26,7 @@ async function pushLocalChangesToGitHub(repoOwner, repoName, branch, commitMessa
 
     // 3. Process and write actual network Blobs only for items in the staging entries
     const treeChanges = [];
+    debugger
     for (const entry of staging.treeEntries) {
         writeLog(`Uploading changed file blob: ${entry.path}`);
         const blobSha = await createGitHubBlob(repoOwner, repoName, entry.contents);
@@ -160,7 +161,7 @@ function getGitHubHeaders() {
  * to calculate unstaged modifications, new additions, or deletions.
  * Dynamically loads and respects a root-level .gitignore file via glob matching.
  */
-async function calculateStagedChanges(repoOwner, repoName, branch) {
+async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted = false) {
     const selected = `${repoOwner}/${repoName}`;
 
     // 1. Ensure the remote baseline tree layout skeleton is hydrated locally
@@ -250,8 +251,8 @@ async function calculateStagedChanges(repoOwner, repoName, branch) {
 
             const filePath = fileRecord.path;
 
-            if((fileRecord.mode >> 12) !== ST_FILE) return
-            
+            if ((fileRecord.mode >> 12) !== ST_FILE) return
+
             // Run item directly through combined glob evaluation
             if (isIgnored(filePath)) return;
 
@@ -280,22 +281,24 @@ async function calculateStagedChanges(repoOwner, repoName, branch) {
         });
 
         // --- PHASE 3: IDENTIFY DELETIONS FROM REMOTE ---
-        for (const [remotePath, remoteRecord] of Object.entries(remoteTree)) {
-            if (remoteRecord.type === 'tree') continue;
+        if (listDeleted) {
+            for (const [remotePath, remoteRecord] of Object.entries(remoteTree)) {
+                if (remoteRecord.type === 'tree') continue;
 
-            // Skip verification tracking if the file matches dynamic ignore patterns
-            if (isIgnored(remotePath)) continue;
+                // Skip verification tracking if the file matches dynamic ignore patterns
+                if (isIgnored(remotePath)) continue;
 
-            if (!foundLocalPaths.has(remotePath)) {
-                changes.deleted.push({ path: remotePath });
+                if (!foundLocalPaths.has(remotePath)) {
+                    changes.deleted.push({ path: remotePath });
 
-                // Formulate deletion entries for the Git Data Tree mapping array
-                changes.treeEntries.push({
-                    path: remotePath,
-                    mode: '100644',
-                    type: 'blob',
-                    sha: null
-                });
+                    // Formulate deletion entries for the Git Data Tree mapping array
+                    changes.treeEntries.push({
+                        path: remotePath,
+                        mode: '100644',
+                        type: 'blob',
+                        sha: null
+                    });
+                }
             }
         }
 
