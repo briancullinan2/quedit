@@ -8,6 +8,7 @@ const api = {
 importScripts('/components/core/preambles.js');
 importScripts('/components/core/logging.js');
 importScripts('/components/core/local.js');
+importScripts('/components/engine/sys_fs.js');
 importScripts('/components/filelist/github.js');
 
 
@@ -50,7 +51,7 @@ async function getAllLocalFiles(activeRepositories) {
 self.onmessage = async function (e) {
     const { query, activeRepositories, gitHubToken, caseSensitive, callbackId } = e.data;
     api.github_token = gitHubToken
-    
+
     if (!query || query.length < 2) {
         return self.postMessage({ type: 'clear', results: [], callbackId, query });
     }

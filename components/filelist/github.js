@@ -452,7 +452,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
         // TODO: use this to indicate whether we should update against file change time
         if (!forceReload && FS.virtual[filePath]) {
             writeLog(`Skipping important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
-            return
+            return FS.virtual[filePath].contents
         } else {
             writeLog(`Downloading important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
         }

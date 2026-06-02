@@ -151,10 +151,10 @@ async function putRecordInternal(storeName, record, dbName = null) {
         parent: record.parent
     }
 
-    
+
     if (!newRecord.path
-    //    || newRecord.path === 'build/release-wasm-js/cpp/lex.o'
-    //    || newRecord.path.includes('.qvm')
+            || newRecord.path === 'assets'
+        //    || newRecord.path.includes('.qvm')
     ) {
         debugger
     }
@@ -432,7 +432,7 @@ async function readAll(dbName, callback) {
 function findVirtualFiles(globPattern) {
     const filePaths = Object.keys(FS.virtual);
     const rx = globToRegex(globPattern);
-    
+
     return filePaths.reduce((accumulator, path) => {
         if (rx.test(path)) {
             accumulator[path] = FS.virtual[path];
@@ -440,16 +440,22 @@ function findVirtualFiles(globPattern) {
         return accumulator;
     }, {});
 }
-
 function globToRegex(pattern) {
-    // Escape standard regex characters except for our glob wildcards
-    let regexStr = pattern
-        .replace(/([.+^=!:${}()|\[\]\/\\])/g, "\\$1") // Escape regex specials
-        .replace(/\x2A\x2A/g, ".*")                   // ** -> match anything including slashes
-        .replace(/\x2A/g, "[^\\/]*")                  // * -> match anything except slashes
-        .replace(/\x3F/g, ".");                       // ?  -> match exactly one character
+    // Clean up leading/trailing slashes so matching is uniform
+    let cleaned = pattern.trim();
+    if (cleaned.startsWith('/')) cleaned = cleaned.substring(1);
 
-    return new RegExp(`^${regexStr}$`, "i"); // Case-insensitive matching
+    let regexStr = cleaned
+        .replace(/([.+^=!:${}()|\[\]\/\\])/g, "\\$1") // 1. Escape regex specials
+        .replace(/\x2A\x2A/g, ".*")                   // 2. ** -> match anything
+        .replace(/(?<!\.)\x2A/g, "[^\\/]*")           // 3. * -> match except slashes (ignore translated .*)
+        .replace(/\x3F/g, ".");                      // 4. ? -> match single char
+
+    // If it ends with .*, make the trailing slash context optional 
+    if (regexStr.endsWith('.*')) {
+        regexStr = regexStr.replace(/\\\/.*$/, "(?:\\/.*)?");
+    }
+
+    // Match either from the root of the repository or as a segment within it
+    return new RegExp(`^(?:.*\\/)?${regexStr}$`, "i");
 }
-
-

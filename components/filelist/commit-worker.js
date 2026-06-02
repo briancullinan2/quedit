@@ -6,6 +6,7 @@ const api = {
 importScripts('/components/core/preambles.js');
 importScripts('/components/core/logging.js');
 importScripts('/components/core/local.js');
+importScripts('/components/engine/sys_fs.js');
 importScripts('/components/filelist/github.js');
 
 
@@ -151,10 +152,13 @@ function getGitHubHeaders() {
     };
 }
 
+
+
+
 /**
  * Compares IndexedDB local storage data against the remote tree cache 
  * to calculate unstaged modifications, new additions, or deletions.
- * Purely structural / execution dry-run phase.
+ * Dynamically loads and respects a root-level .gitignore file via glob matching.
  */
 async function calculateStagedChanges(repoOwner, repoName, branch) {
     const selected = `${repoOwner}/${repoName}`;
@@ -172,8 +176,8 @@ async function calculateStagedChanges(repoOwner, repoName, branch) {
         treeEntries: [] // Structured changes array targeting subsequent Git Trees compilation API passes
     };
 
-    // Track matching local paths to identify deletions downstream
     const foundLocalPaths = new Set();
+    const ignoreRules = [];
 
     try {
         // 2. Open up the repository's dedicated IndexedDB storage space
@@ -184,20 +188,75 @@ async function calculateStagedChanges(repoOwner, repoName, branch) {
             return changes;
         }
 
-        // 3. Scan flat file array entries inside IDB concurrently via readAll loop
+        // --- PHASE 1: PARSE .GITIGNORE FROM IDB CACHE ---
+        // Attempt to extract raw .gitignore record directly out of your IDB store
+        let gitignoreRecord = null;
+        try {
+            gitignoreRecord = await cacheFile(repoOwner, repoName, '.gitignore');
+        } catch (e) {
+            // Non-fatal if .gitignore doesn't exist yet
+            debugger
+        }
+
+        if (gitignoreRecord) {
+            let ignoreText = "";
+            if (gitignoreRecord instanceof Uint8Array) {
+                ignoreText = new TextDecoder().decode(gitignoreRecord);
+            } else if (gitignoreRecord instanceof ArrayBuffer) {
+                ignoreText = new TextDecoder().decode(new Uint8Array(gitignoreRecord));
+            } else {
+                ignoreText = gitignoreRecord || "";
+            }
+
+            // Split file content into clean rules
+            ignoreText.split(/\r?\n/).forEach(line => {
+                const trimmed = line.trim();
+                // Omit blank lines and commented targets
+                if (!trimmed || trimmed.startsWith('#')) return;
+
+                try {
+                    // Adapt your worker's native glob translation rule engine
+                    const ruleRegex = globToRegex(trimmed, false);
+                    ignoreRules.push(ruleRegex);
+                } catch (err) {
+                    console.warn(`Failed compiling ignore pattern [${trimmed}]:`, err);
+                }
+            });
+            writeLog(`Loaded ${ignoreRules.length} compiled pattern matching masks from root .gitignore`);
+        }
+
+
+        const ruleRegex1 = globToRegex(dirs.ENGINE_DEBUG + '/**', false);
+        ignoreRules.push(ruleRegex1);
+
+        const ruleRegex2 = globToRegex(dirs.ENGINE_RELEASE + '/**', false);
+        ignoreRules.push(ruleRegex2);
+
+        // Inline matcher to evaluate structural patterns
+        const isIgnored = (path) => {
+            // Hardcoded sanity fallbacks alongside dynamic rules
+            if (path.includes('tmp/') || path.includes('/bin/') || path.includes('/obj/')) {
+                return true;
+            }
+            return ignoreRules.some(regex => {
+                regex.lastIndex = 0;
+                return regex.test(path);
+            });
+        };
+
+        // --- PHASE 2: SCAN LOCAL INDEXEDDB RECORDS ---
         await readAll(selected, async (fileRecord) => {
             if (!fileRecord || !fileRecord.path) return;
 
             const filePath = fileRecord.path;
 
-            // Skip build/temporary outputs early
-            if (filePath.includes('tmp/') || filePath.includes('/bin/') || filePath.includes('/obj/')) {
-                return;
-            }
+            if((fileRecord.mode >> 12) !== ST_FILE) return
+            
+            // Run item directly through combined glob evaluation
+            if (isIgnored(filePath)) return;
 
             foundLocalPaths.add(filePath);
 
-            // Fetch binary array elements out of record storage layer
             const contents = fileRecord.contents;
             if (!contents) return;
 
@@ -220,21 +279,17 @@ async function calculateStagedChanges(repoOwner, repoName, branch) {
             }
         });
 
-        // 4. PASS 2: Compare remote paths with local paths to discover deletions
+        // --- PHASE 3: IDENTIFY DELETIONS FROM REMOTE ---
         for (const [remotePath, remoteRecord] of Object.entries(remoteTree)) {
-            // Ignore directories tracked inside the flat mapping skeleton if they pop up
             if (remoteRecord.type === 'tree') continue;
 
-            // Skip temporary directory outputs if indexed remotely
-            if (remotePath.includes('tmp/') || remotePath.includes('/bin/') || remotePath.includes('/obj/')) {
-                continue;
-            }
+            // Skip verification tracking if the file matches dynamic ignore patterns
+            if (isIgnored(remotePath)) continue;
 
             if (!foundLocalPaths.has(remotePath)) {
                 changes.deleted.push({ path: remotePath });
 
                 // Formulate deletion entries for the Git Data Tree mapping array
-                // By providing a path definition with a null sha/value, GitHub removes it from the tree point reference.
                 changes.treeEntries.push({
                     path: remotePath,
                     mode: '100644',

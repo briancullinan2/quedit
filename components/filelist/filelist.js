@@ -631,14 +631,14 @@ function buildGithubTreeFromStaging(target, folderId, stagingDetails) {
         const rootCategories = [
             {
                 id: `${database}/Modified`,
-                text: `Modified (${modifiedChildren.length})`,
+                text: `Modified (${stagingDetails.modified.length})`,
                 status: 0,
                 state: { open: false, expanded: false },
                 children: modifiedChildren.length > 0 ? modifiedChildren : [{ text: 'Empty...', id: `${database}/Modified/empty` }]
             },
             {
                 id: `${database}/Added`,
-                text: `Added (${addedChildren.length})`,
+                text: `Added (${stagingDetails.added.length})`,
                 status: 0,
                 state: { open: false, expanded: false },
                 children: addedChildren.length > 0 ? addedChildren : [{ text: 'Empty...', id: `${database}/Added/empty` }]
