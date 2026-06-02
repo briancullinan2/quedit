@@ -1,3 +1,14 @@
+
+const api = {
+    github_token: null
+}
+
+importScripts('/components/core/preambles.js');
+importScripts('/components/core/logging.js');
+importScripts('/components/core/local.js');
+importScripts('/components/filelist/github.js');
+
+
 async function pushLocalChangesToGitHub(repoOwner, repoName, branch, commitMessage) {
     // 1. Fetch current branch parent pointer references
     const commitData = await githubRequest(repoOwner, repoName, `commits/${branch}`);
@@ -140,14 +151,15 @@ function getGitHubHeaders() {
     };
 }
 
-
 /**
- * Compares FS.virtual with the remote tree cache to calculate unstaged/staged changes.
- * Does NOT hit the network for blob creation. Purely architectural.
+ * Compares IndexedDB local storage data against the remote tree cache 
+ * to calculate unstaged modifications, new additions, or deletions.
+ * Purely structural / execution dry-run phase.
  */
 async function calculateStagedChanges(repoOwner, repoName, branch) {
     const selected = `${repoOwner}/${repoName}`;
 
+    // 1. Ensure the remote baseline tree layout skeleton is hydrated locally
     if (!files[selected]) {
         await loadGitHubTree(repoOwner, repoName, branch);
     }
@@ -156,40 +168,97 @@ async function calculateStagedChanges(repoOwner, repoName, branch) {
     const changes = {
         modified: [],   // { path, localSha, remoteSha }
         added: [],      // { path, localSha }
-        deleted: [],    // Explicitly tracked if your system handles deletions
-        treeEntries: [] // Pre-formatted array for Git Data API if we proceed
+        deleted: [],    // Remote files completely missing from local IndexedDB storage
+        treeEntries: [] // Structured changes array targeting subsequent Git Trees compilation API passes
     };
 
-    for (const [filePath, fileRecord] of Object.entries(FS.virtual)) {
-        if (!fileRecord || !fileRecord.contents) continue;
+    // Track matching local paths to identify deletions downstream
+    const foundLocalPaths = new Set();
 
-        // Skip temporary compile artifacts or engine-specific release dumps early
-        if (filePath.includes('tmp/') || filePath.includes('/bin/') || filePath.includes('/obj/')) {
-            continue;
+    try {
+        // 2. Open up the repository's dedicated IndexedDB storage space
+        const db = await getDB(selected);
+        if (!db.objectStoreNames.contains(DB_STORE_NAME)) {
+            db.close();
+            writeLog(`Target store ${DB_STORE_NAME} not allocated yet for database: ${selected}`);
+            return changes;
         }
 
-        const localSha = await getGitShaBrowser(fileRecord.contents);
-        const remoteRecord = remoteTree[filePath];
+        // 3. Scan flat file array entries inside IDB concurrently via readAll loop
+        await readAll(selected, async (fileRecord) => {
+            if (!fileRecord || !fileRecord.path) return;
 
-        if (!remoteRecord) {
-            changes.added.push({ path: filePath, sha: localSha });
-            changes.treeEntries.push({ path: filePath, sha: localSha, contents: fileRecord.contents });
-        } else if (remoteRecord.sha !== localSha) {
-            changes.modified.push({ path: filePath, localSha, remoteSha: remoteRecord.sha });
-            changes.treeEntries.push({ path: filePath, sha: localSha, contents: fileRecord.contents });
+            const filePath = fileRecord.path;
+
+            // Skip build/temporary outputs early
+            if (filePath.includes('tmp/') || filePath.includes('/bin/') || filePath.includes('/obj/')) {
+                return;
+            }
+
+            foundLocalPaths.add(filePath);
+
+            // Fetch binary array elements out of record storage layer
+            const contents = fileRecord.contents;
+            if (!contents) return;
+
+            // Resolve local hash context via optimized fallback routing
+            let localSha = fileRecord.sha;
+            if (!localSha) {
+                localSha = await getGitShaBrowser(contents);
+            }
+
+            const remoteRecord = remoteTree[filePath];
+
+            if (!remoteRecord) {
+                // File exists locally in IDB but is absent on GitHub
+                changes.added.push({ path: filePath, sha: localSha });
+                changes.treeEntries.push({ path: filePath, sha: localSha, contents: contents });
+            } else if (remoteRecord.sha !== localSha) {
+                // File shifted away from remote baseline branch tracking points
+                changes.modified.push({ path: filePath, localSha, remoteSha: remoteRecord.sha });
+                changes.treeEntries.push({ path: filePath, sha: localSha, contents: contents });
+            }
+        });
+
+        // 4. PASS 2: Compare remote paths with local paths to discover deletions
+        for (const [remotePath, remoteRecord] of Object.entries(remoteTree)) {
+            // Ignore directories tracked inside the flat mapping skeleton if they pop up
+            if (remoteRecord.type === 'tree') continue;
+
+            // Skip temporary directory outputs if indexed remotely
+            if (remotePath.includes('tmp/') || remotePath.includes('/bin/') || remotePath.includes('/obj/')) {
+                continue;
+            }
+
+            if (!foundLocalPaths.has(remotePath)) {
+                changes.deleted.push({ path: remotePath });
+
+                // Formulate deletion entries for the Git Data Tree mapping array
+                // By providing a path definition with a null sha/value, GitHub removes it from the tree point reference.
+                changes.treeEntries.push({
+                    path: remotePath,
+                    mode: '100644',
+                    type: 'blob',
+                    sha: null
+                });
+            }
         }
+
+    } catch (err) {
+        console.error(`Failed compiling status check tracking matrix for ${selected}:`, err);
+        throw err;
     }
 
     return changes;
 }
 
 
-
 self.onmessage = async function (e) {
 
     // --- ROUTE A: GET STAGING STATUS (Safe / Read-Only) ---
     if (e.data.type === 'COMMIT_STATUS_CHECK') {
-        const { owner, repo, branch, callbackId } = e.data;
+        const { owner, repo, branch, callbackId, gitHubToken } = e.data;
+        api.github_token = gitHubToken
         try {
             const stagingDetails = await calculateStagedChanges(owner, repo, branch);
             self.postMessage({
@@ -207,7 +276,8 @@ self.onmessage = async function (e) {
 
     // --- ROUTE B: EXECUTE DESTRUCTIVE COMMIT PUSH ---
     if (e.data.type === 'COMMIT_PUSH') {
-        const { owner, repo, branch, message, callbackId } = e.data;
+        const { owner, repo, branch, message, callbackId, gitHubToken } = e.data;
+        api.github_token = gitHubToken
         try {
             const finalSha = await pushLocalChangesToGitHub(owner, repo, branch, message);
             self.postMessage({ type: 'commit_status', status: 'SUCCESS', sha: finalSha, callbackId });

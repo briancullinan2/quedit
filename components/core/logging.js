@@ -38,7 +38,7 @@ function writeLog(msg, ...args) {
 
     let formatted = formatMessage(PREAMBLE, [msg, ...args]);
 
-    if ((!window.api || window.api.worker) && window.terminalWrite && !skipTerminal) {
+    if (typeof window !== 'undefined' && typeof terminalWrite !== 'undefined' && !skipTerminal) {
         terminalWrite(formatted, source);
     }
     if (typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) {
@@ -112,7 +112,7 @@ self.console.log = (...args) => {
     const source = [category, 'log', ...trailingFiles, func,
         rawFile.split('/').pop().replace('.js', ''), rawFile
     ];
-    if (window.terminalWrite) terminalWrite(formatted, source);
+    if (typeof window !== 'undefined') terminalWrite(formatted, source);
     if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
     if (typeof originalConsole != 'undefined') originalConsole.log(...args);
 };
@@ -123,7 +123,7 @@ self.console.warn = (...args) => {
     const source = [category, 'warn', ...trailingFiles, func,
         rawFile.split('/').pop().replace('.js', ''), rawFile
     ];
-    if (window.terminalWrite) terminalWrite(formatted, source);
+    if (typeof window !== 'undefined') terminalWrite(formatted, source);
     if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
     if (typeof originalConsole != 'undefined') originalConsole.warn(...args);
 };
@@ -134,7 +134,7 @@ self.console.error = (...args) => {
     const source = [category, 'error', ...trailingFiles, func,
         rawFile.split('/').pop().replace('.js', ''), rawFile
     ];
-    if (window.terminalWrite) terminalWrite(formatted, source);
+    if (typeof window !== 'undefined') terminalWrite(formatted, source);
     if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
     if (typeof originalConsole != 'undefined') originalConsole.error(...args);
 };
@@ -145,7 +145,7 @@ self.console.info = (...args) => {
     const source = [category, 'info', ...trailingFiles, func,
         rawFile.split('/').pop().replace('.js', ''), rawFile
     ];
-    if (window.terminalWrite) terminalWrite(formatted, source);
+    if (typeof window !== 'undefined') terminalWrite(formatted, source);
     if (typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
     if (typeof originalConsole != 'undefined') originalConsole.info(...args);
 };

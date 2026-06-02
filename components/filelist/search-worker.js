@@ -1,16 +1,15 @@
+
+
+const api = {
+    github_token: null
+}
+
 // search-worker.js
+importScripts('/components/core/preambles.js');
+importScripts('/components/core/logging.js');
 importScripts('/components/core/local.js');
 importScripts('/components/filelist/github.js');
 
-
-
-function openIDB(dbName) {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-}
 
 /**
  * Pulls all files from IndexedDB to scan locally in memory
@@ -21,7 +20,7 @@ async function getAllLocalFiles(activeRepositories) {
     // Scan across all registered repository DB namespaces
     for (const dbName of activeRepositories) {
         try {
-            const db = await openIDB(dbName);
+            const db = await getDB(dbName);
             if (!db.objectStoreNames.contains(DB_STORE_NAME)) {
                 db.close();
                 debugger
@@ -50,7 +49,8 @@ async function getAllLocalFiles(activeRepositories) {
 // =========================================================================
 self.onmessage = async function (e) {
     const { query, activeRepositories, gitHubToken, caseSensitive, callbackId } = e.data;
-
+    api.github_token = gitHubToken
+    
     if (!query || query.length < 2) {
         return self.postMessage({ type: 'clear', results: [], callbackId, query });
     }

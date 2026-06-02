@@ -326,6 +326,12 @@ function treeHandler(selector, e) {
                 selected = nodeDB
 
         }
+        if (node.closest('#github')) {
+            let parent = node.closest('#github > div > ul > li[data-id]')
+            if (nodeDB = parent.getAttribute('data-id'))
+                selected = nodeDB
+
+        }
 
         const parts = selected.split('/')
         const newRepo = parts.length == 2 ? parts[1] : parts[0] || repository.value
@@ -432,7 +438,7 @@ async function initializeFiletrees() {
         attributeFilter: ['class']
     });
 
-    
+
     await showGithubTree()
 
     const observer2 = new MutationObserver((mutations) => {
@@ -509,6 +515,37 @@ async function showGithubTree(folderId) {
 }
 
 
+const githubWorker = new Worker('/components/filelist/commit-worker.js');
+
+// Track active callback resolvers for our async tree nodes
+const pendingTreeRequests = {};
+
+githubWorker.onmessage = function (e) {
+    const { type, status, modified, added, error, callbackId } = e.data;
+
+    if (type === 'staging_status') {
+        const request = pendingTreeRequests[callbackId];
+        if (!request) return;
+
+        delete pendingTreeRequests[callbackId];
+
+        if (status === 'SUCCESS') {
+            // Forward the dirty file arrays directly into the layout compiler
+            buildGithubTreeFromStaging(request.target, request.folderId, { modified, added });
+        } else {
+            console.error("Worker status check failed:", error);
+            const folderId = request.folderId;
+            loadedGithubTreeNodes[folderId].children = [{ text: 'Error tracking files', id: `${folderId}/err` }];
+            finalizeGithubTreeExpansion(folderId);
+        }
+    }
+
+    if (type === 'commit_status') {
+        // Handle your post-commit layout resets here
+        writeLog(`Commit response signature: ${status}`);
+    }
+};
+
 async function expandGithubTree(target, folderId) {
     const parts = folderId.split('/');
     const database = `${parts[0]}/${parts[1]}`; // Isolate owner/repo segment
@@ -520,17 +557,15 @@ async function expandGithubTree(target, folderId) {
         if (githubTreeLoading) return;
         githubTreeLoading = true;
 
-        // Ensure remote metadata mapping exists for this repo instance
+        // Ensure remote baseline structure is populated locally 
         if (!files[database]) {
             let branch = await getDefaultBranch(parts[0], parts[1]);
             await loadGitHubTree(parts[0], parts[1], branch);
         }
 
-        let newChildren = [];
-
-        // --- LAYER A: REPOSITORY LEVEL ROOT ---> INTERCEPT AND INJECT CATEGORIES
+        // --- LAYER A: REPOSITORY LEVEL ROOT ---> IMMEDIATE STRUCTURAL INJECTION
         if (parts.length === 2) {
-            newChildren = [
+            let newChildren = [
                 {
                     id: `${database}/Modified`,
                     text: 'Modified',
@@ -557,104 +592,164 @@ async function expandGithubTree(target, folderId) {
             loadedGithubTreeNodes[folderId].children = trees['#github'].nodesById[folderId].children = newChildren;
             showGithubTree(folderId);
             finalizeGithubTreeExpansion(folderId);
-            return;
         }
 
-        // --- LAYER B: STATUS CATEGORIES & WORKSPACE DIRECTORIES
-        const statusCategory = parts[2];     // 'Modified', 'Added', or 'Staged'
-        const baseDir = parts.slice(3).join('/'); // Subdirectory component path inside category
+        // --- LAYER B: STATUS SUB-CATEGORIES ---> MESSAGE HANDOFF
+        const callbackId = `tree_sync_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
 
-        // Query the worker dry-run staging comparison utility
-        let stagingDetails = null;
-        if (typeof calculateStagedChanges === 'function') {
-            stagingDetails = await calculateStagedChanges(parts[0], parts[1], await getDefaultBranch(parts[0], parts[1]));
-        }
+        // Cache the execution arguments to process when onmessage fires
+        pendingTreeRequests[callbackId] = { target, folderId };
 
-        // Isolate which local changes match our requested folder path category bucket
-        let matchingFiles = [];
-        if (statusCategory === 'Modified' && stagingDetails) {
-            matchingFiles = stagingDetails.modified;
-        } else if (statusCategory === 'Added' && stagingDetails) {
-            matchingFiles = stagingDetails.added;
-        } else if (statusCategory === 'Staged') {
-            matchingFiles = []; // Staged state registry tracking array hook point
-        }
-
-        const resultSet = matchingFiles.reduce((obj, file) => {
-            obj[file.path] = files[database][file.path] || { path: file.path, mode: FS_FILE };
-            return obj;
-        }, {});
-        
-        const resultKeys = Object.keys(resultSet);
-        const directoriesFound = new Set();
-        const absoluteFilesFound = [];
-
-        resultKeys.forEach(path => {
-            let matchesDirPrefix = baseDir === '' ? true : path.startsWith(baseDir + '/');
-            if (!matchesDirPrefix) return;
-
-            const relativePart = baseDir === '' ? path : path.substring(baseDir.length + 1);
-            const nextSlashIdx = relativePart.indexOf('/');
-
-            if (nextSlashIdx === -1) {
-                absoluteFilesFound.push(path); // Direct file match
-            } else {
-                directoriesFound.add(relativePart.substring(0, nextSlashIdx)); // Nested folder match
-            }
+        // Query the worker dry-run staging verification pipeline
+        githubWorker.postMessage({
+            type: 'COMMIT_STATUS_CHECK',
+            owner: parts[0],
+            repo: parts[1],
+            branch: await getDefaultBranch(parts[0], parts[1]),
+            gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
+            callbackId: callbackId
         });
-
-        // 1. Process and append directories
-        directoriesFound.forEach(dirName => {
-            const computedPath = baseDir === '' ? dirName : `${baseDir}/${dirName}`;
-            const nodeId = `${folderId}/${dirName}`; // e.g. owner/repo/Modified/src
-            
-            const dirNode = {
-                id: nodeId,
-                text: dirName,
-                path: computedPath,
-                status: 0,
-                state: { open: false, expanded: false },
-                children: [{ text: 'Loading...', id: `${nodeId}/loading` }]
-            };
-            
-            loadedGithubTreeNodes[nodeId] = trees['#github'].nodesById[nodeId] = dirNode;
-            newChildren.push(dirNode);
-        });
-
-        // 2. Process and append files
-        absoluteFilesFound.forEach(path => {
-            const name = path.split('/').pop() || path;
-            const nodeId = `${folderId}/${name}`;
-
-            const fileNode = {
-                id: nodeId,
-                text: name,
-                path: path,
-                status: 0,
-                state: { open: false, expanded: false },
-                children: null
-            };
-
-            loadedGithubTreeNodes[nodeId] = trees['#github'].nodesById[nodeId] = fileNode;
-            newChildren.push(fileNode);
-        });
-
-        if (newChildren.length === 0) {
-            newChildren.push({ text: 'Empty...', id: `${folderId}/empty` });
-        } else {
-            sortNodes(newChildren);
-        }
-
-        loadedGithubTreeNodes[folderId].children = trees['#github'].nodesById[folderId].children = newChildren;
-        showGithubTree(folderId);
 
     } catch (err) {
-        console.error("Failed executing github custom tree node expansion parsing sequence:", err);
-        loadedGithubTreeNodes[folderId].children = [{ text: 'Error tracking modifications', id: `${folderId}/err` }];
+        console.error("Failed handling async root branch dependencies:", err);
+        loadedGithubTreeNodes[folderId].children = [{ text: 'Error connecting to worker', id: `${folderId}/err` }];
+        finalizeGithubTreeExpansion(folderId);
+    }
+}
+function buildGithubTreeFromStaging(target, folderId, stagingDetails) {
+    const parts = folderId.split('/');
+    const database = `${parts[0]}/${parts[1]}`;
+
+    // --- MODE A: REPOSITORY ROOT LEVEL EXPANSION (parts.length === 2) ---
+    if (parts.length === 2) {
+        // We compile the three fixed parent nodes, seeding their children lists immediately 
+        // by passing down deeper virtual folder IDs to our own parsing logic.
+        const modifiedChildren = compileStagingLevelChildren(`${folderId}/Modified`, '', stagingDetails.modified || []);
+        const addedChildren = compileStagingLevelChildren(`${folderId}/Added`, '', stagingDetails.added || []);
+        const stagedChildren = []; // Explicit staged hook destination
+
+        const rootCategories = [
+            {
+                id: `${database}/Modified`,
+                text: `Modified (${modifiedChildren.length})`,
+                status: 0,
+                state: { open: false, expanded: false },
+                children: modifiedChildren.length > 0 ? modifiedChildren : [{ text: 'Empty...', id: `${database}/Modified/empty` }]
+            },
+            {
+                id: `${database}/Added`,
+                text: `Added (${addedChildren.length})`,
+                status: 0,
+                state: { open: false, expanded: false },
+                children: addedChildren.length > 0 ? addedChildren : [{ text: 'Empty...', id: `${database}/Added/empty` }]
+            },
+            {
+                id: `${database}/Staged`,
+                text: 'Staged (0)',
+                status: 0,
+                state: { open: false, expanded: false },
+                children: stagedChildren.length > 0 ? stagedChildren : [{ text: 'Empty...', id: `${database}/Staged/empty` }]
+            }
+        ];
+
+        // Register the static categories into the node lookup dictionary
+        rootCategories.forEach(catNode => {
+            loadedGithubTreeNodes[catNode.id] = trees['#github'].nodesById[catNode.id] = catNode;
+        });
+
+        loadedGithubTreeNodes[folderId].children = trees['#github'].nodesById[folderId].children = rootCategories;
+
+        showGithubTree(folderId);
+        finalizeGithubTreeExpansion(folderId);
+        return;
     }
 
+    // --- MODE B: NESTED CATEGORY OR SUBDIRECTORY EXPANSION ---
+    const statusCategory = parts[2];          // 'Modified', 'Added', or 'Staged'
+    const baseDir = parts.slice(3).join('/'); // Subdirectory extraction path
+
+    let matchingPaths = [];
+    if (statusCategory === 'Modified') {
+        matchingPaths = stagingDetails.modified || [];
+    } else if (statusCategory === 'Added') {
+        matchingPaths = stagingDetails.added || [];
+    }
+
+    // Process deep folder layouts dynamically 
+    const dynamicChildren = compileStagingLevelChildren(folderId, baseDir, matchingPaths);
+    loadedGithubTreeNodes[folderId].children = trees['#github'].nodesById[folderId].children = dynamicChildren;
+
+    showGithubTree(folderId);
     finalizeGithubTreeExpansion(folderId);
 }
+
+
+/**
+ * Pure parsing helper to structure a group of paths for a specific UI node location point.
+ */
+function compileStagingLevelChildren(folderId, baseDir, matchingPaths) {
+    const newChildren = [];
+    const directoriesFound = new Set();
+    const absoluteFilesFound = [];
+
+    matchingPaths.forEach(path => {
+        let matchesDirPrefix = baseDir === '' ? true : path.startsWith(baseDir + '/');
+        if (!matchesDirPrefix) return;
+
+        const relativePart = baseDir === '' ? path : path.substring(baseDir.length + 1);
+        const nextSlashIdx = relativePart.indexOf('/');
+
+        if (nextSlashIdx === -1) {
+            absoluteFilesFound.push(path);
+        } else {
+            directoriesFound.add(relativePart.substring(0, nextSlashIdx));
+        }
+    });
+
+    // 1. Compile Directories
+    directoriesFound.forEach(dirName => {
+        const computedPath = baseDir === '' ? dirName : `${baseDir}/${dirName}`;
+        const nodeId = `${folderId}/${dirName}`;
+
+        const dirNode = {
+            id: nodeId,
+            text: dirName,
+            path: computedPath,
+            status: 0,
+            state: { open: false, expanded: false },
+            children: [{ text: 'Loading...', id: `${nodeId}/loading` }]
+        };
+
+        loadedGithubTreeNodes[nodeId] = trees['#github'].nodesById[nodeId] = dirNode;
+        newChildren.push(dirNode);
+    });
+
+    // 2. Compile Files
+    absoluteFilesFound.forEach(path => {
+        const name = path.split('/').pop() || path;
+        const nodeId = `${folderId}/${name}`;
+
+        const fileNode = {
+            id: nodeId,
+            text: name,
+            path: path,
+            status: 0,
+            state: { open: false, expanded: false },
+            children: null
+        };
+
+        loadedGithubTreeNodes[nodeId] = trees['#github'].nodesById[nodeId] = fileNode;
+        newChildren.push(fileNode);
+    });
+
+    if (newChildren.length > 0) {
+        sortNodes(newChildren);
+    }
+
+    return newChildren;
+}
+
+
 
 function finalizeGithubTreeExpansion(folderId) {
     if (refreshGithubTree) clearTimeout(refreshGithubTree);
