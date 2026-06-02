@@ -26,14 +26,53 @@ const term = new Terminal({
 term.open(terminalContainer);
 window.terminalLoaded = false;
 
+
+// Utility to convert rgb/rgba strings to hex
+function parseToHex(colorStr, backgroundStr = null) {
+    if (!colorStr || typeof colorStr !== 'string') return colorStr;
+    if (colorStr.startsWith('#')) return colorStr;
+
+    const match = colorStr.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
+    if (!match) return colorStr;
+
+    const r = parseInt(match[1], 10);
+    const g = parseInt(match[2], 10);
+    const b = parseInt(match[3], 10);
+    const a = match[4] !== undefined ? parseFloat(match[4]) : 1;
+
+    // OPTION A: If xterm fails to render transparency properly, 
+    // flatten the color over the background color.
+    if (backgroundStr && a < 1) {
+        const bgMatch = backgroundStr.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+        if (bgMatch) {
+            const bgR = parseInt(bgMatch[1], 16);
+            const bgG = parseInt(bgMatch[2], 16);
+            const bgB = parseInt(bgMatch[3], 16);
+
+            const blendedR = Math.round((1 - a) * bgR + a * r).toString(16).padStart(2, '0');
+            const blendedG = Math.round((1 - a) * bgG + a * g).toString(16).padStart(2, '0');
+            const blendedB = Math.round((1 - a) * bgB + a * b).toString(16).padStart(2, '0');
+            return `#${blendedR}${blendedG}${blendedB}`;
+        }
+    }
+
+    // OPTION B: Standard 8-digit hex conversion (#RRGGBBAA)
+    const hexR = r.toString(16).padStart(2, '0');
+    const hexG = g.toString(16).padStart(2, '0');
+    const hexB = b.toString(16).padStart(2, '0');
+    const hexA = Math.round(a * 255).toString(16).padStart(2, '0');
+
+    return `#${hexR}${hexG}${hexB}`; // ${hexA}
+}
+
 /**
  * Pulls computed styles from the active editor container and mutates the xterm context theme layout.
  */
 function syncThemeWithAce() {
-    const editorEle = document.querySelector('.ace_editor');
-    if (!editorEle) return;
+    //const editorEle = document.querySelector('.ace_editor');
+    //if (!editorEle) return;
 
-    const style = getComputedStyle(editorEle);
+    const style = getComputedStyle(document.body);
     const getAceVar = (name) => style.getPropertyValue(name).trim();
 
     const themeColors = {

@@ -100,6 +100,12 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         str = decoder.decode(content);
     }
 
+    if (image && typeof getOrCreateAceSession === 'undefined') {
+        previousPanelId = null
+    } else if (!image) {
+        await DependencyLoader.loadModule('editor');
+    }
+
 
     if (hidePanels)
         hideOpenPanels(image)
@@ -116,8 +122,6 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
 
         editorContainer.classList.remove('hidden')
         editorContainer.classList.add('not-hidden')
-    } else if (image) {
-        previousPanelId = null
     }
 
     if (image) {
