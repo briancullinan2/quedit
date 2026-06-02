@@ -616,6 +616,10 @@ async function expandGithubTree(target, folderId) {
         finalizeGithubTreeExpansion(folderId);
     }
 }
+
+
+
+
 function buildGithubTreeFromStaging(target, folderId, stagingDetails) {
     const parts = folderId.split('/');
     const database = `${parts[0]}/${parts[1]}`;
