@@ -187,7 +187,7 @@ function debounceTerminalStatus(event) {
         window.moveLookLocked(event.movementX, event.movementY);
     }
 
-    if (debounceTerminalMouse) return false;
+    if (debounceTerminalMouse) return true;
 
     debounceTerminalMouse = setTimeout(() => {
         // Re-fire query updates from shared search input references cleanly
@@ -255,7 +255,7 @@ async function handleMouseDown(event) {
 // Attach Event Listeners internally to completely clean up parent runtime loop dependencies
 terminalContainer.addEventListener('mousemove', debounceTerminalStatus);
 terminalContainer.addEventListener('mousedown', handleMouseDown);
-term.onScroll(debounceTerminalStatus);
+//term.onScroll(debounceTerminalStatus);
 
 window.addEventListener('mouseup', () => {
     isDragging = false;
