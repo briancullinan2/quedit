@@ -361,7 +361,7 @@ const SettingsManager = {
                     currentVal = config.type === 'array' ? [] : {};
                 }
             }
-            currentVal = currentVal !== null ? currentVal : config.default;
+            currentVal = typeof currentVal !== 'undefined' && currentVal !== null ? currentVal : config.default;
             payload[config.key] = currentVal
         }
 
