@@ -274,6 +274,15 @@ Heard loud and clear. Let's strip away the philosophical filler, drop the "sover
 ## So far
 
 
+#### 6/1/2026
+
+Integrated nunuStudio. Procrastinating github commits.
+
+
+![NUNU](./Screenshot%202026-06-01%20235232.png)
+
+
+
 #### 5/21/2026
 
 [https://quedit.quake.games/#docs/demoq3/pak0.pk3dir/maps/q3dm1.bsp]

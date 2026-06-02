@@ -86,7 +86,7 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
         'configuration', 'wasi', 'theme', 'spawn', 'map', 'branch',
         'repository', 'owner', 'keybinding', 'filename', 'reload'
     ];
-    if (interactiveStateKeys.includes(buttonId)) {
+    if (typeof currentSession !== 'undefined' && interactiveStateKeys.includes(buttonId)) {
         let filename = currentSession();
         if (filename?.includes('settings.json')) {
             settings();

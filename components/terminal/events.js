@@ -255,7 +255,7 @@ async function handleMouseDown(event) {
 // Attach Event Listeners internally to completely clean up parent runtime loop dependencies
 terminalContainer.addEventListener('mousemove', debounceTerminalStatus);
 terminalContainer.addEventListener('mousedown', handleMouseDown);
-//term.onScroll(debounceTerminalStatus);
+term.onScroll(debounceTerminalStatus);
 
 window.addEventListener('mouseup', () => {
     isDragging = false;

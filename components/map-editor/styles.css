@@ -67,32 +67,34 @@
 	margin: 0;
 }
 
+
 #nunu {
-	/* Fonts */
-	--font-main-family:"Arial";
-	--font-main-color:#FFFFFF;
-	--font-main-size:12px;
-	/* GUI Color Palette */
-	--color-light:#FFFFFF;
-	--color-graph:#AAAAAA;
-	--color-gray-light: #999999;
-	--button-over-color:#555555;
-	--box-color:#444444;
-	--panel-color:#333333;
-	--bar-color:#222222;
+    /* Fonts */
+    --font-main-family: inherit;
+    --font-main-color: var(--ace-foreground); /* #000000 - Flipped for light theme contrast */
+    --font-main-size: 12px;
 
-	--color-black:#000000;
-	--color-black-alpha-20:#00000033;
+    /* GUI Color Palette */
+    --color-light: var(--ace-foreground);                 /* #FFFFFF */
+    --color-graph: var(--ace-selection-bg);       /* #D4D4D4 */
+    --color-gray-light: var(--ace-gutter-bg);     /* #F0F0F0 */
+    --button-over-color: var(--ace-selection-bg);  /* #D4D4D4 */
+    --box-color: var(--ace-gutter-bg);            /* #F0F0F0 */
+    --panel-color: var(--ace-gutter-bg);          /* #F0F0F0 */
+    --bar-color: var(--ace-gutter-bg);            /* #F0F0F0 */
 
-	/* Solid Colors */
-	--color-red:#FF0000;
-	--color-green:#00FF00;
-	--color-blue:#0000FF;
-	--color-yellow:#FFFF00;
+    --color-black: var(--ace-bg);         /* #000000 */
+    --color-black-alpha-20: var(--ace-selection-bg); /* Closest light neutral block */
 
-	/* Console Colors */
-	--color-console-error:#FF0000;
-	--color-console-error-background:#FF000022;
-	--color-console-warn:#FFFF00;
-	--color-console-warn-background:#FFFF0022;
+    /* Solid Colors */
+    --color-red: var(--ace-pink);                 /* #AF00DB (Closest vivid warm accent) */
+    --color-green: var(--ace-comment);            /* #008000 */
+    --color-blue: var(--ace-purple);              /* #0000FF (Note: --ace-purple is actually blue hex) */
+    --color-yellow: var(--ace-blue);              /* #795DA3 */
+
+    /* Console Colors */
+    --color-console-error: var(--ace-pink);       /* #AF00DB */
+    --color-console-error-background: var(--ace-gutter-bg); 
+    --color-console-warn: var(--ace-blue);        /* #795DA3 */
+    --color-console-warn-background: var(--ace-gutter-bg);
 }
