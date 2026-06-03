@@ -40,10 +40,12 @@ body {
     background-color: var(--ace-selection-bg) !important;
 }
 
-#nunu [draggable] {
+#nunu div:has(>div:first-child>[draggable]>img[src*="close"])>div:first-child>[draggable] {
     user-drag: none;
     -webkit-user-drag: none;
 }
+
+#nunu [draggable] {}
 
 #nunu.not-hidden {
     display: flex;

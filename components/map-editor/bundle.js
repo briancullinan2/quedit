@@ -107242,7 +107242,7 @@
             ns.prototype = Object.create(s.Object3D.prototype),
             ns.prototype.initialize = function () {
                 for (var t = this; null !== t.parent;)
-                    (t = t.parent) instanceof Dh ? this.scene = t : t instanceof zh && (this.renderer = t.renderer);
+                    (t = t.parent) instanceof Dh ? (window.scene = this.scene = t) : t instanceof zh && (this.renderer = t.renderer);
                 s.Object3D.prototype.initialize.call(this)
             }
             ,
@@ -107344,7 +107344,7 @@
                 as);
         var hs = function (t, e) {
             cs.call(this),
-                this.scene = t,
+                window.scene = this.scene = t,
                 this.camera = e,
                 this.clear = !0,
                 this.needsSwap = !1,
@@ -107465,7 +107465,7 @@
             },
             ps.prototype.createQuadScene = function () {
                 this.camera = new s.OrthographicCamera(-1, 1, 1, -1, 0, 1),
-                    this.scene = new s.Scene,
+                    window.scene = this.scene = new s.Scene,
                     this.quad = new s.Mesh(new s.PlaneBufferGeometry(2, 2), null),
                     this.quad.frustumCulled = !1,
                     this.scene.add(this.quad)
@@ -111721,7 +111721,7 @@
                 es.prototype.initialize.call(this);
                 for (var t = this.parent; null !== t;) {
                     if (t instanceof Dh) {
-                        this.scene = t;
+                        window.scene = this.scene = t;
                         break
                     }
                     t = t.parent
@@ -125091,7 +125091,7 @@
             ,
             Lh.prototype.initialize = function () {
                 for (var t = this; null !== t.parent;)
-                    (t = t.parent) instanceof Dh ? this.scene = t : t instanceof zh && (this.program = t);
+                    (t = t.parent) instanceof Dh ? (window.scene = this.scene = t) : t instanceof zh && (this.program = t);
                 s.Object3D.prototype.initialize.call(this);
                 var e = this;
                 this.compileCode(this.code, function () {
@@ -125242,7 +125242,7 @@
             Ih.DEFAULT = "def initialize(obj, scene, program, keyboard, mouse):\n\t# TODO <ADD CODE HERE>\n\tpass\n\ndef update(delta, obj, scene, program, keyboard, mouse):\n\t# TODO <ADD CODE HERE>\n\tpass",
             Ih.prototype.initialize = function () {
                 for (var t = this; null !== t.parent;)
-                    (t = t.parent) instanceof Dh ? this.scene = t : t instanceof zh && (this.program = t);
+                    (t = t.parent) instanceof Dh ? (window.scene = this.scene = t) : t instanceof zh && (this.program = t);
                 s.Object3D.prototype.initialize.call(this),
                     this.compileCode(this.code),
                     void 0 !== this.script.initialize && this.script.initialize.call(this, this, this.scene, this.program, this.program.keyboard, this.program.mouse)
@@ -126185,7 +126185,7 @@
             zh.prototype.setScene = function (t) {
                 "string" == typeof t && (t = this.getObjectByName(t)),
                     null !== this.scene && this.scene.dispose(),
-                    this.scene = t,
+                    window.scene = this.scene = t,
                     null !== this.scene ? (null === this.scene.defaultCamera && (this.scene.defaultCamera = this.defaultCamera),
                         this.scene.initialize(),
                         null !== this.canvas && this.scene.resize(this.canvas.width, this.canvas.height)) : console.warn("nunuStudio: Program setScene scene is null.")
@@ -145144,7 +145144,7 @@
                 this.rayPointer = {
                     position: new s.Vector2(0, 0)
                 },
-                this.scene = new s.Scene,
+                window.scene = this.scene = new s.Scene,
                 this.scene.matrixAutoUpdate = !1,
                 this.selected = null;
             var t, e = new s.PlaneBufferGeometry(1, 1);
@@ -147984,7 +147984,7 @@
             }
             ,
             Rf.prototype.attach = function (t) {
-                this.scene = t,
+                window.scene = this.scene = t,
                     this.updateMetadata(),
                     null !== this.camera && (this.scene.defaultCamera = this.camera)
             }
@@ -148848,7 +148848,7 @@
                 }),
                 this.mouse = new l(window, !0),
                 this.mouse.setCanvas(this.canvas.element),
-                this.scene = new s.Scene,
+                window.scene = this.scene = new s.Scene,
                 this.scene.matrixAutoUpdate = !1,
                 this.scene.add(new s.GridHelper(50, 50, 8947848)),
                 this.scene.add(new s.AxesHelper(50)),
@@ -150053,7 +150053,7 @@
                 this.form.nextRow(),
                 this.mouse = new l(window, !1),
                 this.mouse.setCanvas(this.preview.canvas),
-                this.scene = new s.Scene,
+                window.scene = this.scene = new s.Scene,
                 this.grid = null;
             var n = new s.DirectionalLight(7829367, 1);
             n.position.set(3e3, 1e4, 400),
@@ -153510,7 +153510,7 @@
             }),
                 this.renderer.setSize(128, 128),
                 this.canvas = this.renderer.domElement,
-                this.scene = new s.Scene
+                window.scene = this.scene = new s.Scene
         }
         function Mg(t, e, i, n) {
             function r(t, e, i) {
@@ -153533,7 +153533,7 @@
                     }
                 });
             this.camera = new s.OrthographicCamera(-1, 1, 1, -1, 0, 1),
-                this.scene = new s.Scene,
+                window.scene = this.scene = new s.Scene,
                 this.faces = [];
             for (var l = 0; l < 6; l++) {
                 var c = new s.PlaneBufferGeometry(e, e)
@@ -153996,7 +153996,7 @@
                         r.camera.updateProjectionMatrix()
                 }),
                 this.camera = new _o(1.2, 1, _o.RESIZE_VERTICAL),
-                this.scene = new s.Scene;
+                window.scene = this.scene = new s.Scene;
             var o = new Qr(vp + "alpha.png");
             o.wrapS = s.RepeatWrapping,
                 o.wrapT = s.RepeatWrapping,
@@ -154275,7 +154275,7 @@
                 this.mouse = new l(window, !0),
                 this.mouse.setCanvas(this.canvas.element),
                 this.camera = new yo(100, this.canvas.width / this.canvas.height),
-                this.scene = new s.Scene,
+                window.scene = this.scene = new s.Scene,
                 this.texture = null,
                 this.form = new jf,
                 this.form.setAutoSize(!1),
@@ -154595,7 +154595,7 @@
                 this.mouse.setCanvas(this.canvas.element),
                 this.material = null,
                 this.asset = null,
-                this.scene = new s.Scene,
+                window.scene = this.scene = new s.Scene,
                 this.camera = new s.PerspectiveCamera(80, this.canvas.size.x / this.canvas.size.y),
                 this.camera.position.set(0, 0, 2.5),
                 this.interactive = new s.Object3D,
@@ -154907,7 +154907,7 @@
                 this.material = null,
                 this.camera = new s.PerspectiveCamera(80, this.canvas.size.x / this.canvas.size.y),
                 this.camera.position.set(0, 0, 2.5),
-                this.scene = new s.Scene,
+                window.scene = this.scene = new s.Scene,
                 this.interactive = new s.Object3D,
                 this.scene.add(this.interactive),
                 this.sky = new xh,
