@@ -60,71 +60,76 @@
         }
 
         _buildFromMeshData(meshData, rootNode) {
-            var geometry = new THREE.BufferGeometry();
-
-            // FIX: Accept the incoming typed views directly
             var rawVertices = meshData.vertices;
             var rawIndices = meshData.indices;
             var surfaces = meshData.surfaces || [];
-
             var stride = 14;
-            var vertexCount = rawVertices.length / stride;
 
-            var positions = new Float32Array(vertexCount * 3);
-            var normals = new Float32Array(vertexCount * 3);
-            var uvs = new Float32Array(vertexCount * 2);
-            var colors = new Float32Array(vertexCount * 4);
-
-            for (var i = 0; i < vertexCount; i++) {
-                var idx = i * stride;
-
-                positions[i * 3] = rawVertices[idx];
-                positions[i * 3 + 1] = rawVertices[idx + 2];
-                positions[i * 3 + 2] = -rawVertices[idx + 1];
-
-                uvs[i * 2] = rawVertices[idx + 3];
-                uvs[i * 2 + 1] = 1.0 - rawVertices[idx + 4];
-
-                normals[i * 3] = rawVertices[idx + 7];
-                normals[i * 3 + 1] = rawVertices[idx + 9];
-                normals[i * 3 + 2] = -rawVertices[idx + 8];
-
-                colors[i * 4] = rawVertices[idx + 10];
-                colors[i * 4 + 1] = rawVertices[idx + 11];
-                colors[i * 4 + 2] = rawVertices[idx + 12];
-                colors[i * 4 + 3] = rawVertices[idx + 13];
-            }
-
-            geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-            geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
-            geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
-            geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 4));
-
-            // FIX: Set the native array reference directly. Three automatically formats it.
-            if (rawIndices) {
-                geometry.setIndex(new THREE.BufferAttribute(rawIndices, 1));
-            }
-
+            // Iterate over each surface group individually
             for (var s = 0; s < surfaces.length; s++) {
                 var surface = surfaces[s];
-                if (surface.elementCount === 0) { continue; }
+                if (surface.elementCount === 0) continue;
 
-                geometry.addGroup(surface.indexOffset / 4, surface.elementCount, s);
+                // Create a completely separate geometry and mesh instance for this surface
+                var geometry = new THREE.BufferGeometry();
+
+                // Track unique indices for this specific sub-mesh
+                var subIndices = [];
+                var subPositions = [];
+                var subNormals = [];
+                var subUvs = [];
+                var subColors = [];
+
+                // Map to track global vertex references to our new local arrays
+                var vertMap = {};
+                var localVertCount = 0;
+
+                // Extract only the indices and vertices assigned to this specific group
+                var indexStart = surface.indexOffset / 4;
+                var indexEnd = indexStart + surface.elementCount;
+
+                for (var i = indexStart; i < indexEnd; i++) {
+                    var globalVertIdx = rawIndices[i];
+
+                    if (vertMap[globalVertIdx] === undefined) {
+                        vertMap[globalVertIdx] = localVertCount;
+                        var idx = globalVertIdx * stride;
+
+                        // Swizzle and push attributes locally
+                        subPositions.push(rawVertices[idx], rawVertices[idx + 2], -rawVertices[idx + 1]);
+                        subUvs.push(rawVertices[idx + 3], 1.0 - rawVertices[idx + 4]);
+                        subNormals.push(rawVertices[idx + 7], rawVertices[idx + 9], -rawVertices[idx + 8]);
+                        subColors.push(rawVertices[idx + 10], rawVertices[idx + 11], rawVertices[idx + 12], rawVertices[idx + 13]);
+
+                        localVertCount++;
+                    }
+                    subIndices.push(vertMap[globalVertIdx]);
+                }
+
+                // Hydrate our independent sub-geometry
+                geometry.setAttribute("position", new THREE.Float32BufferAttribute(subPositions, 3));
+                geometry.setAttribute("normal", new THREE.Float32BufferAttribute(subNormals, 3));
+                geometry.setAttribute("uv", new THREE.Float32BufferAttribute(subUvs, 2));
+                geometry.setAttribute("color", new THREE.Float32BufferAttribute(subColors, 4));
+                geometry.setIndex(subIndices.length > 65535 ? new THREE.BufferAttribute(new Uint32Array(subIndices), 1) : new THREE.BufferAttribute(new Uint16Array(subIndices), 1));
 
                 var mat = new THREE.MeshPhongMaterial({
                     name: surface.shaderName || "default_bsp",
-                    vertexColors: true
+                    vertexColors: true,
+                    side: THREE.DoubleSide // Helps see geometry if normals face inwards
                 });
 
                 var surfaceMesh = new THREE.Mesh(geometry, mat);
                 surfaceMesh.name = (surface.shaderName !== "noshader") ? surface.shaderName : "surface_" + s;
+
+                // Expose attributes directly on userData for your ANTLR/background editor mutations
                 surfaceMesh.userData = {
                     geomType: surface.geomType,
-                    visible: true,
                     indexOffset: surface.indexOffset,
                     elementCount: surface.elementCount
                 };
 
+                // Add to tree as its own unique object entity
                 rootNode.add(surfaceMesh);
             }
 

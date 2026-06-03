@@ -111947,6 +111947,7 @@
             ,
             Io.loadApp = function (t, e) {
                 "string" == typeof e && (e = document.getElementById(e));
+                debugger
                 var i = new Io(e);
                 i.loadRunProgram(t),
                     window.addEventListener("resize", function () {
@@ -111960,8 +111961,8 @@
             Io.prototype.run = function () {
                 if (null !== this.program) {
                     if (this.renderer = this.program.rendererConfig.createRenderer(this.canvas),
-                        this.program.app = this,
-                        this.program.defaultCamera = new yo(60, 1, .1, 1e5),
+                        window.app = this.program.app = this,
+                        this.program.defaultCamera = new yo(60, 1, .1, 1e10),
                         this.program.defaultCamera.position.set(0, 5, -5),
                         this.program.setRenderer(this.renderer),
                         this.program.initialize(),
@@ -145138,7 +145139,7 @@
                 this.viewport.size.set(150, 150),
                 this.viewport.offset.set(10, 10),
                 this.viewport.anchor = go.TOP_RIGHT,
-                this.camera = new s.PerspectiveCamera(60, 1, .1, 10),
+                this.camera = new s.PerspectiveCamera(60, 1, .1, 10000),
                 this.camera.position.z = 2,
                 this.raycaster = new s.Raycaster,
                 this.rayPointer = {
@@ -148150,7 +148151,7 @@
                     void 0 === t && (t = this.cameraMode === Rf.PERSPECTIVE ? Rf.ORTHOGRAPHIC : Rf.PERSPECTIVE),
                         this.cameraMode = t;
                     var e = null !== this.canvas ? this.canvas.size.x / this.canvas.size.y : 1;
-                    this.cameraMode === Rf.ORTHOGRAPHIC ? this.camera = new _o(10, e, _o.RESIZE_HORIZONTAL) : this.cameraMode === Rf.PERSPECTIVE && (this.camera = new yo(60, e)),
+                    this.cameraMode === Rf.ORTHOGRAPHIC ? this.camera = new _o(10, e, _o.RESIZE_HORIZONTAL, 10000) : this.cameraMode === Rf.PERSPECTIVE && (this.camera = new yo(60, e)),
                         null !== this.scene && (this.scene.defaultCamera = this.camera),
                         this.transform.camera = this.camera,
                         null !== this.controls && (this.controls.attach(this.camera),
@@ -148261,7 +148262,7 @@
             ,
             Of.prototype.runProgram = function () {
                 try {
-                    this.program.defaultCamera = new yo(60, 1, .1, 1e5),
+                    this.program.defaultCamera = new yo(60, 1, .1, 1e10),
                         this.program.defaultCamera.position.set(0, 5, -5),
                         this.program.setRenderer(this.canvas.renderer),
                         this.program.initialize(),

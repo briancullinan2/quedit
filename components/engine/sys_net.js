@@ -179,22 +179,22 @@ function NET_Sleep() {
 
 function sendHeartbeat(sock) {
   if (sock && sock.readyState == WebSocket.OPEN) {
-    if(sock.fresh >= 3) { // don't heartbeat too early
+    if (sock.fresh >= 3) { // don't heartbeat too early
       sock.fresh = 5
       sock.send(Uint8Array.from([0x05, 0x01, 0x00, 0x00]),
         { binary: true })
     }
     return
-  } else 
-  if (sock && sock.readyState == WebSocket.CLOSED) {
-    NET.port_try = 0
-    NET.reconnect = true
-    if (sock == NET.socket1) {
-      NET.socket1 = null
-    } else {
-      NET.socket2 = null
+  } else
+    if (sock && sock.readyState == WebSocket.CLOSED) {
+      NET.port_try = 0
+      NET.reconnect = true
+      if (sock == NET.socket1) {
+        NET.socket1 = null
+      } else {
+        NET.socket2 = null
+      }
     }
-  }
   try {
     NET_OpenIP()
   } catch (e) {
@@ -596,7 +596,7 @@ function Com_DL_Perform(nameStr, localName, responseData) {
       contents: new Uint8Array(responseData),
       path: tempName,
       parent: tempName.substring(0, tempName.lastIndexOf('/'))
-      
+
     }
     //Sys_FileReady(stringToAddress(localName), stringToAddress(tempName));
   } else {
@@ -618,145 +618,136 @@ function Com_DL_Perform(nameStr, localName, responseData) {
 
 }
 
-function CL_Download(cmd, name, auto) {
+
+
+async function CL_Download(cmd, name, auto) {
   if (!FS.database) {
-    FS.database = getDB(owner.value + '/' + repository.value)
+    FS.database = getDB(owner.value + '/' + repository.value);
   }
-  //if(NET.downloadCount > 5) {
-  //  return 0 // delay like cl_curl does
-  //}
 
-  // TODO: make a utility for cvar stuff?
-  let cmdStr = addressToString(cmd)
-  let dlURL = addressToString(Cvar_VariableString(stringToAddress('cl_dlURL')))
-  let gamedir = addressToString(FS_GetCurrentGameDir())
-  let nameStr = addressToString(name)
-  let basegame = addressToString(Cvar_VariableString(stringToAddress('fs_basegame')))
-  let localName = nameStr
-  if (localName[0] == '/')
-    localName = localName.substring(1)
-  if (localName.startsWith(gamedir + '/'))
-    localName = localName.substring(gamedir.length + 1)
+  let cmdStr = addressToString(cmd);
+  let dlURL = addressToString(Cvar_VariableString(stringToAddress('cl_dlURL')));
+  let gamedir = addressToString(FS_GetCurrentGameDir());
+  let nameStr = addressToString(name);
+  let basegame = addressToString(Cvar_VariableString(stringToAddress('fs_basegame')));
+  let localName = nameStr;
 
-  let remoteURL
-  if (dlURL.includes('%1')) {
-    remoteURL = dlURL.replace('%1', localName.replace(/\//ig, '%2F'))
-  } else {
-    remoteURL = dlURL + '/' + localName
+  if (localName[0] == '/') localName = localName.substring(1);
+  if (localName.startsWith(gamedir + '/')) localName = localName.substring(gamedir.length + 1);
+
+  // 1. Sanitize the Base URL
+  let sanitizedDL = dlURL;
+  if (sanitizedDL.startsWith('//')) sanitizedDL = window.location.protocol + sanitizedDL;
+  else if (sanitizedDL.startsWith('/')) sanitizedDL = window.location.origin + sanitizedDL;
+  else if (!sanitizedDL.includes('://')) {
+    sanitizedDL = window.location.origin + window.location.pathname.replace(/\/*[^\/]*$/gi, '') + '/' + sanitizedDL;
   }
-  if (dlURL.startsWith('//')) {
-    remoteURL = window.location.protocol + remoteURL
-  } else
-    if (dlURL.startsWith('/')) {
-      remoteURL = window.location.origin + remoteURL
-    } else
-      if (!dlURL.includes('://')) {
-        remoteURL = window.location.origin + window.location.pathname.replace(/\/*[^\/]*$/gi, '') + '/' + remoteURL
-      }
+
+  // Calculate the default remote path wrapper
+  let remoteURL = dlURL.includes('%1')
+    ? sanitizedDL.replace('%1', localName.replace(/\//ig, '%2F'))
+    : sanitizedDL + '/' + localName;
+
   if (remoteURL.includes('.googleapis.com')) {
     if (nameStr.endsWith('/')) {
       remoteURL = 'https://www.googleapis.com/storage/v1/b/'
         + remoteURL.match(/\/b\/(.*?)\/o\//)[1]
         + '/o/?includeTrailingDelimiter=true&maxResults=100&delimiter=%2f&prefix='
-        + remoteURL.match(/\/o\/(.*)/)[1]
+        + remoteURL.match(/\/o\/(.*)/)[1];
     } else if (!remoteURL.includes('?')) {
-      remoteURL += '?alt=media'
+      remoteURL += '?alt=media';
     }
   }
 
-  let server = addressToString(Cvar_VariableString('cl_currentServerAddress'))
-  if(server.length && !window.location.includes(server))
-    history.pushState({location: window.location.toString()}, window.title, '?connect ' + server)
+  // 2. Extract Host/Domain securely via native URL helper for your dynamic alternates
+  let parsedUrl = { hostname: '', origin: '', protocol: '' };
+  try {
+    parsedUrl = new URL(remoteURL);
+  } catch (e) {
+    console.warn("Invalid absolute fallback target URL layout context.", e);
+  }
 
-  let waitFor = Promise.resolve((async function () {
-    try {
-      NET.downloadCount++
-      let result
-      //if (nameStr.includes('version.json') || nameStr.includes('maps/maplist.json')) {
-      //} else {
-      //  result = await readStore(nameStr)
-      //}
-      let responseData
-      //if (!result || (result.mode >> 12) === ST_DIR
-        // bust the caches!
-      //  || result.timestamp.getTime() < NET.cacheBuster) {
-        responseData = (await Promise.all([
-          await Com_DL_Begin(localName, remoteURL),
-          await Com_DL_Begin(localName + '.pk3', remoteURL + '.pk3')
-            .then(responseData => {
-              if(responseData && !nameStr.match(/\.pk3$/)) {
-                localName += '.pk3'
-              }
-              return responseData
-            }),
-          await Com_DL_Begin(localName + '.bsp', remoteURL + '.bsp')
-          .then(responseData => {
-            if(responseData && !nameStr.match(/\.bsp$/)) {
-              nameStr = 'maps/' + localName + '.bsp'
-            }
-            return responseData
-          }),
-          await Com_DL_Begin(localName + '.bsp', basegame + '/pak0.pk3dir/maps/' + localName + '.bsp')
-          .then(responseData => {
-            if(responseData && !nameStr.match(/\.bsp$/)) {
-              nameStr = 'maps/' + localName + '.bsp'
-            }
-            return responseData
-          }),
-          await Com_DL_Begin(localName + '.bsp', gamedir + '/pak0.pk3dir/maps/' + localName + '.bsp')
-          .then(responseData => {
-            if(responseData && !nameStr.match(/\.bsp$/)) {
-              nameStr = 'maps/' + localName + '.bsp'
-            }
-            return responseData
-          }),
-        ])).filter(f => f)[0]
+  let server = addressToString(Cvar_VariableString('cl_currentServerAddress'));
+  if (server.length && !window.location.includes(server)) {
+    history.pushState({ location: window.location.toString() }, window.title, '?connect ' + server);
+  }
 
-        let rename = responseData.response.headers.get('content-disposition')
-        let newFilename = localName
-        if (rename) {
-          let newFilename = (/filename=['"]*(.*?)['"]*$/i).exec(rename)
-          if (newFilename) {
-            newFilename = localName.replace(/[^\/]*$/, newFilename[1])
-            nameStr = nameStr.replace(/[^\/]*$/, newFilename[1])
-          }
-        }
+  NET.downloadCount++;
 
-        if(responseData) {
-          Com_DL_Perform(config.RUNBASE + '/' + gamedir + '/pak0.pk3dir/' + nameStr, gamedir + '/' + newFilename, responseData)
-        }
+  try {
+    // 3. Define the Primary Map Assets Fallback Matrix
+    const mapTargets = [
+      { local: localName, remote: remoteURL, type: 'raw' },
+      { local: localName + '.pk3', remote: remoteURL + '.pk3', type: 'pk3' },
+      { local: localName + '.bsp', remote: remoteURL + '.bsp', type: 'bsp' },
+      { local: localName + '.bsp', remote: basegame + '/pak0.pk3dir/maps/' + localName + '.bsp', type: 'bsp' },
+      { local: localName + '.bsp', remote: gamedir + '/pak0.pk3dir/maps/' + localName + '.bsp', type: 'bsp' },
 
-        let responseData2 = (await Promise.all([
-          await Com_DL_Begin(localName + '.aas', remoteURL + '.aas'),
-          await Com_DL_Begin(localName + '.aas', basegame + '/pak0.pk3dir/maps/' + localName + '.aas'),
-          await Com_DL_Begin(localName + '.aas', gamedir + '/pak0.pk3dir/maps/' + localName + '.aas'),
-        ])).filter(f => f)[0]
+      // Dynamic Path Insertions using your newly parsed URL context properties:
+      { local: localName + '.bsp', remote: `${parsedUrl.origin}/maps/${localName}.bsp`, type: 'bsp' },
+      { local: localName + '.bsp', remote: `${parsedUrl.origin}/${basegame}/pak0.pk3dir/maps/${localName}.bsp`, type: 'bsp' },
+      { local: localName + '.bsp', remote: `${parsedUrl.origin}/${gamedir}/pak0.pk3dir/maps/${localName}.bsp`, type: 'bsp' },
+      { local: localName + '.bsp', remote: `https://cdn.${parsedUrl.hostname}/maps/${localName}.bsp`, type: 'bsp' }
+    ];
 
-        if(responseData2) {
-          Com_DL_Perform(config.RUNBASE + '/' + gamedir + '/pak0.pk3dir/maps/' + localName + '.aas', gamedir + '/' + localName, responseData2)
-        }
+    // Fire the map search requests concurrently and snap the first resolving asset
+    let responseData = (await Promise.all(
+      mapTargets.map(t => Com_DL_Begin(t.local, t.remote).then(res => res ? { res, target: t } : null))
+    )).filter(f => f)[0];
 
-      //} else {
-        // valid from disk
-      //  responseData = result.contents
-      //}
+    let newFilename = localName;
 
-      Cvar_Set( stringToAddress('cl_downloadName'), stringToAddress('') );
-      Cvar_Set( stringToAddress('cl_downloadSize'), stringToAddress('0') );
-      Cvar_Set( stringToAddress('cl_downloadCount'), stringToAddress('0') );
-      Cvar_Set( stringToAddress('cl_downloadTime'), stringToAddress('0') );
-      if (nameStr.match(/\.pk3/i) || nameStr.match(/\.bsp/i)) {
-        if(cmdStr == 'dlmap') {
-          Cbuf_AddText(stringToAddress(` ; fs_restart ; vid_restart ; `))
-        } else {
-          Cbuf_AddText(stringToAddress(` ; wait 100 ; fs_restart ; ${cmdStr} ${localName} ; `))
+    if (responseData) {
+      let activeTarget = responseData.target;
+      let actualData = responseData.res;
+
+      if (activeTarget.type === 'pk3' && !nameStr.match(/\.pk3$/)) localName += '.pk3';
+      if (activeTarget.type === 'bsp' && !nameStr.match(/\.bsp$/)) nameStr = 'maps/' + localName + '.bsp';
+
+      let rename = actualData.response.headers.get('content-disposition');
+      if (rename) {
+        let match = (/filename=['"]*(.*?)['"]*$/i).exec(rename);
+        if (match) {
+          newFilename = localName.replace(/[^\/]*$/, match[1]);
+          nameStr = nameStr.replace(/[^\/]*$/, match[1]);
         }
       }
-    } catch (e) {
 
+      Com_DL_Perform(config.RUNBASE + '/' + gamedir + '/pak0.pk3dir/' + nameStr, gamedir + '/' + newFilename, actualData);
     }
-  })())
-  return waitFor
+
+    // 4. Define the Bot Navigation System (.aas) Alternates Matrix
+    const aasTargets = [
+      { local: localName + '.aas', remote: remoteURL + '.aas' },
+      { local: localName + '.aas', remote: basegame + '/pak0.pk3dir/maps/' + localName + '.aas' },
+      { local: localName + '.aas', remote: gamedir + '/pak0.pk3dir/maps/' + localName + '.aas' },
+      { local: localName + '.aas', remote: `${parsedUrl.origin}/alternate-cache/maps/${localName}.aas` }
+    ];
+
+    let responseData2 = (await Promise.all(
+      aasTargets.map(t => Com_DL_Begin(t.local, t.remote).then(res => res ? res : null))
+    )).filter(f => f)[0];
+
+    if (responseData2) {
+      Com_DL_Perform(config.RUNBASE + '/' + gamedir + '/pak0.pk3dir/maps/' + localName + '.aas', gamedir + '/' + localName, responseData2);
+    }
+
+    // Finalize download cycles & kick off engine system restarts
+    Cvar_Set(stringToAddress('cl_downloadName'), stringToAddress(''));
+    Cvar_Set(stringToAddress('cl_downloadSize'), stringToAddress('0'));
+    Cvar_Set(stringToAddress('cl_downloadCount'), stringToAddress('0'));
+    Cvar_Set(stringToAddress('cl_downloadTime'), stringToAddress('0'));
+
+    if (nameStr.match(/\.pk3/i) || nameStr.match(/\.bsp/i)) {
+      if (cmdStr == 'dlmap') {
+        Cbuf_AddText(stringToAddress(` ; fs_restart ; vid_restart ; `));
+      } else {
+        Cbuf_AddText(stringToAddress(` ; wait 100 ; fs_restart ; ${cmdStr} ${localName} ; `));
+      }
+    }
+  } catch (e) {
+    console.error("Downloader structural execution failure:", e);
+  }
 }
 
 let NET = {
@@ -788,7 +779,7 @@ let NET = {
 
 
 function NET_Restart_f() {
-  
+
 }
 
 if (typeof module != 'undefined') {
