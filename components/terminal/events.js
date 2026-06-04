@@ -481,6 +481,6 @@ term.onData(async data => {
 
 document.addEventListener('visibilitychange', refreshBlinkerState);
 window.addEventListener('focus', refreshBlinkerState);
-term.onRender(forceFitLayout);
+//term.onRender(forceFitLayout);
 terminalContainer.addEventListener('focus', refreshBlinkerState);
 
