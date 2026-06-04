@@ -1,14 +1,7 @@
 
 
-/**
- * Captures a specific window of a WebGL frame buffer with custom scale and offsets.
- * @param {WebGLRenderingContext} gl - Active WebGL context.
- * @param {number} cols - Terminal target column layout length.
- * @param {number} rows - Terminal target row layout length.
- * @param {number} scale - Zoom factor (e.g. 1.0 = normal, 2.0 = twice as close).
- * @param {number} offsetX - Horizontal pixel offset shift from the left edge.
- * @param {number} offsetY - Vertical pixel offset shift from the bottom edge.
- */
+
+
 function captureFrameToAnsiExtended(gl, cols, rows, scale = 1.0, offsetX = 0, offsetY = 0) {
     // 1. Get the GPU's true rendering dimensions
     const width = gl.drawingBufferWidth;
@@ -555,3 +548,14 @@ function createViewportBorderDecorations(terminalInstance, cols, rows, targetSta
         }
     });
 }
+
+
+terminalContainer.addEventListener('click', () => {
+    const softActive = document.querySelector('#terminals a[href="#soft"].active') !== null;
+    if (softActive && window.isModifierPressed && typeof terminalContainer.requestPointerLock === 'function') {
+        terminalContainer.requestPointerLock();
+    }
+    refreshBlinkerState();
+});
+
+

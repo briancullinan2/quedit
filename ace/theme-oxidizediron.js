@@ -10,7 +10,7 @@ ace.define("ace/theme/oxidizediron", ["require", "exports", "module", "ace/lib/d
 }); 
 
 (function () { 
-    window.require(["ace/theme/oxidizediron"], function (m) { 
+    ace.require(["ace/theme/oxidizediron"], function (m) { 
         if (typeof module == "object" && typeof exports == "object" && module) { 
             module.exports = m; 
         } 

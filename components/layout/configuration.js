@@ -148,55 +148,48 @@ async function setRepository(newRepo) {
 }
 
 
-/**
- * Creates a functional frame rate limiter with a callback.
- * @param {number} targetFps - The desired frames per second.
- * @param {function} callback - Function called on render: (event, t, frame) => {}
- * @returns {object} An interface containing the requestFrameUpdate function.
- */
+
 function createFrameRater(targetFps, callback) {
     const fpsInterval = 1000 / targetFps;
 
-    // State variables held securely in the closure scope
-    let lastDrawTime = performance.now();
-    let needsRender = false;
-    let currentEvent = null;
+    const startTime = performance.now();
     let frameCount = 0;
-    let startTime = lastDrawTime;
+    
+    // The event stack/queue to hold incoming payloads or functions
+    const eventStack = [];
 
-    // The looping tick function
-    function tick(currentTime) {
-        requestAnimationFrame(tick);
+    // Permanent heartbeat interval running from startup
+    setInterval(() => {
+        // Only trigger a paint frame if there are items waiting in the stack
+        if (eventStack.length > 0) {
+            
+            // Shallow copy and clear the stack immediately so new incoming 
+            // events during the frame paint cycle are safely queued for the next tick
+            const currentBatch = [...eventStack];
+            eventStack.length = 0;
 
-        const elapsed = currentTime - lastDrawTime;
+            requestAnimationFrame((paintTime) => {
+                frameCount++;
+                const t = paintTime - startTime;
 
-        if (needsRender && elapsed >= fpsInterval) {
-            // Keep timing consistent over long periods
-            lastDrawTime = currentTime - (elapsed % fpsInterval);
-            needsRender = false;
-            frameCount++;
-
-            // Calculate total elapsed time 't' since the rater started
-            const t = currentTime - startTime;
-
-            // Execute the user-provided callback with the requested parameters
-            if (typeof callback === 'function') {
-                callback(currentEvent, t, frameCount);
-            }
+                if (typeof callback === 'function') {
+                    // Drain the batch execution
+                    for (let i = 0; i < currentBatch.length; i++) {
+                        callback(currentBatch[i], t, frameCount);
+                    }
+                }
+            });
         }
-    }
+    }, fpsInterval);
 
-    // Kick off the loop immediately
-    requestAnimationFrame(tick);
-
-    // Return only the public API method needed by external tools/mouse events
     return {
         requestFrameUpdate(e) {
-            needsRender = true;
-            currentEvent = e;
+            // Push everything into the stack—whether it's a mouse event or xterm's refresh function
+            eventStack.push(e);
         }
     };
 }
+
 
 const TESTPATH_ROOTS = ['', 'demoq3/pak0.pk3dir', 'docs/demoq3/pak0.pk3dir'];
 

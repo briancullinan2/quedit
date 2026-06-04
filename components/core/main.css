@@ -1285,12 +1285,22 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
-@media all and (max-width: 1000px) {
+@media all and (max-width: 800px) {
 
     #terminals li:nth-child(3),
     #terminals li:nth-child(4),
+    #terminals li:nth-child(5),
     #terminals li:nth-child(8),
     #terminals li:nth-child(9) {
+        display: none;
+    }
+}
+
+
+@media all and (max-width: 1000px) {
+
+    #terminals li:nth-child(3),
+    #terminals li:nth-child(4) {
         display: none;
     }
 }

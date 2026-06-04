@@ -67,10 +67,10 @@ const IMPORT_JS = {
         '/components/terminal/search.js',
         '/components/terminal/history.js',
         '/components/terminal/utilities.js',
-        '/components/terminal/render.js',
         '/components/terminal/commands.js',
         '/components/terminal/terminal.js',
         '/components/terminal/events.js',
+        '/components/terminal/render.js',
     ],
 
     // Code Workspace

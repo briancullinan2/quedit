@@ -249,18 +249,6 @@ async function renderTerminalsCommand(panelId, noBounce = false) {
 }
 
 // Attach system listeners
-document.addEventListener('visibilitychange', refreshBlinkerState);
-window.addEventListener('focus', refreshBlinkerState);
-term.onRender(forceFitLayout);
-
-terminalContainer.addEventListener('click', () => {
-    const softActive = document.querySelector('#terminals a[href="#soft"].active') !== null;
-    if (softActive && window.isModifierPressed && typeof terminalContainer.requestPointerLock === 'function') {
-        terminalContainer.requestPointerLock();
-    }
-    refreshBlinkerState();
-});
-terminalContainer.addEventListener('focus', refreshBlinkerState);
 
 const terminalsHeader = document.getElementById('terminals');
 if (terminalsHeader) {

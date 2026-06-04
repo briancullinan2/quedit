@@ -355,22 +355,22 @@ term.attachCustomKeyEventHandler((arg) => {
 // ==========================================
 term.onData(async data => {
     // Game Engine Vector Controls Interception (w, a, s, d, Space)
-    if (typeof window.pressed !== 'undefined' && data.length === 1) {
+    if (typeof pressed !== 'undefined' && data.length === 1) {
         const lowerChar = data.toLowerCase();
 
         if (['w', 'a', 's', 'd', ' '].includes(lowerChar)) {
             let targetKeyCode = lowerChar === ' ' ? 32 : lowerChar.toUpperCase().charCodeAt(0);
 
-            window.pressed[targetKeyCode] = true;
+            pressed[targetKeyCode] = true;
             self.terminalTimers = self.terminalTimers || {};
             clearTimeout(self.terminalTimers[targetKeyCode]);
 
             self.terminalTimers[targetKeyCode] = setTimeout(() => {
-                window.pressed[targetKeyCode] = false;
+                pressed[targetKeyCode] = false;
             }, 120);
 
             if (lowerChar === ' ' && typeof window.playerMover !== 'undefined') {
-                window.playerMover.jump();
+                playerMover.jump();
             }
             return; // Guard statement: blocks insertion into command text array
         }
@@ -478,4 +478,9 @@ term.onData(async data => {
     }
     debounceTerminalStatus();
 });
+
+document.addEventListener('visibilitychange', refreshBlinkerState);
+window.addEventListener('focus', refreshBlinkerState);
+term.onRender(forceFitLayout);
+terminalContainer.addEventListener('focus', refreshBlinkerState);
 

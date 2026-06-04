@@ -16970,7 +16970,7 @@
             t.version = t.config.version
     });
 (function () {
-    window.require(["ace/ace"], function (a) {
+    ace.require(["ace/ace"], function (a) {
         if (a) {
             a.config.init(true);
             a.define = window.define;
