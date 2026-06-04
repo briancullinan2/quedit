@@ -2,273 +2,54 @@
 
 Quake 3 browser game editor.
 
-## Goals
-This master blueprint consolidates your comprehensive development backlog with our previous architectural breakthroughs—including the dynamic console preambles, polymorphic diagnostics, formal `workspaceFileId` session cache bindings, and the automated `OpenCV.js` visual regression refactoring pipeline.
+## Goals/Bugs
+
+Redoing my list of bugs because of AI slop.  My mind used to be employable. Now my memory is junk because anything that 
+my brain thinks Google knows, it automatically discards and can only be recalled from exact context and wording 
+surrounding it.
 
 ---
 
-## 1. Virtual Workspace & P2P Core
+### Workspace
 
-*Foundational layer for multi-directory mounting, sandboxed build mechanics, and live collaboration.*
-
-### 1.1 URI-Qualified File System Abstraction
-
-* **Goal:** Shift the assets pane from flat relative naming to a multi-root mounting pipeline matching VS Code's project model.
-* **Cascading Actions:**
-* Implement root mounting array handlers for `github://`, `idb://workspace`, `idb://scratchpad`, and `local://` via the browser's File System Access API.
-* DONE: Update the `getOrCreateAceSession(fileId, content)` constructor to formally enforce unique `session.workspaceFileId = fileId` properties across all mounted protocol schemes.
-
-
-
-### 1.2 Programmatic Build Automation via `Make.js`
-
-* **Goal:** Replace static compiler dropdown forms with fully executable pipeline code stored directly in user workspaces.
-* **Cascading Actions:**
-* Expose an isolated runtime context to evaluate a workspace `Make.js` script inside a web worker wrapper.
-* Bind the worker thread directly to the in-browser `wasi-sdk` Clang layer to compile C files out of IndexedDB binary vectors into hot-swappable target payloads.
-* Integrate Binji's raw WASM asset-loading and linking logic into the output pipeline for seamless artifact delivery.
-
-Heard loud and clear. Let's strip away the philosophical filler, drop the "sovereign" framing, and lock the title down to what it mechanically is: a multi-user, engine-driven distributed workspace.
-
+1. **Better GitHub Downloads:** Right now, the app splits your files into "engine", "game", and "assets". Improve the `mount` command so it downloads your entire GitHub repository straight into the browser's permanent storage ([IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)).
+2. **Sharable Coding Links:** Create a background [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) to read remote network commands. This lets multiple people see and control the text editor cursor, send text over the wire using [Ace Editor Protocols](https://ace.c9.io/), and write code together. It will stream the live updates to players mid-game using standard game download settings (`cl_download`), so players don't have to freeze on a loading screen.
+3. **Nice Git Staging UI:** Right now, saving changes to GitHub is "all or nothing." Build a clean interface to let you pick exactly which files or lines of code you want to stage and commit.
+4. **Proxy Sync vs. Quake 3 Networking:** Decide if you should use Quake 3's built-in 3D physics syncing to pass text changes back and forth, or if a standard web proxy server is enough. The ultimate goal: make code settings show up as real physical switches in the 3D game world. You walk up to a wall, flip a switch for "homing rockets," and the game instantly recompiles the code and turns the feature on without stopping.
 
 ---
 
+### Interface
 
-## 1.3 Distributed Editor Synchronization
-
-* **Goal:** Eradicate heavy browser web-protocols and OT complexity. Leverage Quake 3's native delta-compressed network snapshot engine (`sv_snapshot`) to synchronize multi-user cursor coordinates, active code line mutations, and real-time compilation state distribution across a 3D workspace.
-
----
-
-#### 1.3.1 Entity-Bound Cursor & Token Replication
-* **Objective:** Map remote user typing vectors, selections, and editor interactions into native server-authoritative entities.
-
-
-```
-
-[Remote Ace Editor Session]
-│ (On Change / Keystroke)
-▼
-[Client Input Command Engine] ──(clc_t via netchan)──► [Authoritative Server Instance]
-│
-[sv.snapshot Loop Engine]
-│
-[Local Ace Cache Update Layer] ◄──(entityState_t)──────[Client Snap Decode Loop]
-
-```
-
-* **Data Structure Definition:**
-  Extend `entityState_t` inside `q_shared.h` with dedicated network fields using an explicit bitmask layout to minimize packet sizes:
-```c
-  typedef struct {
-      int entityNum;
-      int eType;              // ET_EDITOR_CURSOR or ET_TEXT_TOKEN
-      trajectory_t pos;       // 3D position of cursor in spatial workspace
-      
-      // Editor state packaging (Delta-compressed fields)
-      int clientNum;          // Owning programmer index
-      int activeFileIdHash;   // CRC32 of workspaceFileId URI
-      int cursorRow;          // Active line row index
-      int cursorCol;          // Active line column index
-      int selectionLength;    // Selection bounds length tracking
-  } entityState_t;
-
-```
-
-* **Technical Execution Sequence:**
-1. **Input Interception:** Trap the Ace `changeCursor` and `changeSelection` listener loops on the frontend. Pass the character offset values directly to the client network channel as un-reliable input moves (`usercmd_t`).
-2. **Server State Allocation:** The server tracks each programmer as a persistent entity block. When a snapshot updates, the server calculates spatial trajectory updates using `BG_PlayerMove` logic so that the cursor models hover perfectly in front of the floating 3D matrix panels.
-3. **Snapshot Broadcast:** The server pipes the entity mutations through `SV_WriteSnapshotToClient`, running native bit-packer macros (`MSG_WriteBits`) to strip out un-mutated positional fields.
-
-
+1. **Instant Code Hot-Reloading:** When you press `CTRL+S`, the browser should instantly recompile just that piece of code. It should either swap the running function inside a live [Virtual Method Table](https://en.wikipedia.org/wiki/Virtual_method_table) or restart that specific sub-component on a separate thread so the game canvas never freezes.
+2. **Smart Asset Search:** Fix search so it doesn't just look for raw text. It needs to look for "known" game files like shader names and map textures, showing a smart list of where assets are actually used across GitHub and local storage.
+3. **Fix File Name Collisions:** Right now, the engine and the game both use different files named `q_shared.h`. When you compile them together, they crash into each other. Fix this by giving every project its own isolated root folder inside IndexedDB so the virtual file system (`FS.virtual[path]` in [Emscripten File System](https://emscripten.org/docs/api_reference/Filesystem-API.html)) sees unique names.
+4. **Code Maps with ANTLR:** Use the [ANTLR Parser](https://www.antlr.org/) to read code files, pull out function names, and build a clickable table of contents under your file list. If you `CTRL+Click` a function, the editor jumps straight to where it was written.
+5. **Back/Next Navigation:** Wire up the browser's back and forward buttons to navigate through your open code files. Merge this with a unified undo/redo system for both text editing and texture painting.
+6. **Fix miniPaint Shortcuts:** Stop the [miniPaint](https://github.com/viliusle/miniPaint) drawing tool from stealing keyboard shortcuts when you are working in a different code tab. Only listen to it when its specific tab is open.
+7. **Scratchpad File Interception:** Block the browser's default "Open File" popups. Route any uploaded files into a temporary sandbox folder (`idb://scratchpad`) so they don't mess up your active workspace until you hit save.
+8. **Zen Mode Layouts:** Build absolute layout stylesheets that hide all distracting panels, creating a clean full-screen look for editing code, painting textures, or viewing the engine.
 
 ---
 
-#### 1.3.2 Delta-Compressed Line Synchronization
+### Building
 
-* **Objective:** Treat text rows as distinct, state-tracked net-entities to resolve collision updates and sync states natively over standard server frames.
-* **Data Structure Definition:**
-
-```c
-  #define MAX_LINE_BUFFER_PACKET 64
-
-  typedef struct {
-      int lineEntityNum;      // Unique spatial row reference ID
-      int fileIdHash;         // Owner document identifier tag
-      int rowNumber;          // Zero-indexed row inside the document cache
-      int revisionSequence;   // Monotonically increasing edit marker
-      char textPayload[MAX_LINE_BUFFER_PACKET]; // Huffman-encoded characters
-  } textLineEntity_t;
-
-```
-
-* **Technical Execution Sequence:**
-1. **Row Entity Registration:** Map long files into dynamic linear arrays of entities. Each individual text row becomes an independently tracked network entity bound to a physical vector location in the 3D grid layout.
-2. **Authoritative Conflict Resolution:** When multiple players modify an identical row range simultaneously, the client frames submit their requested updates via standard network execution command packets. The server serializes execution order on a per-frame basis, modifying its primary state layer and overriding out-of-order mutations.
-3. **Environmental Physics Collisions:** If an in-game asset (such as a rocket explosion projectile) collides with a text token model floating inside the level boundaries, the server's `G_RunThink` loop detects the impact. It calculates string destruction parameters, mutates or truncates the `textPayload` vector, and passes the dropped line indices back down to the local editor session cache pools instantly via `cl.snap`.
-
-
+1. **Smart Build Scripts:** Get rid of hardcoded file lists inside `make.js`. Use an [ANTLR Grammar](https://www.antlr.org/) to read standard engine `Makefiles` directly. Then, your JavaScript build script only needs to list exceptions. This will let the app build other web projects (like Doom, Mario, or GoldSrc WASM) using the exact same interface.
+2. **Smart Recompiling with Hashes:** When code compiles, object files go to specific paths. Save these by code branch. To speed things up, resolve all `#ifdef` macros and `#include` blocks into a clean text file and hash it ([Crypto Web Absolute Hashing](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)). If the hash hasn't changed between branches, skip compiling it. Only recompile the exact files changed by a feature flag.
+3. **Live Variable Debugging:** Use [DWARF Debug Information](https://dwarfstd.org/) inside WebAssembly to see real variable names while the game runs. Mark debugged functions as [Emscripten Asyncify](https://emscripten.org/docs/porting/asyncify.html) routines so you can pause, unwind, and restart them at runtime.
+4. **Fix the QVM Compiler Bug:** Figure out why the legacy `q3lcc` compiler outputs broken 64-byte files with missing debug lines. It is likely a standard input/output (STDIO) path bug or a virtual directory issue. Try setting up a file descriptor stack (`fd_renumber` in [WASI / POSIX Specifications](https://wasi.dev/)) to match standard Linux behavior, or try linking raw `.asm` files inside a Web Worker.
+5. **Dynamic State Swaps:** When game files change, have the engine automatically pause, copy the current player's state (coordinates, health, ammo), boot a fresh virtual machine instance, and drop the player right back in without losing their place.
 
 ---
 
-#### 1.3.3 Verifiable Cache Verification & Hot Rebuilds
+### Features TODO
 
-* **Objective:** Secure cryptographic verification on active document trees to calculate dirty targets and execute dynamic WASM hot-reloads without disconnecting clients.
-
-```
-  [Local Text Buffer Change] ──► [Compute Web Crypto SHA-256]
-                                              │
-                                     (Mismatch Detected)
-                                              ▼
-                                 [Query IndexedDB .o Cache]
-                                              │
-                                 [wasi-sdk Isolated Rebuild]
-                                              │
-                                 [Dynamic Link (.wasm Target)]
-                                              │
-                                 [Hot-Swap WebAssembly Memory]
-
-```
-
-* **Technical Execution Sequence:**
-1. **Cryptographic Validation Tracking:** Bind a sub-hash monitor tracking layer straight to the file system core. Whenever a text line entity registers a complete modification pass, calculate an instantaneous SHA-256 string vector across the parent file scope using the browser's native `crypto.subtle.digest` pipeline.
-2. **Object File Dependency Mapping:** Maintain a structured compilation manifest dictionary inside IndexedDB linking explicit source file chains directly to their pre-compiled compilation output blocks:
-
-
-
-```javascript
-{
-    "src/game/g_weapon.c": {
-        "sourceHash": "a1b2c3d4...",
-        "objectFilePath": "idb://build/obj/g_weapon.o"
-    }
-}
-```
-
-  3. **Targeted Translation Recompiles:** Compare the newly modified runtime hash against the database storage record. If a variance flags a translation unit as dirty, bypass the global project tree entirely and run an isolated `wasi-sdk` worker compiler task targeting exclusively that file.
-  4. **Dynamic WebAssembly Linking:** Feed the unmodified static `.o` files from the cache index directly into the linker step alongside the newly generated object artifact. Output a single dynamically linked asset binary, pause the engine thread for a single frame execution gap, and hot-swap the execution memory block seamlessly.
-
----
-
-#### 1.3.4 Distributed Git Asset Layer
-* **Objective:** Eliminate remote repository hosting dependencies. Re-architect version control operations as distributed game-state snapshots stored inside localized database nodes.
-
-* **Data Structure Definition:**
-```javascript
-  // IndexedDB Git Object Storage Object Schema
-  db.createObjectStore("git_objects", { keyPath: "sha" });
-  db.createObjectStore("git_refs", { keyPath: "refName" });
-
-```
-
-* **Technical Execution Sequence:**
-0. Fix all relative directories so files like qcommon/q_shared.c which is different in both repos don't collide. Problems downloading files from multiple potential sources, need to end up in the right virtual directory and path/key on IDB
-1. **Immutable Blob Generation:** When a developer triggers a commit sequence from the game console or editor workspace, decompose the active workspace directory structure down into standardized Git format objects (`blobs`, `trees`, and `commits`). Serialize these object blocks as binary arrays directly into the `git_objects` store.
-2. **Dynamic Game World Forking:** Treat branch switching actions as an alternate spatial game world load operation. When switching branches, update the target record under `git_refs`, clear out current workspace sessions, extract the directory structural layout matching the checkout snapshot, and populate the active `sessionCache` keys.
-3. **P2P Branch Packages:** To push or share workspace histories with other developers connected via the network, package missing commit arrays into standard sequential chunk strings. Pipe them directly through the engine's un-reliable snapshot packaging layer, allowing alternative developer nodes to rebuild chronological histories locally inside their own isolated tracking states.
-
-
----
-
-## 2. Low-Level WASM, AST Analysis & Compiler Diagnostics
-
-*Fixing native compiler asset paths, tracing global state leakage, and routing diagnostic streams.*
-
-### 2.1 Static Analysis Scope & Global State Coupling Analyzer
-
-* **Goal:** Run ANTLR within the browser to isolate systemic dependencies and structural breakdown risks before physical code reorganization.
-* **Cascading Actions:**
-* Deploy an ANTLR worker thread configured with standard C/C++ grammars to construct an editor-wide Abstract Syntax Tree (AST).
-* Compile an exhaustive cross-reference ledger tracking every global variable used outside its true declaring definition file.
-* Expose this structural graph directly to the diagnostic bridge interface to flag high-risk coupling.
-
-
-
-### 2.2 Native Code Generation & `q3lcc`/`q3asm` Pipeline Debugging
-
-* **Goal:** Remediate line-information omission errors and directory relative tracking issues inside the bytecode assembly toolchain.
-* **Cascading Actions:**
-* Fix the compiler's current working directory (CWD) path-resolution loop inside the virtual file system layer to ensure `.loc` directives emit properly into intermediate files.
-* Implement an explicit file descriptor stack (`fd_stack`) using WebIDL hooks to manage POSIX compatible `fd_renumber` constraints down to descriptor `0`.
-* Refactor the compiler link worker to bulk-open raw arrays of pre-manufactured `.asm` files simultaneously to determine if structural drops stem from `q3rcc` segmentation faults or missing symbol headers.
-
-
-
-### 2.3 Shared Movement Mechanics Dynamic Module
-
-* **Goal:** Decouple character collision and physics calculation blocks out into an isolated compilation unit.
-* **Cascading Actions:**
-* Compile `bg_pmove.c` as a standalone WebAssembly dynamic module using `-Wl,--no-entry` and concealed global symbol mappings.
-* Import and link the resulting target array into Toji’s specialized WebGL renderer loop, guaranteeing perfectly matched client-side client prediction mechanics.
-
-
-
----
-
-## 3. High-Performance Multithreading Architecture
-
-*Decoupling internal game engine states from browser UI operations to maximize compute headroom.*
-
-### 3.1 Offscreen Canvas Subsystem Extraction
-
-* **Goal:** Isolate raw game mechanics execution to secure a minimum 10% processing drop, maximizing compute headroom for specialized positional audio rendering.
-* **Cascading Actions:**
-* Migrate `cgame` client prediction routines, renderer backends, and networking protocols out of the main execution scope and into a dedicated background worker thread.
-* Transfer rendering control entirely to an `OffscreenCanvas` container instance, feeding direct hardware input vectors from the primary loop to the background worker via low-latency `SharedArrayBuffer` vectors.
-* Isolate the primary browser thread exclusively to manage direct DOM layout renders, `xterm.js` terminals, and high-priority spatial sound distribution channels (`S_Spatialize`).
-
-
-
----
-
-## 4. Live Reality "God Mode" World Layers
-
-*Merging visual layout regression tools, network asset generation, and interactive map manipulation blocks directly into a running universe.*
-
-### 4.1 Automated Visual Refactoring Pipeline (Polymorphic Diagnostics Integration)
-
-* **Goal:** Build a visual optimization system that alters cascading layouts, groups components, and hoists style overrides while verifying zero rendering breakage.
-* **Cascading Actions:**
-* Extend `DiagnosticsBridge.prototype.processAnnotations` to use the modular `DIAGNOSTIC_PARSERS` registry array, shifting gracefully between `.c`, `.shader`, and `.skin` log streams.
-* Configure `OpenCV.js` (WASM) to execute visual validation passes using `cv.absdiff()` and `cv.countNonZero()` pixel analysis over hidden sandbox `iframe` captures during style modifications.
-* Deploy automated AST restructuring passes to systematically extract variable themes, bundle repeating selector blocks, and merge media query rules to the bottom of target files.
-
-
-
-### 4.2 Modular State Preservation & Dynamic Module Hot-Swapping
-
-* **Goal:** Exchange active WebAssembly engine layers instantly mid-game without forcing the client out of the environment.
-* **Cascading Actions:**
-* Design a binary state snapshot struct (`engineStateSnapshot_t`) inside linear memory to capture explicit orientation, velocity vectors, equipment flags, and client variables.
-* Implement a state-serialization script that preserves this memory layout, terminates the active target module instance, instantiates the updated build artifact, and passes the state back to the initialized loop.
-
-
-
-### 4.3 Networked MAP Editing & Real-Time Geometry Injection
-
-* **Goal:** Introduce a real-time world construction interface allowing users to adjust operational maps and inject physical assets live across active clients.
-* **Cascading Actions:**
-* Integrate a web-native `.map` geometry editor directly into the workspace tools to modify plane dimensions and brush entity properties.
-* Rebuild engine leaf nodes on the fly to stream geometry changes to all active players over P2P data links.
-* Build an in-game 3D printer module that connects to external open asset APIs (like SketchFab), passes downloaded elements through a specialized headless Blender script, and injects the resulting objects directly into the live map space.
-
-
-
----
-
-## 5. UI Ergonomics & Zen Alignment
-
-*Polishing user interfaces, input boundaries, and tracking history stacks.*
-
-### 5.1 Event Listener Scoping & Temporary Scrapyard Databases
-
-* **Goal:** Standardize workspace interface boundaries and prevent development artifacts from cluttering clean source repositories.
-* **Cascading Actions:**
-* Bind `miniPaint` keyboard and shortcut listeners to fire exclusively when its specific workspace tab is active.
-* Override default browser `Open File` and `Open Directory` commands, routing target files to a temporary workspace storage space (`idb://scratchpad`) until explicit save events fire.
-* Build a unified user history bus that aggregates global workspace undo/redo actions across code editing buffers and paint canvas states.
-* Configure absolute layout distraction-free "Zen" styling sheets for code views, drawing tools, and engine display frames, overriding standard back/next navigation controls to move sequentially through active project paths.
-
+1. **Physics Engine Extraction:** Pull Quake 3’s movement and collision code out into its own standalone WebAssembly library. Connect it to [Toji's WebGL Renderer](https://github.com/toji/gl-matrix) to handle player physics, animations, and model rendering smoothly without getting stuck on wall edges.
+2. **Multi-Threaded Performance Split:** Move the heavy game simulation, rendering, and web requests off the main browser thread. Run them inside a background Web Worker using [OffscreenCanvas API](https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas). Keep player inputs and sound on the frontend. To stop Cloudflare from disconnecting the [WebSockets](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API) every 30 seconds, stagger three separate connections every 15 seconds to keep data flowing perfectly.
+3. **Visual Regression Testing:** Integrate [OpenCV.js](https://www.google.com/search?q=https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html) to take automated screenshots of the running game viewport to verify new code updates didn't accidentally break the graphics.
+4. **In-Game 3D Printer:** Add a terminal inside the game where you can search external 3D asset libraries like [SketchFab API](https://www.google.com/search?q=https://sketchfab.com/developers/3d-viewer). It will download a model, pass it through a background, headless [Blender Script](https://docs.blender.org/api/current/info_overview.html), and pop the finished 3D object directly into the live game map.
+5. **Live Map Editing via nunuStudio:** Add the open-source [nunuStudio Editor](https://github.com/tentone/nunuStudio) to your asset panel instead of trying to port heavy desktop map tools. This will let you edit `.map` files in the browser and watch the map walls move in real-time for all connected players, like a live Dungeon Master editing a VR space on the fly.
+6. **Global Code Dependency Sweeper:** Build a tool using ANTLR that checks your entire codebase and highlights every global variable used outside of the file it was created in. This gives you a clear warning list of exactly what will break if you start moving files around.
 
 
 ## So far
@@ -280,6 +61,11 @@ Integrated nunuStudio. Procrastinating github commits.
 
 
 ![NUNU](./Screenshot%202026-06-01%20235232.png)
+
+![NUNU2](./Screenshot%202026-06-02%20174947.png)
+
+
+
 
 
 
