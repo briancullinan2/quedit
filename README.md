@@ -6,7 +6,7 @@ Quake 3 browser game editor.
 
 Redoing my list of bugs because of AI slop.  My mind used to be employable. Now my memory is junk because anything that 
 my brain thinks Google knows, it automatically discards and can only be recalled from exact context and wording 
-surrounding it.
+surrounding it. I think if all of these things were done, this could be the first project where I actually consider it completed.
 
 ---
 
@@ -16,6 +16,17 @@ surrounding it.
 2. **Sharable Coding Links:** Create a background [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) to read remote network commands. This lets multiple people see and control the text editor cursor, send text over the wire using [Ace Editor Protocols](https://ace.c9.io/), and write code together. It will stream the live updates to players mid-game using standard game download settings (`cl_download`), so players don't have to freeze on a loading screen.
 3. **Nice Git Staging UI:** Right now, saving changes to GitHub is "all or nothing." Build a clean interface to let you pick exactly which files or lines of code you want to stage and commit.
 4. **Proxy Sync vs. Quake 3 Networking:** Decide if you should use Quake 3's built-in 3D physics syncing to pass text changes back and forth, or if a standard web proxy server is enough. The ultimate goal: make code settings show up as real physical switches in the 3D game world. You walk up to a wall, flip a switch for "homing rockets," and the game instantly recompiles the code and turns the feature on without stopping.
+5. **Connected Terminal and AI Chat:** Link the developer command line tool directly to the running game engine. Connect the AI chat box to it so it can read errors and filter out junk data. Make map load commands and player teleport settings work inside the Toji physics code, and make sure remote control commands (`rcon`) work perfectly on the [Quake 3 Engine Core](https://github.com/ec-/quake3e).
+6. **ANSI Status HUD and Clickable History:** Turn the terminal layout into a movable, double-clickable window system that displays a retro, text-based ANSI graphics display. Instead of relying purely on regular keyboard inputs, show recent command history in a draggable, mouse-interactive list utilizing [Xterm.js Mouse Tracking Protocols](https://xtermjs.org/docs/api/terminal/interfaces/imodes/). Add live popups that display core game metrics like frame rates (FPS), ping, active team lists, and player counts. Currently, render redraw doesn't work well, line-wrapping errors also.
+7. **Mirrored Game Console:** Make sure the dedicated web console tab displays the exact same scrolling log text as the native in-game engine console.
+8. **Full-History Deep Search:** Fix the search box so it doesn't just scan the code lines visible on your screen. Expand the lookups so they scan through your entire terminal history stack.
+9. **Lazy-Loading Folder Trees:** Stop using the heavy recursive query flag (`?recursive=1`) on the [GitHub Git Trees API](https://docs.github.com/rest/git/trees) for the assets tree view. Since there are hundreds of media assets, optimize it to load folder contents one layer at a time, exactly like a standard database query.
+10. **Terminal-to-Tree Navigation Sync:** Fix a descending error where opening a file directly from the command line fails to expand the file tree sidebar all the way down to that file. Fix the state loop so that once the parent folders load up, the hierarchy explicitly resets its target focus directly onto the active file (`tree.value = [currentFile]`).
+11. **Isolated File Tree Selection:** Fix file highlighting in the sidebar. Disable the default [TreeJS Selection Overrides](https://www.google.com/search?q=https://cloudfour.com/thinks/a-guarded-defense-of-the-tree-view/) that automatically highlight every single sub-file when a parent folder expands. Restructure the selection handlers so clicking a folder only targets that specific folder, keeping the "Add File" and "Rename" buttons working properly.
+12. OFFLINE MODE! I have a worker in quake3e-portals branch and in Atrium that I did more work on from the portals branchs originally. This has a special caveate that the whole environment is also editable and needs to upgrade itself.
+13. Load environment javascripts like core/ (anything other than module.js) off of the IDB store instead of from the
+webserver. Should install itself into IDB and offline mode first time the page loads.
+
 
 ---
 
@@ -30,6 +41,13 @@ surrounding it.
 7. **Scratchpad File Interception:** Block the browser's default "Open File" popups. Route any uploaded files into a temporary sandbox folder (`idb://scratchpad`) so they don't mess up your active workspace until you hit save.
 8. **Zen Mode Layouts:** Build absolute layout stylesheets that hide all distracting panels, creating a clean full-screen look for editing code, painting textures, or viewing the engine.
 
+9. **Smart Toolbar and Function Jump:** Hook up the toolbar buttons so you can easily add, save, or upload whole folders. Fix the back and forward buttons so they let you step through your file history and undo or redo actions. Populate the current filename dropdown so clicking it switches files, and make it even cooler by listing individual code blocks and functions inside that file.
+
+10. **Layout Shifter and Share Links:** Wire up the shareable multiplayer game links, fullscreen toggle, and screen layout button. The layout button should instantly switch the app between side-by-side mode, a bottom-split terminal mode, and a stacked scrolling list designed for mobile phones using [CSS Flexible Box Layout (Flexbox)](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flexible_Box_Layout).
+11. **Engine Controls and Canvas Protection:** Connect the play, pause, and stop buttons. The pause button should instantly freeze and swap engine behaviors using a [Dynamic WebAssembly Function Table](https://www.google.com/search?q=https://webassembly.github.io/spec/core/syntax/modules.html%23tables). Fix the stop button so it clears out old game states safely—right now, shutting down the engine completely deletes the HTML `<canvas>` element ([HTML Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)), which breaks the tool switcher. Add a clean toggle to swap back and forth between the Toji renderer and Quake 3.
+12. **Unified File Menu:** Connect the entire top file menu before the [miniPaint Image Editor](https://github.com/viliusle/miniPaint) initializes, and merge its choices with the [nunuStudio Level Editor](https://github.com/tentone/nunuStudio) options. Duplicate all your main toolbar buttons into this top menu so the app stays fully usable when a mobile screen hides the main toolbar. Entire menu should take your to the correct screen display when used. i.e. uploading a code file takes you to the ace9 editor screen.
+
+
 ---
 
 ### Building
@@ -39,6 +57,7 @@ surrounding it.
 3. **Live Variable Debugging:** Use [DWARF Debug Information](https://dwarfstd.org/) inside WebAssembly to see real variable names while the game runs. Mark debugged functions as [Emscripten Asyncify](https://emscripten.org/docs/porting/asyncify.html) routines so you can pause, unwind, and restart them at runtime.
 4. **Fix the QVM Compiler Bug:** Figure out why the legacy `q3lcc` compiler outputs broken 64-byte files with missing debug lines. It is likely a standard input/output (STDIO) path bug or a virtual directory issue. Try setting up a file descriptor stack (`fd_renumber` in [WASI / POSIX Specifications](https://wasi.dev/)) to match standard Linux behavior, or try linking raw `.asm` files inside a Web Worker.
 5. **Dynamic State Swaps:** When game files change, have the engine automatically pause, copy the current player's state (coordinates, health, ammo), boot a fresh virtual machine instance, and drop the player right back in without losing their place.
+6. **Build Options and Map Spawner:** Wire up the build configuration panel. Connect the [WASI-SDK Compiler Toolchain](https://github.com/WebAssembly/wasi-sdk) dropdown so you can upgrade the compiler runtime with a live progress bar, untarring ([TAR File Format](https://en.wikipedia.org/wiki/Tar_(computing))) the files directly in the browser. Also, make the "current map" and "spawn point" boxes work so you can change levels instantly in both the Toji renderer and the Quake 3 engine.
 
 ---
 
@@ -50,6 +69,7 @@ surrounding it.
 4. **In-Game 3D Printer:** Add a terminal inside the game where you can search external 3D asset libraries like [SketchFab API](https://www.google.com/search?q=https://sketchfab.com/developers/3d-viewer). It will download a model, pass it through a background, headless [Blender Script](https://docs.blender.org/api/current/info_overview.html), and pop the finished 3D object directly into the live game map.
 5. **Live Map Editing via nunuStudio:** Add the open-source [nunuStudio Editor](https://github.com/tentone/nunuStudio) to your asset panel instead of trying to port heavy desktop map tools. This will let you edit `.map` files in the browser and watch the map walls move in real-time for all connected players, like a live Dungeon Master editing a VR space on the fly.
 6. **Global Code Dependency Sweeper:** Build a tool using ANTLR that checks your entire codebase and highlights every global variable used outside of the file it was created in. This gives you a clear warning list of exactly what will break if you start moving files around.
+7. Want to get the point where i can have the engine running next to miniPaint, and I save the image in paint and it automatically uploads it to the GPU between frames and swaps out the image in the engine using the replace texture interface. Then it streams the content to other players using the standard UDP downloads channel, without UI interruptions. This way i can spray tag on a wall, and then paint that sprayed image in real time to distract other players.
 
 
 ## So far
