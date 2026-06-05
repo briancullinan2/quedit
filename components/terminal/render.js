@@ -296,8 +296,8 @@ function drawQuakeConfigDashboard(xtermInstance) {
 // Clean global storage allocation array context tracking resizer handles
 let activeViewportDecorations = [];
 let renderMoved = true
-let targetStartX
-let targetStartY
+let targetStartX = 0
+let targetStartY = 0
 let targetWidth
 let targetHeight
 
@@ -314,8 +314,8 @@ async function captureRenderToTerminalCorner() {
     targetWidth = Math.floor(targetHeight * canvasAspect * 2);
 
     const windowViewCols = terminalContainer.clientWidth / term._core._renderService._charSizeService.width;
-    targetStartX = Math.floor(Math.max(0, windowViewCols - targetWidth));
-    targetStartY = 0;
+    //targetStartX = Math.floor(Math.max(0, windowViewCols - targetWidth));
+    //targetStartY = 0;
 
     // --- EXECUTION PUMP 1: Draw the full screen WebGL frame to terminal ---
     const ansiStringFrame = captureFrameToCornerAnsi(
@@ -374,7 +374,7 @@ function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY
 
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixelBuffer);
 
-    let ansiOutput = "\x1b[s"; 
+    let ansiOutput = "\x1b[s";
 
     const sampleWidth = width / scale;
     const sampleHeight = height / scale;
@@ -389,10 +389,10 @@ function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY
     // Tuning parameter: Values < 1.0 lift dark mid-tones up, forcing the engine 
     // to use complex, heavy characters (#, %, @) inside standard shadow maps.
     // Try 0.5 or 0.6 for extreme retro terminal texture weight!
-    const gamma = 0.55; 
+    const gamma = 0.55;
 
     for (let r = 0; r < rows; r++) {
-        const destinationLine = startYInt + r + 1; 
+        const destinationLine = startYInt + r + 1;
         ansiOutput += `\x1b[${destinationLine};${startXInt}H`;
 
         const subY = ((rows - 1 - r) / rows) * sampleHeight;
@@ -410,7 +410,7 @@ function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY
 
             // 1. Core luminance calculation
             const rawLuminance = (0.2126 * red) + (0.7152 * green) + (0.0722 * blue);
-            
+
             // 2. Normalize to a 0.0 - 1.0 baseline floating point range
             const normalizedLumi = rawLuminance / 255;
 
@@ -439,10 +439,10 @@ function captureFrameToCornerAnsi(gl, cols, rows, targetStartX = 0, targetStartY
             // Stream background colors coupled with high-density textual contrast map shifts
             ansiOutput += `\x1b[48;2;${red};${green};${blue}m\x1b[38;2;${textR};${textG};${textB}m${asciiChar}`;
         }
-        ansiOutput += "\x1b[0m"; 
+        ansiOutput += "\x1b[0m";
     }
 
-    ansiOutput += "\x1b[u"; 
+    ansiOutput += "\x1b[u";
     return ansiOutput;
 }
 
@@ -460,10 +460,7 @@ function createViewportBorderDecorations(terminalInstance, cols, rows, targetSta
     const startXInt = Math.floor(targetStartX);
     const startYInt = Math.floor(targetStartY);
 
-    // We fetch the current scroll base boundary. xterm registers markers relative to 
-    // the current view frame history, but layouts evaluate inside absolute row indexes.
-    const activeBaseLineY = terminalInstance.buffer.active.baseY;
-
+    const absoluteCursorRow = terminalInstance.buffer.active.baseY + terminalInstance.buffer.active.cursorY;
     // Construct the edge definitions blueprint mapping to our target layout profile shape:
     // Left edge (resize-l), Right edge (resize-r), Top/Bottom edges, and Corner Nodes
     const frameBlueprints = [];
@@ -471,7 +468,7 @@ function createViewportBorderDecorations(terminalInstance, cols, rows, targetSta
     // 1. Map Top & Bottom Borders (Horizontal Lines)
     // Top border runs on row index startYInt, Bottom border runs on startYInt + rows - 1
     const topRow = startYInt;
-    const bottomRow = startYInt + rows - 1;
+    const bottomRow = startYInt + rows - 2;
 
     //frameBlueprints.push({ lineY: topRow, x: startXInt + 1, length: cols - 2, type: 'resize-t' });
     //frameBlueprints.push({ lineY: bottomRow, x: startXInt + 1, length: cols - 2, type: 'resize-b' });
@@ -504,7 +501,7 @@ function createViewportBorderDecorations(terminalInstance, cols, rows, targetSta
     // 3. Commit elements straight to xterm's native rendering overlay tree
     frameBlueprints.forEach(bp => {
         // Calculate relative row spacing offset needed for the active instance pipeline register
-        const relativeMarkerDistance = bp.lineY - activeBaseLineY;
+        const relativeMarkerDistance = bp.lineY - absoluteCursorRow;
         const marker = terminalInstance.registerMarker(relativeMarkerDistance);
 
         if (marker) {

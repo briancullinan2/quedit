@@ -182,10 +182,19 @@ function debounceTerminalStatus(event) {
         previousUpdate.y = currentY;
     }
 
-    // Native Camera Look Interceptor Linkage
-    if (event && (window.isModifierPressed || document.pointerLockElement !== null) && typeof window.moveLookLocked === 'function') {
-        window.moveLookLocked(event.movementX, event.movementY);
+    if (isDragging && event) {
+        const rect = terminalContainer.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const dims = term._core._renderService.dimensions.css.cell;
+        const col = Math.floor(x / dims.width);
+        const row = Math.floor(y / dims.height) + term.buffer.active.viewportY;
+        targetStartY = row;
+        targetStartX = col;
+        renderMoved = true
+        return false;
     }
+
 
     if (debounceTerminalMouse) return true;
 
@@ -210,6 +219,9 @@ function debounceTerminalStatus(event) {
     return true;
 }
 
+
+let isDragging = false
+
 /**
  * Click evaluation routing panel tracking.
  */
@@ -221,6 +233,18 @@ async function handleMouseDown(event) {
 
     const data = detectTerminalEvents(event, x, y);
 
+    // Split Layout Component Drag Checker
+    const softTab = document.querySelector('#terminals a[href="#soft"].active');
+    if (softTab !== null) {
+        if (data.row === targetStartY && data.col > targetStartX && data.col < targetStartX + targetWidth) {
+            isDragging = true;
+            document.body.classList.add('dragging');
+        }
+        if (data.row < term.buffer.active.viewportY + (term.rows / 2)) {
+            return false
+        }
+    }
+
     // Path Click Navigation Handler
     if (data.filePath && !data.isFallback && event.button === 0) {
         if (typeof writeLog === 'function') {
@@ -230,13 +254,6 @@ async function handleMouseDown(event) {
             await navigateFile(data.filePath, data.lineNumber);
         }
         return false;
-    }
-
-    // Split Layout Component Drag Checker
-    const softTab = document.querySelector('#terminals a[href="#soft"].active');
-    if (softTab !== null && data.row === window.targetStartY && data.col > window.targetStartX && data.col < window.targetStartX + window.targetWidth) {
-        isDragging = true;
-        document.body.classList.add('dragging');
     }
 
     if (!event.ctrlKey && !event.metaKey && !window.isModifierPressed) return false;
