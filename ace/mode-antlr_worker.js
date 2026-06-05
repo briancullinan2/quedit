@@ -164,11 +164,11 @@ ace.define("ace/mode/antlr_worker", [
         }
 
         // Global prototype registration method
-        this.setLanguageTarget = function (langKey, fileId) {
+        this.setLanguageTarget = function (fileId) {
             if (this.$worker) {
                 this.$worker.postMessage({
                     command: "setLanguageContext",
-                    args: [langKey, fileId]
+                    args: [fileId]
                 });
             }
         };
@@ -243,30 +243,11 @@ ace.define("ace/mode/antlr_worker", [
 
             session.workspaceFileId = fileId;
 
-            var ext = "c";
-            if (fileId && fileId.includes('.')) {
-                ext = fileId.split('.').pop().toLowerCase();
-            } else {
-                ext = languageKey;
-            }
-
-            var supportedLanguages = [
-                "c", "cpp", "angelscript", "lua", "wat", "asm",
-                "quakemap", "javascript", "typescript", "html", "css3", "json"
-            ];
-
-            if (!supportedLanguages.includes(languageKey) && !supportedLanguages.includes(ext)) {
-                console.log("[Ace Mode] Context '" + languageKey + "' (" + ext + ") bypasses ANTLR worker optimization.");
-                return null;
-            }
-
-            var targetLangKey = supportedLanguages.includes(ext) ? ext : languageKey;
-
             // Instantiate your custom pre-seeded worker wrapper safely!
             var worker = new AntlrWorker(session);
 
             // Seed target environment variables down the pipe
-            worker.setLanguageTarget(targetLangKey, fileId);
+            worker.setLanguageTarget(fileId);
 
             return worker;
         };
@@ -299,11 +280,11 @@ function handleWorkerFoldRegions(session, data) {
     }
 
     // ─── 2. PLUG NATIVE RANGE OVERRIDES FOR CLICK INTERACTIONS ───
-    session.getFoldWidget = function(row) {
+    session.getFoldWidget = function (row) {
         return session.foldWidgets[row] || "";
     };
 
-    session.getFoldWidgetRange = function(row) {
+    session.getFoldWidgetRange = function (row) {
         const humanRow = row + 1;
         const aceRange = ace.require("ace/range").Range;
 
@@ -322,22 +303,22 @@ function handleWorkerFoldRegions(session, data) {
 
     // ─── 3. OVERRIDE THE PHYSICAL HTML STRING GENERATOR ───
     // This intercepts Ace's internal cell compiler right before strings append to the DOM layer!
-    
+
     return
     if (!renderer.$gutterLayer.originalUpdateCellHtml) {
         renderer.$gutterLayer.originalUpdateCellHtml = renderer.$gutterLayer.update;
-        
-        renderer.$gutterLayer.update = function(config) {
+
+        renderer.$gutterLayer.update = function (config) {
             // Run the standard core gutter row generator loop array
             this.originalUpdateCellHtml(config);
-            
+
             // Instantly grab the freshly drawn cells out of the virtual layer layout container
             const cells = this.element.children;
             for (let i = 0; i < cells.length; i++) {
                 const cell = cells[i];
                 const rowText = cell.textContent.replace(/[^\d]/g, '');
                 const rowIdx = parseInt(rowText, 10) - 1;
-                
+
                 if (isNaN(rowIdx)) continue;
 
                 const humanRow = rowIdx + 1;
@@ -362,7 +343,7 @@ function handleWorkerFoldRegions(session, data) {
     }
 
     // ─── 4. FLUSH BUFFER AND RERENDER FULL MESH ───
-    renderer.$gutterLayer.config = null; 
+    renderer.$gutterLayer.config = null;
     session._emit("changeFoldWidget");
     aceEditor.renderer.updateFull(true);
 }

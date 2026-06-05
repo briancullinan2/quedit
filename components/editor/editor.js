@@ -23,24 +23,6 @@ function getOrCreateAceSession(fileId, content) {
 
     bindBlockTrackerToSession(aceEditor.getSession());
 
-
-    /*
-    ace.config.loadModule(["mode", "antlr_worker"], function () {
-        require(["ace/mode/antlr_worker"], function (mod) {
-            // Instantiate our clean worker bridge passing the session
-            var worker = new mod.AntlrWorker(session);
-            
-            // Derive a language identity tag from the file suffix (e.g., 'c', 'cpp', 'js')
-            const ext = fileId.split('.').pop().toLowerCase();
-            worker.setLanguageTarget(ext, fileId);
-            
-            // Inform the backend thread what language grammar template to execute
-            
-        });
-    });
-    */
-
-
     if (fileId.endsWith('.c') || fileId.endsWith('.h')) {
         session.setTabSize(4);
     }
