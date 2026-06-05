@@ -356,6 +356,7 @@ async function captureRenderToTerminalCorner() {
 
     // Rehydrate modern resize cursor coordinates mirroring the calculated image box footprint
     if (renderMoved) {
+        renderMoved = false; // Reset the flag
         activeViewportDecorations.forEach(dec => dec.dispose());
         activeViewportDecorations = [];
         createViewportBorderDecorations(
@@ -366,7 +367,6 @@ async function captureRenderToTerminalCorner() {
             targetStartY,
             activeViewportDecorations
         );
-        renderMoved = false; // Reset the flag
     }
 }
 
@@ -497,7 +497,7 @@ function createViewportBorderDecorations(terminalInstance, cols, rows, targetSta
     // 1. Map Top & Bottom Borders (Horizontal Lines)
     // Top border runs on row index startYInt, Bottom border runs on startYInt + rows - 1
     const topRow = startYInt;
-    const bottomRow = startYInt + rows - 2;
+    const bottomRow = startYInt + rows - 1;
 
     //frameBlueprints.push({ lineY: topRow, x: startXInt + 1, length: cols - 2, type: 'resize-t' });
     //frameBlueprints.push({ lineY: bottomRow, x: startXInt + 1, length: cols - 2, type: 'resize-b' });
@@ -530,7 +530,7 @@ function createViewportBorderDecorations(terminalInstance, cols, rows, targetSta
     // 3. Commit elements straight to xterm's native rendering overlay tree
     frameBlueprints.forEach(bp => {
         // Calculate relative row spacing offset needed for the active instance pipeline register
-        const relativeMarkerDistance = bp.lineY - absoluteCursorRow;
+        const relativeMarkerDistance = Math.max(-absoluteCursorRow, bp.lineY - absoluteCursorRow);
         const marker = terminalInstance.registerMarker(relativeMarkerDistance);
 
         if (marker) {
@@ -609,7 +609,7 @@ terminalContainer.addEventListener('dblclick', (event) => {
             renderHeight = Math.floor(term.rows / 2);
             const canvasAspect = viewport.clientWidth / viewport.clientHeight;
             renderWidth = Math.floor(renderHeight * canvasAspect * 2);
-            term.clear()
+            term.reset()
         } else {
             // go full terminal
             previousTargetX = targetStartX
@@ -620,6 +620,11 @@ terminalContainer.addEventListener('dblclick', (event) => {
             const windowViewCols = terminalContainer.clientWidth / term._core._renderService._charSizeService.width;
             renderWidth = windowViewCols;
         }
+        renderMoved = true
+        setTimeout(() => {
+            term.reset()
+            renderMoved = true
+        }, 200)
     }
 })
 
