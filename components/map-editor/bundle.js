@@ -165236,6 +165236,7 @@
             }
             ,
             r()(CodeMirror),
+            window.nunu = K_,
             document.body.onload = K_.initialize,
             document.body.onresize = K_.resize,
             window.Buffer = window.ArrayBuffer

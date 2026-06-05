@@ -2025,8 +2025,8 @@ input[type="number"]::-webkit-inner-spin-button {
 
     .previous-terminal-container:not(.panel-viewport-frame) #editor-container:not(:has(> :not(.hidden))),
     .previous-viewport-frame:not(.panel-terminal-container) #editor-container:not(:has(> :not(.hidden))),
-    .previous-editor #editor-container:not(:has(> :not(.hidden))),
-    .previous-paint #editor-container:not(:has(> :not(.hidden))) {
+    .previous-editor #editor-container:not(:has(> :not(.hidden):not(#list-wrapper))),
+    .previous-paint #editor-container:not(:has(> :not(.hidden):not(#list-wrapper))) {
         display: flex;
         visibility: visible;
         flex-basis: 50%;
@@ -2160,9 +2160,13 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
-#editor-container:not(:has(> .not-hidden)):not(:has(> #list-wrapper>.not-hidden)) {
-    display: none;
-    visibility: collapse;
+@media all and (max-width: 1200px) {
+
+    #editor-container:not(:has(> .not-hidden)):not(:has(> #list-wrapper>.not-hidden)) {
+        display: none;
+        visibility: collapse;
+    }
+
 }
 
 /*
