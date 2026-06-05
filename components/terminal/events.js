@@ -182,7 +182,13 @@ function debounceTerminalStatus(event) {
         previousUpdate.y = currentY;
     }
 
+    if (event && (window.isModifierPressed || document.pointerLockElement !== null) && typeof window.moveLookLocked === 'function') {
+        window.moveLookLocked(event.movementX, event.movementY);
+    }
+
     if (isDragging && event) {
+        event.preventDefault()
+        event.stopPropagation()
         const rect = terminalContainer.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
@@ -190,7 +196,7 @@ function debounceTerminalStatus(event) {
         const col = Math.floor(x / dims.width);
         const row = Math.floor(y / dims.height) + term.buffer.active.viewportY;
         targetStartY = row;
-        targetStartX = col;
+        targetStartX = col - dragDownOffset;
         renderMoved = true
         return false;
     }
@@ -221,6 +227,7 @@ function debounceTerminalStatus(event) {
 
 
 let isDragging = false
+let dragDownOffset = 0
 
 /**
  * Click evaluation routing panel tracking.
@@ -236,8 +243,9 @@ async function handleMouseDown(event) {
     // Split Layout Component Drag Checker
     const softTab = document.querySelector('#terminals a[href="#soft"].active');
     if (softTab !== null) {
-        if (data.row === targetStartY && data.col > targetStartX && data.col < targetStartX + targetWidth) {
+        if (data.row === targetStartY && data.col > targetStartX && data.col < targetStartX + renderWidth) {
             isDragging = true;
+            dragDownOffset = data.col - targetStartX
             document.body.classList.add('dragging');
         }
         if (data.row < term.buffer.active.viewportY + (term.rows / 2)) {

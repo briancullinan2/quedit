@@ -45,7 +45,7 @@ function onLoadTerminal() {
     // allow ux to adjust to class change and xterm to start
     setTimeout(() => {
         syncThemeWithAce()
-        forceFitLayout()
+        forceFitLayout(true)
         if (!window.terminalLoaded) {
             term.write(terminalLog.map(l => l.text || l).join(''))
             if (!window.terminalLoaded && terminalLog.length > 0)
@@ -261,7 +261,7 @@ function resizeDebouncer() {
 
         resizeDebounce = null
 
-        if(typeof debounceFileChange !== 'undefined')
+        if (typeof debounceFileChange !== 'undefined')
             debounceFileChange()
 
         if (window.aceEditor && window.terminalWrite && !window.compilerDiagnostics) {

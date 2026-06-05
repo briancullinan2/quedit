@@ -108,7 +108,7 @@ function syncThemeWithAce() {
 /**
  * Forces standard rows and columns mapping algorithms across the container's responsive space.
  */
-function forceFitLayout() {
+function forceFitLayout(first) {
     if (!terminalWrapper.classList.contains('not-hidden')) return;
 
     const core = term._core;
@@ -135,13 +135,15 @@ function forceFitLayout() {
     term.resize(cols, rows);
     renderMoved = true;
 
-    const viewport = document.getElementById("viewport");
-    const renderHeight = Math.floor(term.rows / 2);
-    const canvasAspect = viewport.clientWidth / viewport.clientHeight;
-    const renderWidth = Math.floor(renderHeight * canvasAspect * 2);
-    const windowViewCols = terminalContainer.clientWidth / term._core._renderService._charSizeService.width;
-    targetStartX = Math.floor(Math.max(0, windowViewCols - renderWidth));
-    targetStartY = 0;
+    if (first) {
+        const viewport = document.getElementById("viewport");
+        renderHeight = Math.floor(term.rows / 2);
+        const canvasAspect = viewport.clientWidth / viewport.clientHeight;
+        renderWidth = Math.floor(renderHeight * canvasAspect * 2);
+        const windowViewCols = terminalContainer.clientWidth / term._core._renderService._charSizeService.width;
+        targetStartX = Math.floor(Math.max(0, windowViewCols - renderWidth));
+        targetStartY = 0;
+    }
 }
 
 /**

@@ -298,8 +298,10 @@ let activeViewportDecorations = [];
 let renderMoved = true
 let targetStartX = 0
 let targetStartY = 0
-let targetWidth
-let targetHeight
+let renderWidth
+let renderHeight
+// Keep track of the previous frame's footprint outside the function
+let lastRenderFootprint = null;
 
 async function captureRenderToTerminalCorner() {
     if (typeof getAvailableContext === 'undefined') {
@@ -309,23 +311,48 @@ async function captureRenderToTerminalCorner() {
     let viewport = document.getElementById("viewport");
     let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
 
-    targetHeight = Math.floor(term.rows / 2);
-    const canvasAspect = viewport.clientWidth / viewport.clientHeight;
-    targetWidth = Math.floor(targetHeight * canvasAspect * 2);
+    //renderHeight = Math.floor(term.rows / 2);
+    //const canvasAspect = viewport.clientWidth / viewport.clientHeight;
+    //renderWidth = Math.floor(renderHeight * canvasAspect * 2);
 
     const windowViewCols = terminalContainer.clientWidth / term._core._renderService._charSizeService.width;
-    //targetStartX = Math.floor(Math.max(0, windowViewCols - targetWidth));
+    //targetStartX = Math.floor(Math.max(0, windowViewCols - renderWidth));
     //targetStartY = 0;
+
+    // --- NEW: ERASE PREVIOUS FOOTPRINT IF DRAGGED ---
+    if (renderMoved && lastRenderFootprint) {
+        // 1. Save cursor position (\x1b[s)
+        let clearSequence = "\x1b[s";
+
+        // 2. Loop through and wipe the old footprint rows
+        for (let i = 0; i < lastRenderFootprint.height; i++) {
+            const row = lastRenderFootprint.startY + i + 1;
+            const col = lastRenderFootprint.startX + 1;
+            clearSequence += `\x1b[${row};${col}H${" ".repeat(lastRenderFootprint.width)}`;
+        }
+
+        // 3. Restore cursor position (\x1b[u)
+        clearSequence += "\x1b[u";
+
+        term.write(clearSequence);
+    }
 
     // --- EXECUTION PUMP 1: Draw the full screen WebGL frame to terminal ---
     const ansiStringFrame = captureFrameToCornerAnsi(
-        gl, targetWidth, targetHeight, targetStartX, targetStartY, 1.0, 0, 0
+        gl, renderWidth, renderHeight, targetStartX, targetStartY, 1.0, 0, 0
     );
     term.write(ansiStringFrame);
 
+    // Cache the current coordinates for the next render clear cycle
+    lastRenderFootprint = {
+        startX: targetStartX,
+        startY: targetStartY,
+        width: renderWidth,
+        height: renderHeight
+    };
+
     if (document.querySelector('#terminals a[href="#soft"].active') !== null)
         cliRenderFrameLimiter.requestFrameUpdate();
-
 
     // Rehydrate modern resize cursor coordinates mirroring the calculated image box footprint
     if (renderMoved) {
@@ -333,15 +360,17 @@ async function captureRenderToTerminalCorner() {
         activeViewportDecorations = [];
         createViewportBorderDecorations(
             term,
-            targetWidth,
-            targetHeight,
+            renderWidth,
+            renderHeight,
             targetStartX,
             targetStartY,
             activeViewportDecorations
         );
-        renderMoved = false
+        renderMoved = false; // Reset the flag
     }
 }
+
+
 
 async function captureRenderToTerminal() {
     if (typeof getAvailableContext === 'undefined') {
@@ -555,4 +584,42 @@ terminalContainer.addEventListener('click', () => {
     refreshBlinkerState();
 });
 
+let previousTargetX
+let previousTargetY
+
+terminalContainer.addEventListener('dblclick', (event) => {
+    const softActive = document.querySelector('#terminals a[href="#soft"].active') !== null;
+
+    if (!softActive) return
+
+    const rect = terminalContainer.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const dims = term._core._renderService.dimensions.css.cell;
+    const col = Math.floor(x / dims.width);
+    const row = Math.floor(y / dims.height) + term.buffer.active.viewportY;
+    const viewport = document.getElementById("viewport");
+    if (col >= targetStartX && col <= targetStartX + renderWidth
+        && row >= targetStartY && row <= targetStartY + renderHeight
+    ) {
+        if (targetStartX === 0 && targetStartY === 0) {
+            // collapse, return to small size
+            targetStartX = previousTargetX
+            targetStartY = previousTargetY
+            renderHeight = Math.floor(term.rows / 2);
+            const canvasAspect = viewport.clientWidth / viewport.clientHeight;
+            renderWidth = Math.floor(renderHeight * canvasAspect * 2);
+            term.clear()
+        } else {
+            // go full terminal
+            previousTargetX = targetStartX
+            previousTargetY = targetStartY
+            targetStartX = 0
+            targetStartY = 0
+            renderHeight = Math.floor(term.rows - 1);
+            const windowViewCols = terminalContainer.clientWidth / term._core._renderService._charSizeService.width;
+            renderWidth = windowViewCols;
+        }
+    }
+})
 
