@@ -113,12 +113,41 @@
                 geometry.setAttribute("color", new THREE.Float32BufferAttribute(subColors, 4));
                 geometry.setIndex(subIndices.length > 65535 ? new THREE.BufferAttribute(new Uint32Array(subIndices), 1) : new THREE.BufferAttribute(new Uint16Array(subIndices), 1));
 
+                geometry.computeVertexNormals();
+                geometry.computeBoundingBox();
+                geometry.computeBoundingSphere();
+
+                var textureLoader = new THREE.TextureLoader();
+
+                // Clean up the shader name string to get a relative image path
+                // e.g., converts "textures/base_wall/concrete" to "textures/base_wall/concrete.jpg"
+                var shaderPath = surface.shaderName;
+                if (shaderPath && shaderPath !== "noshader") {
+                    // If your assets are hosted on a static server, point to that folder base:
+                    var assetUrl = "https://quake.games/demoq3/pak0.pk3dir/" + shaderPath + ".jpg";
+
+                    // Load the texture asset
+                    var texture = textureLoader.load(assetUrl, function (tex) {
+                        // Optional: Trigger a scene repaint once the image finishes downloading asynchronously
+                        if (window.getRendererConfig) { /* force context redraw if needed */ }
+                    });
+
+                    // CRUCIAL: Fix the Quake to WebGL orientation differences we talked about
+                    texture.wrapS = THREE.RepeatWrapping;
+                    texture.wrapT = THREE.RepeatWrapping;
+                    texture.flipY = false; // Prevents the image from loading upside down relative to your 1.0 - uv math
+                }
+
+                // Pass it to your material configuration
                 var mat = new THREE.MeshPhongMaterial({
                     name: surface.shaderName || "default_bsp",
                     vertexColors: true,
-                    side: THREE.DoubleSide // Helps see geometry if normals face inwards
+                    side: THREE.DoubleSide,
+                    map: texture || window.defaultTexture // Fall back to nunu's standard texture if the image fails to load
                 });
 
+
+                
                 var surfaceMesh = new THREE.Mesh(geometry, mat);
                 surfaceMesh.name = (surface.shaderName !== "noshader") ? surface.shaderName : "surface_" + s;
 
@@ -545,6 +574,10 @@
         }
     };
 
+
+
+
+
 })(typeof window !== "undefined" ? window.THREE : global.THREE);
 
 window.capturedScenes = [];
@@ -556,18 +589,44 @@ window.addEventListener('observe', function (e) {
     }
 }, true);
 
-
 function importBSP() {
     const { Q3BSPLoader, Scene } = require('three')
     var bspLoader = new Q3BSPLoader();
+    var activeScene = window.nunu.getScene();
+
     bspLoader.load("https://quake.games/demoq3/pak0.pk3dir/maps/q3dm17.bsp", function (bspGroup) {
-        scene.add(bspGroup);
+        bspGroup.name = "q3dm17_Map";
+
         bspGroup.traverse(function (child) {
+            // 1. Core WebGL rendering flags
             if (child.isMesh) {
                 child.frustumCulled = false;
+                child.matrixAutoUpdate = true;
+            }
+
+            // 2. GUI Tree Hydration: Stub out missing nunuStudio requirements
+            // This prevents 'isEmpty is not a function' type errors in bundle.js
+            if (typeof child.isEmpty !== 'function') {
+                child.isEmpty = function () {
+                    return this.children ? this.children.length === 0 : true;
+                };
+            }
+
+            if (typeof child.toJSON !== 'function') {
+                child.toJSON = function (meta) {
+                    // Fallback to basic standard Object3D serialization if called by the editor saver
+                    return THREE.Object3D.prototype.toJSON.call(this, meta);
+                };
             }
         });
+
+        // Also secure the top-level group container itself
+        if (typeof bspGroup.isEmpty !== 'function') {
+            bspGroup.isEmpty = function () { return false; };
+        }
+
+        // Add the safe, wrapped asset straight into the editor environment
+        window.nunu.addObject(bspGroup, activeScene);
+        console.log("BSP successfully injected with UI stubs!");
     });
 }
-
-
