@@ -148131,8 +148131,23 @@
             }
             ,
             Rf.prototype.updateRaycasterFromMouse = function () {
-                this.normalized.set(this.mouse.position.x / this.canvas.size.x * 2 - 1, -this.mouse.position.y / this.canvas.size.y * 2 + 1),
-                    this.raycaster.setFromCamera(this.normalized, this.camera)
+                // 1. Get the exact live boundaries of the 3D canvas viewport
+                var rect = (this.canvas.element || this.canvas).getBoundingClientRect();
+
+                var mouseX = this.mouse.position.x // - rect.left;
+                var mouseY = this.mouse.position.y // - rect.top;
+                // 3. Calculate true local coordinates relative to the canvas bounding box
+                //var mouseX = e.clientX - rect.left;
+                //var mouseY = e.clientY - rect.top;
+
+                // 4. Map directly to Three.js standard -1 to +1 space
+                this.normalized.set(
+                    (mouseX / rect.width) * 2 - 1,
+                    -(mouseY / rect.height) * 2 + 1
+                );
+
+                // 5. Fire the Raycaster
+                this.raycaster.setFromCamera(this.normalized, this.camera);
             }
             ,
             Rf.prototype.selectObjectWithMouse = function () {
@@ -148151,7 +148166,7 @@
                     void 0 === t && (t = this.cameraMode === Rf.PERSPECTIVE ? Rf.ORTHOGRAPHIC : Rf.PERSPECTIVE),
                         this.cameraMode = t;
                     var e = null !== this.canvas ? this.canvas.size.x / this.canvas.size.y : 1;
-                    this.cameraMode === Rf.ORTHOGRAPHIC ? this.camera = new _o(10, e, _o.RESIZE_HORIZONTAL, 10000) : this.cameraMode === Rf.PERSPECTIVE && (this.camera = new yo(60, e)),
+                    this.cameraMode === Rf.ORTHOGRAPHIC ? this.camera = new _o(10, e, _o.RESIZE_HORIZONTAL, 10000) : this.cameraMode === Rf.PERSPECTIVE && (this.camera = new yo(60, e, 0.1, 10000)),
                         null !== this.scene && (this.scene.defaultCamera = this.camera),
                         this.transform.camera = this.camera,
                         null !== this.controls && (this.controls.attach(this.camera),

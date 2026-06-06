@@ -150,6 +150,9 @@ body {
     display: flex !important;
     flex-direction: column;
     background-color: transparent !important;
+    width: auto !important;
+    flex-basis: 100%;
+    min-width: 200px;
 }
 
 #nunu>div:nth-child(1)>div>div:nth-child(2)>div {

@@ -60,17 +60,12 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     let str
     let image = isImage(filePath)
     if (image) {
-        setTimeout(async () => {
-            await DependencyLoader.loadModule('paint');
-            openImage(content, filePath)
-        }, 200);
-
         // Optionally fall back to text hexDump or return early so Ace Editor doesn't choke
         latestPanelId = latestNotFilelist = 'paint'
-        if (typeof getOrCreateAceSession !== 'undefined')
-            previousNotFilelistId = 'editor'
-        else
-            previousNotFilelistId = null
+        //if (typeof getOrCreateAceSession !== 'undefined')
+        //    previousNotFilelistId = 'editor'
+        //else
+        previousNotFilelistId = null
         str = "[Binary Image Layer Inserted]";
     } else if (hasSequentialBinaryRegex.test(sampleStr)) {
         if (filePath.endsWith('.bsp')) {
@@ -100,7 +95,11 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
         str = decoder.decode(content);
     }
 
-    if (image && typeof getOrCreateAceSession === 'undefined') {
+    if (image /*&& typeof getOrCreateAceSession === 'undefined'*/) {
+        await DependencyLoader.loadModule('paint');
+        setTimeout(async () => {
+            openImage(content, filePath)
+        }, 200);
         previousPanelId = null
     } else if (!image) {
         await DependencyLoader.loadModule('editor');
@@ -113,7 +112,10 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     updateBodyPanelIds()
 
 
-    if (typeof getOrCreateAceSession !== 'undefined') {
+    if (image) {
+        imageEditor.classList.remove('hidden')
+        imageEditor.classList.add('not-hidden')
+    } else if (typeof getOrCreateAceSession !== 'undefined') {
         // 2. Ace Session
         const session = getOrCreateAceSession(filePath, str);
         //const mode = getModeByFilename(filePath);
@@ -122,11 +124,6 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
 
         editorContainer.classList.remove('hidden')
         editorContainer.classList.add('not-hidden')
-    }
-
-    if (image) {
-        imageEditor.classList.remove('hidden')
-        imageEditor.classList.add('not-hidden')
     }
 
     if (filePath.endsWith('.bsp')) {
@@ -184,16 +181,17 @@ async function openImage(content, filePath) {
                         const existingLayers = window.Layers.get_layers();
                         // Loop backwards to cleanly handle splicing indices out of the state trees
                         for (let i = existingLayers.length - 1; i >= 0; i--) {
-                            actionsBuffer.push(new window.Actions.Delete_layer_action(existingLayers[i].id));
+                            window.State.do_action(new window.Actions.Delete_layer_action(existingLayers[i].id));
                         }
                     }
 
+                    
                     // Step B: Set the canvas dimensions cleanly for a pristine scene file boundary
-                    actionsBuffer.push(new window.Actions.Prepare_canvas_action({
-                        width: img.naturalWidth,
-                        height: img.naturalHeight,
-                        clear: true
-                    }));
+                    //actionsBuffer.push(new window.Actions.Prepare_canvas_action({
+                    //    width: img.naturalWidth,
+                    //    height: img.naturalHeight,
+                    //    clear: true
+                    //}));
 
                     // Step C: Construct the baseline payload for our incoming image layer
                     const layerPayload = {
@@ -208,7 +206,7 @@ async function openImage(content, filePath) {
                         y: 0
                     };
 
-                    actionsBuffer.push(new window.Actions.Insert_layer_action(layerPayload));
+                    // actionsBuffer.push(new window.Actions.Insert_layer_action(layerPayload));
 
                     // Step D: Commit the entire atomic change sequence via a single history bundle
                     window.State.do_action(
@@ -405,11 +403,10 @@ async function clickFile(filePath, lineNumber, noBounce = false, noHide = false)
 
     await openFile(ownerName, repoName, filePath, dbFile.sha, false /* record history */, false /* show file list */, true)
     recordFileHistory(filePath, dbFile.sha, lineNumber)
-    if (typeof editorContainer !== 'undefined') {
+    if (typeof editorContainer !== 'undefined'
+        && editorContainer.classList.contains('not-hidden')
+    ) {
         setTimeout(() => {
-            editorContainer.classList.remove('hidden')
-            editorContainer.classList.add('not-hidden')
-
             aceEditor.focus();
             if (lineNumber)
                 aceEditor.gotoLine(lineNumber, 0, true);

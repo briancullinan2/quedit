@@ -77,7 +77,7 @@ const DependencyLoader = {
 
     async loadModule(key) {
         const module = IMPORT_MODULES[key];
-        if (!module) return;
+        if (!module || module.loaded) return;
 
         // Injects stylesheet links concurrently
         if (module.css) {
@@ -94,6 +94,7 @@ const DependencyLoader = {
         // Executes functional initialization callbacks safely if provided
         if (typeof module.onLoad === 'function') {
             module.onLoad();
+            module.loaded = true
         }
 
         console.log(`📦 Module [${key}] mapped & active.`);
