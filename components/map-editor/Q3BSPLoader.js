@@ -147,9 +147,13 @@
                 });
 
 
-                
+
                 var surfaceMesh = new THREE.Mesh(geometry, mat);
                 surfaceMesh.name = (surface.shaderName !== "noshader") ? surface.shaderName : "surface_" + s;
+                surfaceMesh.type = "Mesh";
+                surfaceMesh.isMesh = true;
+                surfaceMesh.castShadow = true;
+                surfaceMesh.receiveShadow = true;
 
                 // Expose attributes directly on userData for your ANTLR/background editor mutations
                 surfaceMesh.userData = {
@@ -158,7 +162,13 @@
                     elementCount: surface.elementCount
                 };
 
-                // Add to tree as its own unique object entity
+                if (!surfaceMesh.uuid) {
+                    surfaceMesh.uuid = THREE.MathUtils.generateUUID();
+                }
+
+                surfaceMesh.isEmpty = function () { return true; };
+                surfaceMesh.toJSON = function (meta) { return THREE.Object3D.prototype.toJSON.call(this, meta); };
+
                 rootNode.add(surfaceMesh);
             }
 
@@ -589,8 +599,11 @@ window.addEventListener('observe', function (e) {
     }
 }, true);
 
+
+
+
 function importBSP() {
-    const { Q3BSPLoader, Scene } = require('three')
+    const THREE = { Q3BSPLoader, Scene } = require('three')
     var bspLoader = new Q3BSPLoader();
     var activeScene = window.nunu.getScene();
 
@@ -598,35 +611,38 @@ function importBSP() {
         bspGroup.name = "q3dm17_Map";
 
         bspGroup.traverse(function (child) {
-            // 1. Core WebGL rendering flags
             if (child.isMesh) {
                 child.frustumCulled = false;
                 child.matrixAutoUpdate = true;
+
+                // 1. Force the inspector panel to map this to a mesh tool layout
+                child.type = "Mesh";
+
+                // 2. Clear out nunu's strict inheritance checks so it handles it natively
+                child.constructor.prototype.isObject3D = true;
             }
 
-            // 2. GUI Tree Hydration: Stub out missing nunuStudio requirements
-            // This prevents 'isEmpty is not a function' type errors in bundle.js
+            // Keep your working GUI tree stubs
             if (typeof child.isEmpty !== 'function') {
                 child.isEmpty = function () {
                     return this.children ? this.children.length === 0 : true;
                 };
             }
-
             if (typeof child.toJSON !== 'function') {
                 child.toJSON = function (meta) {
-                    // Fallback to basic standard Object3D serialization if called by the editor saver
                     return THREE.Object3D.prototype.toJSON.call(this, meta);
                 };
             }
         });
 
-        // Also secure the top-level group container itself
-        if (typeof bspGroup.isEmpty !== 'function') {
-            bspGroup.isEmpty = function () { return false; };
-        }
+        if (typeof bspGroup.isEmpty !== 'function') { bspGroup.isEmpty = function () { return false; }; }
 
-        // Add the safe, wrapped asset straight into the editor environment
+        // Inject it via the safe UI route
         window.nunu.addObject(bspGroup, activeScene);
-        console.log("BSP successfully injected with UI stubs!");
+
+        // === THE FIX FOR THE INSPECTOR AND GRID LINES ===
+        // Force nunu to rebuild the side panels and visual transformation gizmos for your new selection
+        window.nunu.selectObject(bspGroup);
+        window.nunu.gui.updateInterface();
     });
 }
