@@ -700,14 +700,62 @@
                         isTransparent = true;
                     }
 
+
                     // Only attempt loading if it isn't an internal engine token string
                     if (!finalImagePath.includes('$') && finalImagePath !== 'anim') {
-                        let assetUrl = "https://quake.games/demoq3/pak0.pk3dir/" + finalImagePath;
 
-                        texture = textureLoader.load(assetUrl);
+                        // Strip off whatever extension the BSP or shader provided (.tga, .jpg, etc.)
+                        let basePath = finalImagePath.replace(/\.[^/.]+$/, "");
+                        let extensions = ['.tga', '.jpg', '.png', '.webp', '.tga', '.jpg', '.png', '.webp'];
+
+                        let baseUrl = "https://quake.games/demoq3/pak0.pk3dir/" + basePath;
+
+                        // Instantiate an empty texture placeholder immediately so the scene compiles without blocking
+                        texture = new THREE.Texture();
                         texture.wrapS = THREE.RepeatWrapping;
                         texture.wrapT = THREE.RepeatWrapping;
-                        texture.flipY = false; // Prevents textures from flipping upside down relative to your 1.0 - uv math
+                        texture.flipY = false;
+
+                        // High-fidelity fallback asset chain execution matching original id Tech behavior
+                        (async function probeExtensions() {
+                            let imageLoader = new THREE.ImageLoader();
+                            imageLoader.setCrossOrigin('anonymous');
+                            let count = 0
+                            for (let ext of extensions) {
+                                let candidateUrl = baseUrl + ext;
+                                if (count >= 4) {
+                                    candidateUrl = candidateUrl.toLocaleLowerCase()
+                                }
+                                count++
+                                try {
+                                    // Use a promise to cleanly intercept image handshakes without triggering native 404 dumps
+                                    let imageElement = await new Promise((resolve, reject) => {
+                                        let img = new Image();
+                                        img.crossOrigin = 'anonymous';
+                                        img.onload = () => resolve(img);
+                                        img.onerror = () => reject();
+                                        img.src = candidateUrl;
+                                    });
+
+                                    // Assign the loaded image element directly back into the instantiated texture matrix
+                                    texture.image = imageElement;
+
+                                    // Formats fallback profile (Checks format structure for raw JPG data optimizations)
+                                    let isJpeg = candidateUrl.search(/\.jpe?g($|\?)/i) > 0;
+                                    texture.format = isJpeg ? THREE.RGBFormat : THREE.RGBAFormat;
+
+                                    texture.needsUpdate = true;
+
+                                    // Force NunuStudio framework repaint if view targets are active
+                                    if (window.nunu && window.nunu.gui) {
+                                        window.nunu.gui.updateInterface();
+                                    }
+                                    break; // Exit early as soon as a valid extension hit occurs!
+                                } catch (e) {
+                                    // Silently drop down to the next fallback extension step in line
+                                }
+                            }
+                        })();
                     }
                 }
 
@@ -1202,3 +1250,43 @@ async function importBSP() {
 
 }
 
+// Run this initialization right inside the wrapper closure frame:
+(function (THREE) {
+    // Intercept standard TextureLoader initialization routines
+    const OriginalTextureLoader = THREE.TextureLoader;
+
+    THREE.TextureLoader = class ExtendedTextureLoader extends OriginalTextureLoader {
+        load(url, onLoad, onProgress, onError) {
+            let scope = this;
+            let basePath = url.replace(/\.[^/.]+$/, "");
+            let extensions = ['.tga', '.jpg', '.png', '.tga', '.jpg', '.png'];
+
+            // Re-map the asset target downward through standard fallback paths
+            function tryNextExtension(index) {
+                if (index >= extensions.length) {
+                    if (typeof onError === 'function') onError(new Error("All texture formats failed to load."));
+                    return;
+                }
+
+                let testUrl = basePath + extensions[index];
+                if (index >= 3)
+                    testUrl = testUrl.toLocaleLowerCase()
+
+                // Call standard super.load but catch errors to fall back to the next file signature
+                OriginalTextureLoader.prototype.load.call(scope, testUrl,
+                    function (texture) {
+                        if (typeof onLoad === 'function') onLoad(texture);
+                    },
+                    onProgress,
+                    function () {
+                        // Drop to next extension pass if file asset returns empty/broken response profiles
+                        tryNextExtension(index + 1);
+                    }
+                );
+            }
+
+            // Fire off the resolution chain starting at step 0 (.tga)
+            tryNextExtension(0);
+        }
+    };
+})(window.require('three'));

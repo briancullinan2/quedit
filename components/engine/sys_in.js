@@ -866,100 +866,105 @@ function createImageFromBuffer(filenameStr, imageView, mimeType) {
   return thisImage
 }
 
-
 async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress) {
   let gamedir = addressToString(FS_GetCurrentGameDir())
   let filenameStr = addressToString(filename)
   let filenameStripped = filenameStr.replace(/\.[^\/\\]*?$/, '')
 
-  /*
-  let localName = filenameStr
-  if (localName[0] == '/')
-    localName = localName.substring(1)
-  if (localName.startsWith(gamedir + '/'))
-    localName = localName.substring(gamedir.length  +1)
-  */
   if (!EMGL.locationBuffer) {
     throw new Error('EMGL.locationBuffer not initialized')
   }
   HEAPU32[EMGL.locationBuffer >> 2] = 0
 
-
   let thisImage
-  //for (let i = 0; i < RENDER_IMAGES.length; i++) {
-  //  if (RENDER_IMAGES[i].name == filenameStr) {
-  //    thisImage = RENDER_IMAGES[i]
-  //    break
-  //  }
-  //}
 
-
-
-  if (!thisImage) {
-    let length = FS_ReadFile(stringToAddress(filenameStripped + '.png'), EMGL.locationBuffer)
-    let mime = 'png'
-    if (!HEAPU32[EMGL.locationBuffer >> 2]) {
-      length = FS_ReadFile(stringToAddress(filenameStripped + '.jpg'), EMGL.locationBuffer)
-      mime = 'jpg'
-    }
-    if (!HEAPU32[EMGL.locationBuffer >> 2]) {
-      length = FS_ReadFile(stringToAddress(filenameStripped + '.jpeg'), EMGL.locationBuffer)
-      mime = 'jpg'
-    }
-    /*
-    if(!HEAPU32[EMGL.locationBuffer >> 2]) {
-      length = FS_ReadFile(filename.replace(/\..*?$/, '.bmp'), EMGL.locationBuffer)
-    }
-    if(!HEAPU32[EMGL.locationBuffer >> 2]) {
-      length = FS_ReadFile(filename.replace(/\..*?$/, '.pcx'), EMGL.locationBuffer)
-    }
-    */
-    if (HEAPU32[EMGL.locationBuffer >> 2]) {
-      imageView = Array.from(HEAPU8.slice(HEAPU32[EMGL.locationBuffer >> 2],
-        HEAPU32[EMGL.locationBuffer >> 2] + length))
-      thisImage = createImageFromBuffer(filenameStr, imageView, mime)
-      FS_FreeFile(HEAPU32[EMGL.locationBuffer >> 2])
-    }
+  // 1. Build permutation permutations for extensions and variations (Original vs All Lowercase)
+  const baseExtensions = ['.png', '.jpg', '.jpeg'];
+  const strippedVariants = [filenameStripped];
+  if (filenameStripped.toLowerCase() !== filenameStripped) {
+    strippedVariants.push(filenameStripped.toLowerCase());
   }
 
+  // =========================================================================
+  // TRY LOCAL VFS CACHE CHANNELS FIRST
+  // =========================================================================
+  for (let baseVariant of strippedVariants) {
+    if (thisImage) break;
 
-  if (!thisImage) {
-    let remoteFile = gamedir + '/pak0.pk3dir/' + filenameStripped
+    for (let ext of baseExtensions) {
+      let testPath = baseVariant + ext;
+      let mime = ext.replace('.', '') === 'jpeg' ? 'jpg' : ext.replace('.', '');
 
-    let mimes = []
-    let responseData = (await Promise.all([
-      Com_DL_Begin(remoteFile, 'https://quake.games/' + remoteFile + '.jpg?alt')
-        .then(responseData => {
-          if (!responseData) {
-            return
-          }
-          mimes[0] = 'jpg'
-          Com_DL_Perform(config.RUNBASE + '/' + remoteFile + '.jpg', remoteFile, responseData)
-          return responseData
-        }),
-      Com_DL_Begin(remoteFile, 'https://quake.games/' + remoteFile + '.png?alt')
-        .then(responseData => {
-          if (!responseData) {
-            return
-          }
-          mimes[1] = 'png'
-          Com_DL_Perform(config.RUNBASE + '/' + remoteFile + '.png', remoteFile, responseData)
-          return responseData
-        })]))
+      let length = FS_ReadFile(stringToAddress(testPath), EMGL.locationBuffer);
 
-    if (responseData[0]) {
-      thisImage = createImageFromBuffer(filenameStr, Array.from(new Uint8Array(responseData[0])), mimes[0])
-    } else
-      if (responseData[1]) {
-        thisImage = createImageFromBuffer(filenameStr, Array.from(new Uint8Array(responseData[1])), mimes[1])
+      if (HEAPU32[EMGL.locationBuffer >> 2]) {
+        let imageView = Array.from(HEAPU8.slice(
+          HEAPU32[EMGL.locationBuffer >> 2],
+          HEAPU32[EMGL.locationBuffer >> 2] + length
+        ));
+
+        thisImage = createImageFromBuffer(filenameStr, imageView, mime);
+        FS_FreeFile(HEAPU32[EMGL.locationBuffer >> 2]);
+        break; // Found local target, drop out of inner loop
       }
-
+    }
   }
 
+  // =========================================================================
+  // FALLBACK: TRY REMOTE PAK0 STORAGE PASSES
+  // =========================================================================
   if (!thisImage) {
-    return
+    // Generate alternate remote path patterns based on stripped path casing variations
+    let remotePathVariants = strippedVariants.map(v => gamedir + '/pak0.pk3dir/' + v);
+
+    // Add explicitly forced lowercase variants of the entire path structure to catch edge case server routes
+    let lowRemote = (gamedir + '/pak0.pk3dir/' + filenameStripped).toLowerCase();
+    if (!remotePathVariants.includes(lowRemote)) {
+      remotePathVariants.push(lowRemote);
+    }
+
+    // Loop variations dynamically down the asset lookup line
+    for (let remoteFile of remotePathVariants) {
+      if (thisImage) break;
+
+      // Construct concurrent lookup maps matching the extension array
+      let dlPromises = baseExtensions.map(ext => {
+        let targetUrl = 'https://quake.games/' + remoteFile + ext + '?alt';
+        let mime = ext.replace('.', '') === 'jpeg' ? 'jpg' : ext.replace('.', '');
+
+        return Com_DL_Begin(remoteFile, targetUrl)
+          .then(responseData => {
+            if (!responseData) return null;
+
+            // Re-map asset targets cleanly back into your standard config execution environment
+            Com_DL_Perform(config.RUNBASE + '/' + remoteFile + ext, remoteFile, responseData);
+            return { data: responseData, mime: mime };
+          })
+          .catch(() => null); // Silently catch 404 network dropouts per channel iteration
+      });
+
+      let results = await Promise.all(dlPromises);
+
+      // Select the first resolved variant match in order (.png -> .jpg -> .jpeg)
+      let successfulHit = results.find(r => r !== null);
+      if (successfulHit) {
+        thisImage = createImageFromBuffer(
+          filenameStr,
+          Array.from(new Uint8Array(successfulHit.data)),
+          successfulHit.mime
+        );
+      }
+    }
   }
 
+  // Halt image decoding configuration if the layout returned un-resolvable
+  if (!thisImage) {
+    return;
+  }
+
+  // =========================================================================
+  // REPAINT ENGINE DISPATCH BINDINGS
+  // =========================================================================
   thisImage.addEventListener('load', function () {
     GL.canvas2D.width = thisImage.width
     GL.canvas2D.height = thisImage.height
@@ -971,15 +976,13 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
 
     HEAP32[widthAddress >> 2] = thisImage.width
     if (rgba.length > MAX_IMAGE_SIZE) {
-      // truncate image because what else can we do?
       thisImage.height = HEAP32[heightAddress >> 2] = floor(MAX_IMAGE_SIZE / 4 / thisImage.width)
-    } else
+    } else {
       HEAP32[heightAddress >> 2] = thisImage.height
-    // notify engine that pixel data is ready
+    }
+
     CL_R_FinishImage3(imageAddress, EMGL.location, 0x1908 /* GL_RGBA */, 0)
-
   }, false)
-
 }
 
 let INPUT = {
