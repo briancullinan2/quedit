@@ -58,6 +58,7 @@ const IMPORT_JS = {
         '/components/filelist/layout.js',
         '/components/filelist/load-media.js',
         '/components/filelist/filelist.js',
+        '/components/paint/utilities.js',
         //'/unzip.js'
     ],
 
@@ -127,7 +128,7 @@ const IMPORT_JS = {
     // Image Editor Canvas
     paint: [
         '/components/paint/paint.js',
-        '/components/paint/utilities.js',
+        //'/components/paint/utilities.js',
     ],
 
 
