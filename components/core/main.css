@@ -1673,32 +1673,21 @@ input[type="number"]::-webkit-inner-spin-button {
 
 [data-tooltip]:not([popovertarget])::after {
     content: attr(data-tooltip);
+    --tip: attr(data-tooltip);
 }
 
 [placeholder]:not([popovertarget]):not([type="checkbox"])::after {
     content: attr(placeholder);
+    --tip: attr(placeholder);
 }
 
 [alt]:not([popovertarget])::after {
     content: attr(alt);
+    --tip: attr(alt);
 }
 
 
-#paint .sidebar_left .item:hover,
-[placeholder]:not([popovertarget]):hover,
-[alt]:not([popovertarget]):hover,
-[data-tooltip]:not([popovertarget]):hover {
-    overflow: visible;
-}
 
-
-.ace_tooltip[style*="block"],
-[placeholder]:not([popovertarget]):hover::after,
-[alt]:not([popovertarget]):hover::after,
-[data-tooltip]:not([popovertarget]):hover::after {
-    opacity: 1;
-    visibility: visible;
-}
 
 
 #gh-token-input {

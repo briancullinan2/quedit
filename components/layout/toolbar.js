@@ -42,7 +42,7 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
             await DependencyLoader.loadModule('paint');
             break;
 
-        case 'github':
+        case 'github-login':
             updatePlaceholder();
             break;
 
@@ -153,10 +153,14 @@ window.addEventListener('mousemove', e => {
             targetText ||= e.target.parentElement.getAttribute('title')
         }
 
-        if (e.target.getAttribute('popovertarget')) {
+        if (e.target.getAttribute('popovertarget') || e.target.getAttribute('placeholder')
+            || e.target.getAttribute('alt')) {
             targetEl = e.target
         }
-        if (e.target.parentElement && e.target.parentElement.getAttribute('popovertarget')) {
+        if (e.target.parentElement && (e.target.parentElement.getAttribute('popovertarget')
+            || e.target.parentElement.getAttribute('placeholder')
+            || e.target.parentElement.getAttribute('alt'))
+        ) {
             targetEl = e.target.parentElement
         }
     }

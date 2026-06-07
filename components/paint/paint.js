@@ -600,6 +600,9 @@
                             we = !1
                         }
                         function N(e) {
+                            const paintContainer = document.getElementById('paint')
+                            const isVisible = paintContainer.classList.contains('not-hidden')
+                            if(!isVisible) return
                             var t = v[v.length - 1]
                                 , n = e.keyCode;
                             if (37 === n || 39 === n) {

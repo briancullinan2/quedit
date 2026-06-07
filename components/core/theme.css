@@ -2142,10 +2142,7 @@ body .terminal-file-underline {
 .ace_doc-tooltip,
 .ace_tooltip,
 .minipaint-tooltip,
-#global-tooltip,
-[placeholder]:not([popovertarget]):not([type="checkbox"])::after,
-[alt]:not([popovertarget])::after,
-[data-tooltip]:not([popovertarget])::after {
+#global-tooltip {
     background: var(--ace-gutter-bg) !important;
     /* Use your Monokai variables! */
     color: var(--ace-foreground);
