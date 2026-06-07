@@ -385,7 +385,21 @@ const SITE_MENU = [{
         target: "file/print.print"
     }, {
         divider: !0
-    }, {
+    },
+    { name: "Settings", target: "file/settings" },
+    { divider: true },
+    {
+        name: "Publish",
+        children: [
+            { name: "Web", target: "file/publish/web" },
+            { name: "Windows", target: "file/publish/windows" },
+            { name: "Linux", target: "file/publish/linux" },
+            { name: "macOS", target: "file/publish/macos" }
+        ]
+    },
+    { name: "Import", target: "file/import" },
+    { divider: true },
+    {
         name: "Quick Save",
         shortcut: "F9",
         target: "file/quicksave.quicksave"
@@ -417,17 +431,42 @@ const SITE_MENU = [{
         name: "Copy to Clipboard",
         shortcut: "Ctrl+C",
         target: "edit/copy.copy_to_clipboard"
-    }, {
+    },
+    { name: "Cut", target: "edit/cut" },
+    {
         name: "Paste",
         shortcut: "Ctrl+V",
         target: "edit/paste.paste"
-    }, {
+    }, { name: "Delete", target: "edit/delete" },
+    {
         divider: !0
     }, {
         name: "Select All",
         shortcut: "Ctrl+A",
         target: "edit/selection.select_all"
-    }]
+    },
+    {
+        divider: !0
+    },
+    {
+        name: "CSG",
+        children: [
+            { name: "Intersect", target: "edit/csg/intersect" },
+            { name: "Subtract", target: "edit/csg/subtract" },
+            { name: "Union", target: "edit/csg/union" }
+        ]
+    },
+    {
+        name: "Modifiers",
+        children: [
+            { name: "Simplify", ellipsis: true, target: "edit/modifiers/simplify" },
+            { name: "Subdivide", target: "edit/modifiers/subdivide" },
+            { name: "Twist", target: "edit/modifiers/twist" }
+        ]
+    },
+    { name: "Compute Normals", target: "edit/compute_normals" },
+    { name: "Apply Transformation", target: "edit/apply_transformation" },
+    { name: "Merge Geometries", target: "edit/merge_geometries" }]
 }, {
     name: "View",
     children: [{
@@ -883,7 +922,12 @@ const SITE_MENU = [{
         name: "Settings",
         ellipsis: !0,
         target: "tools/settings.settings"
-    }]
+    }, {
+        divider: !0
+    },
+    { name: "Create Scene", target: "project/create_scene" },
+    { name: "Execute Script", target: "project/execute_script" }
+    ]
 }, {
     name: "Help",
     children: [{
