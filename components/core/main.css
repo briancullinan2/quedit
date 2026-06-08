@@ -1342,6 +1342,7 @@ input[type="number"]::-webkit-inner-spin-button {
     border: 2px solid transparent;
 }
 
+
 #paint .layers_list .visibility,
 #paint .layers_list .delete,
 #paint .layers_list .visible,
@@ -1363,6 +1364,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 }
 
+#paint .block.details button.reset:before,
 #paint .layers_list .visibility:before,
 #paint .layers_list .delete:before,
 #paint .layers_list .visible:before,
@@ -1388,12 +1390,19 @@ input[type="number"]::-webkit-inner-spin-button {
     font-family: boxicons !important;
 }
 
+#paint .block.details button.reset:after,
 #paint .layers_list .delete:after,
 #paint .layers_list .visible:after,
 #paint .layers_list .visibility:after {
     display: none;
 }
 
+#paint .block.details button.reset {
+    font-size: small;
+    padding: 2px 3px;
+    margin: 1px;
+    width: 24px;
+}
 #paint .layers_list .visibility,
 #paint .layers_list .delete,
 #paint .layers_list .visible {
@@ -1401,6 +1410,11 @@ input[type="number"]::-webkit-inner-spin-button {
     padding: 1px;
     margin: 1px;
     width: auto;
+}
+
+
+#paint .block.details button.reset:before {
+    content: "\f6b5";
 }
 
 #paint .layers_list .delete:before {

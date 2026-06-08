@@ -959,3 +959,72 @@ document.getElementById("main_menu").addEventListener("menu_action", function (e
 });
 
 
+/**
+ * Patches file input elements with structured, explicitly labeled file groupings.
+ */
+function patchFileGroupFilters() {
+    // Define clean, structured type categories for the native dialog box
+    const fileGroups = {
+        // Standard Web/Texture assets
+        'Images (*.png, *.jpg, *.tga, *.pcx)': [
+            'image/png',
+            'image/jpeg',
+            'image/x-tga',
+            '.tga',
+            '.pcx'
+        ],
+
+        // Map geometry types
+        'Quake 3 Maps (*.bsp, *.aas)': [
+            'application/x-quake3-map',
+            '.bsp',
+            '.aas'
+        ],
+
+        // Scripts, Shaders, and Configuration plain text targets
+        'Text & Scripts (*.shader, *.cfg, *.qvm)': [
+            'text/plain',
+            '.shader',
+            '.cfg',
+            '.qvm'
+        ],
+
+        // 3D Model asset packages
+        '3D Models (*.md3, *.md4)': [
+            'application/x-quake3-model',
+            '.md3',
+            '.md4'
+        ],
+
+        // Compressed pak collections
+        'Game Archives (*.pk3)': [
+            'application/zip',
+            '.pk3'
+        ]
+    };
+
+    // Flatten all defined groups into a single unified comma-separated lookup string
+    const targetAcceptString = Object.values(fileGroups)
+        .reduce((acc, currentGroup) => acc.concat(currentGroup), [])
+        .join(',');
+
+    // Locate standard inputs across both your parent window and iframe scope boundaries
+    const inputs = Array.from(document.querySelectorAll('input[type="file"]'));
+
+    const iframe = document.getElementById('myFrame');
+    if (iframe && iframe.contentDocument) {
+        inputs.push(...iframe.contentDocument.querySelectorAll('input[type="file"]'));
+    }
+
+    // Apply the multi-group string straight onto the accept fields
+    inputs.forEach(input => {
+        input.setAttribute('accept', targetAcceptString);
+    });
+
+    console.log("File pickers successfully updated with categorized asset grouping layouts.");
+}
+
+// Call the initialization hook sequence directly
+patchFileGroupFilters();
+
+
