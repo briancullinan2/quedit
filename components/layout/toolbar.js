@@ -46,6 +46,21 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
             updatePlaceholder();
             break;
 
+        case 'historyMenu':
+        case 'filename':
+            {
+                const dropdown = document.getElementById("historyMenu");
+                if (dropdown.classList.contains('show')) {
+                    dropdown.classList.remove('show');
+                } else {
+                    dropdown.classList.add('show');
+                }
+                const absolutePos = document.getElementById('filename').getBoundingClientRect()
+                dropdown.style.top = (absolutePos.top + absolutePos.height) + 'px'
+                dropdown.style.left = absolutePos.left + 'px'
+                break
+            }
+
         case 'back':
             NavHistory.back();
             break;
@@ -95,23 +110,39 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
 
     // Handoff presentation layout transformations directly down the execution chain
     renderTabsCommand(buttonId, noBounce);
+
+    return true
 }
 
 
 document.getElementById('toolbar').addEventListener('change', async (e) => {
+    const closest = e.target.closest('[id],[name],[href]')
     return renderToolbarCommand(
-        e.target.id || e.target.name || e.target.href?.split('#').pop())
+        closest.id || closest.name || closest.href?.split('#').pop())
 
 });
 
 
 document.getElementById('toolbar').addEventListener('click', async (e) => {
-    if (e.target.nodeName.toUpperCase() === 'SELECT')
+    const closest = e.target.closest('[id],[name],[href]')
+    if (closest.nodeName.toUpperCase() === 'SELECT')
         return
     return renderToolbarCommand(
-        e.target.id || e.target.name || e.target.href?.split('#').pop())
-
+        closest.id || closest.name || closest.href?.split('#').pop())
 });
+
+
+window.addEventListener('click', (e) => {
+    const closest = e.target.closest('[id],[name],[href]')
+    const buttonId = closest.id || closest.name || closest.href?.split('#').pop()
+    if (buttonId !== 'filename' && buttonId !== 'historyMenu') {
+        const dropdown = document.getElementById("historyMenu");
+        dropdown.classList.remove('show');
+    }
+})
+
+
+
 
 const globalTooltip = document.getElementById('global-tooltip')
 
@@ -128,7 +159,7 @@ window.addEventListener('mousemove', e => {
         targetText ||= aceContainer.getAttribute('data-compiler-error');
 
         // Pull code reference definition markers
-        var navSymbol = aceContainer.getAttribute('data-navigation-target');
+        let navSymbol = aceContainer.getAttribute('data-navigation-target');
         if (navSymbol) {
             targetText = `Go to reference for definition: "${navSymbol}"`;
         }
@@ -145,25 +176,32 @@ window.addEventListener('mousemove', e => {
         targetText ||= e.target.getAttribute('alt')
         targetText ||= e.target.getAttribute('data-tooltip')
         targetText ||= e.target.getAttribute('title')
-
-        if (!targetText && e.target.parentElement) {
-            targetText ||= e.target.parentElement.getAttribute('placeholder')
-            targetText ||= e.target.parentElement.getAttribute('alt')
-            targetText ||= e.target.parentElement.getAttribute('data-tooltip')
-            targetText ||= e.target.parentElement.getAttribute('title')
-        }
-
-        if (e.target.getAttribute('popovertarget') || e.target.getAttribute('placeholder')
-            || e.target.getAttribute('alt')) {
+        if (targetText) {
             targetEl = e.target
         }
-        if (e.target.parentElement && (e.target.parentElement.getAttribute('popovertarget')
-            || e.target.parentElement.getAttribute('placeholder')
-            || e.target.parentElement.getAttribute('alt'))
-        ) {
+    }
+
+    if (!targetText && e.target.parentElement) {
+        targetText ||= e.target.parentElement.getAttribute('placeholder')
+        targetText ||= e.target.parentElement.getAttribute('alt')
+        targetText ||= e.target.parentElement.getAttribute('data-tooltip')
+        targetText ||= e.target.parentElement.getAttribute('title')
+        if (targetText) {
             targetEl = e.target.parentElement
         }
     }
+
+    const closest = e.target.closest('[placeholder],[alt],[data-tooltip],[title]')
+    if (!targetText && closest) {
+        targetText ||= closest.getAttribute('placeholder')
+        targetText ||= closest.getAttribute('alt')
+        targetText ||= closest.getAttribute('data-tooltip')
+        targetText ||= closest.getAttribute('title')
+        if (targetText) {
+            targetEl = closest
+        }
+    }
+
 
     globalTooltip.innerText = targetText
 
@@ -189,4 +227,16 @@ window.addEventListener('mousemove', e => {
         globalTooltip.style.left = Math.min(rect.left + targetEl.clientWidth, window.innerWidth - globalTooltip.clientWidth - 20) + 'px'
     }
 });
+
+function toggleDropdown() {
+    document.getElementById("historyMenu").classList.toggle("show");
+}
+
+function selectHistory(element) {
+    // Handle your undo/redo state logic here
+    console.log("Selected action:", element.querySelector('strong').innerText);
+
+    // Close menu after selection
+    document.getElementById("historyMenu").classList.remove("show");
+}
 

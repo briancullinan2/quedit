@@ -7,6 +7,7 @@ const IMPORT_CSS = {
         //'/boxicons.min.css',
         //'/main.css',
         //'/theme.css'
+        '/components/core/history.css'
     ],
 
     // Loaded dynamically on demand
@@ -145,6 +146,7 @@ const IMPORT_JS = {
 
 const IMPORT_MODULES = {
     core: {
+        css: IMPORT_CSS['core'],
         js: IMPORT_JS['core'],
         onLoad: onLoadCore
     },
@@ -190,7 +192,7 @@ const IMPORT_MODULES = {
         hasChanges: hasChangesPaint
     },
 
-    
+
     nunu: {
         panelId: 'nunu',
         js: IMPORT_JS['nunu'],

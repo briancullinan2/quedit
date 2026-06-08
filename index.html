@@ -36,19 +36,44 @@
     </div>
 
     <div id="popups"></div>
+    <ul class="dropdown-menu" id="historyMenu">
+        <li class="history-item undo" onclick="selectHistory(this)">
+            <div class="item-header">
+                <span class="action-icon">↩️</span>
+                <strong>Deleted Paragraph</strong>
+            </div>
+            <p class="item-desc">Removed 140 characters from section 2.</p>
+        </li>
+
+        <li class="history-item current" onclick="selectHistory(this)">
+            <div class="item-header">
+                <span class="action-icon">📍</span>
+                <strong>Current State</strong>
+            </div>
+            <p class="item-desc">Saved 2 mins ago.</p>
+        </li>
+
+        <li class="history-item redo disabled">
+            <div class="item-header">
+                <span class="action-icon">↪️</span>
+                <strong>Typed "Hello World"</strong>
+            </div>
+            <p class="item-desc">Redo available.</p>
+        </li>
+    </ul>
 
     <div id="main" class="panel-column">
         <div id="toolbar">
             <ul>
                 <li>
                     <nav aria-label="Main Menu" class="main_menu" id="main_menu">
-                        
+
                     </nav>
                 </li>
                 <li>
                     <ul>
-                        <li><a id="github-login" alt="Github login" class="bx bx-arrow-in-right-square-half" target="_new"
-                                href="https://github.com/settings/tokens?type=beta"></a></li>
+                        <li><a id="github-login" alt="Github login" class="bx bx-arrow-in-right-square-half"
+                                target="_new" href="https://github.com/settings/tokens?type=beta"></a></li>
                         <li><a alt="Console" href="#terminal-container" class="bx bx-terminal"></a></li>
                         <li><a alt="Edit settings" href="#settings" class="bx bx-gear"></a></li>
                         <li><a alt="Sharable game link" href="#share" class="bx bx-share"></a></li>
@@ -78,11 +103,14 @@
                         <li><a alt="Next" href="#next" class="bx bx-redo"></a></li>
                     </ul>
                 </li>
-                <li placeholder="Current filename">
-                    <select required name="filename" id="filename">
-                        <option value="" selected disabled>Current filename</option>
-                        <option value="">Current filename</option>
-                    </select>
+                <li popovertarget="global-tooltip" placeholder="Current filename">
+                    <button name="filename" class="select-box-trigger" aria-haspopup="listbox" id="filename">
+                        <div class="selected-value">
+                            <i class='bx bx-undo'></i>
+                            <span>Deleted Paragraph (10:42 AM)</span>
+                        </div>
+                        <i class='bx bx-chevron-down toggle-arrow'></i>
+                    </button>
                 </li>
                 <li class="setting" placeholder="Key binding">
                     <select required name="keybinding" id="keybinding">
@@ -214,7 +242,7 @@
                         </optgroup>
                     </select>
                 </li>
-                
+
                 <li class="engine">
                     <ul>
                         <li placeholder="Spawn point">
@@ -288,11 +316,11 @@
 
                             </div>
                             <div id="search-results">
-                                
+
                             </div>
                         </div>
                         <div id="filelist" class="not-hidden" data-repository="briancullinan2/Quake3e">
-                            
+
                         </div>
                         <div id="gamelist" data-repository="ec-/baseq3a" class="hidden">
 
@@ -307,18 +335,18 @@
 
                         </div>
                     </div>
-<div id="editor">
-#include &lt;stdio.h&gt;
+                    <div id="editor">
+                        #include &lt;stdio.h&gt;
 
-// this is a comment
+                        // this is a comment
 
-int main() {
-    printf("Hello World!\n")
-    printf("WASI Compiler Check: SUCCESS\n");
-    return 0;
-}
+                        int main() {
+                        printf("Hello World!\n")
+                        printf("WASI Compiler Check: SUCCESS\n");
+                        return 0;
+                        }
 
-</div>
+                    </div>
                     <div id="nunu"></div>
                     <div id="paint">
                         <div class="wrapper">

@@ -1,0 +1,101 @@
+.history-dropdown {
+    position: relative;
+    display: inline-block;
+    font-family: sans-serif;
+}
+
+.dropdown-toggle {
+    padding: 8px 16px;
+    cursor: pointer;
+}
+
+.dropdown-menu {
+    display: none;
+    /* Hidden by default */
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--ace-gutter-bg);
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+    color: var(--ace-foreground);
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0 0;
+    width: 320px;
+    border-radius: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 900;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.history-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    /*    border-bottom: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+    background: var(--ace-gutter-bg);
+    color: var(--ace-foreground);
+*/
+}
+
+.history-item:hover:not(.disabled) {
+    background-color: var(--ace-bg);
+}
+
+.item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.item-desc {
+    margin: 4px 0 0 24px;
+    font-size: 12px;
+}
+
+/* Styling states */
+.history-item.current {
+}
+
+.history-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#toolbar button.select-box-trigger {
+    width: 100%;
+    color: var(--ace-foreground);
+    background: var(--ace-gutter-bg);
+    border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    max-width: 100%;
+}
+
+.select-box-trigger .selected-value span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+
+.select-box-trigger .selected-value {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.select-box-trigger:focus {
+    outline: none;
+    border-color: var(--ace-blue);
+    background: var(--ace-bg);
+}
