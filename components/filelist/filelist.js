@@ -246,38 +246,169 @@ function loadTree(database, cursor) {
     }
 }
 
-function recordFileHistory(filePath, sha, lineNumber = null) {
-    let selector = document.getElementById('filename')
-    let placeholder = selector.children[0]
-    if (placeholder.value == '')
-        placeholder.remove()
-    if (!selector.querySelector(`[value="${filePath}"]`)) {
-        const option = document.createElement('option');
 
-        option.value = filePath;
-        option.textContent = filePath;
 
-        //if (filePath === selector.value) {
-        option.selected = true;
-        //}
+const NavHistory = {
+    stack: [],
+    index: -1,
+    isNavigating: false,
 
-        if (selector.children.length > 0)
-            selector.insertBefore(option, selector.children[0]);
-        else
-            selector.appendChild(option);
+    // Call this whenever a file is opened or a "jump" happens
+    push(fileId, row, column) {
+        if (this.isNavigating) return;
+
+        // If we were in the middle of the stack and did a new action, 
+        // truncate the "forward" history (standard browser behavior)
+        if (this.index < this.stack.length - 1) {
+            this.stack = this.stack.slice(0, this.index + 1);
+        }
+
+        this.stack.push({ fileId, row, column });
+        this.index = this.stack.length - 1;
+    },
+
+    back() {
+        if (this.index > 0) {
+            this.isNavigating = true;
+            this.index--;
+            this.apply();
+            this.isNavigating = false;
+        }
+    },
+
+    forward() {
+        if (this.index < this.stack.length - 1) {
+            this.isNavigating = true;
+            this.index++;
+            this.apply();
+            this.isNavigating = false;
+        }
+    },
+
+    apply() {
+        const point = this.stack[this.index];
+        let database = owner.value + '/' + repository.value
+        const filePath = trees[database].nodesById[point.fileId].path
+        window.currentOpenFileId = point.fileId; debugger
+        trees[database].values = [point.fileId];
+        debugger
+        openFile(owner.value, repository.value, filePath, trees[database].nodesById[point.fileId].sha, false);
+
+        aceEditor.gotoLine(point.row + 1, point.column);
     }
+};
 
+
+function recordFileHistory(filePath, sha, lineNumber = null) {
     if (typeof aceEditor !== 'undefined') {
         const pos = aceEditor.getCursorPosition();
+
+        // Atomically append the file navigation jump metadata into the UI component
+        appendHistoryItem({
+            filePath: filePath,
+            row: pos.row,
+            column: pos.column
+        }, "file");
+
         NavHistory.push(sha, pos.row, pos.column);
     }
     if (lineNumber)
         history.pushState({ location: window.location.toString() }, filePath, '#' + filePath + ':' + lineNumber)
     else
         history.pushState({ location: window.location.toString() }, filePath, '#' + filePath)
-    selector.parentElement.setAttribute('placeholder', 'Current file: ' + filePath)
 }
 
+
+function extractPaintMetadata(actionObj) {
+    const subAction = actionObj.actions_to_do?.[0];
+    const settings = subAction?.settings;
+    const refLayer = subAction?.reference_layer;
+
+    let icon = "🎨";
+    let title = actionObj.action_description || "Graphics Modification";
+    let desc = `UUID: ${actionObj.uuid ? actionObj.uuid.slice(0, 8) : 'N/A'}`;
+
+    // 1. Capture Top Level Brush Creations
+    if (actionObj.action_id === "new_brush_layer") {
+        icon = "🖌️";
+        title = "New Brush Layer";
+        if (settings?.params) {
+            desc = `Size: ${settings.params.size}px | Color: ${settings.color || 'none'}`;
+        }
+    }
+    // 2. Capture Active Brush Vector Modifications/Strokes
+    else if (actionObj.action_id === "update_brush_layer") {
+        icon = "✍️";
+        title = refLayer?.name || "Update Brush Layer";
+
+        // Count coordinate arrays dynamically to give a useful description
+        const strokeCount = settings?.data?.length || refLayer?.data?.length || 0;
+        const dimensions = refLayer ? ` (${Math.round(refLayer.width)}x${Math.round(refLayer.height)}px)` : "";
+
+        desc = `Modified ${strokeCount} vector paths${dimensions}`;
+    }
+    // 3. Capture General Core Layer Updates
+    else if (subAction?.action_id === "update_layer") {
+        icon = "🔄";
+
+        // Fall back gracefully to reference_layer values if settings properties are empty
+        const layerName = settings?.name || refLayer?.name || "Layer";
+        const layerType = settings?.type || refLayer?.type || "Unknown";
+        const layerOrder = settings?.order !== undefined ? settings.order : (refLayer?.order !== undefined ? refLayer.order : "N/A");
+
+        title = `Update Layer: ${layerName}`;
+        desc = `Type: ${layerType} | Order position: ${layerOrder}`;
+    }
+
+    return { icon, title, desc };
+}
+
+
+function appendHistoryItem(actionData, type = "paint") {
+    const menuContainer = document.getElementById('historyMenu');
+    if (!menuContainer) return;
+
+    // Remove any legacy placeholder options if they exist
+    if (menuContainer.children.length === 1 && menuContainer.children[0].getAttribute('value') === '') {
+        menuContainer.children[0].remove();
+    }
+
+    // 1. Resolve raw details based on incoming type string
+    let meta = { icon: "⚡", title: "Action Captured", desc: "System update logged." };
+
+    if (type === "paint") {
+        meta = extractPaintMetadata(actionData);
+    } else if (type === "file") {
+        meta = {
+            icon: "📄",
+            title: actionData.filePath.split('/').pop(),
+            desc: `Line ${actionData.row + 1}, Col ${actionData.column} — ${actionData.filePath}`
+        };
+    }
+
+    // 2. Create the list node item atomically
+    const li = document.createElement('li');
+    li.className = "history-item undo"; // Matches your visual mockup styles
+
+    // Attach the raw object straight to the DOM node data property for later access if needed
+    li.userData = actionData;
+
+    // 3. Inject the explicit template payload strings
+    li.innerHTML = `
+        <div class="item-header">
+            <span class="action-icon">${meta.icon}</span>
+            <strong>${meta.title}</strong>
+        </div>
+        <p class="item-desc">${meta.desc}</p>
+    `;
+
+    // 4. Prepend it to the top of the history list stack
+    if (menuContainer.children.length > 0) {
+        menuContainer.insertBefore(li, menuContainer.children[0]);
+    } else {
+        menuContainer.appendChild(li);
+    }
+}
 
 
 

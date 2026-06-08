@@ -5189,6 +5189,8 @@
                                                         e.next = 21;
                                                     break;
                                                 case 15:
+                                                    t.uuid = generateUUID();
+                                                    appendHistoryItem(t, "paint");
                                                     if (this.action_history.push(t),
                                                         !(this.action_history.length > this.action_history_max)) {
                                                         e.next = 20;

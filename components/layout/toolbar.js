@@ -47,7 +47,7 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
             break;
 
         case 'historyMenu':
-        case 'filename':
+        case 'fileHistory':
             {
                 const dropdown = document.getElementById("historyMenu");
                 if (dropdown.classList.contains('show')) {
@@ -55,7 +55,7 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
                 } else {
                     dropdown.classList.add('show');
                 }
-                const absolutePos = document.getElementById('filename').getBoundingClientRect()
+                const absolutePos = document.getElementById('fileHistory').getBoundingClientRect()
                 dropdown.style.top = (absolutePos.top + absolutePos.height) + 'px'
                 dropdown.style.left = absolutePos.left + 'px'
                 break
@@ -99,7 +99,7 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
     // Auto-save setting file shifts if active view config targets modify variables
     const interactiveStateKeys = [
         'configuration', 'wasi', 'theme', 'spawn', 'map', 'branch',
-        'repository', 'owner', 'keybinding', 'filename', 'reload'
+        'repository', 'owner', 'keybinding', 'reload'
     ];
     if (typeof currentSession !== 'undefined' && interactiveStateKeys.includes(buttonId)) {
         let filename = currentSession();
@@ -135,7 +135,7 @@ document.getElementById('toolbar').addEventListener('click', async (e) => {
 window.addEventListener('click', (e) => {
     const closest = e.target.closest('[id],[name],[href]')
     const buttonId = closest.id || closest.name || closest.href?.split('#').pop()
-    if (buttonId !== 'filename' && buttonId !== 'historyMenu') {
+    if (buttonId !== 'fileHistory' && buttonId !== 'historyMenu') {
         const dropdown = document.getElementById("historyMenu");
         dropdown.classList.remove('show');
     }

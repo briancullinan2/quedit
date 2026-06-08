@@ -159,56 +159,6 @@ ace.config.loadModule("ace/keyboard/vim", function(m) {
 */
 
 
-const NavHistory = {
-    stack: [],
-    index: -1,
-    isNavigating: false,
-
-    // Call this whenever a file is opened or a "jump" happens
-    push(fileId, row, column) {
-        if (this.isNavigating) return;
-
-        // If we were in the middle of the stack and did a new action, 
-        // truncate the "forward" history (standard browser behavior)
-        if (this.index < this.stack.length - 1) {
-            this.stack = this.stack.slice(0, this.index + 1);
-        }
-
-        this.stack.push({ fileId, row, column });
-        this.index = this.stack.length - 1;
-    },
-
-    back() {
-        if (this.index > 0) {
-            this.isNavigating = true;
-            this.index--;
-            this.apply();
-            this.isNavigating = false;
-        }
-    },
-
-    forward() {
-        if (this.index < this.stack.length - 1) {
-            this.isNavigating = true;
-            this.index++;
-            this.apply();
-            this.isNavigating = false;
-        }
-    },
-
-    apply() {
-        const point = this.stack[this.index];
-        let database = owner.value + '/' + repository.value
-        const filePath = trees[database].nodesById[point.fileId].path
-        window.currentOpenFileId = point.fileId; debugger
-        trees[database].values = [point.fileId];
-        debugger
-        openFile(owner.value, repository.value, filePath, trees[database].nodesById[point.fileId].sha, false);
-
-        aceEditor.gotoLine(point.row + 1, point.column);
-    }
-};
-
 
 async function newFile() {
     const session = getOrCreateAceSession('temp' + (++tempCount), '');

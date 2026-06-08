@@ -37,7 +37,7 @@
 
     <div id="popups"></div>
     <ul class="dropdown-menu" id="historyMenu">
-        <li class="history-item undo" onclick="selectHistory(this)">
+        <li class="history-item undo">
             <div class="item-header">
                 <span class="action-icon">↩️</span>
                 <strong>Deleted Paragraph</strong>
@@ -45,7 +45,7 @@
             <p class="item-desc">Removed 140 characters from section 2.</p>
         </li>
 
-        <li class="history-item current" onclick="selectHistory(this)">
+        <li class="history-item current">
             <div class="item-header">
                 <span class="action-icon">📍</span>
                 <strong>Current State</strong>
@@ -104,7 +104,7 @@
                     </ul>
                 </li>
                 <li popovertarget="global-tooltip" placeholder="Current filename">
-                    <button name="filename" class="select-box-trigger" aria-haspopup="listbox" id="filename">
+                    <button name="fileHistory" class="select-box-trigger" aria-haspopup="listbox" id="fileHistory">
                         <div class="selected-value">
                             <i class='bx bx-undo'></i>
                             <span>Deleted Paragraph (10:42 AM)</span>

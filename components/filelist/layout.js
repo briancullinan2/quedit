@@ -11,7 +11,7 @@ function getDocumentPanelFromClickId(panelId) {
         panelDocumentId = 'viewport-frame'
     if (panelId === 'compile' || panelId === 'build' || panelId === 'terminal')
         panelDocumentId = 'terminal-container'
-    if (panelId === 'new' || panelId === 'filename' || panelId === 'settings')
+    if (panelId === 'new' || panelId === 'settings')
         panelDocumentId = 'editor'
 
 
@@ -48,7 +48,7 @@ const DOESNT_AFFECT_UI = [
     'layout', 'share', 'pause', 'stop', 'save',
     'configuration', 'theme', 'repository',
     'wasi', 'theme', 'keybinding', 'reload',
-    'branch', 'owner', 'toolbar'
+    'branch', 'owner', 'toolbar', 'fileHistory'
 ]
 
 let toolbarTabDebounce = null
