@@ -151,13 +151,10 @@ function renderMenuSystem(menuTreeData, targetWrapper) {
 }
 
 
-
-
 function initStaticMenu(containerId) {
     const menuContainer = document.getElementById(containerId);
     if (!menuContainer) return;
 
-    // 1. Unified Event Delegation Hub
     menuContainer.addEventListener("click", function (e) {
         const anchor = e.target.closest("a");
         if (!anchor || anchor.tagName !== "A") {
@@ -165,16 +162,51 @@ function initStaticMenu(containerId) {
             return;
         }
 
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
         const hasPopup = anchor.getAttribute("aria-haspopup") === "true";
         if (hasPopup) {
-            e.preventDefault();
             toggleDropdown(menuContainer, anchor);
         } else {
-            triggerMenuLink(menuContainer, anchor);
+            closeAllDropdowns(menuContainer);
+
+            // Read execution data straight from the element attributes
+            const target = anchor.getAttribute("data-target");
+            const href = anchor.getAttribute("data-href");
+            const rawParam = anchor.getAttribute("data-parameter");
+            let parameter = null;
+
+            if (rawParam) {
+                try { parameter = JSON.parse(rawParam); } catch (err) { parameter = rawParam; }
+            }
+
+            if (href) {
+                window.open(href, '_blank');
+                return;
+            }
+
+            if (target) {
+                const parts = target.split(".");
+                const moduleName = parts[0];
+                const methodName = parts[1];
+
+                // Pull the application routing modules map context globally
+                let appModules = window.GUI?.modules || window.modules;
+                if (!appModules && window[moduleName]) {
+                    appModules = window;
+                }
+
+                if (appModules && appModules[moduleName] && typeof appModules[moduleName][methodName] === "function") {
+                    console.log(`Executing target directly: ${moduleName}.${methodName}`);
+                    appModules[moduleName][methodName](parameter);
+                } else {
+                    console.error(`Method target not resolved on instance context: ${moduleName}.${methodName}`);
+                }
+            }
         }
     }, true);
 
-    // 2. Window Tracking Listeners
     window.addEventListener("resize", function () {
         positionActiveDropdowns(menuContainer);
     });
@@ -270,18 +302,43 @@ function positionActiveDropdowns(menuContainer) {
     });
 }
 
-
 function triggerMenuLink(menuContainer, anchor) {
+    // 1. Dismiss all open floating layout panels
     closeAllDropdowns(menuContainer);
 
-    const targetAction = anchor.getAttribute("data-target") || anchor.getAttribute("href")?.replace("#", "") || anchor.id;
+    // 2. Extract the absolute structural path route (e.g., "0_0_2" out of "main_menu_0_0_2")
+    const pathParts = anchor.id.replace("main_menu_", "").split("_");
 
-    const menuEvent = new CustomEvent("menu_action", {
-        detail: { action: targetAction, element: anchor },
-        bubbles: true
-    });
-    menuContainer.dispatchEvent(menuEvent);
+    // 3. Walk down your configuration tree (e.g., SITE_MENU) using the explicit index path
+    let currentBranch = SITE_MENU;
+    let targetItem = null;
+
+    // Skip the first root part ('0') and trace down to the selected item reference
+    for (let i = 1; i < pathParts.length; i++) {
+        const targetIndex = parseInt(pathParts[i], 10);
+        targetItem = currentBranch[targetIndex];
+
+        if (targetItem && targetItem.children) {
+            currentBranch = targetItem.children;
+        }
+    }
+
+    if (!targetItem) return;
+
+    // 4. Emit the exact same core execution events miniPaint expects to receive
+    if (targetItem.target) {
+        // Acts exactly like miniPaint's: this.emit("select_target", i.target, i)
+        const targetEvent = new CustomEvent("menu_action", {
+            detail: { action: targetItem.target, item: targetItem, element: anchor },
+            bubbles: true
+        });
+        menuContainer.dispatchEvent(targetEvent);
+    } else if (targetItem.href) {
+        // Acts exactly like miniPaint's: this.emit("select_href", i.href, null)
+        window.open(targetItem.href, '_blank');
+    }
 }
+
 function closeDropdownBranch(menuContainer, level, activeDropdown) {
     if (activeDropdown) {
         activeDropdown.classList.add("hidden");
