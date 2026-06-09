@@ -5,9 +5,11 @@ const IMPORT_CSS = {
     core: [
         // INCLUDED in index.html
         //'/boxicons.min.css',
+        '/components/theme/boxicons.min.css',
         '/components/core/main.css',
-        '/components/core/theme.css',
         '/components/core/history.css',
+        '/components/paint/css/menu.css',
+        '/components/core/theme.css',
     ],
 
     // Loaded dynamically on demand

@@ -94,6 +94,9 @@ async function fetchAsset(url, key) {
             const newHeaders = new Headers(response.headers);
             newHeaders.set('X-Service-Worker-Handled', 'true');
             newHeaders.set('Location', response.url);
+            newHeaders.set('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
+            newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+            newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
 
             console.log(`🔄 [SW-NET] Fabricating 302 redirection response bridge for "${key}"`);
             isOffline = false;
@@ -139,7 +142,9 @@ async function fetchAsset(url, key) {
 
         const newHeaders = new Headers(response.headers);
         newHeaders.set('X-Service-Worker-Handled', 'true');
-
+        newHeaders.set('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
+        newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+        newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
         isOffline = false;
 
         return new Response(response.body, {
@@ -462,7 +467,10 @@ function manufactureRefreshResponse() {
         headers: {
             'Content-Type': 'text/html',
             'X-Service-Worker-Handled': 'true',
-            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Content-Security-Policy': "script-src 'self' 'unsafe-eval'",
+            'Cross-Origin-Opener-Policy': 'same-origin',
+            'Cross-Origin-Embedder-Policy': 'require-corp',
         }
     });
 }
@@ -532,6 +540,9 @@ self.addEventListener('fetch', event => {
                     const newHeaders = new Headers();
                     newHeaders.set('Content-Type', contentType);
                     newHeaders.set('X-Service-Worker-Handled', 'true');
+                    newHeaders.set('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
+                    newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+                    newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
 
                     return new Response(files.contents, {
                         status: 200,

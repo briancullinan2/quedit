@@ -74,6 +74,20 @@ surrounding it. I think if all of these things were done, this could be the firs
 ## So far
 
 
+#### 6/9/2026
+
+Trying to get offline mode working. Integrated nunuStudio more. Intercepted for menu options and undo/redo functions to show unified interface.
+
+```bash
+gcloud compute backend-buckets update quake-backend-bucket \
+    --custom-response-header="Content-Security-Policy: script-src 'self' 'unsafe-eval'" \
+    --custom-response-header="Cross-Origin-Opener-Policy: same-origin" \
+    --custom-response-header="Cross-Origin-Embedder-Policy: require-corp"
+```
+
+
+
+
 #### 6/1/2026
 
 Integrated nunuStudio. Procrastinating github commits.

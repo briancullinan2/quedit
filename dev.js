@@ -15,6 +15,8 @@ function middleware(req, res, next) {
     // even when the requesting page has a COEP policy
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 
+    res.setHeader('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
+
     res.setHeader('Permissions-Policy', 'cross-origin-isolated=(*)');
 
     // Handle preflight OPTIONS requests immediately
