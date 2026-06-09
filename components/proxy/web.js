@@ -31,8 +31,8 @@ const MENU_PATHS = [
   'PLAYERSETTINGS',
 ]
 
-var fileTimeout
-var latestMtime = new Date()
+let fileTimeout
+let latestMtime = new Date()
 
 function findFile(filename) {
   // layer the file system, so no matter what we're building, the browser loads something
@@ -360,7 +360,7 @@ function sendCompressed(file, res, acceptEncoding) {
   readStream.pipe(res)
 }
 
-//var fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+//let fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
 
 function respondRequest(request, response) {
   const { execSync } = require('child_process');

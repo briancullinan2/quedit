@@ -66,6 +66,22 @@ async function getDefaultBranch(owner, repo) {
     return data.default_branch; // Usually "main" or "master"
 }
 
+async function getBranchVersion(owner, repo, branch) {
+    // Fallback to default branch if not specified
+    branch ||= await getDefaultBranch(owner, repo);
+
+    // 1. Query the specific branch endpoint
+    const branchData = await githubRequest(owner, repo, `/branches/${branch}`);
+
+    // 2. Extract the date string from the latest commit on that branch
+    const dateString = branchData.commit.commit.author.date;
+
+    // 3. Parse into a JavaScript Date object
+    const buildDate = new Date(dateString);
+
+    return buildDate;
+}
+
 
 async function getBranches(repoOwner, repoName) {
 
@@ -180,17 +196,17 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '') 
         }
 
         const filesToHydrate = [];
-        
+
         // --- PHASE 1: Breadth-First Search Queue Recursion ---
         // Seed our queue with the initial explicit target path
         const directoryQueue = [initialPath];
 
         while (directoryQueue.length > 0) {
             const currentSubPath = directoryQueue.shift();
-            
+
             // Format Git expression rule: "branch:" for root, or "branch:path/to/dir"
-            const expressionString = currentSubPath === '' 
-                ? `${branchName}:` 
+            const expressionString = currentSubPath === ''
+                ? `${branchName}:`
                 : `${branchName}:${currentSubPath}`;
 
             const treeData = await githubGraphQL(treeQuery, {
@@ -208,7 +224,7 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '') 
 
             for (const entry of entries) {
                 const isFile = entry.type === 'blob';
-                
+
                 // Map out the flat file cache signature
                 files[database][entry.path] = {
                     path: entry.path,
@@ -401,7 +417,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
             FS.virtual[filePath] = await getRecord(DB_STORE_NAME, filePath, selected)
         }
         if (files[selected][filePath] && FS.virtual[filePath]) {
-            if(FS.virtual[filePath].timestamp > files[selected][filePath].timestamp) {
+            if (FS.virtual[filePath].timestamp > files[selected][filePath].timestamp) {
                 writeLog(`Skipping changed (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
                 return FS.virtual[filePath].contents
             }

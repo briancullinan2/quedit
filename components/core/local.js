@@ -1,7 +1,6 @@
 ﻿
 const DB_VERSION = 1 // Increment this when you add new C# Entities!
-const LOCAL_DB_NAME = "Quedit" + DB_VERSION
-const DB_NAME = "QueditOffline"
+const DB_NAME = "briancullinan2/quedit"
 const DB_STORE_NAME = 'FILE_DATA';
 const DB_DEBOUNCE_INTERVAL = 50
 
@@ -19,20 +18,20 @@ const DB_SCHEME = [
 
 async function getDB(dbName = null, dbVersion = null) {
     return new Promise((rs, rj) => {
-        const req = indexedDB.open(dbName || LOCAL_DB_NAME, dbVersion || DB_VERSION)
+        const req = indexedDB.open(dbName || DB_NAME, dbVersion || DB_VERSION)
         req.onsuccess = () => rs(req.result)
         req.onerror = () => {
-            writeLog(req.error)
+            console.error(req.error)
             return rj(req.error)
         }
         // Note: setupStore handles the onupgradeneeded logic
-        return [dbName || LOCAL_DB_NAME, dbVersion || DB_VERSION]
+        return [dbName || DB_NAME, dbVersion || DB_VERSION]
     })
 }
 
 async function deleteOldDatabase(dbName = null) {
     return new Promise((rs) => {
-        const req = indexedDB.deleteDatabase(dbName || LOCAL_DB_NAME)
+        const req = indexedDB.deleteDatabase(dbName || DB_NAME)
         req.onsuccess = () => rs(true)
         req.onerror = () => rs(false) // Silent fail is usually fine for cleanup
         req.onblocked = () => rs(true)
@@ -48,15 +47,15 @@ async function getDatabaseMetadata() {
         return []
     }
     const dbs = await indexedDB.databases()
-    // skip the offline database
-    return dbs.filter(db => db.name != DB_NAME)
+    // DO NOT skip the offline database
+    return dbs //.filter(db => db.name != DB_NAME)
         .map(db => ({ key: db.name || '', value: db.version || 0 }))
 }
 
 
 async function needsInstall(dbName, expectedStores) {
     return new Promise((resolve) => {
-        const request = indexedDB.open(dbName || LOCAL_DB_NAME, DB_VERSION)
+        const request = indexedDB.open(dbName || DB_NAME, DB_VERSION)
 
         request.onsuccess = (event) => {
             const db = event.target.result
@@ -76,8 +75,8 @@ async function needsInstall(dbName, expectedStores) {
 
         request.onerror = () => {
             // If we can't even open it, mark as corrupted
-            writeLog(request.error)
-            return resolve({ item1: dbName || LOCAL_DB_NAME, item2: DB_VERSION, item3: true, item4: expectedStores.map(s => s.key) })
+            console.error(request.error)
+            return resolve({ item1: dbName || DB_NAME, item2: DB_VERSION, item3: true, item4: expectedStores.map(s => s.key) })
         }
     })
 }
@@ -92,7 +91,7 @@ async function setupDatabase(dbName, stores) {
         throw new Error('how the fuck does this even happen?')
     }
     return new Promise((rs, rj) => {
-        const request = indexedDB.open(dbName || LOCAL_DB_NAME, DB_VERSION)
+        const request = indexedDB.open(dbName || DB_NAME, DB_VERSION)
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result
@@ -131,7 +130,7 @@ async function setupDatabase(dbName, stores) {
         }
         request.onsuccess = () => rs({ item1: created, item2: error ? ('' + error) : (created ? "upgraded" : "finished") })
         request.onerror = () => {
-            writeLog(request.error)
+            console.error(request.error)
             return rj(request.error)
         }
         request.onblocked = () => rj("Database upgrade blocked. Close other tabs.")
@@ -145,15 +144,18 @@ async function putRecordInternal(storeName, record, dbName = null) {
     const newRecord = {
         timestamp: record.timestamp,
         mode: record.mode,
-        contents: (record.contents = FS.virtual[record.path]?.contents || record.contents?.slice(0)),
+        contents: typeof FS !== 'undefined' ? (record.contents = FS.virtual[record.path]?.contents || record.contents?.slice(0)) : record.contents?.slice(0),
         path: record.path,
         sha: record.sha,
         parent: record.parent
     }
 
-
+    if (newRecord.path.includes('//')) {
+        console.error('LEARN HOW TO FUCKING PROGRAM: ' + newRecord.path);
+        debugger;
+    }
     if (!newRecord.path
-            || newRecord.path === 'assets'
+        || newRecord.path === 'assets'
         //    || newRecord.path.includes('.qvm')
     ) {
         debugger
@@ -167,7 +169,7 @@ async function putRecordInternal(storeName, record, dbName = null) {
         const req = store.put(newRecord)
         tx.oncomplete = function () { rs(req.result) }
         req.onerror = () => {
-            writeLog(req.error)
+            console.error(req.error)
             return rj(req.error)
         }
         tx.commit();
@@ -255,7 +257,7 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
         // FIXED: If an immediate write pass cleared or replaced this tracking slot
         // while this callback was queued in the event loop, exit immediately.
         if (!currentExecutionState) {
-            writeLog(`Callback for ${path} was superseded or cleared before execution.`);
+            console.warn(`Callback for ${path} was superseded or cleared before execution.`);
             return;
         }
 
@@ -374,11 +376,11 @@ async function queryIndexInternal(storeName, indexName, exactIndex = null, lower
             req = store.getAll(range)
         }
         req.onsuccess = () => {
-            //writeLog(req.result)
+            //console.log(req.result)
             return rs(req.result)
         }
         req.onerror = () => {
-            writeLog(req.error)
+            console.error(req.error)
             return rj(req.error)
         }
     })
@@ -394,7 +396,7 @@ async function deleteRecord(storeName, key, dbName = null) {
         const req = store.delete(key)
         tx.oncomplete = function () { rs(true) }
         req.onerror = () => {
-            writeLog(req.error)
+            console.error(req.error)
             return rj(req.error)
         }
         tx.commit()

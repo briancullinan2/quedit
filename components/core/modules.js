@@ -65,7 +65,7 @@ const DependencyLoader = {
             };
 
 
-            if(existingTheme)
+            if (existingTheme)
                 document.head.insertBefore(link, existingTheme)
             else
                 document.head.appendChild(link);
@@ -113,3 +113,104 @@ async function compileProject() {
     await DependencyLoader.loadModule('build');
     // Safe to invoke internal logic from make.js / make-qvm.js
 }
+
+
+
+async function manageServiceWorker() {
+
+    if (!('serviceWorker' in navigator)) return;
+
+    // 1. Get the Server's Truth first (our Token/Version)
+    let serverUpdate = null;
+    try {
+        serverUpdate = await getBranchVersion('briancullinan2', 'quedit', 'main')
+    } catch (e) {
+        console.warn("Could not reach server for version check. Proceeding with caution.");
+    }
+
+    const registration = await navigator.serviceWorker.getRegistration();
+
+    if (registration && registration.active) {
+        let swVersion = null;
+        let isCheckDone = false;
+        const messageChannel = new MessageChannel();
+
+        messageChannel.port1.onmessage = (event) => {
+            if (event.data?.type === 'VERSION_REPORT') {
+                isCheckDone = true;
+                try {
+                    if (event.data.version)
+                        swVersion = JSON.parse(new TextDecoder('utf-8').decode(event.data.version))[1];
+                }
+                catch (e) { }
+            }
+        };
+
+        // Ping the worker
+        registration.active.postMessage({ type: 'GET_VERSION', github_token: SettingsManager.get('core', 'githubToken') }, [messageChannel.port2]);
+
+        // 2. The "Dumb" Poll: Wait for response or 10s timeout
+        const startTime = Date.now();
+        await new Promise(resolve => {
+            const checkInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                if (isCheckDone || elapsed > 10000) {
+                    clearInterval(checkInterval);
+                    if (elapsed > 10000) console.warn("SW version check timed out.");
+                    resolve();
+                }
+            }, 100); // Check every 100ms
+        });
+
+        // 3. Compare and Nuke if mismatched
+        // We only unregister if we successfully got both versions and they differ
+        if (serverUpdate && swVersion && serverUpdate !== swVersion) {
+            console.warn(`Version Mismatch! Server: ${serverUpdate}, SW: ${swVersion}. Unregistering...`);
+
+            let isDeregistered = false;
+
+            const messageChannel2 = new MessageChannel();
+            messageChannel2.port1.onmessage = (event) => {
+                if (event.data?.type === 'DEREGISTERED') {
+
+                    isDeregistered = true;
+                }
+            };
+
+            // Ping the worker
+            const registration2 = await navigator.serviceWorker.getRegistration();
+            registration2.active.postMessage({ type: 'DEREGISTER' }, [messageChannel2.port2]);
+
+
+            // 2. The "Dumb" Poll: Wait for response or 10s timeout
+            const startTime = Date.now();
+            await new Promise(resolve => {
+                const checkInterval = setInterval(() => {
+                    const elapsed = Date.now() - startTime;
+                    if (isDeregistered || elapsed > 10000) {
+                        clearInterval(checkInterval);
+                        if (elapsed > 10000) console.warn("SW deregister timed out.");
+                        resolve();
+                    }
+                }, 100); // Check every 100ms
+            });
+        }
+    }
+
+    if (!serverUpdate
+        || (registration && registration.active)) {
+        return; // don't register unless we have a valid version from server
+    }
+
+
+    const swUrl = '/service-worker.js?t=' + Date.now();
+    navigator.serviceWorker.register(swUrl)
+        .then(reg => {
+            console.info('Service Worker registered successfully:', reg.scope);
+        })
+        .catch(err => {
+            console.error('Service Worker registration failed:', err);
+        });
+}
+
+

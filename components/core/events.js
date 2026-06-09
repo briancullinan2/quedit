@@ -1,5 +1,64 @@
 
 
+const IMPORT_MODULES = {
+    core: {
+        css: IMPORT_CSS['core'],
+        js: IMPORT_JS['core'],
+        onLoad: onLoadCore
+    },
+
+    terminal: {
+        panelId: 'terminal-container',
+        css: IMPORT_CSS['terminal'],
+        js: IMPORT_JS['terminal'],
+        onLoad: onLoadTerminal,
+        onUnload: onUnloadTerminal
+    },
+
+    editor: {
+        panelId: 'editor',
+        js: IMPORT_JS['editor'],
+        // Dynamic SHA tracking for modifications
+        onLoad: onLoadEditor,
+        hasChanges: hasChangedEditor
+    },
+
+    build: {
+        js: IMPORT_JS['build'],
+        hasChanges: hasChangesBuilder
+    },
+
+    quake3e: {
+        panelId: 'viewport-frame',
+        js: IMPORT_JS['quake3e'],
+        onLoad: onLoadEngine
+    },
+
+    toji: {
+        panelId: 'viewport-frame',
+        js: IMPORT_JS['toji'],
+        onLoad: onLoadToji
+    },
+
+    paint: {
+        panelId: 'paint-container',
+        css: IMPORT_CSS['paint'],
+        js: IMPORT_JS['paint'],
+        onLoad: onLoadPaint,
+        hasChanges: hasChangesPaint
+    },
+
+
+    nunu: {
+        panelId: 'nunu',
+        js: IMPORT_JS['nunu'],
+        css: IMPORT_CSS['nunu'],
+        onLoad: () => window.nunu.initialize()
+    },
+};
+
+
+
 async function onLoadCore() {
     isDevToolsOpen()
     await initializeFiletrees()
@@ -192,6 +251,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         await DependencyLoader.loadModule('core');
 
         SettingsManager.hydrateAll();
+
+        await manageServiceWorker()
 
         //const currentTheme = IMPORT_SETTINGS.editor.savedTheme.get
         //    ? IMPORT_SETTINGS.editor.theme.get()
