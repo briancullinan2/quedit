@@ -3,6 +3,7 @@
 const api = {
     github_token: null
 }
+const ERROR_PREAMBLE = '\x1b[38;5;196m[ERROR]\x1b[0m ';       // Intense Crimson Red
 const GITHUB_PREAMBLE = '\x1b[38;5;27m[GITHUB]\x1b[0m ';      // Deep Brand Blue
 
 console.log('🔴 [SW-TRACE] Initial script execution block started.');
@@ -71,23 +72,25 @@ const FS_FILE = (ST_FILE << 12) + FS_DEFAULT;
 const FS_DIR = (ST_DIR << 12) + FS_DEFAULT;
 
 
+// Global in-memory cache to prevent concurrent mkdirp race conditions
+const createdDirectories = new Set();
 
 async function mkdirp(path) {
-
-    console.log(`📂 [SW-FS] mkdirp invoked for path: "${path}"`);
-
-    // Split and filter out empty segments to prevent unintended double slashes
     let segments = path.split(/\/|\\/gi).filter(Boolean);
-    console.log(`📂 [SW-FS] Path segments isolated for calculation:`, segments);
 
-    // Loop through segments to build the directory tree sequentially
+    // Build the path layers sequentially
     for (let i = 1; i <= segments.length; i++) {
-        let dir = '/' + segments.slice(0, i).join('/');
-        console.log(`📂 [SW-FS] Making structural directory layer: "${dir}"`);
+        const dir = '/' + segments.slice(0, i).join('/');
 
-        // Safely extract the parent directory path
-        let lastSlashIndex = dir.lastIndexOf('/');
-        let parentDir = lastSlashIndex === 0 ? '/' : dir.substring(0, lastSlashIndex);
+        // If this directory layer was already created in this lifecycle loop, skip it entirely!
+        if (createdDirectories.has(dir)) {
+            continue;
+        }
+
+        const lastSlashIndex = dir.lastIndexOf('/');
+        const parentDir = lastSlashIndex === 0 ? '/' : dir.substring(0, lastSlashIndex);
+
+        console.log(`📂 [SW-FS] Safely writing isolated directory block: "${dir}"`);
 
         try {
             await putRecord(DB_STORE_NAME, {
@@ -96,18 +99,19 @@ async function mkdirp(path) {
                 mode: FS_DIR,
                 parent: parentDir
             }, DB_NAME);
-            console.log(`✅ [SW-FS] Directory committed to IndexedDB: "${dir}"`);
+
+            // Mark it as safely committed to avoid parallel thrashing
+            createdDirectories.add(dir);
         } catch (dbErr) {
             console.error(`❌ [SW-DATABASE] mkdirp failed to store record for "${dir}":`, dbErr);
         }
     }
 }
 
-
 function getHeaders(response) {
     const newHeaders = new Headers(response?.headers);
     newHeaders.set('X-Service-Worker-Handled', 'true');
-    newHeaders.set('Content-Security-Policy', "script-src 'self' 'unsafe-eval'; worker-src 'self' blob:;");
+    newHeaders.set('Content-Security-Policy', "script-src 'self' 'unsafe-eval' 'sha256-iN7wpJdxHlpujRppkOA8N0+Mzp0ZqZr3lCtxM00Y63c='; worker-src 'self' blob:;");
     newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
     newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
     return newHeaders
@@ -232,10 +236,6 @@ async function installAssets() {
         console.error('❌ [SW-DATABASE] Database lookup/instantiation failure loop caught:', dbSetupErr);
     }
 
-    console.log('⚙️ [SW-INSTALL] Compiling module path strings from global IMPORT arrays...');
-    const uniqueAssets = [
-        ...new Set([...Object.values(IMPORT_CSS).flatMap(o => o), ...Object.values(IMPORT_JS).flatMap(o => o)])
-    ];
     console.log(`⚙️ [SW-INSTALL] Deduplication complete. Found ${uniqueAssets.length} total base assets to evaluate.`);
 
     const assets = uniqueAssets
@@ -359,6 +359,12 @@ let localVersion = null;
 let needsRefresh = false;
 
 async function checkStatus() {
+    if (!navigator.onLine) {
+        console.log(`⏱️ [SW-HEARTBEAT] Browser context reports completely OFFLINE. Aborting live API updates check.`);
+        isOffline = true;
+        return;
+    }
+
     const now = Date.now();
     if (now - lastConnectivityCheck < 10000) {
         console.log(`⏱️ [SW-HEARTBEAT] Suppressing status execution check. Last check occurred less than 10000ms ago.`);
@@ -509,33 +515,57 @@ function manufactureRefreshResponse() {
     });
 }
 
-self.addEventListener('fetch', event => {
-    // We immediately drop out logs for heavy graphics asset polling to avoid spamming 
-    // the console with binary chunks when the engine is active
-    const isAssetQuery = event.request.url.includes('/components/paint/') || event.request.url.includes('/components/map-editor/');
 
+
+console.log('⚙️ [SW-INSTALL] Compiling module path strings from global IMPORT arrays...');
+const uniqueAssets = [
+    'index.html',
+    '/components/core/extensions.js',
+    '/components/core/events.js',
+    '/components/core/modules.js',
+    '/components/theme/boxicons.ttf',
+    '/components/theme/boxicons.woff',
+    '/components/theme/boxicons.woff2',
+    ...new Set([
+        ...Object.values(IMPORT_CSS).flatMap(o => o),
+        ...Object.values(IMPORT_JS).flatMap(o => o)
+    ])
+].map(path => path.replace(/^\/?assets\/|^\//ig, '')); // Normalize paths to omit leading slashes\
+
+
+self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
+
+    const isAssetQuery = event.request.url.includes('/components/paint/') || event.request.url.includes('/components/map-editor/');
 
     if (!isOffline && event.request.url.includes('version.json')) {
         console.log('⚡ [SW-FETCH] Route is "version.json" and engine is ONLINE. Bypassing worker completely. Handing off to network.');
         return;
     }
 
-    let url = stripIgnoredUrlParameters(event.request.url, ignoreUrlParametersMatching);
-    const isNavigation = event.request.mode === 'navigate';
-    let assetUrl = assetLookup != null ? assetLookup.get(url) : null;
+    // 2. Convert absolute browser URLs into relative path keys
+    // e.g., "http://localhost:8080/components/core/local.js" -> "components/core/local.js"
+    const requestUrlObj = new URL(event.request.url);
+    let relativePath = requestUrlObj.pathname.replace(/^\//, ''); // Strip leading slash
 
-    if (!assetUrl && isNavigation) {
-        if (!isAssetQuery) console.log(`⚡ [SW-FETCH] Intercepted navigation route layout ("${url}"). Defaulting routing target to "index.html".`);
+    const isNavigation = event.request.mode === 'navigate';
+    let assetUrl = null;
+
+    // 3. Evaluate if this file belongs to our explicit VFS Manifest
+    if (uniqueAssets.includes(relativePath)) {
+        assetUrl = relativePath;
+    } else if (isNavigation) {
+        if (!isAssetQuery) console.log(`⚡ [SW-FETCH] Intercepted navigation route layout ("${event.request.url}"). Defaulting routing target to "index.html".`);
         assetUrl = 'index.html';
     }
 
+    // If it's not a framework asset we care about, skip processing entirely and pass to normal network
     if (!assetUrl) {
-        // Fallthrough route
         return;
     }
 
-    assetUrl = assetUrl.replace(/^\/?assets\/|^\//ig, '')
+    // Normalize target variable structure safely
+    assetUrl = assetUrl.replace(/^\/?assets\/|^\//ig, '');
     const localName = '/base' + (assetUrl.startsWith('/') ? '' : '/') + assetUrl;
     const contentType = getMimeType(assetUrl);
 
@@ -547,10 +577,10 @@ self.addEventListener('fetch', event => {
         if (!isAssetQuery) console.log(`⚡ [SW-FETCH-ASYNC] Running execution worker lifecycle block wrapper for target asset: "${assetUrl}"`);
 
         // 1. Run the heartbeat check
-        await checkStatus();
+        checkStatus();
 
         // 2. Network Check First Strategy
-        if (assetUrl && !isOffline) {
+        if (!isOffline) {
             try {
                 if (!isAssetQuery) console.log(`🌐 [SW-FETCH-NET] Attempting primary network acquisition route pipeline for asset: "${assetUrl}"`);
                 const response = await fetchAsset(event.request, assetUrl);
@@ -564,27 +594,25 @@ self.addEventListener('fetch', event => {
         }
 
         // 3. Fallback: Local VFS DB retrieval
-        if (assetUrl) {
-            try {
-                if (!isAssetQuery) console.log(`💾 [SW-FETCH-STORE] Attempting VFS database block read for key name: "${localName}"`);
-                const files = await getRecord(DB_STORE_NAME, localName, DB_NAME);
+        try {
+            if (!isAssetQuery) console.log(`💾 [SW-FETCH-STORE] Attempting VFS database block read for key name: "${localName}"`);
+            const files = await getRecord(DB_STORE_NAME, localName, DB_NAME);
 
-                if (files && files.contents) {
-                    if (!isAssetQuery) console.log(`✨ [SW-FETCH-STORE] VFS Cache match found! Compiling local response frame wrapper for: "${localName}" [MIME: ${contentType}]`);
-                    const newHeaders = getHeaders();
-                    newHeaders.set('Content-Type', contentType);
+            if (files && files.contents) {
+                if (!isAssetQuery) console.log(`✨ [SW-FETCH-STORE] VFS Cache match found! Compiling local response frame wrapper for: "${localName}" [MIME: ${contentType}]`);
+                const newHeaders = getHeaders();
+                newHeaders.set('Content-Type', contentType);
 
-                    return new Response(files.contents, {
-                        status: 200,
-                        statusText: 'OK',
-                        headers: newHeaders
-                    });
-                } else {
-                    if (!isAssetQuery) console.warn(`⚠️ [SW-FETCH-STORE] Database lookup returned empty body or missing index reference pointer for: "${localName}"`);
-                }
-            } catch (dbReadErr) {
-                console.error(`❌ [SW-FETCH-STORE] VFS IndexedDB reader wrapper crash occurred for key "${localName}":`, dbReadErr);
+                return new Response(files.contents, {
+                    status: 200,
+                    statusText: 'OK',
+                    headers: newHeaders
+                });
+            } else {
+                if (!isAssetQuery) console.warn(`⚠️ [SW-FETCH-STORE] Database lookup returned empty body or missing index reference pointer for: "${localName}"`);
             }
+        } catch (dbReadErr) {
+            console.error(`❌ [SW-FETCH-STORE] VFS IndexedDB reader wrapper crash occurred for key "${localName}":`, dbReadErr);
         }
 
         // 4. Absolute Final Emergency Fallback
@@ -599,6 +627,9 @@ function getMimeType(url) {
     if (url.endsWith('.json')) return 'application/json';
     if (url.endsWith('.html')) return 'text/html';
     if (url.endsWith('.css')) return 'text/css';
+    if (url.endsWith('.ttf')) return 'font/ttf';
+    if (url.endsWith('.woff')) return 'font/woff';
+    if (url.endsWith('.woff2')) return 'font/woff2';
     return 'application/octet-stream';
 }
 

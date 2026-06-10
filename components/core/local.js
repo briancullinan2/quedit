@@ -204,95 +204,110 @@ async function queryIndex(storeName, indexName, exactIndex = null, lower = null,
 }
 
 
-
 function debounceRecords(storeName, indexName, record, lower, upper, dbName, MODE = 'get', noBounce = false) {
-    const path = record.path;
-    const parts = dbName.split('/')
-    const ownerName = parts.length == 2 ? parts[0] : owner.value
-    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
+    const path = typeof record === 'string' ? record : record?.path || '';
+    const parts = dbName.split('/');
+    const ownerName = parts.length === 2 ? parts[0] : (typeof owner !== 'undefined' ? owner.value : '');
+    const repoName = parts.length === 2 ? parts[1] : (parts[0] || (typeof repository !== 'undefined' ? repository.value : ''));
 
-    // 1. If bypass flag is explicit, execute immediate persistence pass
+    // 1. Generate a comprehensive unique composite signature key out of all input arguments
+    // This isolates variations in stores, indices, query ranges, and databases entirely.
+    const compositeArgs = {
+        storeName,
+        indexName,
+        path,
+        lower: lower ?? null,
+        upper: upper ?? null,
+        dbName
+    };
+    const registryKey = JSON.stringify(compositeArgs);
+
+    // 2. If bypass flag is explicit, execute immediate persistence pass
     if (noBounce) {
-        // Clear any existing delayed writes for this path immediately
-        if (getBounceRegistry[MODE][path]) {
-            clearTimeout(getBounceRegistry[MODE][path].timer);
-            getBounceRegistry[MODE][path].reject(new Error("Superseded by immediate write"));
-            delete getBounceRegistry[MODE][path];
+        if (getBounceRegistry[MODE][registryKey]) {
+            clearTimeout(getBounceRegistry[MODE][registryKey].timer);
+            getBounceRegistry[MODE][registryKey].reject(new Error("Superseded by immediate write"));
+            delete getBounceRegistry[MODE][registryKey];
         }
+
         if (MODE === 'get')
             return getRecordInternal(storeName, record, dbName);
         else if (MODE === 'put')
             return putRecordInternal(storeName, record, dbName);
         else if (MODE === 'query')
-            return queryIndexInternal(storeName, record, dbName);
+            return queryIndexInternal(storeName, indexName, record, lower, upper, dbName); // Fixed typo: passed indexName
         else if (MODE === 'cache')
             return cacheFileInternal(ownerName, repoName, record, lower, upper, dbName);
         else
-            throw new Error('MODE not recognized in debounceRecords: ' + MODE)
+            throw new Error('MODE not recognized in debounceRecords: ' + MODE);
     }
 
-    // 2. If a delayed synchronization operation is already pending, reset its countdown clock
-    if (getBounceRegistry[MODE][path]) {
-        clearTimeout(getBounceRegistry[MODE][path].timer);
+    // 3. If a delayed operation with matching signature exists, reset clock AND update references
+    if (getBounceRegistry[MODE][registryKey]) {
+        clearTimeout(getBounceRegistry[MODE][registryKey].timer);
+
+        // CRITICAL FIX: Refresh execution parameters in storage to defeat closure scope stalling!
+        getBounceRegistry[MODE][registryKey].latestArgs = { storeName, indexName, record, lower, upper, dbName, ownerName, repoName };
     } else {
-        // Otherwise, instantiate a fresh, long-lived promise handle for the layout worker pipeline
-        getBounceRegistry[MODE][path] = {
+        // Instantiate a fresh tracking token structural block
+        getBounceRegistry[MODE][registryKey] = {
             promise: null,
             resolve: null,
             reject: null,
-            timer: null
+            timer: null,
+            latestArgs: { storeName, indexName, record, lower, upper, dbName, ownerName, repoName }
         };
 
-        getBounceRegistry[MODE][path].promise = new Promise((res, rej) => {
-            getBounceRegistry[MODE][path].resolve = res;
-            getBounceRegistry[MODE][path].reject = rej;
+        getBounceRegistry[MODE][registryKey].promise = new Promise((res, rej) => {
+            getBounceRegistry[MODE][registryKey].resolve = res;
+            getBounceRegistry[MODE][registryKey].reject = rej;
         });
     }
 
-    // 3. Queue up the snapshot write capture pass
-    getBounceRegistry[MODE][path].timer = setTimeout(async () => {
-        // Grab a snapshot of the current state reference registry handle
-        const currentExecutionState = getBounceRegistry[MODE][path];
+    // 4. Queue up execution pass mapped directly to the composite signature entry
+    getBounceRegistry[MODE][registryKey].timer = setTimeout(async () => {
+        const currentExecutionState = getBounceRegistry[MODE][registryKey];
 
-        // FIXED: If an immediate write pass cleared or replaced this tracking slot
-        // while this callback was queued in the event loop, exit immediately.
         if (!currentExecutionState) {
-            console.warn(`Callback for ${path} was superseded or cleared before execution.`);
+            console.warn(`Callback for key structure was superseded or cleared before execution.`);
             return;
         }
+
+        // Destructure the fresh updated configuration parameter variables safely out of state tracking
+        const {
+            storeName: sName, indexName: iName, record: rec,
+            lower: low, upper: up, dbName: dName,
+            ownerName: oName, repoName: rName
+        } = currentExecutionState.latestArgs;
 
         try {
             let result;
             if (MODE === 'get')
-                result = await getRecordInternal(storeName, record, dbName);
+                result = await getRecordInternal(sName, rec, dName);
             else if (MODE === 'put')
-                result = await putRecordInternal(storeName, record, dbName);
+                result = await putRecordInternal(sName, rec, dName);
             else if (MODE === 'query')
-                result = await queryIndexInternal(storeName, indexName, record, lower, upper, dbName);
+                result = await queryIndexInternal(sName, iName, rec, low, up, dName);
             else if (MODE === 'cache')
-                result = await cacheFileInternal(ownerName, repoName, record, lower, upper, dbName);
+                result = await cacheFileInternal(oName, rName, rec, low, up, dName);
             else
-                throw new Error('MODE not recognized in debounceRecords: ' + MODE)
+                throw new Error('MODE not recognized in debounceRecords: ' + MODE);
 
-            // Resolve the long-running promise pipeline safely
             currentExecutionState.resolve(result);
         } catch (err) {
-            // Check if it hasn't been rejected already by a superseded execution frame
             if (currentExecutionState && typeof currentExecutionState.reject === 'function') {
                 currentExecutionState.reject(err);
             }
         } finally {
-            // Garbage collect tracking tokens smoothly if no active overwrites clobbered this block
-            if (getBounceRegistry[MODE] && getBounceRegistry[MODE][path] === currentExecutionState) {
-                delete getBounceRegistry[MODE][path];
+            // Safe garbage collection loop execution pass 
+            if (getBounceRegistry[MODE] && getBounceRegistry[MODE][registryKey] === currentExecutionState) {
+                delete getBounceRegistry[MODE][registryKey];
             }
         }
     }, DB_DEBOUNCE_INTERVAL);
 
-    // Return the stable single tracking promise handler back up the execution chain
-    return getBounceRegistry[MODE][path].promise;
+    return getBounceRegistry[MODE][registryKey].promise;
 }
-
 
 
 async function getRecordInternal(storeName, key, dbName = null) {

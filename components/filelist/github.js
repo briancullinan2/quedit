@@ -51,7 +51,7 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
         } else if (up.message === 'UNAUTHORIZED_ACCESS') {
         }
         PREAMBLE = ERROR_PREAMBLE
-        writeLog("Failed to github: " + fullUrl, up);
+        console.error("Failed to github: " + fullUrl, up);
         throw up
     }
 
@@ -418,7 +418,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
         }
         if (files[selected][filePath] && FS.virtual[filePath]) {
             if (FS.virtual[filePath].timestamp > files[selected][filePath].timestamp) {
-                writeLog(`Skipping changed (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+                console.info(`Skipping changed (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
                 return FS.virtual[filePath].contents
             }
             //FS.virtual[filePath].timestamp = files[selected][filePath].timestamp
@@ -428,18 +428,18 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
             if (typeof api !== 'undefined' && api.memfs && FS.virtual[filePath] && !api.memfs.exists(filePath))
                 api.memfs.addFile(filePath, FS.virtual[filePath].contents)
         } catch (e) {
-            writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
+            console.error(`${e.message}\n\r${e.stack || e.stacktrace}`)
         }
 
         if (filePath.includes('tmp/')
             || filePath.includes(dirs.ENGINE_RELEASE)
             || filePath.includes(dirs.ENGINE_DEBUG)) {
             if (FS.virtual[filePath]) {
-                writeLog(`Already compiled (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+                console.info(`Already compiled (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
                 return FS.virtual[filePath].contents
             }
             else {
-                writeLog(`Skipping output (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+                console.info(`Skipping output (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
                 return null
             }
         }
@@ -455,22 +455,22 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
                 debugger
                 console.error('No you fucking dont: ' + filePath)
             }
-            writeLog(`Already have cached (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+            console.info(`Already have cached (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
             return FS.virtual[filePath].contents
         }
 
         if (!shouldDownload) {
-            writeLog(`Skipping unimportant (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+            console.info(`Skipping unimportant (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
             return null
         }
 
 
         // TODO: use this to indicate whether we should update against file change time
         if (!forceReload && FS.virtual[filePath]) {
-            writeLog(`Skipping important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+            console.info(`Skipping important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
             return FS.virtual[filePath].contents
         } else {
-            writeLog(`Downloading important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+            console.info(`Downloading important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
         }
 
 
@@ -510,16 +510,16 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
                 api.memfs.addFile(filePath, bytes)
 
         } catch (e) {
-            writeLog(`Memfs Error: ${e.message}\n\r${e.stack || e.stacktrace}`)
+            console.warn(`Memfs Error: ${e.message}\n\r${e.stack || e.stacktrace}`)
         }
 
-        writeLog(`Downloaded fresh (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
+        console.info(`Downloaded fresh (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`)
 
         return bytes
     } catch (e) {
-        writeLog(`Cache file error in ${filePath}`)
+        console.error(`Cache file error in ${filePath}`)
         if (!e.message.includes('HTTP_ERROR:')) {
-            writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
+            console.error(`${e.message}\n\r${e.stack || e.stacktrace}`)
         }
 
         if (files[selected][filePath])
@@ -539,7 +539,7 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
     PREAMBLE = FETCH_PREAMBLE
 
     try {
-        writeLog(`Requesting archive from ${owner}/${repo}...`);
+        console.info(`Requesting archive from ${owner}/${repo}...`);
 
         const buffer = await githubRequest(owner, repo, `zipball/${branch}`, true, true);
         const zipPath = path.join(config.MOUNT_DIR, 'branch.zip');
@@ -552,7 +552,7 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
             parent: zipPath.substring(0, zipPath.lastIndexOf('/'))
         };
         putRecord(DB_STORE_NAME, FS.virtual[zipPath], database)
-        writeLog(`Downloaded ${buffer.byteLength} bytes. Processing...`);
+        console.info(`Downloaded ${buffer.byteLength} bytes. Processing...`);
 
         // Use JSZip to hydrate FS.virtual
         const zip = new JSZip();
@@ -582,11 +582,11 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null) 
         });
 
         await Promise.all(unzipPromises);
-        writeLog("Repository successfully mounted to virtual FS.");
+        console.info("Repository successfully mounted to virtual FS.");
 
     } catch (err) {
         PREAMBLE = ERROR_PREAMBLE
-        writeLog(`Failed to download repo: ${err.message}`);
+        console.error(`Failed to download repo: ${err.message}`);
     }
 }
 
@@ -597,18 +597,18 @@ async function listReleases(owner, repo) {
 
 
         releases.forEach(release => {
-            writeLog(`Release: ${release.name} (${release.tag_name})`);
+            console.info(`Release: ${release.name} (${release.tag_name})`);
 
             // If you want the assets (like your compiled zip)
             release.assets.forEach(asset => {
-                writeLog(` - Asset: ${asset.name} | URL: ${asset.browser_download_url}`);
+                console.info(` - Asset: ${asset.name} | URL: ${asset.browser_download_url}`);
             });
         });
 
         return releases;
     } catch (err) {
         PREAMBLE = ERROR_PREAMBLE
-        writeLog("Failed to list releases: " + err);
+        console.error("Failed to list releases: " + err);
     }
 }
 
@@ -634,13 +634,13 @@ async function getAuthenticatedUser() {
         }
 
         const userData = await response.json();
-        writeLog(`Authenticated as: ${userData.login}`);
+        console.info(`Authenticated as: ${userData.login}`);
 
         // You can now use userData.avatar_url, userData.name, etc.
         return userData;
     } catch (err) {
         PREAMBLE = ERROR_PREAMBLE
-        writeLog("Failed to fetch user data: " + err);
+        console.error("Failed to fetch user data: " + err);
     }
 }
 

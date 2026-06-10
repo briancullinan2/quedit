@@ -48,7 +48,7 @@ const IMPORT_JS = {
         //'/shared.js', trying to do without this? need to run build
         '/components/core/local.js',
         '/components/filelist/search.js',
-        '/components/filelist/iso-git.min.js',
+        //'/components/filelist/iso-git.min.js',
         '/components/filelist/sys_fsgit.js',
         '/components/engine/sys_fs.js', // Core shared filesystem bridge
         '/components/filelist/tree.js',
