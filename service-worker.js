@@ -117,7 +117,8 @@ function getHeaders(response) {
     return newHeaders
 }
 
-async function fetchAsset(urlInput, key) {
+async function fetchAsset(urlInput, key, selected) {
+    selected ||= api.environmentRepository
 
     if (!urlInput) {
         debugger;
@@ -189,14 +190,17 @@ async function fetchAsset(urlInput, key) {
             debugger;
             console.error("WHAT THE FUCK IS WRONG WITH YOU? " + key);
         }
-        await putRecord(DB_STORE_NAME, {
-            path: localKey,
-            timestamp: new Date(),
-            mode: FS_FILE,
-            contents: new Uint8Array(content),
-            parent: dirPath
-        }, api.environmentRepository);
-        console.log(`✅ [SW-DATABASE] Successfully wrote "${localKey}" to local storage block.`);
+        const isGithubContents = urlString.includes('api.github.com') && urlString.includes('/contents/')
+        if (!isGithubContents) {
+            await putRecord(DB_STORE_NAME, {
+                path: localKey,
+                timestamp: new Date(),
+                mode: FS_FILE,
+                contents: new Uint8Array(content),
+                parent: dirPath
+            }, selected);
+            console.log(`✅ [SW-DATABASE] Successfully wrote "${localKey}" to local storage block.`);
+        }
 
         isOffline = false;
 
@@ -286,7 +290,7 @@ async function installAssets() {
 
         try {
             console.log(`📥 [SW-INSTALL] Cache miss or empty binary payload. Triggering download request routing for: "${asset}"`);
-            return await fetchAsset(asset, localName).catch(e => {
+            return await fetchAsset(asset, localName, api.environmentRepository).catch(e => {
                 console.error(`❌ [SW-INSTALL] Target download execution block failed for asset "${asset}":`, e);
                 console.warn("Offline asset failed: " + asset);
             });
@@ -615,20 +619,39 @@ self.addEventListener('fetch', event => {
     // 2. Convert absolute browser URLs into relative path keys
     // e.g., "http://localhost:8080/components/core/local.js" -> "components/core/local.js"
     const requestUrlObj = new URL(event.request.url);
-    let relativePath = requestUrlObj.pathname.replace(/^\//, ''); // Strip leading slash
+    const relativePath = requestUrlObj.pathname.replace(/^\//, ''); // Strip leading slash
 
     const isNavigation = event.request.mode === 'navigate';
     let assetUrl = null;
+    let selected = api.environmentRepository
+    let isGithubContents = false
 
     // 3. Evaluate if this file belongs to our explicit VFS Manifest
-    if (uniqueAssets.includes(relativePath)) {
+    if (uniqueAssets.includes(relativePath) || isAssetQuery) {
         assetUrl = relativePath;
     } else if (isNavigation) {
         if (!isAssetQuery) console.log(`⚡ [SW-FETCH] Intercepted navigation route layout ("${event.request.url}"). Defaulting routing target to "index.html".`);
         assetUrl = 'index.html';
-    } else if (isAssetQuery) {
-        const requestUrlObj = new URL(event.request.url);
-        assetUrl = requestUrlObj.pathname
+    } else if (requestUrlObj.hostname === 'api.github.com') {
+        const gitHubMatch = requestUrlObj.pathname.match(/^\/repos\/([^\/]+)\/([^\/]+)\/?(.*)$/i);
+
+        if (gitHubMatch) {
+            const [_, owner, repo, restOfRoute] = gitHubMatch;
+
+            // Set targeted database context dynamically to the owner/repo string
+            selected = `${owner}/${repo}`;
+
+            // Normalize empty queries (like a base repository layout call) to 'index'
+            const routeKey = restOfRoute || 'index';
+
+            // Escape path characters into a clean flat sequence file key
+            const escapedRoute = routeKey.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+            assetUrl = `${escapedRoute}.json`;
+            isGithubContents = restOfRoute.startsWith('contents/')
+            if(relativePath.includes('git/trees')) {
+                debugger
+            }
+        }
     }
 
     // If it's not a framework asset we care about, skip processing entirely and pass to normal network
@@ -638,7 +661,7 @@ self.addEventListener('fetch', event => {
 
     // Normalize target variable structure safely
     assetUrl = assetUrl.replace(/^\/?assets\/|^\//ig, '');
-    const localName = '/base' + (assetUrl.startsWith('/') ? '' : '/') + assetUrl;
+    const localName = (!isGithubContents ? '/base' : '') + (assetUrl.startsWith('/') ? '' : '/') + assetUrl;
     const contentType = getMimeType(assetUrl);
 
     if (!isAssetQuery) {
@@ -655,7 +678,7 @@ self.addEventListener('fetch', event => {
         if (!isOffline) {
             try {
                 if (!isAssetQuery) console.log(`🌐 [SW-FETCH-NET] Attempting primary network acquisition route pipeline for asset: "${assetUrl}"`);
-                const response = await fetchAsset(event.request, assetUrl);
+                const response = await fetchAsset(event.request, assetUrl, selected);
                 if (response.ok) {
                     if (!isAssetQuery) console.log(`🌐 [SW-FETCH-NET] Network fetch succeeded (200/304 validation check passed) for: "${assetUrl}"`);
                     return response;
@@ -668,7 +691,7 @@ self.addEventListener('fetch', event => {
         // 3. Fallback: Local VFS DB retrieval
         try {
             if (!isAssetQuery) console.log(`💾 [SW-FETCH-STORE] Attempting VFS database block read for key name: "${localName}"`);
-            const files = await getRecord(DB_STORE_NAME, localName, api.environmentRepository);
+            const files = await getRecord(DB_STORE_NAME, localName, selected);
 
             if (files && files.contents) {
                 if (!isAssetQuery) console.log(`✨ [SW-FETCH-STORE] VFS Cache match found! Compiling local response frame wrapper for: "${localName}" [MIME: ${contentType}]`);
