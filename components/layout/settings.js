@@ -82,6 +82,11 @@ const IMPORT_SETTINGS = {
             description: 'Repository for this workspace, the entire IDE, code editor and engine runner, for editing the environment inside the workspace.',
             set: configureRepository
         },
+        environmentVersion: {
+            key: 'environment_version',
+            default: new Date(0),
+            description: 'The last commit date for the environment repository set automatically.',
+        },
         workspaceDefault: {
             key: 'workspace_default',
             default: 'editor',

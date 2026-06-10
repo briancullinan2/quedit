@@ -15,7 +15,7 @@ async function importScriptFromVFS(assetUrl) {
 
     console.log(`💾 [SW-INIT] Attempting VFS database extraction for script: "${localName}"`);
 
-    const fileRecord = await getRecord(DB_STORE_NAME, localName, DB_NAME);
+    const fileRecord = await getRecord(DB_STORE_NAME, localName, api.environmentRepository);
 
     if (!fileRecord || !fileRecord.contents) {
         throw new Error(`Script "${localName}" not found in IndexedDB VFS.`);
@@ -98,7 +98,7 @@ async function mkdirp(path) {
                 timestamp: new Date(),
                 mode: FS_DIR,
                 parent: parentDir
-            }, DB_NAME);
+            }, api.environmentRepository);
 
             // Mark it as safely committed to avoid parallel thrashing
             createdDirectories.add(dir);
@@ -117,34 +117,43 @@ function getHeaders(response) {
     return newHeaders
 }
 
+async function fetchAsset(urlInput, key) {
 
+    if (!urlInput) {
+        debugger;
+        console.error('HOW DID YOU FUCK THIS UP?');
+        throw new Error('HOW DID YOU FUCK THIS UP?');
+    }
 
-async function fetchAsset(url, key) {
-    console.log(`🌐 [SW-NET] fetchAsset initiated. URL: "${url}" | Internal Key: "${key}"`);
+    // Extract the string URL immediately, regardless of what was passed in
+    const urlString = typeof urlInput === 'string' ? urlInput : urlInput.url;
+
+    console.log(`🌐 [SW-NET] fetchAsset initiated. URL: "${urlString}" | Internal Key: "${key}"`);
     const timeoutSignal = AbortSignal.timeout(10000);
     let response;
 
     try {
-        if (typeof (url) == 'string') {
-            console.log(`🌐 [SW-NET] Launching string-type fetch request. Cache: no-store, Mode: no-cors for URL: "${url}"`);
-            response = await fetch(url, {
+        if (typeof urlInput === 'string') {
+            console.log(`🌐 [SW-NET] Launching string-type fetch request. Cache: no-store for URL: "${urlString}"`);
+            response = await fetch(urlInput, {
                 cache: 'no-store',
                 credentials: 'omit',
-                //mode: 'no-cors',
                 signal: timeoutSignal
             });
         } else {
-            console.log(`🌐 [SW-NET] Launching direct Request object pass-through fetch for URL: "${url.url || url}"`);
-            response = await fetch(url);
+            console.log(`🌐 [SW-NET] Launching direct Request object pass-through fetch for URL: "${urlString}"`);
+            // If passing a Request object, clone it if it's going to be reused or has a body
+            response = await fetch(urlInput);
         }
 
         console.log(`🌐 [SW-NET] Fetch response received for "${key}". Status: ${response.status} (${response.statusText}) | Type: ${response.type}`);
 
-        if (response.redirected || response.type == 'opaqueredirect') {
-            if (!url.includes('index.html')) {
-                console.warn(`⚠️ [SW-WARN] Asset file was intercepted by a REDIRECT payload: ${url} -> Target: ${response.url}`);
+        if (response.redirected || response.type === 'opaqueredirect') {
+            // FIXED: Using the guaranteed string variable here
+            if (!urlString.includes('index.html')) {
+                console.warn(`⚠️ [SW-WARN] Asset file was intercepted by a REDIRECT payload: ${urlString} -> Target: ${response.url}`);
             }
-            const newHeaders = getHeaders(response)
+            const newHeaders = getHeaders(response);
             newHeaders.set('Location', response.url);
 
             console.log(`🔄 [SW-NET] Fabricating 302 redirection response bridge for "${key}"`);
@@ -169,7 +178,7 @@ async function fetchAsset(url, key) {
 
         key = key.replace(/^\/?base\/|^\/?assets\/|^\//ig, '');
         let localKey = '/base' + (key.startsWith('/') ? '' : '/') + key;
-        let dirPath = localKey.substring(0, localKey.lastIndexOf('/'))
+        let dirPath = localKey.substring(0, localKey.lastIndexOf('/'));
 
         console.log(`📂 [SW-FS] Staging VFS mapping coordinates. localKey: "${localKey}" | dirPath: "${dirPath}"`);
 
@@ -177,8 +186,8 @@ async function fetchAsset(url, key) {
 
         console.log(`💾 [SW-DATABASE] Writing payload binary content into IndexedDB Store: "${DB_STORE_NAME}" -> Target Key: "${localKey}"`);
         if (!localKey.includes('.')) {
-            debugger
-            console.error("WHAT THE FUCK IS WRONG WITH YOU? " + key)
+            debugger;
+            console.error("WHAT THE FUCK IS WRONG WITH YOU? " + key);
         }
         await putRecord(DB_STORE_NAME, {
             path: localKey,
@@ -186,7 +195,7 @@ async function fetchAsset(url, key) {
             mode: FS_FILE,
             contents: new Uint8Array(content),
             parent: dirPath
-        }, DB_NAME);
+        }, api.environmentRepository);
         console.log(`✅ [SW-DATABASE] Successfully wrote "${localKey}" to local storage block.`);
 
         isOffline = false;
@@ -215,21 +224,25 @@ async function fetchAsset(url, key) {
 }
 
 
-
 let assetLookup = null;
 
 async function installAssets() {
     console.log('⚙️ [SW-INSTALL] Executing asset installer verification.');
 
+    if (!api.environmentRepository) {
+        debugger
+        throw new Error('Learn how to code fucking dumbass.')
+    }
+
     try {
         const databases = await getDatabaseMetadata();
         console.log('⚙️ [SW-INSTALL] Extracted internal IndexedDB metadata dictionaries:', databases);
-        const shouldInstall = (await needsInstall(DB_NAME, DB_SCHEME)).item3
-        if (databases.filter(d => d.key == DB_NAME).length == 0
+        const shouldInstall = (await needsInstall(api.environmentRepository, DB_SCHEME)).item3
+        if (databases.filter(d => d.key == api.environmentRepository).length == 0
             || shouldInstall) {
-            console.warn(`⚠️ [SW-DATABASE] Target database "${DB_NAME}" missing. Initializing core database maps now.`);
-            await deleteOldDatabase(DB_NAME)
-            await setupDatabase(DB_NAME, DB_SCHEME);
+            console.warn(`⚠️ [SW-DATABASE] Target database "${api.environmentRepository}" missing. Initializing core database maps now.`);
+            await deleteOldDatabase(api.environmentRepository)
+            await setupDatabase(api.environmentRepository, DB_SCHEME);
             console.log(`✅ [SW-DATABASE] Target database infrastructure initialized cleanly.`);
         }
     } catch (dbSetupErr) {
@@ -262,7 +275,7 @@ async function installAssets() {
         console.log(`🔍 [SW-CACHE-CHECK] Checking if asset exists inside IndexedDB cache: "${localName}"`);
 
         try {
-            const files = await getRecord(DB_STORE_NAME, localName, DB_NAME);
+            const files = await getRecord(DB_STORE_NAME, localName, api.environmentRepository);
             if (files && files.contents) {
                 console.log(`✨ [SW-CACHE-HIT] Asset already mapped locally inside DB. Skipping download for: "${localName}"`);
                 return;
@@ -291,6 +304,11 @@ self.addEventListener('install', event => {
     console.info('🚀 [SW-LIFECYCLE] --- INSTALL EVENT TRIGGERED ---');
 
     event.waitUntil((async () => {
+
+        if (!localVersion || !api.environmentRepository) {
+            await lookupLocalVersion()
+        }
+
         console.log('🚀 [SW-LIFECYCLE] Install waitUntil execution promise chain starting.');
         try {
             await installAssets();
@@ -309,15 +327,19 @@ self.addEventListener('activate', event => {
     console.info('🚀 [SW-LIFECYCLE] --- ACTIVATE EVENT TRIGGERED ---');
 
     event.waitUntil((async () => {
-        console.log(`🚀 [SW-LIFECYCLE] Closing existing handle to database instance "${DB_NAME}" for clean boot state reset.`);
+
+        if (!localVersion || !api.environmentRepository) {
+            await lookupLocalVersion()
+        }
+
+        console.log(`🚀 [SW-LIFECYCLE] Closing existing handle to database instance "${api.environmentRepository}" for clean boot state reset.`);
         try {
             console.log('⚙️ [SW-ASYNC] Running scheduled installAssets post-activation validation routine.');
             await installAssets();
-            return self.clients.claim();
-        } catch (e) {
+        } catch (err) {
             console.error('❌ [SW-CRITICAL] Failure encountered during core activation block execution routine:', err);
-            return self.clients.claim(); // Fallback strategy to keep lifecycle moving forward
         }
+        return self.clients.claim(); // Fallback strategy to keep lifecycle moving forward
     })());
 });
 
@@ -374,18 +396,17 @@ async function checkStatus() {
     console.log('⏱️ [SW-HEARTBEAT] Executing connectivity status/version analysis check rules...');
 
     try {
-        if (!localVersion) {
-            console.log(`🔍 [SW-HEARTBEAT] localVersion variable empty. Attempting database index fallback restoration reading from '/base/components/core/history.css'`);
-            const versionFile = await getRecord(DB_STORE_NAME, '/base/components/core/history.css', DB_NAME);
-            localVersion = versionFile ? versionFile.timestamp : null;
-            console.log(`🔍 [SW-HEARTBEAT] Fallback lookup complete. Restored DB timestamp state:`, localVersion);
+
+        if (!localVersion || !api.environmentRepository) {
+            await lookupLocalVersion()
         }
+
     } catch (e) {
         console.error('❌ [SW-HEARTBEAT] Fallback layout file restoration retrieval operation failed:', e);
     }
 
     try {
-        const parts = DB_NAME.split('/');
+        const parts = api.environmentRepository.split('/');
         const ownerName = parts[0];
         const repoName = parts[1];
         console.log(`🌐 [SW-HEARTBEAT] Routing target parsing parameters -> Owner: "${ownerName}" | Repo: "${repoName}"`);
@@ -399,8 +420,8 @@ async function checkStatus() {
         if (localVersion && latestFileTime > localVersion) {
             console.warn('⚠️ [SW-OUT-OF-SYNC] Remote version changes detected on repository root branch! Initiating destructive workspace purge sequence.');
 
-            console.log(`🗑️ [SW-PURGE] Dropping local IndexedDB database blocks: "${DB_NAME}"`);
-            await deleteOldDatabase(DB_NAME);
+            console.log(`🗑️ [SW-PURGE] Dropping local IndexedDB database blocks: "${api.environmentRepository}"`);
+            await deleteOldDatabase(api.environmentRepository);
             console.log(`🗑️ [SW-PURGE] Database wipe finished.`);
 
             console.warn('🚀 [SW-LIFECYCLE] Executing self.registration.unregister() to purge active browser cache handlers...');
@@ -423,6 +444,57 @@ async function checkStatus() {
     }
 }
 
+async function lookupLocalVersion() {
+    const databases = await getDatabaseMetadata();
+
+    console.log(`🔍 [SW-MESSAGE] Variable placeholder empty. Fetching mapping timestamp fallback data from history.css tracking nodes...`);
+
+    let newestVersionFile = null;
+    let chosenRepo = api.environmentRepository;
+
+    // 1. Concurrently query all databases for the settings file
+    const lookups = databases.map(async (db) => {
+        try {
+            // Assuming getRecord takes a database identifier or repository reference as the 3rd argument
+            const versionFile = await getRecord(DB_STORE_NAME, '/base/settings.json', db.key || db);
+            return { versionFile, repo: db.key || db };
+        } catch (e) {
+            // Silently ignore individual database failures so one broken DB doesn't crash the loop
+            return null;
+        }
+    });
+
+    const results = await Promise.all(lookups);
+
+    // 2. Loop through the results to find the most recent copy based on timestamp
+    for (const result of results) {
+        if (!result || !result.versionFile) continue;
+
+        if (!newestVersionFile || result.versionFile.timestamp > newestVersionFile.timestamp) {
+            newestVersionFile = result.versionFile;
+            chosenRepo = result.repo || DB_NAME;
+        }
+    }
+
+    // 3. Process the newest file found (if any)
+    if (newestVersionFile) {
+        try {
+            const settings = JSON.parse(new TextDecoder().decode(newestVersionFile.contents));
+            localVersion = settings.environment_version;
+            api.environmentRepository = settings.environment_repository || chosenRepo;
+            api.github_token = settings.github_token
+        } catch (e) {
+            console.log(`⚠️ [SW-MESSAGE] Version lookup failed, using fallback: ${localVersion}`);
+            console.error(e);
+            localVersion ||= newestVersionFile.timestamp || 'unknown';
+            api.environmentRepository = chosenRepo;
+        }
+    } else {
+        console.log(`⚠️ [SW-MESSAGE] No version file found across any databases. Fallback: ${localVersion}`);
+    }
+}
+
+
 self.addEventListener('message', async (event) => {
     console.log('✉️ [SW-MESSAGE] Incoming communication frame received inside message event listener.', event.data);
 
@@ -442,12 +514,9 @@ self.addEventListener('message', async (event) => {
     }
     else if (event.data && event.data.type === 'GET_VERSION') {
         console.log('✉️ [SW-MESSAGE] Command route identified: GET_VERSION parameter data report request.');
-        api.github_token = event.data.github_token
 
-        if (!localVersion) {
-            console.log(`🔍 [SW-MESSAGE] Variable placeholder empty. Fetching mapping timestamp fallback data from history.css tracking nodes...`);
-            const versionFile = await getRecord(DB_STORE_NAME, '/base/components/core/history.css', DB_NAME);
-            localVersion = versionFile ? versionFile.timestamp : 'unknown';
+        if (!localVersion || !api.environmentRepository) {
+            await lookupLocalVersion()
         }
 
         if (event.ports && event.ports[0]) {
@@ -536,7 +605,7 @@ const uniqueAssets = [
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
-    const isAssetQuery = event.request.url.includes('/components/paint/') || event.request.url.includes('/components/map-editor/');
+    const isAssetQuery = event.request.url.includes('/components/') || event.request.url.includes('/ace/');
 
     if (!isOffline && event.request.url.includes('version.json')) {
         console.log('⚡ [SW-FETCH] Route is "version.json" and engine is ONLINE. Bypassing worker completely. Handing off to network.');
@@ -557,6 +626,9 @@ self.addEventListener('fetch', event => {
     } else if (isNavigation) {
         if (!isAssetQuery) console.log(`⚡ [SW-FETCH] Intercepted navigation route layout ("${event.request.url}"). Defaulting routing target to "index.html".`);
         assetUrl = 'index.html';
+    } else if (isAssetQuery) {
+        const requestUrlObj = new URL(event.request.url);
+        assetUrl = requestUrlObj.pathname
     }
 
     // If it's not a framework asset we care about, skip processing entirely and pass to normal network
@@ -596,7 +668,7 @@ self.addEventListener('fetch', event => {
         // 3. Fallback: Local VFS DB retrieval
         try {
             if (!isAssetQuery) console.log(`💾 [SW-FETCH-STORE] Attempting VFS database block read for key name: "${localName}"`);
-            const files = await getRecord(DB_STORE_NAME, localName, DB_NAME);
+            const files = await getRecord(DB_STORE_NAME, localName, api.environmentRepository);
 
             if (files && files.contents) {
                 if (!isAssetQuery) console.log(`✨ [SW-FETCH-STORE] VFS Cache match found! Compiling local response frame wrapper for: "${localName}" [MIME: ${contentType}]`);

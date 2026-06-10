@@ -265,6 +265,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await DependencyLoader.loadModule(userWorkspaceChoice);
 
     } catch (error) {
+        debugger
         console.error('Fatal Application Bootstrap Interruption:', error);
     }
 });

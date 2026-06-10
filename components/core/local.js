@@ -150,9 +150,10 @@ async function putRecordInternal(storeName, record, dbName = null) {
         parent: record.parent
     }
 
-    if (newRecord.path.includes('//')) {
+    if (newRecord.path.includes('//') || newRecord.path.includes('http:')) {
         console.error('LEARN HOW TO FUCKING PROGRAM: ' + newRecord.path);
         debugger;
+        throw new Error('LEARN HOW TO FUCKING PROGRAM: ' + newRecord.path)
     }
     if (!newRecord.path
         || newRecord.path === 'assets'

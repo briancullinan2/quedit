@@ -116,6 +116,40 @@ async function compileProject() {
 
 
 
+async function storeSettingsForWorker() {
+    const database = SettingsManager.get('core', 'environmentRepository')
+    const parts = database.split('/');
+    const ownerName = parts[0];
+    const repoName = parts[1];
+    try {
+        const branch = await getDefaultBranch(ownerName, repoName);
+        const latestFileTime = await getBranchVersion(ownerName, repoName, branch);
+        SettingsManager.applyValue(IMPORT_SETTINGS.core.environmentVersion, latestFileTime)
+    } catch (e) {
+        console.error(e)
+    }
+    const filePath = '/base/settings.json'
+    const content = JSON.stringify(SettingsManager.exportPayload(), null, 4)
+    const newSha = await getGitShaBrowser(content)
+    FS.virtual[filePath] = {
+        timestamp: new Date(),
+        mode: FS_FILE,
+        contents: new TextEncoder().encode(content),
+        path: filePath,
+        sha: newSha,
+        parent: ''
+    }
+    const databases = await getDatabaseMetadata();
+    const shouldInstall = (await needsInstall(database, DB_SCHEME)).item3
+    if (databases.filter(d => d.key == database).length == 0 || shouldInstall) {
+        await deleteOldDatabase(database)
+        await setupDatabase(database, DB_SCHEME);
+    }
+    await putRecord(DB_STORE_NAME, FS.virtual[filePath], database)
+}
+
+
+
 async function manageServiceWorker() {
 
     if (!('serviceWorker' in navigator)) return;
@@ -127,6 +161,8 @@ async function manageServiceWorker() {
     } catch (e) {
         console.warn("Could not reach server for version check. Proceeding with caution.");
     }
+
+    await storeSettingsForWorker()
 
     const registration = await navigator.serviceWorker.getRegistration();
 
@@ -147,7 +183,7 @@ async function manageServiceWorker() {
         };
 
         // Ping the worker
-        registration.active.postMessage({ type: 'GET_VERSION', github_token: SettingsManager.get('core', 'githubToken') }, [messageChannel.port2]);
+        registration.active.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2]);
 
         // 2. The "Dumb" Poll: Wait for response or 10s timeout
         const startTime = Date.now();
