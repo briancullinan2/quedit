@@ -311,9 +311,9 @@ function _base64ToArrayBuffer(base64) {
 
 async function readPreFS() {
     // TODO: offline download so it saves binary to IndexedDB
-    if (typeof window.preFS == 'undefined') {
-        throw new Error('No preFS, must load in correct order!')
-    }
+    //if (typeof window.preFS == 'undefined') {
+    //    throw new Error('No preFS, must load in correct order!')
+    //}
     let preloadedPaths = Object.keys(window.preFS)
     for (let i = 0; i < preloadedPaths.length; i++) {
         if (preloadedPaths[i].endsWith('_timestamp')) {

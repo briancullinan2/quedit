@@ -3,26 +3,64 @@
 const api = {
     github_token: null
 }
+const GITHUB_PREAMBLE = '\x1b[38;5;27m[GITHUB]\x1b[0m ';      // Deep Brand Blue
 
 console.log('🔴 [SW-TRACE] Initial script execution block started.');
 
-// Import the Blazor-generated assets manifest
-try {
-    console.log('🔗 [SW-TRACE] Attempting script import: /components/core/local.js');
-    self.importScripts('/components/core/local.js');
+// Helper to load a script from IDB VFS and evaluate it in the worker context
+async function importScriptFromVFS(assetUrl) {
+    assetUrl = assetUrl.replace(/^\/?assets\/|^\//ig, '');
+    const localName = '/base' + (assetUrl.startsWith('/') ? '' : '/') + assetUrl;
 
-    console.log('🔗 [SW-TRACE] Attempting script import: /components/core/extensions.js');
-    self.importScripts('/components/core/extensions.js');
+    console.log(`💾 [SW-INIT] Attempting VFS database extraction for script: "${localName}"`);
 
-    console.log('🔗 [SW-TRACE] Attempting script import: /components/filelist/github.js');
-    self.importScripts('/components/filelist/github.js');
+    const fileRecord = await getRecord(DB_STORE_NAME, localName, DB_NAME);
 
-    console.log('✅ [SW-TRACE] Global helper extensions imported successfully.');
-} catch (e) {
-    console.error('❌ [SW-CRITICAL] Script imports blew up immediately:', e);
+    if (!fileRecord || !fileRecord.contents) {
+        throw new Error(`Script "${localName}" not found in IndexedDB VFS.`);
+    }
+
+    // Decode the Uint8Array binary array into a raw text string
+    const decoder = new TextDecoder('utf-8');
+    const scriptText = decoder.decode(fileRecord.contents);
+
+    // Execute the script globally inside the Service Worker context
+    // This accomplishes exactly what importScripts() does synchronously
+    globalThis.eval(scriptText);
+    console.log(`✨ [SW-INIT] Successfully evaluated script from VFS: "${localName}"`);
 }
 
-// Blazor Filter Settings
+// Orchestrator to attempt standard import, falling back to VFS if offline
+async function initializeCoreScripts() {
+    const scriptsToLoad = [
+        '/components/core/local.js',
+        '/components/core/extensions.js',
+        '/components/filelist/github.js'
+    ];
+
+    for (const script of scriptsToLoad) {
+        try {
+            console.log(`🔗 [SW-TRACE] Attempting native script import: ${script}`);
+            // Try standard synchronous network import first
+            self.importScripts(script);
+            console.log(`✅ [SW-TRACE] Imported natively: ${script}`);
+        } catch (netError) {
+            console.warn(`⚠️ [SW-WARN] Native import failed for ${script}. Swapping to VFS fallback engine...`, netError);
+            try {
+                // Network failed (offline), extract out of IndexedDB VFS instead
+                await importScriptFromVFS(script);
+            } catch (vfsError) {
+                console.error(`❌ [SW-CRITICAL] Total collapse. Failed to load ${script} from Network AND VFS:`, vfsError);
+            }
+        }
+    }
+}
+
+// Execute the bootloader process
+initializeCoreScripts();
+
+
+
 const offlineAssetsInclude = [/\.dll$/, /\.pdb$/, /\.wasm/, /\.html/, /\.js$/, /\.json$/, /\.css$/, /\.woff$/, /\.png$/, /\.jpe?g$/, /\.gif$/, /\.ico$/, /\.blat$/, /\.dat$/, /\.webmanifest$/];
 const offlineAssetsExclude = [/service-worker-assets\.js$|^service-worker/];
 
@@ -66,6 +104,17 @@ async function mkdirp(path) {
 }
 
 
+function getHeaders(response) {
+    const newHeaders = new Headers(response?.headers);
+    newHeaders.set('X-Service-Worker-Handled', 'true');
+    newHeaders.set('Content-Security-Policy', "script-src 'self' 'unsafe-eval'; worker-src 'self' blob:;");
+    newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+    newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
+    return newHeaders
+}
+
+
+
 async function fetchAsset(url, key) {
     console.log(`🌐 [SW-NET] fetchAsset initiated. URL: "${url}" | Internal Key: "${key}"`);
     const timeoutSignal = AbortSignal.timeout(10000);
@@ -77,7 +126,7 @@ async function fetchAsset(url, key) {
             response = await fetch(url, {
                 cache: 'no-store',
                 credentials: 'omit',
-                mode: 'no-cors',
+                //mode: 'no-cors',
                 signal: timeoutSignal
             });
         } else {
@@ -91,12 +140,8 @@ async function fetchAsset(url, key) {
             if (!url.includes('index.html')) {
                 console.warn(`⚠️ [SW-WARN] Asset file was intercepted by a REDIRECT payload: ${url} -> Target: ${response.url}`);
             }
-            const newHeaders = new Headers(response.headers);
-            newHeaders.set('X-Service-Worker-Handled', 'true');
+            const newHeaders = getHeaders(response)
             newHeaders.set('Location', response.url);
-            newHeaders.set('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
-            newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
-            newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
 
             console.log(`🔄 [SW-NET] Fabricating 302 redirection response bridge for "${key}"`);
             isOffline = false;
@@ -140,17 +185,12 @@ async function fetchAsset(url, key) {
         }, DB_NAME);
         console.log(`✅ [SW-DATABASE] Successfully wrote "${localKey}" to local storage block.`);
 
-        const newHeaders = new Headers(response.headers);
-        newHeaders.set('X-Service-Worker-Handled', 'true');
-        newHeaders.set('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
-        newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
-        newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
         isOffline = false;
 
-        return new Response(response.body, {
+        return new Response(content, {
             status: response.status,
             statusText: response.statusText,
-            headers: newHeaders
+            headers: getHeaders(response)
         });
 
     } catch (err) {
@@ -170,7 +210,6 @@ async function fetchAsset(url, key) {
     }
 }
 
-/* --- Blazor Template Events with your Logic --- */
 
 
 let assetLookup = null;
@@ -463,15 +502,10 @@ function manufactureRefreshResponse() {
     </html>
 `;
 
+    const newHeaders = getHeaders()
+    newHeaders.set('Content-Type', 'text/html')
     return new Response(html, {
-        headers: {
-            'Content-Type': 'text/html',
-            'X-Service-Worker-Handled': 'true',
-            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-            'Content-Security-Policy': "script-src 'self' 'unsafe-eval'",
-            'Cross-Origin-Opener-Policy': 'same-origin',
-            'Cross-Origin-Embedder-Policy': 'require-corp',
-        }
+        headers: newHeaders
     });
 }
 
@@ -537,12 +571,8 @@ self.addEventListener('fetch', event => {
 
                 if (files && files.contents) {
                     if (!isAssetQuery) console.log(`✨ [SW-FETCH-STORE] VFS Cache match found! Compiling local response frame wrapper for: "${localName}" [MIME: ${contentType}]`);
-                    const newHeaders = new Headers();
+                    const newHeaders = getHeaders();
                     newHeaders.set('Content-Type', contentType);
-                    newHeaders.set('X-Service-Worker-Handled', 'true');
-                    newHeaders.set('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
-                    newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
-                    newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
 
                     return new Response(files.contents, {
                         status: 200,

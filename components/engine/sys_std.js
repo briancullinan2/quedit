@@ -259,12 +259,12 @@ function Sys_fork() {
   // TODO: prepare worker to call into
   //return ++Sys.threadCount
   SYS.forked = true
-  if (typeof window.preFS == 'undefined'
-    || typeof window.preFS['sys_worker.js'] == 'undefined'
+  //if (typeof window.preFS == 'undefined'
+  //  || typeof window.preFS['sys_worker.js'] == 'undefined'
     //	|| !document.body.classList.contains('paused')
-  ) {
-    throw new Error('Could not load worker.')
-  }
+  //) {
+  //  throw new Error('Could not load worker.')
+  //}
   if (typeof FS.virtual['sys_worker.js'] == 'undefined') {
     readPreFS()
   }

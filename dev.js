@@ -15,7 +15,7 @@ function middleware(req, res, next) {
     // even when the requesting page has a COEP policy
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 
-    res.setHeader('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
+    res.setHeader('Content-Security-Policy', "script-src 'self' 'unsafe-eval' 'sha256-iN7wpJdxHlpujRppkOA8N0+Mzp0ZqZr3lCtxM00Y63c='; worker-src 'self' blob:;");
 
     res.setHeader('Permissions-Policy', 'cross-origin-isolated=(*)');
 

@@ -80,7 +80,7 @@ Trying to get offline mode working. Integrated nunuStudio more. Intercepted for 
 
 ```bash
 gcloud compute backend-buckets update quake-backend-bucket \
-    --custom-response-header="Content-Security-Policy: script-src 'self' 'unsafe-eval'" \
+    --custom-response-header="Content-Security-Policy: script-src 'self' 'unsafe-eval'; worker-src 'self' blob:;" \
     --custom-response-header="Cross-Origin-Opener-Policy: same-origin" \
     --custom-response-header="Cross-Origin-Embedder-Policy: require-corp"
 ```
