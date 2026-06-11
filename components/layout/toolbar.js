@@ -193,12 +193,13 @@ window.addEventListener('mousemove', e => {
         }
     }
 
-    const closest = e.target.closest('[placeholder],[alt],[data-tooltip],[title]')
+    const closest = e.target.closest('[placeholder],[alt],[data-tooltip],[title],.pk_tb .pk_btn')
     if (!targetText && closest) {
         targetText ||= closest.getAttribute('placeholder')
         targetText ||= closest.getAttribute('alt')
         targetText ||= closest.getAttribute('data-tooltip')
         targetText ||= closest.getAttribute('title')
+        targetText ||= closest.querySelector('span')?.innerText
         if (targetText) {
             targetEl = closest
         }

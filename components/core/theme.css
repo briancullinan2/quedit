@@ -2332,3 +2332,75 @@ body .terminal-file-underline {
         background-color: var(--ace-gutter-bg);
     }
 }
+
+.pk_av {
+    background: var(--ace-bg);
+}
+
+.pk_tbc {
+    background: var(--ace-gutter-bg);
+}
+
+.pk_tb {
+    background: transparent;
+    height: calc(var(--global-height) * 2);
+}
+
+.pk_selection,
+.pk_ctns,
+.pk_transport {
+    background: transparent;
+}
+
+.pk_selection .pk_dat {
+    background: transparent;
+}
+
+.pk_tb .pk_btn {
+    border-radius: 0;
+}
+
+.pk_tb .pk_btn:not(.pk_act) {
+    border: 2px solid transparent;
+    color: var(--ace-foreground);
+}
+
+.pk_tb .pk_btn:not(.pk_act):hover {
+    background: rgb(from var(--ace-selection-bg) r g b / 50%);
+    border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+    box-shadow: none;
+    color: var(--ace-foreground);
+}
+
+
+.pk_tb .pk_btn:not(.pk_act):active,
+.pk_tb .pk_btn:not(.pk_act):focus,
+.pk_tb .pk_btn:not(.pk_act):active:focus {
+    border-color: var(--ace-blue);
+    background: var(--ace-bg);
+    color: var(--ace-foreground);
+}
+
+
+@media only screen and (max-width: 1250px) {
+    .pk_tb .pk_btn {
+        font-size: small;
+        height: var(--global-height);
+    }
+
+    .pk_ctns,
+    .pk_transport,
+    .pk_mtbeat {
+        height: var(--global-height);
+    }
+}
+
+
+.pk_timecontainer {
+    background: transparent;
+}
+
+.pk_selection .pk_sellist,
+.pk_tmpMsg {
+    color: var(--ace-foreground);
+}

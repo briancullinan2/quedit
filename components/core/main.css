@@ -2435,3 +2435,15 @@ input[type="number"]::-webkit-inner-spin-button {
     color: #6a9955;
     font-style: italic;
 }
+
+.pk_hdr {
+    display: none;
+}
+
+.pk_tb .pk_btn:not(.pk_act):hover span {
+    display: none;
+}
+
+.pk_ttip.pk_act {
+    display: none;
+}

@@ -1092,9 +1092,8 @@ const SITE_MENU = [{
     {
         divider: !0
     },
-    { name: "Store Offline Version", target: "help/store_offline" },
     { divider: true },
-    { name: "About", target: "help/about" },
+    { name: "Store Offline Version", target: "help/store_offline" },
     { name: "See Welcome Message", target: "help/see_welcome" },
     { name: "SourceCode on Github", target: "help/github_source" }]
 }]

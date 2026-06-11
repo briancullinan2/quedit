@@ -2451,7 +2451,7 @@ a {
     white-space: nowrap
 }
 
-select {
+#audio-editor select {
     display: block;
     height: 25px;
     padding: 0 var(--s3);
@@ -2466,13 +2466,13 @@ select {
     transition: border-color var(--tr), box-shadow var(--tr)
 }
 
-select:hover,
-select:focus {
+#audio-editor select:hover,
+#audio-editor select:focus {
     border-color: var(--ac);
     box-shadow: 0 0 10px var(--ac-glow)
 }
 
-select option {
+#audio-editor select option {
     background: var(--bg-2);
     padding: 2px 0;
     margin: 2px 0
