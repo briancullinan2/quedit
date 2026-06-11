@@ -648,9 +648,9 @@ self.addEventListener('fetch', event => {
             const escapedRoute = routeKey.replace(/[^a-z0-9]/gi, '-').toLowerCase();
             assetUrl = `${escapedRoute}.json`;
             isGithubContents = restOfRoute.startsWith('contents/')
-            if(relativePath.includes('git/trees')) {
-                debugger
-            }
+            //if(relativePath.includes('git/trees')) {
+            //    debugger
+            //}
         }
     }
 

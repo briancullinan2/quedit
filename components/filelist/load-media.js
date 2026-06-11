@@ -137,9 +137,6 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     if (recordHistory) {
         recordFileHistory(filePath, sha)
     }
-    else {
-        document.getElementById('fileHistory').value == filePath
-    }
 }
 
 

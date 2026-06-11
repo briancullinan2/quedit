@@ -159890,6 +159890,7 @@
                 } catch (t) {
                     console.error(t)
                 }
+                appendHistoryItem(t, 'nunu')
                 this.history.push(t),
                     this.historyPointer = this.history.length - 1
             }
@@ -164950,6 +164951,7 @@
             }
             ,
             K_.addAction = function (t) {
+                appendHistoryItem(t, 'nunu')
                 K_.history.add(t)
             }
             ,

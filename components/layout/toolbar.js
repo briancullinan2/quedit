@@ -49,15 +49,14 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
         case 'historyMenu':
         case 'fileHistory':
             {
-                const dropdown = document.getElementById("historyMenu");
-                if (dropdown.classList.contains('show')) {
-                    dropdown.classList.remove('show');
+                if (historyMenu.classList.contains('show')) {
+                    historyMenu.classList.remove('show');
                 } else {
-                    dropdown.classList.add('show');
+                    historyMenu.classList.add('show');
                 }
-                const absolutePos = document.getElementById('fileHistory').getBoundingClientRect()
-                dropdown.style.top = (absolutePos.top + absolutePos.height) + 'px'
-                dropdown.style.left = absolutePos.left + 'px'
+                const absolutePos = fileHistory.getBoundingClientRect()
+                historyMenu.style.top = (absolutePos.top + absolutePos.height) + 'px'
+                historyMenu.style.left = absolutePos.left + 'px'
                 break
             }
 
@@ -136,8 +135,7 @@ window.addEventListener('click', (e) => {
     const closest = e.target.closest('[id],[name],[href]')
     const buttonId = closest.id || closest.name || closest.href?.split('#').pop()
     if (buttonId !== 'fileHistory' && buttonId !== 'historyMenu') {
-        const dropdown = document.getElementById("historyMenu");
-        dropdown.classList.remove('show');
+        historyMenu.classList.remove('show');
     }
 })
 
@@ -229,7 +227,7 @@ window.addEventListener('mousemove', e => {
 });
 
 function toggleDropdown() {
-    document.getElementById("historyMenu").classList.toggle("show");
+    historyMenu.classList.toggle("show");
 }
 
 function selectHistory(element) {
@@ -237,6 +235,6 @@ function selectHistory(element) {
     console.log("Selected action:", element.querySelector('strong').innerText);
 
     // Close menu after selection
-    document.getElementById("historyMenu").classList.remove("show");
+    historyMenu.classList.remove("show");
 }
 

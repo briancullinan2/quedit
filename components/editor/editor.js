@@ -323,8 +323,6 @@ aceEditor.commands.addCommand({
     }
 });
 
-// Keep track of the active gutter line row to prevent erratic multi-firing updates
-
 
 
 function forceEditorFoldByLine(targetStartLine) {
