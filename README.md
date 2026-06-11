@@ -73,6 +73,62 @@ surrounding it. I think if all of these things were done, this could be the firs
 
 ## So far
 
+---
+
+
+#### 6/11/2026
+
+I added this wave form editor called AudioMass, because i am procrastinating what i really have to fix. File name collisions in make.js, make-qvms.js, and i got this list of top priorities from Gemini.
+
+
+![audiomass](Screenshot%202026-06-11%20145546-1.png)
+
+
+This is what gemini thinks i should be doing in addition to that build file collision bug, and i tend to agree, this would be very cool.
+
+
+Looking at this backlog, you aren’t just building an IDE or a game engine—you are building a **live, self-bootstrapping development operating system inside a browser tab**.
+
+When a project reaches this level of complexity—where a user is actively writing code, recompiling WebAssembly, streaming assets, and running a 3D physics simulation simultaneously—the traditional definitions of "User Experience" (like slick animations or button placements) go out the window. Here, UX protection means **preventing data loss, eliminating execution freezes, and making the platform resilient when the network drops.**
+
+If you want to protect the user experience above all else, these are the top 3 highest-leverage architectural contributors from your backlog:
+
+---
+
+##### 1. OFFLINE MODE! (IndexedDB Bootstrapping + Service Workers)
+
+> **Backlog items:** *OFFLINE MODE!, Load local environment javascripts off of the IDB store, Better GitHub Downloads.*
+
+If a user opens their phone to write a game while sitting in a grocery store parking lot or on a flight, a single network drop cannot be allowed to crash or lock up the IDE workspace.
+
+* **Why it's a UX lifesaver:** True UX protection means the environment is *invincible* to connectivity states. By shifting your entire asset tree, your repository files, `index.html`, and `modules.js` into **IndexedDB (via a robust Service Worker caching layer)**, your app fundamentally ceases to be a web page and becomes an installed desktop/mobile OS.
+* **The UX Win:** Zero loading screens when transitioning between environments, instantaneous file tree rendering (eliminating the slow GitHub API roundtrips), and the absolute certainty that hitting save won't discard a chunk of work into a network black hole.
+
+##### 2. Multi-Threaded Performance Split (OffscreenCanvas + Web Workers)
+
+> **Backlog items:** *Multi-Threaded Performance Split, Sharable Coding Links via background Workers.*
+
+In a single-threaded web architecture, if the Quake 3 engine compiles a complex shader, or an asset download takes a massive memory spike, the main browser thread hitches. For a user, a hitched main thread means the Ace Editor text cursor stops blinking, typing lags, and the UI feels broken or unresponsive.
+
+* **Why it's a UX lifesaver:** By decoupling the application using the **OffscreenCanvas API** and background Web Workers, you isolate the heavy lifting. The game loop, physics engine, and network synchronization stream happen on a secondary thread. The main thread is left 100% unencumbered to handle user input, mouse tracking via Xterm.js, text input in Ace, and UI dropdown transitions.
+* **The UX Win:** Perfect, unthrottled input responsiveness. Even if the game engine drops frames or pauses to reallocate memory hooks, the user can still fluidly type code, browse folders, or chat with the AI without a single micro-stutter.
+
+##### 3. Dynamic State Swaps & Instant Hot-Reloading
+
+> **Backlog items:** *Dynamic State Swaps, Instant Code Hot-Reloading, Spray Paint Live Drawing.*
+
+The absolute ultimate killer of developer experience is the "break-mended-reboot" cycle. If a user modifies a character's jump height or changes a wall texture in miniPaint, forcing them to recompile, reload the tab, navigate the main menu, and walk back to the test zone completely shatters their flow state.
+
+* **Why it's a UX lifesaver:** Implementing the virtual method table hot-swapping and memory snapshotting (saving player coordinates, health, and state vectors before booting a fresh WASM instance) turns your environment into an organic, live system.
+* **The UX Win:** Immediate gratification and continuity. The experience shifts from "writing code for a game" to "molding a live universe." Saving an image in miniPaint or tweaking a velocity variable instantly alters the 3D viewport between frames, keeping the creator entirely locked in the zone without UI interruptions or state resets.
+
+---
+
+##### The Verdict
+
+While having an ANSI HUD or a nice Git staging UI is great, **Offline Resilience, Input Thread Isolation, and Live Hot-Reloading** are the foundational structural columns. If you nail those three, your environment will feel tighter, faster, and more dependable than native desktop setups.
+
+
 
 #### 6/9/2026
 
@@ -84,7 +140,6 @@ gcloud compute backend-buckets update quake-backend-bucket \
     --custom-response-header="Cross-Origin-Opener-Policy: same-origin" \
     --custom-response-header="Cross-Origin-Embedder-Policy: require-corp"
 ```
-
 
 
 
