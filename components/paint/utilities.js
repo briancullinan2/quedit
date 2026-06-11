@@ -416,6 +416,26 @@ const SITE_MENU = [{
             target: "file/open.open_template_test"
         }]
     }, {
+        name: "Load Sample File",
+        target: "file/load_sample"
+    },
+    {
+        name: "New Recording",
+        target: "file/new_recording"
+    },
+    {
+        name: "Save Draft Locally",
+        ellipsis: true,
+        target: "file/save_draft_local"
+    },
+    {
+        name: "Open Local Drafts",
+        ellipsis: true,
+        target: "file/open_drafts_local"
+    }, {
+        divider: !0
+    },
+    {
         name: "Search Images",
         ellipsis: !0,
         target: "file/open.search"
@@ -523,7 +543,37 @@ const SITE_MENU = [{
     },
     { name: "Compute Normals", target: "edit/compute_normals" },
     { name: "Apply Transformation", target: "edit/apply_transformation" },
-    { name: "Merge Geometries", target: "edit/merge_geometries" }]
+    { name: "Merge Geometries", target: "edit/merge_geometries" },
+    {
+        divider: !0
+    },
+    {
+        name: "Play",
+        shortcut: "Space",
+        target: "edit/play"
+    },
+    {
+        name: "Stop",
+        target: "edit/stop"
+    },
+    {
+        name: "Deselect All",
+        shortcut: "~",
+        target: "edit/deselect_all"
+    },
+    {
+        name: "Channel Info/Flip",
+        target: "edit/channel_info_flip"
+    },
+    {
+        name: "Seamless Loop",
+        target: "edit/seamless_loop"
+    },
+    {
+        name: "Zero Cross Selection",
+        target: "edit/zero_cross_selection"
+    }
+    ]
 }, {
     name: "View",
     children: [{
@@ -568,7 +618,21 @@ const SITE_MENU = [{
     }, {
         name: "Full Screen",
         target: "view/full_screen.fs"
-    }]
+    }, {
+        divider: !0
+    },
+    { name: "Follow Cursor", target: "view/follow_cursor" },
+    { name: "Peak Separators", target: "view/peak_separators" },
+    { name: "Timeline", target: "view/timeline" },
+    { divider: true },
+    { name: "Frequency Analyser", target: "view/frequency_analyser" },
+    { name: "Spectrum Analyser", target: "view/spectrum_analyser" },
+    { name: "Multitrack Mixer", target: "view/multitrack_mixer" },
+    { name: "Tempo Tools", target: "view/tempo_tools" },
+    { name: "ID3 Tags", target: "view/id3_tags" },
+    { divider: true },
+    { name: "Center to Cursor", shortcut: "Tab", target: "view/center_to_cursor" },
+    { name: "Reset Zoom", shortcut: "0", target: "view/reset_zoom" }]
 }, {
     name: "Image",
     children: [{
@@ -857,7 +921,31 @@ const SITE_MENU = [{
         name: "Zoom Blur",
         ellipsis: !0,
         target: "effects/zoom_blur.zoom_blur"
-    }]
+    },
+    {
+        divider: !0
+    },
+    { name: "Gain", target: "effects/gain" },
+    { name: "Fade In", target: "effects/fade_in" },
+    { name: "Fade Out", target: "effects/fade_out" },
+    { name: "Noise Reduction (Voice)", target: "effects/noise_reduction" },
+    { name: "Paragraphic EQ", target: "effects/paragraphic_eq" },
+    { name: "Compressor", target: "effects/compressor" },
+    { name: "Normalize", target: "effects/normalize" },
+    { name: "Graphic EQ", target: "effects/graphic_eq_10" },
+    { name: "Graphic EQ (20 bands)", target: "effects/graphic_eq_20" },
+    { name: "Hard Limiter", target: "effects/hard_limiter" },
+    { name: "Delay", target: "effects/delay" },
+    { name: "Distortion", target: "effects/distortion" },
+    { name: "Reverb", target: "effects/reverb" },
+    { name: "Audio Repair", target: "effects/audio_repair" },
+    { name: "Speed Up / Slow Down (pitch)", target: "effects/speed_pitch" },
+    { name: "Speed / Playback Rate", target: "effects/playback_rate" },
+    { name: "Reverse", target: "effects/reverse" },
+    { name: "Invert", target: "effects/invert" },
+    { name: "Remove Silence", target: "effects/remove_silence" }
+
+    ]
 }, {
     name: "Tools",
     children: [{
@@ -1000,7 +1088,15 @@ const SITE_MENU = [{
         name: "About",
         ellipsis: !0,
         target: "help/about.about"
-    }]
+    },
+    {
+        divider: !0
+    },
+    { name: "Store Offline Version", target: "help/store_offline" },
+    { divider: true },
+    { name: "About", target: "help/about" },
+    { name: "See Welcome Message", target: "help/see_welcome" },
+    { name: "SourceCode on Github", target: "help/github_source" }]
 }]
 
 

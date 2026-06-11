@@ -34,8 +34,11 @@ const IMPORT_CSS = {
     nunu: [
         '/components/map-editor/codemirror.css',
         '/components/map-editor/styles.css'
-    ]
+    ],
 
+    audio: [
+        '/components/audio-editor/all.css'
+    ]
 };
 
 const IMPORT_JS = {
@@ -143,6 +146,11 @@ const IMPORT_JS = {
         '/components/map-editor/jshint.js',
         '/components/map-editor/draco_encoder.js',
         '/components/map-editor/Q3BSPLoader.js'
+    ],
+
+    audio: [
+        '/components/audio-editor/all.build.js',
+        '/components/audio-editor/audio.js'
     ]
 };
 

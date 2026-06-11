@@ -519,26 +519,31 @@ body,
 .theme-eclipse {
     /* Main Editor Backgrounds & Text */
     --ace-bg: #FFFFFF;
-    --ace-gutter-bg: #F0F0F0;         /* Slightly softer classic grey gutter */
+    --ace-gutter-bg: #F0F0F0;
+    /* Slightly softer classic grey gutter */
     --ace-foreground: #000000;
-    
+
     /* Comments - Classic Eclipse Dark Green */
     --ace-comment: #3F7F5F;
-    
+
     /* Selection - That perfect light blue highlight */
     --ace-selection-bg: #B2D7FF;
-    
+
     /* Keywords - The iconic Eclipse Purple/Magenta */
-    --ace-pink: #7F0055;             
-    --ace-purple: #7F0055;           /* Often mapped similarly for keywords */
-    
+    --ace-pink: #7F0055;
+    --ace-purple: #7F0055;
+    /* Often mapped similarly for keywords */
+
     /* The Missing Blues */
-    --ace-blue: #0000C0;             /* Classic deep blue for methods/numbers/types */
+    --ace-blue: #0000C0;
+    /* Classic deep blue for methods/numbers/types */
     --ace-blue-hue: 240deg;
-    --ace-string: #2A00FF;           /* Eclipse strings are traditionally this bright blue */
-    
+    --ace-string: #2A00FF;
+    /* Eclipse strings are traditionally this bright blue */
+
     /* Literal Constants / JavaDoc Tags */
-    --ace-green: #3F5FBF;            /* Eclipse JavaDoc links/tags blue-green */
+    --ace-green: #3F5FBF;
+    /* Eclipse JavaDoc links/tags blue-green */
 }
 
 .theme-dawn {
@@ -1923,7 +1928,7 @@ body {
 
 .ace_editor {
     /*background-color: transparent !important;*/
-    background-color:  rgb(from var(--ace-bg) r g b / 90%);
+    background-color: rgb(from var(--ace-bg) r g b / 90%);
 }
 
 /* Ensure the outer wrapper container doesn't hard-clip the sub-components */
@@ -1983,10 +1988,10 @@ body {
     visibility: visible !important;
 }
 
-#terminal-container .scrollbar.vertical>.slider
-{
+#terminal-container .scrollbar.vertical>.slider {
     max-height: 100%;
 }
+
 #terminal-container .scrollbar.vertical {
     position: absolute !important;
 
@@ -2138,6 +2143,11 @@ body .terminal-file-underline {
 }
 */
 
+.pk_ftr .pk_btn span,
+.pk_tb .pk_btn span,
+.pk_mt_head button span,
+.pk_mt_track button span,
+.pk_mt_knob span,
 .tooltip,
 .ace_doc-tooltip,
 .ace_tooltip,
@@ -2196,7 +2206,9 @@ body .terminal-file-underline {
     color: var(--ace-foreground);
 }
 
-
+.main_menu>ul.menu_dropdown>li>a[aria-haspopup="true"]::after {
+    color: var(--ace-foreground);
+}
 
 #toolbar input[type="checkbox"] {
     background-color: var(--ace-gutter-bg);
@@ -2275,6 +2287,7 @@ body .terminal-file-underline {
 [class*="line-"] #editor.ace_editor .ace_marker-layer .ace_active-line {
     animation: universalLineFlash 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
+
 /*
 
 @keyframes globalYellowFlash {

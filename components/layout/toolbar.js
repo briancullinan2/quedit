@@ -36,6 +36,9 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
         case 'nunu':
             await DependencyLoader.loadModule('nunu');
             break;
+        case 'audio-editor':
+            await DependencyLoader.loadModule('audio');
+            break;
         case 'paint':
         case 'paint-container':
             // Lazy load the full layout styles and script package for miniPaint
@@ -133,6 +136,7 @@ document.getElementById('toolbar').addEventListener('click', async (e) => {
 
 window.addEventListener('click', (e) => {
     const closest = e.target.closest('[id],[name],[href]')
+    if (!closest) return
     const buttonId = closest.id || closest.name || closest.href?.split('#').pop()
     if (buttonId !== 'fileHistory' && buttonId !== 'historyMenu') {
         historyMenu.classList.remove('show');

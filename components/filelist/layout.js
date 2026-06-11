@@ -201,6 +201,10 @@ async function renderTabsCommand(panelId, noBounce = false, hidePanels = true) {
     }
 
 
+    if (panelId === 'audio-editor') {
+        await DependencyLoader.loadModule('audio');
+    }
+
     if (panelId === 'nunu') {
         await DependencyLoader.loadModule('nunu');
     }

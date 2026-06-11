@@ -55,6 +55,12 @@ const IMPORT_MODULES = {
         css: IMPORT_CSS['nunu'],
         onLoad: () => window.nunu.initialize()
     },
+
+    audio: {
+        panelId: 'audio-editor',
+        js: IMPORT_JS['audio'],
+        css: IMPORT_CSS['audio'],
+    }
 };
 
 

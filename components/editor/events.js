@@ -44,10 +44,8 @@ aceEditor.on('change', (delta) => {
         delta: delta
     };
 
-    // 4. Directly feed it into your unified stack using your new 'editor' router type
     appendHistoryItem(actionPayload, 'editor');
 
-    // 5. Debounce system save/network sync updates as normal
     debounceFileChange(aceEditor);
 });
 
