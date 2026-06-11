@@ -141,6 +141,14 @@ window.addEventListener('click', (e) => {
     if (buttonId !== 'fileHistory' && buttonId !== 'historyMenu') {
         historyMenu.classList.remove('show');
     }
+
+    if (e.target.classList.contains('remove-search')) {
+        e.target.parentElement.parentElement.remove()
+    }
+
+    if (e.target.classList.contains('load-sample-audio')) {
+        PKAudioEditor.engine.LoadSample()
+    }
 })
 
 

@@ -6347,7 +6347,7 @@
                 r.appendChild(l);
             o = ge.createElement("div"),
                 o.className = "pk_tmpMsg pk_ed_empty",
-                o.innerHTML = 'Drag n drop an Audio File in this window, or click <a style="white-space:nowrap;border:1px solid;border-radius:23px;padding:5px 18px;font-size:0.94em;margin-left:5px" onclick="PKAudioEditor.engine.LoadSample()">here to use a sample</a>',
+                o.innerHTML = 'Drag n drop an Audio File in this window, or click <a class="load-sample-audio" style="white-space:nowrap;border:1px solid;border-radius:23px;padding:5px 18px;font-size:0.94em;margin-left:5px">here to use a sample</a>',
                 i.appendChild(o),
                 s = ge.createElement("div");
             s.className = "pk_tmpMsg2",
@@ -8335,6 +8335,7 @@
             }
             ,
             e("StateRequestPush", function (e) {
+                appendHistoryItem(e)
                 a.pushUndoState(e)
             }),
             e("StateRequestUndo", function () {
@@ -8601,7 +8602,7 @@
                             }),
                                 R.fireEvent("RequestZoomUI", 0),
                                 T.is_ready = !1,
-                                P.load(e || "piano-sample.mp3")
+                                P.load(e || "/components/audio-editor/piano-sample.mp3")
                         }, 180)
                 }
                 ,

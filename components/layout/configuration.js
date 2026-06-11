@@ -35,6 +35,25 @@ function updateSelectOptions(elementId, items, selectedValue = 'main') {
 
 const tokenInput = document.getElementById('gh-token-input');
 const modal = document.getElementById('token-modal');
+const tokenForm = document.getElementById('token-form')
+tokenForm.addEventListener('submit', (e) => {
+    e.stopPropagation()
+    e.preventDefault()
+    saveToken();
+    return false;
+})
+modal.addEventListener('click', e => {
+    e.stopPropagation()
+    e.preventDefault()
+    if (e.target.classList.contains('save-token')) {
+        saveToken()
+    } else if (e.target.classList.contains('clear-token')) {
+        clearToken()
+    } else if (e.target.classList.contains('close-btn')) {
+        modal.classList.add('hidden');
+    }
+    return false;
+})
 
 function updatePlaceholder() {
     let token = typeof api !== 'undefined' && api.github_token && api.github_token.length > 0

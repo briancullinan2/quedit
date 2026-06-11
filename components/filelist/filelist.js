@@ -299,6 +299,7 @@ const NavHistory = {
 };
 
 
+
 function recordFileHistory(filePath, sha, lineNumber = null) {
     if (typeof aceEditor !== 'undefined') {
         const pos = aceEditor.getCursorPosition();
@@ -326,11 +327,9 @@ function recordFileHistory(filePath, sha, lineNumber = null) {
         history.pushState({ location: window.location.toString() }, filePath, '#' + filePath)
 }
 
-/**
- * Translates 3D spatial transformations and object insertions into human-readable visual metadata.
- * @param {Object} actionObj - The Nunu engine payload object
- * @returns {Object} { icon, title, desc }
- */
+
+
+
 function extractNunuMetadata(actionObj) {
     // Default fallback configurations
     let icon = "🧊";
@@ -391,6 +390,7 @@ function extractNunuMetadata(actionObj) {
 
 
 
+
 function extractAceMetadata(actionObj) {
     const fileName = actionObj.filePath ? actionObj.filePath.split('/').pop() : (actionObj.fileName || "Unknown File");
     const displayPath = actionObj.filePath || fileName;
@@ -427,6 +427,8 @@ function extractAceMetadata(actionObj) {
 
     return { icon, title, desc };
 }
+
+
 
 function extractPaintMetadata(actionObj) {
     const subAction = actionObj.actions_to_do?.[0];
@@ -472,6 +474,47 @@ function extractPaintMetadata(actionObj) {
     return { icon, title, desc };
 }
 
+
+
+
+
+function extractAudioMetadata(actionObj) {
+    const trackName = actionObj.trackName || actionObj.fileName || "Untitled Audio";
+    const operation = actionObj.operation || "Audio Edit"; // e.g., 'Cut', 'Gain', 'Normalize', 'Fade In'
+
+    // Default fallback configurations
+    let icon = "🎵";
+    let title = `${operation}: ${trackName}`;
+    let desc = "Audio track modified.";
+
+    // Format timestamps cleanly if byte regions or track selections exist
+    if (actionObj.startRegion !== undefined && actionObj.endRegion !== undefined) {
+        const start = Number(actionObj.startRegion).toFixed(2);
+        const end = Number(actionObj.endRegion).toFixed(2);
+        desc = `Region: ${start}s to ${end}s (${(end - start).toFixed(2)}s selection)`;
+    } else if (actionObj.duration) {
+        desc = `Total track length: ${Number(actionObj.duration).toFixed(2)}s`;
+    } else if (actionObj.action_description) {
+        desc = actionObj.action_description;
+    }
+
+    // Contextual icon assignment based on common DAW / AudioMass processes
+    const opLower = operation.toLowerCase();
+    if (opLower.includes('cut') || opLower.includes('crop') || opLower.includes('trim')) {
+        icon = "✂️";
+    } else if (opLower.includes('volume') || opLower.includes('gain') || opLower.includes('fade')) {
+        icon = "🔊";
+    } else if (opLower.includes('effect') || opLower.includes('delay') || opLower.includes('reverb')) {
+        icon = "🎛️";
+    } else if (opLower.includes('reverse') || opLower.includes('invert')) {
+        icon = "⏪";
+    }
+
+    return { icon, title, desc };
+}
+
+
+
 const fileHistory = document.getElementById('fileHistory');
 const historyMenu = document.getElementById('historyMenu');
 historyMenu.innerHTML = ''
@@ -489,6 +532,8 @@ function appendHistoryItem(actionData, type = "paint") {
         meta = extractAceMetadata(actionData);
     } else if (type === 'nunu') {
         meta = extractNunuMetadata(actionData);
+    } else if (type === 'audio') {
+        meta = extractAudioMetadata(actionData);
     } else if (type === "paint") {
         meta = extractPaintMetadata(actionData);
     } else if (type === "file") {
@@ -626,7 +671,7 @@ document.getElementById('database').addEventListener('click', treeHandler.bind(n
 
 const FILELIST_IDS = ['searchlist', 'filelist', 'gamelist', 'assetlist', 'database', 'github']
 
-let panels = document.querySelectorAll('#nunu, #paint, #token-modal, #viewport-frame, #terminal-container, #editor, #searchlist, #filelist, #gamelist, #assetlist, #database, #github')
+let panels = document.querySelectorAll('#audio-editor, #nunu, #paint, #token-modal, #viewport-frame, #terminal-container, #editor, #searchlist, #filelist, #gamelist, #assetlist, #database, #github')
 
 document.getElementById('tabs').addEventListener('click', async (e) => {
 

@@ -257,7 +257,7 @@ function renderSearchResults(groupedItems, lastValidQuery) {
                   data-path="${escapeHtml(group.path)}"
                   data-sha="${escapeHtml(firstSha)}">${escapeHtml(group.path)}</span>
             <span class="search-repo-badge">${escapeHtml(group.repo)}</span>
-            <span class="bx bx-trash" placeholder="Remove result" popovertarget="global-popup" onclick="this.parentElement.parentElement.remove()"></span>
+            <span class="bx bx-trash remove-search" placeholder="Remove result" popovertarget="global-popup"></span>
         `;
         card.appendChild(header);
 

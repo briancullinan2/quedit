@@ -9,7 +9,7 @@
     <link href="/components/core/theme.css" rel="stylesheet" />
 
     <link rel="icon" type="image/png" href="/components/engine/quakejs-bnw.png">
-    
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
@@ -17,8 +17,8 @@
 
     <div id="token-modal" class="hidden">
         <div class="modal-content">
-            <form onsubmit="saveToken(); return false;" action="#">
-                <button class="close-btn bx bx-x" onclick="modal.classList.add('hidden'); return false;"></button>
+            <form id="token-form" action="#">
+                <button class="close-btn bx bx-x"></button>
                 <h3>GitHub Access Token</h3>
                 <p>Required for API access</p>
                 <div placeholder="Enter ghp your token here...">
@@ -26,8 +26,8 @@
                         name="gh-token-input" autocomplete="one-time-code" />
                 </div>
                 <div class="actions">
-                    <button onclick="saveToken(); return false;">Save Token</button>
-                    <button onclick="clearToken(); return false;" class="danger">Clear</button>
+                    <button class="save-token">Save Token</button>
+                    <button class="clear-token danger">Clear</button>
                 </div>
             </form>
         </div>

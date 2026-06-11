@@ -2363,6 +2363,8 @@ body .terminal-file-underline {
 .pk_tb .pk_btn:not(.pk_act) {
     border: 2px solid transparent;
     color: var(--ace-foreground);
+    text-shadow: 1px 2px 3px rgb(from var(--ace-gutter-bg) r g b / 100%);
+    cursor: pointer;
 }
 
 .pk_tb .pk_btn:not(.pk_act):hover {
@@ -2393,14 +2395,35 @@ body .terminal-file-underline {
     .pk_mtbeat {
         height: var(--global-height);
     }
+
+    .pk_tb .pk_btn:not(.pk_act):before {
+        position: relative;
+        top: -3px;
+    }
+
 }
 
-
-.pk_timecontainer {
-    background: transparent;
-}
 
 .pk_selection .pk_sellist,
 .pk_tmpMsg {
     color: var(--ace-foreground);
+    text-shadow: 1px 2px 3px rgb(from var(--ace-gutter-bg) r g b / 100%);
+}
+
+.pk_total_dur,
+.pk_hover_dur {
+    top: 3px;
+}
+
+.pk_hover_dur {
+    top: var(--global-height);
+}
+
+.icon-rec:before {
+    content: "&bull;"
+}
+
+
+.pk_modal_bottom {
+    height: auto !important;
 }
