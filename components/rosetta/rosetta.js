@@ -267,6 +267,8 @@ const ROSETTA_RULE_MATRIX = {
     "ws": "text",                                  // Maps 'WS' tokens directly to native ace_text
     "type_text": "text",
 };
+
+
 const GRAMMAR_CLASSIFIER_MATRIX = {
 
     // =====================================================================
@@ -428,8 +430,197 @@ const GRAMMAR_CLASSIFIER_MATRIX = {
     // =====================================================================
     // 11. VISUAL C++ EXTENSIONS (MSVC Linkage calling conventions)
     // =====================================================================
-    "vcSpecificModifer": "modifier.calling_convention.msvc.interop_linkage"
+    "vcSpecificModifer": "modifier.calling_convention.msvc.interop_linkage",
+
+
+    // =====================================================================
+    // 1. COMPILATION UNIT ROOTS & GLOBAL TRANSLATION ENGINES
+    // =====================================================================
+    "arenaFile": "ast.root.compilation_unit.entry.quake3_arena",
+    "cameraFile": "ast.root.compilation_unit.entry.quake3_camera",
+    "configFile": "ast.root.compilation_unit.entry.quake3_config",
+    "mapFile": "ast.root.compilation_unit.entry.quake3_map",
+    "menuFile": "ast.root.compilation_unit.entry.quake3_menu",
+    "shaderFile": "ast.root.compilation_unit.entry.quake3_shader",
+    "skinFile": "ast.root.compilation_unit.entry.quake3_skin",
+    "includeDirective": "ast.declaration.external_scope.preprocessor_include",
+
+    // =====================================================================
+    // 2. SCOPING CONTEXTS, LOCAL STRUCTURES & CODE ENCLOSURES
+    // =====================================================================
+    "arenaBlock": "ast.scope.data_block.local_enclosure.arena_metadata",
+    "cameraBlock": "ast.scope.code_block.local_enclosure.camera_path",
+    "blockBody": "collection.statements_or_declarations.sequence.camera_payload",
+    "elementStatement": "statement.scoped.block_element.wrapper.camera_node",
+    "nestedBlock": "ast.scope.data_block.recursive_nested.sub_layout",
+    "entityBlock": "ast.scope.data_block.local_enclosure.map_entity",
+    "entityContent": "statement.scoped.block_element.wrapper.entity_node",
+    "brushBlock": "ast.scope.data_block.local_enclosure.geometric_brush",
+    "globalScopeWrapper": "ast.scope.translation_unit.global.menu_layout",
+    "definitionBody": "collection.statements_or_declarations.sequence.menu_payload",
+    "blockDeclaration": "ast.scope.data_block.local_enclosure.ui_component",
+    "blockContentBody": "collection.statements_or_declarations.sequence.ui_properties",
+    "eventBlockStatement": "ast.scope.code_block.local_enclosure.interactive_action_script",
+    "actionScriptBody": "collection.statements_or_declarations.sequence.script_commands",
+    "shader": "ast.scope.data_block.local_enclosure.material_pass",
+    "blockBody_shader": "collection.statements_or_declarations.sequence.shader_directives",
+    "blockStatement": "statement.scoped.block_element.wrapper.shader_node",
+    "conditionalBlock": "statement.control.conditional.branching_if",
+    "conditionalElif": "statement.control.conditional.branching_elif",
+    "conditionalElse": "statement.control.conditional.branching_else",
+    "stageBlock": "ast.scope.data_block.local_enclosure.material_stage_rendering_pass",
+    "stageBody": "collection.statements_or_declarations.sequence.stage_directives",
+
+    // =====================================================================
+    // 3. MUTATIONS, DATA SYNC & VARIABLE ASSIGNMENTS
+    // =====================================================================
+    "propertyStatement": "statement.declaration.variable_or_type.property_assignment",
+    "assignmentExpression": "expression.mutation.assignment.cvar_value_sync",
+    "bindExpression": "expression.mutation.assignment.input_key_mapping",
+    "epair": "declaration.field.entity_metadata.string_pairing",
+    "faceDefinition": "collection.initializers.geometric_plane_matrix.alignment_metrics",
+    "planeDef": "collection.initializers.vector_array.3d_coordinates",
+    "skinLine": "declaration.field.mesh_surface.texture_shader_binding",
+
+    // =====================================================================
+    // 4. EXECUTIVE STATEMENTS, OPERATIONS & CONDITIONALS
+    // =====================================================================
+    "commandExpression": "statement.executable.console_command_invocation",
+    "actionCommandStatement": "statement.executable.script_action_invocation",
+    "conditionalExpression": "expression.logical.short_circuit.conditional_rules",
+    "expressionTerm": "expression.logical.comparison.evaluator",
+    "stageStatement": "statement.executable.stage_rendering_command",
+    "globalDirectiveStatement": "statement.executable.global_material_directive",
+    "surfaceParmStatement": "statement.declaration.surface_flags_allocation",
+    "deformStatement": "statement.executable.vertex_deformation_command",
+    "tcModStatement": "statement.executable.texture_coordinate_modifier_command",
+    "bypassedExtensionStatement": "statement.executable.ignored_vendor_tool_extension",
+    "implicitMappingStatement": "statement.declaration.implicit_structural_block_mapping",
+
+    // =====================================================================
+    // 5. ATOMIC LITERAL DATA LEAVES & TERMINALS
+    // =====================================================================
+    "shaderName": "type.user_defined.alias_reference.shader_identity",
+    "targetCvar": "symbol.identifier.reference_or_declaration.cvar_name",
+    "bindKey": "symbol.identifier.hardware_input.key_identity",
+    "arenaKeyword": "type.descriptor.primitive_or_composite.arena_field",
+    "argument": "value.mutation.initializer.parameter_payload",
+    "value": "literal.numeric_or_string.evaluation.leaf",
+    "commentLine": "preprocessor.documentation.comment_node.hidden",
+
+
+
+    // =====================================================================
+    // 1. COMPILATION UNIT ROOTS & GLOBAL TRANSLATION ENGINES
+    // =====================================================================
+    "program": "ast.root.compilation_unit.entry.javascript",
+    "sourceElements": "collection.statements_or_declarations.sequence.global",
+    "sourceElement": "statement.scoped.block_element.wrapper.global_node",
+
+    // =====================================================================
+    // 2. FLOW CONTROL, CONDITIONAL BRANCHING, & SCOPED STATEMENTS
+    // =====================================================================
+    "statement": "statement.executable.root_wrapper.javascript_node",
+    "statementList": "collection.statements_or_declarations.sequence.local",
+    "block": "statement.scope.code_block.local_enclosure.lexical_scope",
+    "emptyStatement_": "statement.executable.null_operation_semicolon",
+    "expressionStatement": "statement.executable.expression_evaluation",
+    "ifStatement": "statement.control.conditional.branching_if_else",
+    "iterationStatement": "statement.control.loop.iteration_while_do_for",
+    "switchStatement": "statement.control.multi_branch.switch_entry",
+    "caseBlock": "statement.scope.code_block.switch_enclosure",
+    "caseClauses": "collection.statements.switch_cases.sequence",
+    "caseClause": "statement.control.jump_target.case_conditional_label",
+    "defaultClause": "statement.control.jump_target.switch_default_fallback",
+    "labelledStatement": "statement.control.jump_target.user_defined_loop_label",
+    "withStatement": "statement.scope.code_block.dynamic_lexical_injection",
+    "tryStatement": "statement.scope.code_block.exception_try_enclosure",
+    "catchProduction": "statement.scope.code_block.exception_catch_handler",
+    "finallyProduction": "statement.scope.code_block.exception_finally_cleanup",
+    "debuggerStatement": "statement.control.compiler_diagnostic.breakpoint_trap",
+    "eos": "punctuation.terminator.statement_boundary",
+
+    // =====================================================================
+    // 3. CLASSES, DATA CONSTRUCTORS & FIELD ALLOCATIONS
+    // =====================================================================
+    "declaration": "statement.declaration.variable_or_type.root_wrapper",
+    "variableStatement": "statement.declaration.variable_instantiation.root",
+    "variableDeclarationList": "collection.variable_initializers.sequence.lexical",
+    "singleVariableDeclaration": "declaration.variable.instance_allocator.single",
+    "variableDeclaration": "declaration.variable.instance_allocator.item",
+    "classDeclaration": "type.composite.structure_layout.class_declaration",
+    "classTail": "collection.field_declarations.class_body.sequence",
+    "classElement": "declaration.field_or_method.class_member.wrapper",
+    "fieldDefinition": "declaration.field.class_property.instance_allocator",
+    "classElementName": "symbol.identifier.class_member_name.key",
+    "privateIdentifier": "symbol.identifier.encapsulated_private_field.hash_name",
+    "propertyName": "symbol.identifier.object_property_name.key",
+    "getter": "declaration.function.property_getter_accessor.implementation",
+    "setter": "declaration.function.property_setter_accessor.implementation",
+
+    // =====================================================================
+    // 4. FUNCTION DEFINITIONS, FORMAL PROTOTYPES & LAMBDAS
+    // =====================================================================
+    "functionDeclaration": "declaration.function.implementation.root",
+    "anonymousFunction": "declaration.function.expression_or_lambda.anonymous",
+    "functionBody": "statement.scope.function_body.enclosure.local_frame",
+    "formalParameterList": "signature.parameter_types.prototype_descriptor",
+    "formalParameterArg": "declaration.parameter.signature_argument.standard",
+    "lastFormalParameterArg": "declaration.parameter.signature_argument.variadic_rest",
+    "arrowFunctionParameters": "signature.parameter_types.lambda_arguments",
+    "arrowFunctionBody": "statement.scope.function_body.lambda_execution_payload",
+
+    // =====================================================================
+    // 5. EXPRESSION TREES, COMPOSITE OBJECTS & LOGICAL LOOPS
+    // =====================================================================
+    "expressionSequence": "expression.sequence.comma_delimited.root",
+    "singleExpression": "expression.mutation.assignment.evaluator_tier",
+    "arguments": "collection.expressions.function_call_inputs.sequence",
+    "argument": "expression.branch.argument_mapping.payload",
+    "propertyAssignment": "expression.mutation.assignment.object_literal_pairing",
+    "arrayLiteral": "collection.initializers.array_literal_elements.sequence",
+    "elementList": "collection.initializers.array_literal_stream.sequence",
+    "arrayElement": "value.mutation.initializer.index_payload",
+    "objectLiteral": "collection.initializers.object_literal_properties.sequence",
+    "assignmentOperator": "operator.mutation.assignment.compound_modifier",
+
+    // =====================================================================
+    // 6. ASYNC DEPENDENCY MATRIX & ES6 MODULE EXPORTS
+    // =====================================================================
+    "importStatement": "statement.declaration.external_dependency.module_import",
+    "importFromBlock": "statement.declaration.external_dependency.import_clause",
+    "importModuleItems": "collection.destructured_bindings.module_imports.sequence",
+    "importAliasName": "type.user_defined.alias_reference.import_mapping",
+    "moduleExportName": "type.user_defined.alias_reference.export_binding_source",
+    "importedBinding": "symbol.identifier.local_variable_alias.allocated_import",
+    "importDefault": "symbol.identifier.default_variable_alias.allocated_import",
+    "importNamespace": "symbol.identifier.glob_namespace_alias.allocated_import",
+    "importFrom": "literal.string.dependency_file_path.target_uri",
+    "aliasName": "type.user_defined.alias_reference.generic_mapping",
+    "exportStatement": "statement.declaration.external_exposure.module_export",
+    "exportFromBlock": "statement.declaration.external_exposure.pass_through_clause",
+    "exportModuleItems": "collection.exposed_bindings.module_exports.sequence",
+    "exportAliasName": "type.user_defined.alias_reference.export_mapping",
+
+    // =====================================================================
+    // 7. LITERAL DATA ATOMS & PRIMITIVE LEAVES
+    // =====================================================================
+    "literal": "literal.boolean_or_null.state.leaf",
+    "numericLiteral": "literal.numeric.integer_or_float.evaluation.leaf",
+    "bigintLiteral": "literal.numeric.arbitrary_precision_integer.leaf",
+    "templateStringLiteral": "literal.string.interpolated_template.backtick_root",
+    "templateStringAtom": "literal.string.template_sub_component.segment",
+    "assignable": "symbol.identifier.mutation_target.lvalue_reference",
+    "identifierName": "symbol.identifier.generic_name.marker",
+    "identifier": "symbol.identifier.reference_or_declaration.name",
+    "reservedWord": "keyword.system_reserved.token_identity",
+    "keyword": "keyword.language_control.token_identity",
+    "varModifier": "modifier.linkage_and_scope.variable_lifecycle_modifier",
+    "let_": "modifier.linkage_and_scope.lexical_block_lifetime"
 };
+
+
+
 const ROSETTA_LEXER_MATRIX = {
     // --- Compiler Extensions & Intrinsic Built-Ins ---
     "Attribute": "meta.attribute.gcc.extension.compiler.specific.annotation",
@@ -843,7 +1034,221 @@ const ROSETTA_CROSS_LANGUAGE_MAPPING = {
     "HEX": ["HexadecimalDigit"],
     "SAFECODEPOINT": ["Nondigit", "Digit"],
     "INT": ["DecimalConstant", "OctalConstant"],
-    "EXP": ["ExponentPart", "BinaryExponentPart"]
+    "EXP": ["ExponentPart", "BinaryExponentPart"],
+
+    // =====================================================================
+    // 1. HIGHER-LEVEL PARSER TRANSLATION UNITS & GLOBAL FILE ROOTS
+    // =====================================================================
+    "arenaFile": ["translationUnit"],
+    "cameraFile": ["translationUnit"],
+    "configFile": ["translationUnit"],
+    "mapFile": ["translationUnit"],
+    "menuFile": ["translationUnit"],
+    "shaderFile": ["translationUnit"],
+    "skinFile": ["translationUnit"],
+
+    // =====================================================================
+    // 2. SCOPES, DATA STRUCTS, LOCAL COMPONENT BLOCKS & BODY BODIES
+    // =====================================================================
+    "arenaBlock": ["compoundStatement"],             // Structural data block wrapped in '{ ... }'
+    "cameraBlock": ["compoundStatement"],            // Nested configuration block wrapped in '{ ... }'
+    "blockBody": ["blockItemList"],                  // Internal list sequence within braces
+    "elementStatement": ["blockItem"],                // Individual statement node inside a local frame
+    "nestedBlock": ["compoundStatement"],            // Recursive sub-blocks mapping to local scopes
+    "entityBlock": ["compoundStatement"],            // Worldspawn or entity brush scope boundaries
+    "entityContent": ["blockItem"],                  // Metadata key-values or geometric solids
+    "brushBlock": ["compoundStatement"],             // Convex solid layout wrapping face metrics
+    "globalScopeWrapper": ["compoundStatement"],      // Main layout brace enclosure for menu assets
+    "definitionBody": ["blockItemList"],            // Outer sequence tracking for layouts
+    "blockDeclaration": ["compoundStatement"],       // Specific window element boundaries
+    "blockContentBody": ["blockItemList"],          // Layout components child sequence
+    "eventBlockStatement": ["compoundStatement"],    // Live action script triggers wrapping sub-commands
+    "actionScriptBody": ["blockItemList"],           // String command sequence running inside a UI trigger
+    "shader": ["compoundStatement"],                 // Base shader block container
+    "blockBody_shader": ["blockItemList"],          // Core pass parameters and stage rules
+    "blockStatement": ["blockItem"],                 // Structural modifier statement inside material frames
+    "stageBlock": ["compoundStatement"],             // CSS-like hardware rendering stage block
+    "stageBody": ["blockItemList"],                 // Render pass functions chain list
+
+    // =====================================================================
+    // 3. MUTATIONS, STATE ASSIGNMENTS & DATA INITIALIZERS
+    // =====================================================================
+    "propertyStatement": ["assignmentExpression", "initDeclarator"], // Attributes binding directly to scalar values
+    "assignmentExpression": ["assignmentExpression"],  // Engine variable mutations mapping to direct mutations
+    "bindExpression": ["assignmentExpression"],        // User hotkey mappings binding targets to states
+    "epair": ["initDeclarator"],                       // String-to-string dictionary definitions
+    "faceDefinition": ["initializerList"],             // 3 Plane equations plus matrix configurations
+    "planeDef": ["initializerList"],                   // 3D positional vector arrays wrapping numeric constants
+    "skinLine": ["initDeclarator"],                    // Binary mesh string flags mapping to rendering destinations
+
+    // =====================================================================
+    // 4. SUBROUTINES, CALLS & CONTROL FLOW EVALUATIONS
+    // =====================================================================
+    "commandExpression": ["expressionStatement"],      // Standalone execution commands mapping to statements
+    "actionCommandStatement": ["expressionStatement"], // Executable functions running inside interactive loops
+    "globalDirectiveStatement": ["expressionStatement"], // Structural engine configurations running globally
+    "surfaceParmStatement": ["declaration"],            // Content/physics property flag assignments
+    "deformStatement": ["expressionStatement"],        // Algorithmic vertex displacement calls
+    "tcModStatement": ["expressionStatement"],          // Real-time matrix manipulation transformations
+    "bypassedExtensionStatement": ["expressionStatement"], // Legacy tool settings skipped via single statement tracks
+    "implicitMappingStatement": ["declaration"],       // Hardcoded texture asset file assignments
+    "conditionalBlock": ["selectionStatement"],        // Preprocessor or material control flow branching
+    "conditionalElif": ["selectionStatement"],         // Preprocessor sub-branching chains
+    "conditionalElse": ["selectionStatement"],         // Preprocessor fallback branch bounds
+    "conditionalExpression": ["logicalOrExpression", "logicalAndExpression"], // Multi-operator condition chains
+    "expressionTerm": ["relationalExpression", "equalityExpression"],         // Binary evaluation operators
+    "stageStatement": ["expressionStatement"],         // Rendering instructions passed directly to graphics pipes
+
+    // =====================================================================
+    // 5. NAMING IDENTIFIERS, ARGUMENTS & TERM LEAVES
+    // =====================================================================
+    "shaderName": ["typedefName", "Identifier"],       // Global semantic identifier tracking keys
+    "targetCvar": ["Identifier"],                      // Storage location pointers for state sync loops
+    "bindKey": ["primaryExpression", "constant"],      // Raw input codes mapping to execution constants
+    "arenaKeyword": ["typedefName", "Identifier"],     // Predefined metadata dictionary properties
+    "argument": ["primaryExpression", "constant"],     // Variadic input strings or scalar arguments
+    "value": ["primaryExpression", "constant"],        // Base atomic types and terminal literals
+    "commentLine": ["comment"],                        // Bypassed inline layout notes or remarks
+
+    // =====================================================================
+    // 6. LEXER TO TERMINAL C GRAMMAR EQUIVALENTS
+    // =====================================================================
+    "BLOCK_TYPE": ["typedefName", "Identifier"],       // Block structures lookups
+    "PROPERTY_KEYWORD": ["typedefName", "Identifier"],  // Field property types
+    "EVENT_KEYWORD": ["typedefName", "Identifier"],     // Event mapping handles
+    "ACTION_COMMAND": ["Identifier"],                  // Call targets
+    "GLOBAL_DIRECTIVE": ["Identifier"],                // Configuration handles
+    "SURFACE_PARM_KEYWORD": ["Identifier"],            // Flags indicators
+    "DEFORM_VERTEXES_KEYWORD": ["Identifier"],         // Functional keys
+    "TC_MOD_KEYWORD": ["Identifier"],                  // Function names
+    "IMPLICIT_MAPPING_KEYWORD": ["Identifier"],        // Asset keys
+    "STAGE_DIRECTIVE": ["Identifier"],                 // Pipeline operations
+    "TOOL_EXTENSION": ["Identifier"],                  // Custom attributes
+    "SURFACE_PARM_VALUE": ["constant"],                // Bitmask flags constants
+    "DEFORM_MODIFIER": ["constant"],                   // Functional modifiers
+    "TC_MOD_MODIFIER": ["constant"],                   // Matrix calculation indicators
+    "WAVE_FUNCTION": ["constant"],                     // Algorithmic math functions
+    "ENUM_MODIFIER": ["constant"],                     // Predefined states constants
+    "GL_CONSTANT": ["constant"],                       // Pipeline blend options
+    "KNOWN_CVAR": ["Identifier"],                      // Engine variable tracking slots
+    "PREPROCESSOR_DIRECTIVE": ["Directive"],           // Macro statements
+    "IDENTIFIER": ["Identifier"],                      // Generic tokens
+    "PATH": ["StringLiteral"],                         // Specialized file descriptors
+    "NUMBER": ["constant"],                            // Primitive scalars
+    "STRING_LITERAL": ["StringLiteral"],               // Escaped strings arrays
+    "LOGICAL_OP": ["AndAnd", "OrOr"],                  // Logic evaluation signs
+    "LINE_COMMENT_SL": ["LineComment"],                // Comments
+    "LINE_COMMENT_BS": ["LineComment"],                // Escape string remarks
+    "BLOCK_COMMENT": ["BlockComment"],                 // Text documents
+    "WS": ["Whitespace"],                               // Discarded fields
+
+    // =====================================================================
+    // 1. HIGHER-LEVEL TRANSLATION ROOTS & GLOBALS
+    // =====================================================================
+    "program": ["translationUnit"],
+    "sourceElements": ["blockItemList"],
+    "sourceElement": ["blockItem"],
+
+    // =====================================================================
+    // 2. FLOW CONTROL, MODULES & SCOPED CODELINE STATEMENTS
+    // =====================================================================
+    "statement": ["statement"],
+    "statementList": ["blockItemList"],
+    "block": ["compoundStatement"],                    // Local lexical scoping block '{ ... }'
+    "emptyStatement_": ["emptyStatement_"],            // Bare terminal semicolon ';'
+    "expressionStatement": ["expressionStatement"],
+    "ifStatement": ["selectionStatement"],             // Standard if-else selection tree
+    "iterationStatement": ["iterationStatement"],       // Loop constructs: while, do-while, loop conditions
+    "switchStatement": ["selectionStatement"],          // Structural switch statement mapping
+    "caseBlock": ["compoundStatement"],                // Bracketed switch block body
+    "caseClauses": ["blockItemList"],                  // Chain of case execution lists
+    "caseClause": ["labeledStatement"],                // Labeled case jump statement target
+    "defaultClause": ["labeledStatement"],             // Fallback default switch statement target
+    "labelledStatement": ["labeledStatement"],         // Explicit user-defined loop jump label
+    "withStatement": ["compoundStatement"],            // Dynamic scope modification statement block
+    "tryStatement": ["compoundStatement"],             // Structured exception handling enclosure block
+    "catchProduction": ["compoundStatement"],          // Exception trap block matching C++ local scopes
+    "finallyProduction": ["compoundStatement"],        // Post-execution cleanup block
+    "debuggerStatement": ["expressionStatement"],      // Environment breakpoint hook mapping to raw expressions
+    "eos": ["Semi"],                                   // End of statement token mapping to terminal punctuations
+
+    // =====================================================================
+    // 3. STORAGE ALLOCATORS, CLASSES & MEMBER DECLARATIONS
+    // =====================================================================
+    "declaration": ["declaration"],
+    "variableStatement": ["declaration"],
+    "variableDeclarationList": ["initDeclaratorList"], // Multi-variable declarations (let a, b, c)
+    "singleVariableDeclaration": ["initDeclarator"],   // Singular variable allocation frame
+    "variableDeclaration": ["initDeclarator"],         // Instantiated tracking item
+    "classDeclaration": ["structOrUnionSpecifier"],    // ES6 class blocks mapping directly to structural types
+    "classTail": ["memberDeclarationList"],            // Fields/methods grouping inside a wrapper
+    "classElement": ["memberDeclaration"],             // Single component inside structure layout
+    "fieldDefinition": ["memberDeclarator"],           // Primitive instance property allocation field
+    "classElementName": ["memberDeclarator"],          // Field lookup tag descriptor
+    "privateIdentifier": ["Identifier"],               // Encapsulated hash symbol parameter property names
+    "propertyName": ["Identifier"],                    // Object key descriptor string references
+    "getter": ["functionDefinition"],                  // Bound runtime retrieval subroutine methods
+    "setter": ["functionDefinition"],                  // Bound runtime mutation subroutine methods
+
+    // =====================================================================
+    // 4. FUNCTION DEFINITIONS, SIGNATURES & ARROW EXPR LOOPS
+    // =====================================================================
+    "functionDeclaration": ["functionDefinition"],
+    "anonymousFunction": ["functionDefinition"],       // Anonymous callbacks and inline allocations
+    "functionBody": ["functionBody"],                  // Subroutine local block layout
+    "formalParameterList": ["parameterTypeList"],      // Complete signature argument array wrapper
+    "formalParameterArg": ["parameterDeclaration"],    // Standard input parameter instance
+    "lastFormalParameterArg": ["parameterDeclaration"],// ES6 variadic splat inputs mapping to ellipses (...)
+    "arrowFunctionParameters": ["parameterTypeList"],  // Arrow expression inline parameter allocations
+    "arrowFunctionBody": ["functionBody"],             // Lambda arrow routine bodies mapping to function execution blocks
+
+    // =====================================================================
+    // 5. DATA EXPRESSIONS, COMPOSITE OBJECTS & OPERATIONS
+    // =====================================================================
+    "expressionSequence": ["expression"],              // Semicolon or comma-delimited expression list
+    "singleExpression": ["assignmentExpression"],      // Core evaluation assignment tier
+    "arguments": ["argumentExpressionList"],           // Subroutine invocation inputs list
+    "argument": ["assignmentExpression"],              // Single parameter evaluated payload
+    "propertyAssignment": ["assignmentExpression"],    // Key-value instance payload configurations
+    "arrayLiteral": ["initializerList"],               // Bracketed collection structures matching array values
+    "elementList": ["initializerList"],                // Internal elements stream sequence
+    "arrayElement": ["initializer"],                   // Individual array index definition instance
+    "objectLiteral": ["initializerList"],              // Inline structure initializations
+    "assignmentOperator": ["assignmentOperator"],      // Compound mutations (*=, /=)
+
+    // =====================================================================
+    // 6. MODULE TRANSLATION MACROS & FILE EXPORTS
+    // =====================================================================
+    "importStatement": ["externalDeclaration"],        // External module linkings mapping to extern qualifiers
+    "importFromBlock": ["externalDeclaration"],        // Context library references tracking
+    "importModuleItems": ["collection"],               // Destructured structural module layouts list
+    "importAliasName": ["typedefName"],                // Virtual type reference tracking alias names
+    "moduleExportName": ["typedefName"],               // Public symbol assignment names
+    "importedBinding": ["Identifier"],                 // Local symbol instance variables mapping to type names
+    "importDefault": ["Identifier"],                  // Base generic import mapping handles
+    "importNamespace": ["Identifier"],                 // Globbed star namespace mapping descriptors
+    "importFrom": ["StringLiteral"],                   // Source dependency target tracking filepath literal strings
+    "aliasName": ["typedefName"],                      // Mapping tag conversions
+    "exportStatement": ["externalDeclaration"],        // Public external tracking definitions
+    "exportFromBlock": ["externalDeclaration"],        // Pass-through dependency re-routing allocations
+    "exportModuleItems": ["collection"],               // Export block items sequence listing
+    "exportAliasName": ["typedefName"],                // Exported aliases descriptors
+
+    // =====================================================================
+    // 7. TERMINAL LITERAL DATA LEAVES & SPECS
+    // =====================================================================
+    "literal": ["constant", "predefinedConstant"],    // Atomic boolean or null state references
+    "numericLiteral": ["constant"],                    // Numeric data representations
+    "bigintLiteral": ["constant"],                    // High-precision math constants
+    "templateStringLiteral": ["StringLiteral"],        // Backtick string layouts mapping to string constant arrays
+    "templateStringAtom": ["StringLiteral"],           // Interp string sub-component literals
+    "assignable": ["Identifier"],                      // Target identifier mutated write addresses
+    "identifierName": ["Identifier"],                  // Extracted alpha-numeric string markers
+    "identifier": ["Identifier"],                      // Reference lookups
+    "reservedWord": ["keyword"],                      // Language system keywords matrix
+    "keyword": ["keyword"],                            // Native reserved state statements
+    "varModifier": ["storageClassSpecifier"],          // Variable lifecycle constraints (let, var, const)
+    "let_": ["storageClassSpecifier"]                  // Block-scoped local memory class markers
 };
 
 
@@ -945,7 +1350,7 @@ const ROSETTA_NEIGHBORHOOD_ASSOCIATIONS = {
         const ruleLow = t.tokenRule ? t.tokenRule.toLowerCase() : "";
         const symLow = t.tokenSymbol ? t.tokenSymbol.toLowerCase() : "";
 
-        if(t.text.includes('#include')) {
+        if (t.text.includes('#include')) {
             return 'keyword.support.include'
         }
 
@@ -1035,6 +1440,21 @@ function toRosettaToken(symbolicName, ruleName, lexer, parser, ctxOrToken, token
     const coreBaseClass = toRosettaNonRecursive(state.ruleName, state.lexerSymbolicName);
     coreBaseClass.split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
 
+    if (state.symbolicName && GRAMMAR_CLASSIFIER_MATRIX[state.symbolicName]) {
+        GRAMMAR_CLASSIFIER_MATRIX[state.symbolicName].split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
+    }
+    if (state.ruleName && GRAMMAR_CLASSIFIER_MATRIX[state.ruleName]) {
+        GRAMMAR_CLASSIFIER_MATRIX[state.ruleName].split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
+    }
+
+    // Explicitly ingest the active rule's Rosetta Cross-Language mapping if it exists
+    if (state.ruleName && ROSETTA_CROSS_LANGUAGE_MAPPING[state.ruleName]) {
+        ROSETTA_CROSS_LANGUAGE_MAPPING[state.ruleName].forEach(crossCKey => {
+            const nonRecCross = toRosettaNonRecursive(crossCKey, null);
+            if (nonRecCross !== "text") nonRecCross.split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
+        });
+    }
+
     const activeStreamTokens = tokenStream?.tokens || tokenStream || [];
     if (state.tokenIndex !== null && activeStreamTokens.length > 0) {
 
@@ -1060,6 +1480,11 @@ function toRosettaToken(symbolicName, ruleName, lexer, parser, ctxOrToken, token
     // 4. Trace the Ancestral Rule Matrix Hierarchy sequentially
     if (state.ruleHistory && state.ruleHistory.length > 0) {
         state.ruleHistory.forEach(ancestorRule => {
+            // Append explicit architectural classifications if defined
+            if (GRAMMAR_CLASSIFIER_MATRIX[ancestorRule]) {
+                GRAMMAR_CLASSIFIER_MATRIX[ancestorRule].split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
+            }
+
             // Unpack dynamic multi-language crossings safely
             if (ROSETTA_CROSS_LANGUAGE_MAPPING[ancestorRule]) {
                 ROSETTA_CROSS_LANGUAGE_MAPPING[ancestorRule].forEach(crossCKey => {
@@ -1539,7 +1964,7 @@ function processJavaScriptASI(tokenStream) {
 
         // Check if we are crossing a line break between two valid tokens
         if (nextToken && currentToken.line < nextToken.line) {
-            
+
             // BUG DETECTION 1: The Restricted Production Rule (return, break, continue, throw)
             if (['return', 'break', 'continue', 'throw'].includes(currentToken.text)) {
                 asiErrors.push({
@@ -1565,7 +1990,7 @@ function processJavaScriptASI(tokenStream) {
                     });
                 }
             }
-            
+
             // STANDARD ASI INSIGHT: Tagging normal missing semis for AST alignment
             if (requiresImplicitSemicolon(currentToken, nextToken)) {
                 modifiedTokens.push({
@@ -1588,7 +2013,7 @@ function processJavaScriptASI(tokenStream) {
 function requiresImplicitSemicolon(current, next) {
     // Avoid double semicolons or inserting after structural blocks
     if ([';', '{', '}'].includes(current.text) || ['}'].includes(next.text)) return false;
-    
+
     // Core check: If the upcoming token cannot natively chain off the current token
     // (e.g., an identifier followed by another identifier on a new line)
     return (current.type === PreprocessorLexer.IDENTIFIER && next.type === PreprocessorLexer.IDENTIFIER);

@@ -115,7 +115,7 @@ function forceFitLayout(first) {
     const dims = core?._renderService?.dimensions;
 
     if (!dims || dims.css.cell.width === 0) {
-        requestAnimationFrame(forceFitLayout);
+        window.terminalFrameLimiter.requestFrameUpdate(forceFitLayout)
         return;
     }
 

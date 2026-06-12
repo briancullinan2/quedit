@@ -20,7 +20,7 @@ const EXTENSION_TO_PARSER_ID = {
     'cc': 'cpp',
     'cfc': 'coldfusion',
     'cfm': 'coldfusion',
-    'cfg': 'q3_config',
+    'cfg': 'q3config',
     'cjs': 'javascript',
     'cl': 'lisp',
     'clj': 'clojure',
@@ -180,15 +180,11 @@ const EXTENSION_TO_PARSER_ID = {
     'wasm': 'wat',
     'qvm': 'wat',
     'v': 'verilog',
-    'shader': 'q3_shader',
-    'shaderx': 'q3_shader',
     'vala': 'vala',
     'vapi': 'vala',
     'vbe': 'vbscript',
     'vbs': 'vbscript',
     'vert': 'glsl',
-    'cam': 'q3_cam',
-    'map': 'quakemap',
     'vh': 'verilog',
     'vhd': 'vhdl',
     'vhdl': 'vhdl',
@@ -200,7 +196,17 @@ const EXTENSION_TO_PARSER_ID = {
     'yaml': 'yaml',
     'yml': 'yaml',
     'zig': 'zig',
-    'zsh': 'sh'
+    'zsh': 'sh',
+
+    
+    'cam': 'q3camera',
+    'shader': 'q3shader',
+    'shaderx': 'q3shader',
+    'cam': 'q3camera',
+    'map': 'q3map', // Or 'quakemap' if targeting your legacy BSP parser
+    'arena': 'q3arena',
+    'menu': 'q3menu',
+    'skin': 'q3skin',
 };
 /**
  * Updates the structural targets and re-schedules the parser timeline

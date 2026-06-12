@@ -283,7 +283,7 @@ async function runEngine(database = null, noBounce = false) {
         let program = await initWasm(FS.virtual[enginePath].contents, ENGINE)
         await updateEnvironment(program, ENGINE)
         await readAll(window.engineRepository, (r => {
-            if(r.path.includes(config.RUNBASE)) {
+            if (r.path.includes(config.RUNBASE)) {
                 FS.virtual[r.path] = r
             }
         }))
@@ -311,9 +311,10 @@ function _base64ToArrayBuffer(base64) {
 
 async function readPreFS() {
     // TODO: offline download so it saves binary to IndexedDB
-    //if (typeof window.preFS == 'undefined') {
-    //    throw new Error('No preFS, must load in correct order!')
-    //}
+    /*
+    if (typeof window.preFS == 'undefined') {
+        throw new Error('No preFS, must load in correct order!')
+    }
     let preloadedPaths = Object.keys(window.preFS)
     for (let i = 0; i < preloadedPaths.length; i++) {
         if (preloadedPaths[i].endsWith('_timestamp')) {
@@ -330,6 +331,8 @@ async function readPreFS() {
             parent: preloadedPaths[i].substring(0, preloadedPaths[i].lastIndexOf('/'))
         }
     }
+    */
+
 
     /*
     thinking about how deep I want to go on this:

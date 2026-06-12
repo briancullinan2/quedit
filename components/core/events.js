@@ -11,7 +11,7 @@ const IMPORT_MODULES = {
         panelId: 'terminal-container',
         css: IMPORT_CSS['terminal'],
         js: IMPORT_JS['terminal'],
-        onLoad: onLoadTerminal,
+        //onLoad: onLoadTerminal, //xterm.onRender
         onUnload: onUnloadTerminal
     },
 
@@ -92,13 +92,14 @@ function isDevToolsOpen() {
     return widthThreshold || heightThreshold;
 }
 
+
+
 function onLoadTerminal() {
     // Force xterm panel element layout recalculations
     // this is the panel management stuff i didn't post to gemini
     //const wrapper = document.getElementById('terminal-container');
     //if (wrapper) wrapper.classList.remove('hidden');
     //if (wrapper) wrapper.classList.add('not-hidden');
-
 
     // TODO: insert xterm startup
 
@@ -111,11 +112,18 @@ function onLoadTerminal() {
     setTimeout(() => {
         syncThemeWithAce()
         forceFitLayout(true)
+
         if (!window.terminalLoaded) {
-            term.write(terminalLog.map(l => l.text || l).join(''))
-            if (!window.terminalLoaded && terminalLog.length > 0)
-                setTimeout(() => writePrompt(), 200)
-            window.terminalLoaded = true
+
+            // 1. Wrap the initial log dump into the rate limiter queue
+            window.terminalFrameLimiter.requestFrameUpdate(() => {
+                term.write(terminalLog.map(l => l.text || l).join(''));
+
+                if (!window.terminalLoaded && terminalLog.length > 0) {
+                    setTimeout(() => writePrompt(), 200);
+                }
+                window.terminalLoaded = true;
+            });
         }
         terminalContainer.focus()
     }, 200)
@@ -124,7 +132,11 @@ function onLoadTerminal() {
     setTimeout(() => {
         const searchInput = document.getElementById('search-terminal');
         if (typeof scanVisibleViewport === 'function' && searchInput) {
-            scanVisibleViewport(searchInput.value);
+
+            // 2. Wrap the viewport scanning pass into the rate limiter queue
+            window.terminalFrameLimiter.requestFrameUpdate(() => {
+                scanVisibleViewport(searchInput.value);
+            });
         }
     }, 1000);
 }

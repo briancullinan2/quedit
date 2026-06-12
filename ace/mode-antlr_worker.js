@@ -32,42 +32,6 @@ function onBridgeHighlight(response) {
     }
 }
 
-/**
- * High-Fidelity Client-Side Token Interception and Semantic Enrichment
- */
-function onWorkerHighlight(e) {
-    // 1. THE CANCELLATION GATE (Prevents UI repaint thrashing during panel swaps)
-    if (window.currentActiveLayoutMode === 'navigation-override' || window.preventHighlightPaint) {
-        return;
-    }
-
-    var compilerDiagnostics = ace.require("ace/ext/compiler_diagnostics");
-    if (compilerDiagnostics && compilerDiagnostics.getBridge) {
-        var bridge = compilerDiagnostics.getBridge();
-
-        // 2. SEMANTIC TRANSFORMATION PASS
-        const enrichedTokenLines = e.data.tokenLines.map(function (rowTokens) {
-            if (!rowTokens) return rowTokens;
-
-            return rowTokens.map(function (token) {
-                // Feature A: Check for custom spelling markers inside comments
-                if (token.type === 'comment' && token.value.includes('TODO')) {
-                    token.type += " spelling-error task-marker";
-                }
-
-                // Feature B: Enrich matching compiled interactive Quake 3 definitions
-                if (token.type === 'entity.name.function' && window.clickableSymbolsMap?.[token.value]) {
-                    token.type += " clickable-engine-symbol";
-                }
-
-                return token;
-            });
-        });
-
-        // 3. Inject the finalized token map directly into Ace's background tokenizer cache
-        bridge.applyCustomWorkerHighlights(enrichedTokenLines);
-    }
-}
 
 function onWorkerAnnotate(session, e) {
     var compilerDiagnostics = ace.require("ace/ext/compiler_diagnostics");

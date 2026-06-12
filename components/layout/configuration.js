@@ -166,28 +166,27 @@ async function setRepository(newRepo) {
     updateSelectOptions('branch', branches)
 }
 
-
-
 function createFrameRater(targetFps, callback) {
     const fpsInterval = 1000 / targetFps;
 
     const startTime = performance.now();
     let frameCount = 0;
 
-    // The event stack/queue to hold incoming payloads or functions
     const eventStack = [];
+    let isFlushing = false; // The single logic protector
 
     // Permanent heartbeat interval running from startup
     setInterval(() => {
-        // Only trigger a paint frame if there are items waiting in the stack
-        if (eventStack.length > 0) {
+        // Only trigger if items are waiting AND we aren't currently inside a paint cycle
+        if (eventStack.length > 0 && !isFlushing) {
 
-            // Shallow copy and clear the stack immediately so new incoming 
-            // events during the frame paint cycle are safely queued for the next tick
+            // Shallow copy and clear the stack immediately
             const currentBatch = [...eventStack];
             eventStack.length = 0;
 
             requestAnimationFrame((paintTime) => {
+                isFlushing = true; // Lock out the interval thread during execution
+
                 frameCount++;
                 const t = paintTime - startTime;
 
@@ -197,17 +196,19 @@ function createFrameRater(targetFps, callback) {
                         callback(currentBatch[i], t, frameCount);
                     }
                 }
+
+                isFlushing = false; // Safely release the lock after execution terminates
             });
         }
     }, fpsInterval);
 
     return {
         requestFrameUpdate(e) {
-            // Push everything into the stack—whether it's a mouse event or xterm's refresh function
             eventStack.push(e);
         }
     };
 }
+
 
 
 const TESTPATH_ROOTS = ['', 'demoq3/pak0.pk3dir', 'docs/demoq3/pak0.pk3dir'];

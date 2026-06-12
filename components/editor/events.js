@@ -152,7 +152,6 @@ function onAceMouseMove(event) {
                 || event.target.closest('#editor'))
         ) {
             doAceEditorMouse(event)
-            return
         }
 
 

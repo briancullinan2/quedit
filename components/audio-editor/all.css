@@ -3075,23 +3075,23 @@ body.pk_stndln {
     }
 }
 
-*::-webkit-scrollbar {
+#audio-editor *::-webkit-scrollbar {
     width: 10px;
     height: 10px
 }
 
-*::-webkit-scrollbar-track {
+#audio-editor *::-webkit-scrollbar-track {
     background: var(--bg-1)
 }
 
-*::-webkit-scrollbar-thumb {
+#audio-editor *::-webkit-scrollbar-thumb {
     background: var(--bg-3);
     border: 2px solid var(--bg-1);
     border-radius: var(--r-md)
 }
 
-*::-webkit-scrollbar-thumb:hover,
-*::-webkit-scrollbar-thumb:active {
+#audio-editor *::-webkit-scrollbar-thumb:hover,
+#audio-editor *::-webkit-scrollbar-thumb:active {
     background: var(--fg-2);
     box-shadow: none
 }
