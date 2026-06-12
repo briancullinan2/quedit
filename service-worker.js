@@ -75,7 +75,7 @@ const FS_DIR = (ST_DIR << 12) + FS_DEFAULT;
 // Global in-memory cache to prevent concurrent mkdirp race conditions
 const createdDirectories = new Set();
 
-async function mkdirp(path) {
+async function mkdirp(path, selected) {
     let segments = path.split(/\/|\\/gi).filter(Boolean);
 
     // Build the path layers sequentially
@@ -98,7 +98,7 @@ async function mkdirp(path) {
                 timestamp: new Date(),
                 mode: FS_DIR,
                 parent: parentDir
-            }, api.environmentRepository);
+            }, selected || api.environmentRepository);
 
             // Mark it as safely committed to avoid parallel thrashing
             createdDirectories.add(dir);
@@ -183,14 +183,14 @@ async function fetchAsset(urlInput, key, selected) {
 
         console.log(`📂 [SW-FS] Staging VFS mapping coordinates. localKey: "${localKey}" | dirPath: "${dirPath}"`);
 
-        await mkdirp(dirPath);
+        await mkdirp(dirPath, selected);
 
         console.log(`💾 [SW-DATABASE] Writing payload binary content into IndexedDB Store: "${DB_STORE_NAME}" -> Target Key: "${localKey}"`);
         if (!localKey.includes('.')) {
             debugger;
             console.error("WHAT THE FUCK IS WRONG WITH YOU? " + key);
         }
-        const isGithubContents = urlString.includes('api.github.com') && urlString.includes('/contents/')
+        const isGithubContents = urlString.includes('api.github.com') && urlString.includes('contents/')
         if (!isGithubContents) {
             await putRecord(DB_STORE_NAME, {
                 path: localKey,
