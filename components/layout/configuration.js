@@ -2,7 +2,6 @@ const SCROLLBAR_WIDTH = 15
 
 let TERMINATE = false
 
-
 function updateSelectOptions(elementId, items, selectedValue = 'main') {
     const selector = elementId instanceof Element ? elementId : document.getElementById(elementId);
     if (!selector) return;
@@ -10,27 +9,45 @@ function updateSelectOptions(elementId, items, selectedValue = 'main') {
     // 1. Clear existing options
     selector.innerHTML = '';
 
-    // 2. Create and append new options
-    items.forEach(item => {
-        // Handle both simple strings or GitHub branch objects
-        const name = typeof item === 'object' ? item.name : item;
+    // 2. Normalize input items into a standard loopable collection
+    let normalizedItems = [];
+
+    if (items && typeof items === 'object' && !Array.isArray(items)) {
+        // Handle key: value pair object (Dictionary)
+        normalizedItems = Object.entries(items).map(([key, val]) => ({
+            value: key,
+            text: val
+        }));
+    } else if (Array.isArray(items)) {
+        // Handle flat arrays of strings or GitHub/Engine branch objects
+        normalizedItems = items.map(item => {
+            const name = typeof item === 'object' ? item.name : item;
+            return {
+                value: name,
+                text: name
+            };
+        });
+    }
+
+    // 3. Create and append normalized entries
+    normalizedItems.forEach(item => {
         const option = document.createElement('option');
 
-        option.value = name;
-        option.textContent = name;
+        option.value = item.value;
+        option.textContent = item.text;
 
-        if (name === selectedValue) {
+        // Check matching state against the intended target option value
+        if (item.value === selectedValue || item.text === selectedValue) {
             option.selected = true;
         }
 
         selector.appendChild(option);
     });
 
-    // 3. Force layout recalculation 
+    // 4. Force layout recalculation 
     // This helps with the "wont shrink" issue if the new text is shorter
     selector.style.minWidth = '0';
 }
-
 
 
 const tokenInput = document.getElementById('gh-token-input');

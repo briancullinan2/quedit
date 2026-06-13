@@ -146440,16 +146440,36 @@
             Jp.prototype.updateSelection = function () { }
             ,
             Jp.prototype.activate = function () {
-                if (!0 === this.active && this.deactivate(),
-                    void 0 !== this.update) {
-                    var t = this
-                        , e = function () {
-                            t.active && (t.update(),
-                                requestAnimationFrame(e))
-                        };
-                    requestAnimationFrame(e)
+                // 1. Guard against duplicate parallel execution stacks
+                if (this.active === true) {
+                    this.deactivate();
                 }
-                this.active = !0
+
+                if (this.update !== undefined) {
+                    var t = this;
+
+                    // 2. Instantiate your custom framework frame rater (Targeting 60 FPS)
+                    // Your callback receives the batch items, current time, and overall frame count
+                    t.nunuFrameLimiter = createFrameRater(60, function (mockEvent, timestamp, frameCount) {
+                        if (t.active) {
+                            t.update();
+                        }
+                    });
+
+                    // 3. Simple, non-leaking recursive ticker loop to continually 
+                    // feed updates straight into your engine event stack
+                    var runLoop = function () {
+                        if (t.active) {
+                            t.nunuFrameLimiter.requestFrameUpdate({ type: 'nunu-tick' });
+                            requestAnimationFrame(runLoop);
+                        }
+                    };
+
+                    // Fire the introductory frame handshake
+                    requestAnimationFrame(runLoop);
+                }
+
+                this.active = true;
             }
             ,
             Jp.prototype.deactivate = function () {

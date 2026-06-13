@@ -92,7 +92,7 @@ async function mkdirp(path, selected) {
 
         console.log(`📂 [SW-FS] Safely writing isolated directory block: "${dir}"`);
 
-        if(!(selected || api.environmentRepository) || !(selected || api.environmentRepository).split) {
+        if (!(selected || api.environmentRepository) || !(selected || api.environmentRepository).split) {
             debugger
             console.log('What the fuck is wrong with you brain?')
         }
@@ -332,23 +332,31 @@ self.addEventListener('install', event => {
 });
 
 
+function ensureInitialized() {
+    if (!swInitializationPromise) {
+        swInitializationPromise = (async () => {
+            if (!localVersion || !api.environmentRepository) {
+                await lookupLocalVersion();
+            }
+        })();
+    }
+    return swInitializationPromise;
+}
+
 self.addEventListener('activate', event => {
     console.info('🚀 [SW-LIFECYCLE] --- ACTIVATE EVENT TRIGGERED ---');
-
     event.waitUntil((async () => {
+        // Force the configuration initialization loop immediately
+        await ensureInitialized();
 
-        if (!localVersion || !api.environmentRepository) {
-            await lookupLocalVersion()
-        }
-
-        console.log(`🚀 [SW-LIFECYCLE] Closing existing handle to database instance "${api.environmentRepository}" for clean boot state reset.`);
+        console.log(`🚀 [SW-LIFECYCLE] Closing database instance "${api.environmentRepository}" for clean boot state reset.`);
         try {
             console.log('⚙️ [SW-ASYNC] Running scheduled installAssets post-activation validation routine.');
             await installAssets();
         } catch (err) {
-            console.error('❌ [SW-CRITICAL] Failure encountered during core activation block execution routine:', err);
+            console.error('❌ [SW-CRITICAL] Failure encountered during core activation block:', err);
         }
-        return self.clients.claim(); // Fallback strategy to keep lifecycle moving forward
+        return self.clients.claim();
     })());
 });
 
@@ -388,32 +396,40 @@ let localVersion = null;
 })();
 
 let needsRefresh = false;
+let swInitializationPromise = null;
 
 async function checkStatus() {
+    // 1. Core Lifecycle Lock: Ensure the asynchronous database lookup passes 
+    // COMPLETELY exactly once before any downstream logic or fetch queries execute
+    if (!swInitializationPromise) {
+        swInitializationPromise = (async () => {
+            if (!localVersion || !api.environmentRepository) {
+                await lookupLocalVersion();
+            }
+        })().catch(err => {
+            swInitializationPromise = null; // Flush on failure to allow subsequent asset fetches to retry
+            throw err;
+        });
+    }
+    await swInitializationPromise;
+
+    // 2. Offline Connectivity Checks
     if (!navigator.onLine) {
         console.log(`⏱️ [SW-HEARTBEAT] Browser context reports completely OFFLINE. Aborting live API updates check.`);
         isOffline = true;
         return;
     }
 
+    // 3. Heartbeat Throttling
     const now = Date.now();
     if (now - lastConnectivityCheck < 10000) {
         console.log(`⏱️ [SW-HEARTBEAT] Suppressing status execution check. Last check occurred less than 10000ms ago.`);
-        return;
+        return; // Safe to return because swInitializationPromise is fully resolved here
     }
     lastConnectivityCheck = now;
     console.log('⏱️ [SW-HEARTBEAT] Executing connectivity status/version analysis check rules...');
 
-    try {
-
-        if (!localVersion || !api.environmentRepository) {
-            await lookupLocalVersion()
-        }
-
-    } catch (e) {
-        console.error('❌ [SW-HEARTBEAT] Fallback layout file restoration retrieval operation failed:', e);
-    }
-
+    // 4. Remote Repository Comparison Check Sequence
     try {
         const parts = api.environmentRepository.split('/');
         const ownerName = parts[0];
@@ -452,6 +468,7 @@ async function checkStatus() {
         }
     }
 }
+
 
 async function lookupLocalVersion() {
     const databases = await getDatabaseMetadata();
@@ -501,7 +518,7 @@ async function lookupLocalVersion() {
     } else {
         console.log(`⚠️ [SW-MESSAGE] No version file found across any databases. Fallback: ${localVersion}`);
     }
-    if(!api.environmentRepository) {
+    if (!api.environmentRepository) {
         debugger
         console.log('You\'re a fucking idiot.')
     }
@@ -615,115 +632,92 @@ const uniqueAssets = [
 ].map(path => path.replace(/^\/?assets\/|^\//ig, '')); // Normalize paths to omit leading slashes\
 
 
+
+
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
     const isAssetQuery = event.request.url.includes('/components/') || event.request.url.includes('/ace/');
 
     if (!isOffline && event.request.url.includes('version.json')) {
-        console.log('⚡ [SW-FETCH] Route is "version.json" and engine is ONLINE. Bypassing worker completely. Handing off to network.');
         return;
     }
 
-    // 2. Convert absolute browser URLs into relative path keys
-    // e.g., "http://localhost:8080/components/core/local.js" -> "components/core/local.js"
     const requestUrlObj = new URL(event.request.url);
-    const relativePath = requestUrlObj.pathname.replace(/^\//, ''); // Strip leading slash
+    const relativePath = requestUrlObj.pathname.replace(/^\//, '');
 
     const isNavigation = event.request.mode === 'navigate';
     let assetUrl = null;
-    let selected = api.environmentRepository
-    let isGithubContents = false
+    let isGithubContents = false;
+    let fallbackSelected = null; // Track route-specific overrides (like explicit github queries)
 
-    // 3. Evaluate if this file belongs to our explicit VFS Manifest
+    // Evaluate VFS matching rules
     if (uniqueAssets.includes(relativePath) || isAssetQuery) {
         assetUrl = relativePath;
     } else if (isNavigation) {
-        if (!isAssetQuery) console.log(`⚡ [SW-FETCH] Intercepted navigation route layout ("${event.request.url}"). Defaulting routing target to "index.html".`);
         assetUrl = 'index.html';
     } else if (requestUrlObj.hostname === 'api.github.com') {
         const gitHubMatch = requestUrlObj.pathname.match(/^\/repos\/([^\/]+)\/([^\/]+)\/?(.*)$/i);
-
         if (gitHubMatch) {
             const [_, owner, repo, restOfRoute] = gitHubMatch;
-
-            // Set targeted database context dynamically to the owner/repo string
-            selected = `${owner}/${repo}`;
-
-            // Normalize empty queries (like a base repository layout call) to 'index'
+            fallbackSelected = `${owner}/${repo}`; // Route override
             const routeKey = restOfRoute || 'index';
-
-            // Escape path characters into a clean flat sequence file key
             const escapedRoute = routeKey.replace(/[^a-z0-9]/gi, '-').toLowerCase();
             assetUrl = `${escapedRoute}.json`;
-            isGithubContents = restOfRoute.startsWith('contents/')
-            //if(relativePath.includes('git/trees')) {
-            //    debugger
-            //}
+            isGithubContents = restOfRoute.startsWith('contents/');
         }
     }
 
-    // If it's not a framework asset we care about, skip processing entirely and pass to normal network
-    if (!assetUrl) {
-        return;
-    }
+    if (!assetUrl) return;
 
-    // Normalize target variable structure safely
     assetUrl = assetUrl.replace(/^\/?assets\/|^\//ig, '');
     const localName = (!isGithubContents ? '/base' : '') + (assetUrl.startsWith('/') ? '' : '/') + assetUrl;
     const contentType = getMimeType(assetUrl);
 
-    if (!isAssetQuery) {
-        console.log(`⚡ [SW-FETCH] Fetch event pipeline actively processing intercept -> Request URL: "${event.request.url}" | Matched Internal Asset Target: "${assetUrl}"`);
-    }
-
     event.respondWith((async () => {
-        if (!isAssetQuery) console.log(`⚡ [SW-FETCH-ASYNC] Running execution worker lifecycle block wrapper for target asset: "${assetUrl}"`);
+        // --- FIX A: FORCE STATUS AND INITIALIZATION UNTIL COMPLETION ---
+        await checkStatus();
 
-        // 1. Run the heartbeat check
-        checkStatus();
+        // --- FIX B: EVALUATE STATE ONLY AFTER THE LOCK RELEASES ---
+        let selected = fallbackSelected || api.environmentRepository;
+
+        if (!selected) {
+            console.error(`🚨 [SW-FETCH-FATAL] Repository context still empty for asset: "${assetUrl}"`);
+            return fetch(event.request);
+        }
 
         // 2. Network Check First Strategy
         if (!isOffline) {
             try {
-                if (!isAssetQuery) console.log(`🌐 [SW-FETCH-NET] Attempting primary network acquisition route pipeline for asset: "${assetUrl}"`);
                 const response = await fetchAsset(event.request, assetUrl, selected);
-                if (response.ok) {
-                    if (!isAssetQuery) console.log(`🌐 [SW-FETCH-NET] Network fetch succeeded (200/304 validation check passed) for: "${assetUrl}"`);
-                    return response;
-                }
+                if (response.ok) return response;
             } catch (netErr) {
-                console.error(`⚠️ [SW-FETCH-NET] Network acquisition fallback route failed or threw error for "${assetUrl}":`, netErr);
+                console.error(`⚠️ [SW-FETCH-NET] Failure for "${assetUrl}":`, netErr);
             }
         }
 
         // 3. Fallback: Local VFS DB retrieval
         try {
-            if (!isAssetQuery) console.log(`💾 [SW-FETCH-STORE] Attempting VFS database block read for key name: "${localName}"`);
             const files = await getRecord(DB_STORE_NAME, localName, selected);
-
             if (files && files.contents) {
-                if (!isAssetQuery) console.log(`✨ [SW-FETCH-STORE] VFS Cache match found! Compiling local response frame wrapper for: "${localName}" [MIME: ${contentType}]`);
                 const newHeaders = getHeaders();
                 newHeaders.set('Content-Type', contentType);
-
                 return new Response(files.contents, {
                     status: 200,
                     statusText: 'OK',
                     headers: newHeaders
                 });
-            } else {
-                if (!isAssetQuery) console.warn(`⚠️ [SW-FETCH-STORE] Database lookup returned empty body or missing index reference pointer for: "${localName}"`);
             }
         } catch (dbReadErr) {
-            console.error(`❌ [SW-FETCH-STORE] VFS IndexedDB reader wrapper crash occurred for key "${localName}":`, dbReadErr);
+            console.error(`❌ [SW-FETCH-STORE] DB Crash for key "${localName}":`, dbReadErr);
         }
 
-        // 4. Absolute Final Emergency Fallback
-        console.warn(`🚨 [SW-FETCH-FALLBACK] Both live network and local IndexedDB lookup points failed for "${assetUrl}". Launching direct un-cached pass-through fetch call execution wrapper.`);
         return fetch(event.request);
     })());
 });
+
+
+
 
 function getMimeType(url) {
     if (url.endsWith('.wasm')) return 'application/wasm';

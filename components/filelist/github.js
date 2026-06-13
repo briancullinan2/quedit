@@ -128,7 +128,9 @@ async function githubGraphQL(query, variables = {}) {
 }
 
 
-const maps = []
+const maps = {
+    "": "Current map"
+}
 
 async function loadGitHubTree(repoOwner, repoName, branch) {
 
@@ -143,8 +145,8 @@ async function loadGitHubTree(repoOwner, repoName, branch) {
         files[database] = treeData.tree.reduce((obj, a) => {
             // Attach the buildDate to every file as a fallback mtime
             if (a.path.toLowerCase().includes('.map') || a.path.toLowerCase().includes('.bsp')) {
-                if (!maps.includes(a.path)) {
-                    maps.push(a.path)
+                if (!maps[a.path]) {
+                    maps[a.path] = a.path.split('/').pop()
                 }
             }
             a.timestamp = buildDate;
@@ -159,8 +161,8 @@ async function loadGitHubTree(repoOwner, repoName, branch) {
             await setupDatabase(database, DB_SCHEME)
         }
 
-        if(maps.length) {
-            updateSelectOptions('map', maps.map(m => m.split('/').pop()));
+        if (maps.length) {
+            updateSelectOptions('map', maps);
         }
 
         return files[database]

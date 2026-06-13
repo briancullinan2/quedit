@@ -120,41 +120,61 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
     }
 }
 
-
 async function openMap(content, filePath, sampleBytes) {
-    // 1. Precise check: Fallback to extension check if binary detector isn't matching perfectly
+    // =========================================================================
+    // TIER 1: IMMEDIATE INTERCEPTION & DEPENDENCY RESOLUTION
+    // =========================================================================
     const isBsp = BINARY_DETECTOR.bsp.match(sampleBytes) || filePath.endsWith('.bsp');
     if (!isBsp) return false;
 
-    // Set panel identification tracks
+    // Set panel identification tracks immediately to avoid UI popping
     latestPanelId = latestNotFilelist = 'viewport-frame';
     previousNotFilelistId = 'editor';
 
-    // Fire viewport module injections asynchronously safely out of blocking cycle
+    const mapFile = filePath.split('/').pop().split('.')[0];
+    const preferredRenderer = SettingsManager.get('quake3e', 'preferredRenderer');
+
+    // Pre-hydrate heavy engine modules immediately instead of inside the timeout
+    if (preferredRenderer === 'toji') {
+        await DependencyLoader.loadModule('toji');
+    } else if (preferredRenderer === 'nunu') {
+        await DependencyLoader.loadModule('nunu');
+    } else {
+        // Default fallback: 'quake3e' WebAssembly runtime core
+        await DependencyLoader.loadModule('quake3e');
+    }
+
+    // =========================================================================
+    // TIER 2: DEFERRED VIEWPORT MOUNTING & RUNTIME ENGINE INITIALIZATION
+    // =========================================================================
     setTimeout(async () => {
-        const viewport = document.getElementById('viewport');
-        const mapFile = filePath.split('/').pop().split('.')[0];
-
-        const preferredRenderer = SettingsManager.get('quake3e', 'preferredRenderer');
-
         if (preferredRenderer === 'toji') {
-            await DependencyLoader.loadModule('toji');
+            const viewport = document.getElementById('viewport');
             let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
             if (typeof initMap === 'function') {
                 initMap(gl, mapFile);
             }
-        } else if (preferredRenderer === 'nunu') {
-            await DependencyLoader.loadModule('nunu');
-            // Add custom nunuStudio initialization hooks here if needed
-        } else {
-            // Default fallback: 'quake3e'
-            await DependencyLoader.loadModule('quake3e');
+        }
+        else if (preferredRenderer === 'nunu') {
+            // Native editor pipeline unblocked by Devin
+            if (typeof importBSP === 'function') {
+                await importBSP();
+            }
+        }
+        else {
+            // Native Quake3e WebAssembly runtime implementation
+            if (typeof Cbuf_AddText === 'function' && typeof stringToAddress === 'function') {
+                // Safely pipe the raw map load command alongside subsystem resets straight into the engine core
+                const bspCommand = `map ${mapFile} ; fs_restart ; vid_restart ;\n`;
+                Cbuf_AddText(stringToAddress(bspCommand));
+            } else {
+                console.error("Quake3e runtime bindings or stringToAddress pointer allocation missing.");
+            }
         }
     }, 200);
 
     return true;
 }
-
 
 
 
