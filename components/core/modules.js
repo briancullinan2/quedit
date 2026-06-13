@@ -115,12 +115,12 @@ async function compileProject() {
 }
 
 
-
 async function storeSettingsForWorker() {
     const database = SettingsManager.get('core', 'environmentRepository')
     const parts = database.split('/');
     const ownerName = parts[0];
     const repoName = parts[1];
+
     try {
         const branch = await getDefaultBranch(ownerName, repoName);
         const latestFileTime = await getBranchVersion(ownerName, repoName, branch);
@@ -128,9 +128,20 @@ async function storeSettingsForWorker() {
     } catch (e) {
         console.error(e)
     }
+
+    // --- FIX: Initialize the target database container FIRST ---
+    const databases = await getDatabaseMetadata();
+    const shouldInstall = (await needsInstall(database, DB_SCHEME)).item3
+    if (databases.filter(d => d.key == database).length == 0 || shouldInstall) {
+        await deleteOldDatabase(database)
+        await setupDatabase(database, DB_SCHEME);
+    }
+
+    // --- NOW write the virtual asset settings securely ---
     const filePath = '/base/settings.json'
     const content = JSON.stringify(SettingsManager.exportPayload(), null, 4)
     const newSha = await getGitShaBrowser(content)
+
     FS.virtual[filePath] = {
         timestamp: new Date(),
         mode: FS_FILE,
@@ -139,15 +150,9 @@ async function storeSettingsForWorker() {
         sha: newSha,
         parent: ''
     }
-    const databases = await getDatabaseMetadata();
-    const shouldInstall = (await needsInstall(database, DB_SCHEME)).item3
-    if (databases.filter(d => d.key == database).length == 0 || shouldInstall) {
-        await deleteOldDatabase(database)
-        await setupDatabase(database, DB_SCHEME);
-    }
+
     await putRecord(DB_STORE_NAME, FS.virtual[filePath], database)
 }
-
 
 
 async function manageServiceWorker() {

@@ -39,6 +39,11 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
         case 'audio-editor':
             await DependencyLoader.loadModule('audio');
             break;
+
+        case 'map':
+            await clickFile(document.getElementById('map').value, 1, false, true)
+            break;
+
         case 'paint':
         case 'paint-container':
             // Lazy load the full layout styles and script package for miniPaint

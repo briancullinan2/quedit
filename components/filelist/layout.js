@@ -6,7 +6,7 @@ function getDocumentPanelFromClickId(panelId) {
 
     let panelDocumentId = panelId
     if (panelId === 'play' || panelId === 'run' || panelId === 'reload'
-        || panelId === 'spawn' || panelId === 'map'
+        || panelId === 'spawn'
     )
         panelDocumentId = 'viewport-frame'
     if (panelId === 'compile' || panelId === 'build' || panelId === 'terminal')
@@ -49,6 +49,7 @@ const DOESNT_AFFECT_UI = [
     'configuration', 'theme', 'repository',
     'wasi', 'theme', 'keybinding', 'reload',
     'branch', 'owner', 'toolbar', 'fileHistory',
+    'map', 'spawn'
     
 ]
 

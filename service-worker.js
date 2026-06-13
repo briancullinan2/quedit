@@ -195,8 +195,43 @@ async function fetchAsset(urlInput, key, selected) {
             debugger;
             console.error("WHAT THE FUCK IS WRONG WITH YOU? " + key);
         }
-        const isGithubContents = urlString.includes('api.github.com') && urlString.includes('contents/')
-        if (!isGithubContents) {
+
+
+        const isGithubContents = urlString.includes('api.github.com') && urlString.includes('contents/');
+
+        if (isGithubContents) {
+            try {
+                // 1. Create a URL object to cleanly strip query string tokens safely
+                const parsedUrl = new URL(urlString);
+
+                // 2. Locate the index where the contents slice breaks off
+                const contentsMarker = '/contents/';
+                const markerIndex = parsedUrl.pathname.indexOf(contentsMarker);
+
+                if (markerIndex !== -1) {
+                    // Extract everything following '/contents/'
+                    // e.g., "/repos/owner/repo/contents/scripts/base.shader" -> "scripts/base.shader"
+                    let repoRelativePath = parsedUrl.pathname.substring(markerIndex + contentsMarker.length);
+
+                    // Normalize leading slashes so keys are uniform across variants
+                    repoRelativePath = '/' + repoRelativePath.replace(/^\//, '');
+
+                    // 3. Write it into your target database matching the exact repository architecture
+                    await putRecord(DB_STORE_NAME, {
+                        path: repoRelativePath,
+                        timestamp: new Date(),
+                        mode: FS_FILE,
+                        contents: new Uint8Array(content),
+                        parent: repoRelativePath.substring(0, repoRelativePath.lastIndexOf('/')) || '/'
+                    }, selected);
+
+                    console.log(`✅ [SW-DATABASE] GitHub Contents asset mapped to repo root -> Wrote "${repoRelativePath}" to storage block.`);
+                }
+            } catch (parseErr) {
+                console.error(`❌ [SW-DATABASE] Failed to extract repo root path mapping from URL: ${urlString}`, parseErr);
+            }
+        } else {
+            // Standard baseline VFS handling for local framework queries
             await putRecord(DB_STORE_NAME, {
                 path: localKey,
                 timestamp: new Date(),

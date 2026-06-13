@@ -132,9 +132,19 @@ async function openMap(content, filePath, sampleBytes) {
     previousNotFilelistId = 'editor';
 
     const mapFile = filePath.split('/').pop().split('.')[0];
-    const preferredRenderer = SettingsManager.get('quake3e', 'preferredRenderer');
+    let preferredRenderer = SettingsManager.get('quake3e', 'preferredRenderer');
 
     // Pre-hydrate heavy engine modules immediately instead of inside the timeout
+    if (document.getElementById('nunu').classList.contains('not-hidden')) {
+        preferredRenderer = 'nunu'
+    } else if (document.getElementById('viewport-frame').classList.contains('not-hidden')) {
+        if (typeof initMap === 'function') {
+            preferredRenderer = 'toji'
+        } else if (typeof initEngine === 'function') {
+            preferredRenderer = 'quake3e'
+        }
+    }
+
     if (preferredRenderer === 'toji') {
         await DependencyLoader.loadModule('toji');
     } else if (preferredRenderer === 'nunu') {
