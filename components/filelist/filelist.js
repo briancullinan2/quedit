@@ -299,15 +299,29 @@ const NavHistory = {
 };
 
 
-
 function recordFileHistory(filePath, sha, lineNumber = null) {
+    // 1. Extract the raw filename from the path string (e.g., "docs/demoq3/ares.cfg" -> "ares.cfg")
+    const fileNameMatch = filePath.match(/[^/\\#]+$/);
+    const fileName = fileNameMatch ? fileNameMatch[0] : filePath;
+
+    // 2. Resolve the final targeted row coordinates safely
+    let targetLine = lineNumber;
+    if (lineNumber === null && typeof aceEditor !== 'undefined') {
+        targetLine = aceEditor.getCursorPosition().row + 1;
+    }
+
+    // 3. Build a slick, descriptive title string based on whether we have a target line
+    const dynamicTitle = targetLine
+        ? `${fileName} : ${targetLine} · Q3IDE`
+        : `${fileName} · Q3IDE`;
+
+    // 4. Force the active browser tab title to refresh explicitly
+    document.title = dynamicTitle;
+
     if (typeof aceEditor !== 'undefined') {
         const pos = aceEditor.getCursorPosition();
+        const finalLineNumber = targetLine !== null ? targetLine : (pos.row + 1);
 
-        // Default to the actual current line if an explicit jump number wasn't passed
-        const finalLineNumber = lineNumber !== null ? lineNumber : (pos.row + 1);
-
-        // Pass the SHA along for complete historical telemetry!
         appendHistoryItem({
             filePath: filePath,
             sha: sha,
@@ -318,15 +332,14 @@ function recordFileHistory(filePath, sha, lineNumber = null) {
 
         NavHistory.push(sha, pos.row, pos.column);
 
-        // Handle window location push state safely using the fallback line number
         const hashRoute = `#${filePath}:${finalLineNumber}`;
-        history.pushState({ location: window.location.toString() }, filePath, hashRoute);
-    } else if (lineNumber)
-        history.pushState({ location: window.location.toString() }, filePath, '#' + filePath + ':' + lineNumber)
-    else
-        history.pushState({ location: window.location.toString() }, filePath, '#' + filePath)
+        // Pass our newly formatted dynamicTitle directly into the history frame state context
+        history.pushState({ location: window.location.toString(), title: dynamicTitle }, dynamicTitle, hashRoute);
+    } else {
+        const fallbackHash = '#' + filePath + (lineNumber ? ':' + lineNumber : '');
+        history.pushState({ location: window.location.toString(), title: dynamicTitle }, dynamicTitle, fallbackHash);
+    }
 }
-
 
 
 

@@ -403,9 +403,9 @@ async function renderHashCommand(fileName, noBounce = false) {
     window.previousHashLineNumber = lineNumber
 
     if (selected && !filePath)
-        navigateFile(selected, lineNumber, true)
+        navigateFile(selected, lineNumber, true, false, false)
     else if (filePath)
-        navigateFile(filePath, lineNumber, true)
+        navigateFile(filePath, lineNumber, true, false, false)
 
 }
 

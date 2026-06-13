@@ -182,7 +182,7 @@ async function openImage(content, filePath) {
                         }
                     }
 
-                    
+
                     // Step B: Set the canvas dimensions cleanly for a pristine scene file boundary
                     //actionsBuffer.push(new window.Actions.Prepare_canvas_action({
                     //    width: img.naturalWidth,
@@ -294,13 +294,13 @@ function getMimeTypeByExtension(filename) {
 
 let fileClickDebouncer = null
 
-async function clickFile(filePath, lineNumber, noBounce = false, noHide = false) {
+async function clickFile(filePath, lineNumber, noBounce = false, noHide = false, recordHistory = true) {
 
     if (fileClickDebouncer) {
         clearTimeout(fileClickDebouncer)
     }
     if (!noBounce) {
-        fileClickDebouncer = setTimeout(() => clickFile(filePath, lineNumber, true, noHide), 500)
+        fileClickDebouncer = setTimeout(() => clickFile(filePath, lineNumber, true, noHide, recordHistory), 500)
         return
     }
 
@@ -332,8 +332,10 @@ async function clickFile(filePath, lineNumber, noBounce = false, noHide = false)
 
     window.currentOpenFileId = dbFile.sha
 
-    await openFile(ownerName, repoName, filePath, dbFile.sha, false /* record history */, false /* show file list */, true)
-    recordFileHistory(filePath, dbFile.sha, lineNumber)
+    await openFile(ownerName, repoName, filePath, dbFile.sha, recordHistory /* record history */, false /* show file list */, true)
+    if (recordHistory) {
+        recordFileHistory(filePath, dbFile.sha, lineNumber)
+    }
     if (typeof editorContainer !== 'undefined'
         && editorContainer.classList.contains('not-hidden')
     ) {
@@ -350,19 +352,19 @@ async function clickFile(filePath, lineNumber, noBounce = false, noHide = false)
 
 
 let fileNavigationDebouncer
-async function navigateFile(filePath, lineNumber, noBounce = false, noHide = false) {
+async function navigateFile(filePath, lineNumber, noBounce = false, noHide = false, recordHistory = true) {
 
     if (fileNavigationDebouncer) {
         clearTimeout(fileNavigationDebouncer)
     }
     if (!noBounce) {
-        fileNavigationDebouncer = setTimeout(() => navigateFile(filePath, lineNumber, true, noHide), 500)
+        fileNavigationDebouncer = setTimeout(() => navigateFile(filePath, lineNumber, true, noHide, recordHistory), 500)
         return
     }
 
     if (filePath.startsWith('/'))
         filePath = filePath.substring(1)
-    const [selected, dbFile] = await clickFile(filePath, lineNumber, true, noHide)
+    const [selected, dbFile] = await clickFile(filePath, lineNumber, true, noHide, recordHistory)
 
     if (!selected) return
 
