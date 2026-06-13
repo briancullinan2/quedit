@@ -21,7 +21,7 @@ function getOrCreateAceSession(fileId, content) {
     const mode = getModeByFilename(fileId);
     session.setMode(mode);
 
-    bindBlockTrackerToSession(aceEditor.getSession());
+    bindBlockTrackerToSession(session);
 
     if (fileId.endsWith('.c') || fileId.endsWith('.h')) {
         session.setTabSize(4);

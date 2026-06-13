@@ -11,8 +11,39 @@ const TEXT_LANGUAGE_DETECTOR_WATERFALL = [
     { id: "bsp", match: (s, b) => b?.[0] === 0x49 && b?.[1] === 0x42 && b?.[2] === 0x53 && b?.[3] === 0x50 }, // "IBSP"
     { id: "md3", match: (s, b) => b?.[0] === 0x49 && b?.[1] === 0x44 && b?.[2] === 0x50 && b?.[3] === 0x33 }, // "IDP3"
 
+    // ─── ADDITIONS FOR TEXT_LANGUAGE_DETECTOR_WATERFALL ───
+    // Quake 3 Character & Weapon Skin Descriptors (.skin files mapping mesh nodes to shader paths)
+    { id: "q3skin", match: (s, b) => s.includes(',') && s.split('\n').some(l => l.includes(',') && !l.trim().startsWith('//') && l.split(',')[0].match(/^(models|tag_|u_|l_|h_)/i)) },
+
+    // Quake 3 Arena Meta Definitions (.arena files containing map data blocks for menus)
+    { id: "q3arena", match: (s, b) => s.includes('{') && s.includes('}') && s.toLowerCase().includes('map') && s.toLowerCase().includes('bots') && s.toLowerCase().includes('type') },
+    { id: "q3shader", match: (s, b) => (s.includes('textures/') || s.includes('q3map_')) && s.includes('{') && s.includes('map ') && s.includes('blendFunc') },
+    { id: "q3config", match: (s, b) => s.includes('seta ') && (s.includes('cg_') || s.includes('cl_') || s.includes('r_')) },
+    { id: "q3menu", match: (s, b) => s.includes('menuDef') && s.includes('itemDef') && s.includes('rect ') },
+    { id: "markdown", match: (s, b) => s.startsWith('# ') || s.includes('\n## ') || (s.includes('[') && s.includes('](')) },
+    { id: "yaml", match: (s, b) => s.includes(': ') && s.includes('\n- ') && !s.includes('{') && !s.includes(';') },
+    { id: "dockerfile", match: (s, b) => s.startsWith('FROM ') || s.includes('\nRUN ') || s.includes('\nENV ') || s.includes('\nEXPOSE ') },
+    { id: "makefile", match: (s, b) => s.includes(':\n\t') || s.startsWith('CC =') || s.startsWith('CFLAGS =') },
+
+    // ─── MAP HIGH-FIDELITY ENGINE HIGH-FIDELITY SIGNATURES ───
+
+    // Quake 3 / Return to Castle Wolfenstein / Elite Force (brushDef3 / patchDef2 variants)
+    { id: "q3map", match: (s, b) => s.includes('"classname"') && (s.includes('brushDef') || s.includes('patchDef') || s.includes('meshDef')) },
+
+    // Quake 1 / Quake 2 / Hexen 2 / Half-Life (Standard 3-point plane coordinate definitions)
+    { id: "quakemap", match: (s, b) => s.includes('"classname"') && !s.includes('brushDef') && /\(\s*[-?\d.]+\s+[-?\d.]+\s+[-?\d.]+\s*\)\s*\(\s*[-?\d.]+\s+[-?\d.]+\s+[-?\d.]+\s*\)/.test(s) },
+
+    // Daemon Engine / Unvanquished (Advanced layer data + brush primitives)
+    { id: "daemonmap", match: (s, b) => s.includes('"classname"') && s.includes('primitive') && s.includes('layer') },
+
+    // Source Engine / Half-Life 2 (Valve Map Format structural trees)
+    { id: "vmfmap", match: (s, b) => s.includes('versioninfo') && s.includes('viewsettings') && s.includes('world') && s.includes('solid') },
+
+    // Call of Duty (CoD 1/2/4 target map architectures)
+    { id: "codmap", match: (s, b) => s.includes('"classname"') && s.includes('// brush') && !s.includes('brushDef') },
+
+
     // ─── 2. TEXT STRUCTURAL & DOMAIN SPECIFIC LAYOUTS ───
-    { id: "quakemap", match: (s, b) => s.includes('// entity ') && s.includes('"classname"') && s.includes(' brushes') },
     { id: "json", match: (s, b) => s.trim().startsWith('{') && s.includes('":') && (s.includes('",') || s.includes('"\n') || s.trim().endsWith('}')) },
     { id: "html", match: (s, b) => /<!doctype\s+html|<\/html>|<body|<script/i.test(s) },
     { id: "xml", match: (s, b) => s.trim().startsWith('<?xml') || (s.includes('</') && /<[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+/i.test(s)) },

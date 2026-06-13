@@ -4,7 +4,7 @@ const checkMagic = (bytes, offset, pattern) => {
     if (bytes.length < offset + pattern.length) return false;
     return pattern.every((byte, i) => bytes[offset + i] === byte);
 };
-const isImage = filePath => /\.(png|jpe?g|gif|webp)$/i.test(filePath);
+
 
 const BINARY_DETECTOR = {
     wasm: {
@@ -30,10 +30,6 @@ const BINARY_DETECTOR = {
     dat: {
         description: "Quake 3 Team Arena Font Descriptor File",
         match: (b) => checkMagic(b, 0, [0x14, 0x00, 0x00, 0x00]) // 20 (fontInfo_t block size offset)
-    },
-    png: {
-        description: "Portable Network Graphics Image",
-        match: (b) => checkMagic(b, 0, [0x89, 0x50, 0x4E, 0x47])
     },
     wav: {
         description: "Waveform Audio File Format",
@@ -106,8 +102,73 @@ const BINARY_DETECTOR = {
     otf: {
         description: "OpenType Font File",
         match: (b) => checkMagic(b, 0, [0x4F, 0x54, 0x54, 0x4F]) // "OTTO"
+    },
+    // ─── EXTENDED BINARY FORMATS FOR APPENDING ───
+    pk3: {
+        description: "Quake 3 Archive Package (Zip Variant)",
+        match: (b) => checkMagic(b, 0, [0x50, 0x4B, 0x03, 0x04]) // "PK\003\004"
+    },
+    mdl: {
+        description: "Half-Life / Quake MDL Mesh Model File",
+        match: (b) => checkMagic(b, 0, [0x49, 0x44, 0x53, 0x54]) // "IDST"
+    },
+    md2: {
+        description: "Quake 2 MD2 Mesh Model File",
+        match: (b) => checkMagic(b, 0, [0x49, 0x44, 0x50, 0x32]) // "IDP2"
+    },
+    ico: {
+        description: "Windows Icon Container Image",
+        match: (b) => checkMagic(b, 0, [0x00, 0x00, 0x01, 0x00])
+    },
+    flac: {
+        description: "Free Lossless Audio Codec",
+        match: (b) => checkMagic(b, 0, [0x66, 0x4C, 0x61, 0x43]) // "fLaC"
+    },
+    pdf: {
+        description: "Adobe Portable Document Format",
+        match: (b) => checkMagic(b, 0, [0x25, 0x50, 0x44, 0x46]) // "%PDF"
     }
 };
+
+
+const AssetInspector = {
+    isActuallyImage: (bytes, path) => {
+        const binType = detectBinaryType(bytes);
+        if (binType !== 'unknown') return ['png', 'jpeg', 'gif', 'webp', 'dds', 'tga', 'pcx', 'bmp'].includes(binType);
+        return /\.(png|jpe?g|gif|webp|tga|pcx|bmp|dds)$/i.test(path);
+    },
+
+    isActuallyAudio: (bytes, path) => {
+        const binType = detectBinaryType(bytes);
+        if (binType !== 'unknown') return ['wav', 'mp3', 'ogg', 'flac'].includes(binType);
+        return /\.(wav|mp3|ogg|flac)$/i.test(path);
+    },
+
+    isActuallyMap: (bytes, strContent, path) => {
+        // Binary check
+        if (detectBinaryType(bytes) === 'bsp' || path.endsWith('.bsp')) return true;
+
+        // Text check against the waterfall registry keys
+        if (strContent) {
+            const matched = TEXT_LANGUAGE_DETECTOR_WATERFALL.find(lang => lang.id.endsWith('map') && lang.match(strContent, bytes));
+            if (matched) return true;
+        }
+        return /\.(map|vmf|mapx)$/i.test(path);
+    },
+
+    isActuallyFont: (bytes, path) => {
+        const binType = detectBinaryType(bytes);
+        if (binType !== 'unknown') return ['ttf', 'woff', 'woff2', 'otf'].includes(binType);
+        return /\.(ttf|woff|woff2|otf|eot)$/i.test(path);
+    },
+
+    isActuallyModel: (bytes, path) => {
+        const binType = detectBinaryType(bytes);
+        if (binType !== 'unknown') return ['md3', 'mdl', 'md2'].includes(binType);
+        return /\.(md3|mdl|md2|md5mesh|obj|fbx)$/i.test(path);
+    }
+};
+
 
 /**
  * Detects the real underlying binary format from an ArrayBuffer or Uint8Array

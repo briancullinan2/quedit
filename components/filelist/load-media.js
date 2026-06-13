@@ -2,151 +2,160 @@
 
 const imageEditor = document.getElementById('paint')
 
+let openFileDebounce = null;
+let latestOpenRequest = null;
 
-let openFileDebounce = null
-let latestOpenRequest = null
 async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true, hidePanels = true, noBounce = false) {
 
-    latestOpenRequest = () => openFile(repoOwner, repoName, filePath, sha, recordHistory, hidePanels, true)
-    if (!noBounce && openFileDebounce) return
+    latestOpenRequest = () => openFile(repoOwner, repoName, filePath, sha, recordHistory, hidePanels, true);
+    if (!noBounce && openFileDebounce) return;
     if (!noBounce) {
         openFileDebounce = setTimeout(() => {
-            latestOpenRequest()
-            openFileDebounce = null
+            latestOpenRequest();
+            openFileDebounce = null;
         }, 400);
-        return
+        return;
     }
 
     let content = await cacheFile(repoOwner, repoName, filePath, sha, true);
     if (!content || content.length === 0) {
-        try {
-            let response = await fetch(filePath, {
-                mode: 'cors',
-                credentials: 'omit',
-            })
-            if (response.ok)
-                content = await response.arrayBuffer()
-        } catch (e) {
+        const urls = [
+            filePath,
+            'https://quake.games/' + filePath,
+            'https://quake.games/' + filePath.replace('docs/', '')
+        ];
+        for (const url of urls) {
+            try {
+                let response = await fetch(url, { mode: 'cors', credentials: 'omit' });
+                if (response.ok) {
+                    content = await response.arrayBuffer();
+                    break;
+                }
+            } catch (e) { /* silent fail, try next hook */ }
         }
     }
-    if (!content || content.length === 0) {
-        try {
-            let response = await fetch('https://quake.games/' + filePath, {
-                mode: 'cors',
-                credentials: 'omit',
-            })
-            if (response.ok)
-                content = await response.arrayBuffer()
-        } catch (e) {
-        }
-    }
-    if (!content || content.length === 0) {
-        try {
-            let response = await fetch('https://quake.games/' + filePath.replace('docs/', ''), {
-                mode: 'cors',
-                credentials: 'omit',
-            })
-            if (response.ok)
-                content = await response.arrayBuffer()
-        } catch (e) {
-        }
-    }
+
+    if (!content || content.length === 0) return;
+
     const byteView = new Uint8Array(content);
-    // 1. Scan just the first 1024 bytes for binary characters before decoding everything
     const sampleBytes = byteView.subarray(0, 8192);
     const decoder = new TextDecoder();
     const sampleStr = decoder.decode(sampleBytes);
 
-    let str
-    let image = isImage(filePath)
-    if (image) {
-        // Optionally fall back to text hexDump or return early so Ace Editor doesn't choke
-        latestPanelId = latestNotFilelist = 'paint'
-        //if (typeof getOrCreateAceSession !== 'undefined')
-        //    previousNotFilelistId = 'editor'
-        //else
-        previousNotFilelistId = null
+    let str;
+    let isImageFile = AssetInspector.isActuallyImage(sampleBytes, filePath);
+    let isMapFile = AssetInspector.isActuallyMap(sampleBytes, sampleStr, filePath);
+
+    // 1. Process Payload Types
+    if (isImageFile) {
+        latestPanelId = latestNotFilelist = 'paint';
+        previousNotFilelistId = null;
         str = "[Binary Image Layer Inserted]";
+    } else if (isMapFile) {
+        // Execute extracted function module
+        await openMap(content, filePath, sampleBytes);
+        str = hexDump(sampleBytes, content, filePath);
     } else if (hasSequentialBinaryRegex.test(sampleStr)) {
-        if (filePath.endsWith('.bsp')) {
-            // TODO: also open toji bsp viewer like the image editor
-            setTimeout(async () => {
-                const viewport = document.getElementById('viewport')
-                const mapFile = filePath.split('/').pop().split('.')[0]
-                // TODO: add nunuStudio here, as the default interaction
-                const preferredRenderer = SettingsManager.get('quake3e', 'preferredRenderer');
-                if (preferredRenderer !== 'quake3e') {
-                    await DependencyLoader.loadModule('toji');
-                    let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
-                    initMap(gl, mapFile)
-                } else if (preferredRenderer !== 'nunu') {
-                    await DependencyLoader.loadModule('nunu');
-                } else {
-                    await DependencyLoader.loadModule('quake3e');
-                    
-                }
-            }, 200)
-            latestPanelId = latestNotFilelist = 'viewport-frame'
-        }
-
-
-        previousNotFilelistId = 'editor'
-        str = hexDump(sampleBytes, content, filePath)
+        previousNotFilelistId = 'editor';
+        str = hexDump(sampleBytes, content, filePath);
     } else {
-        if (filePath.endsWith('.c') || filePath.endsWith('.h'))
+        str = decoder.decode(content);
+    }
+
+    // 2. Load Visual Resource Engines
+    if (isImageFile) {
+        await DependencyLoader.loadModule('paint');
+        setTimeout(async () => {
+            if (typeof openImage === 'function') openImage(content, filePath);
+        }, 200);
+        previousPanelId = null;
+    } else {
+        // Keep text editor ready for Hex Dump view or standard source maps
+        await DependencyLoader.loadModule('editor');
+    }
+
+    if (hidePanels) {
+        hideOpenPanels(isImageFile || isMapFile);
+    }
+
+    updateBodyPanelIds();
+
+    // 3. UI Layer Routing and Display State Updates
+    const viewportWrapper = document.getElementById('viewport-frame');
+
+    if (isImageFile) {
+        imageEditor.classList.remove('hidden');
+        imageEditor.classList.add('not-hidden');
+    } else if (typeof getOrCreateAceSession !== 'undefined') {
+        const session = getOrCreateAceSession(filePath, str);
+        if (session.getMode()?.$id?.includes('antrl_worker')) {
             setTimeout(async () => {
                 if (window.compilerDiagnostics) {
                     const bridge = window.compilerDiagnostics.getBridge();
                     bridge.refreshActiveEditorView(session);
                 }
-            }, 200)
-        // Standard plain text file path
-        str = decoder.decode(content);
-    }
-
-    if (image /*&& typeof getOrCreateAceSession === 'undefined'*/) {
-        await DependencyLoader.loadModule('paint');
-        setTimeout(async () => {
-            openImage(content, filePath)
-        }, 200);
-        previousPanelId = null
-    } else if (!image) {
-        await DependencyLoader.loadModule('editor');
-    }
-
-
-    if (hidePanels)
-        hideOpenPanels(image)
-
-    updateBodyPanelIds()
-
-
-    if (image) {
-        imageEditor.classList.remove('hidden')
-        imageEditor.classList.add('not-hidden')
-    } else if (typeof getOrCreateAceSession !== 'undefined') {
-        // 2. Ace Session
-        const session = getOrCreateAceSession(filePath, str);
-        //const mode = getModeByFilename(filePath);
-        //session.setMode(mode);
+            }, 500);
+        }
         aceEditor.setSession(session);
 
-        editorContainer.classList.remove('hidden')
-        editorContainer.classList.add('not-hidden')
+        // Keep editor visible even if map is rendering, allowing multi-canvas/split behaviors
+        editorContainer.classList.remove('hidden');
+        editorContainer.classList.add('not-hidden');
     }
 
-    if (filePath.endsWith('.bsp')) {
-        const viewportWrapper = document.getElementById('viewport-frame')
-        viewportWrapper.classList.remove('hidden')
-        viewportWrapper.classList.add('not-hidden')
+    // Handle Viewport Container assignment safely without wiping active styles
+    if (isMapFile && viewportWrapper) {
+        viewportWrapper.classList.remove('hidden');
+        viewportWrapper.classList.add('not-hidden');
+    } else if (viewportWrapper && !viewportWrapper.classList.contains('hidden')) {
+        // If switching away to another non-map text file, hide the viewport safely
+        viewportWrapper.classList.add('hidden');
+        viewportWrapper.classList.remove('not-hidden');
     }
-    resizeDebouncer()
 
-    // 3. Record it in history if this isn't a "Back/Forward" action
+    resizeDebouncer();
+
     if (recordHistory) {
-        recordFileHistory(filePath, sha)
+        recordFileHistory(filePath, sha);
     }
 }
+
+
+async function openMap(content, filePath, sampleBytes) {
+    // 1. Precise check: Fallback to extension check if binary detector isn't matching perfectly
+    const isBsp = BINARY_DETECTOR.bsp.match(sampleBytes) || filePath.endsWith('.bsp');
+    if (!isBsp) return false;
+
+    // Set panel identification tracks
+    latestPanelId = latestNotFilelist = 'viewport-frame';
+    previousNotFilelistId = 'editor';
+
+    // Fire viewport module injections asynchronously safely out of blocking cycle
+    setTimeout(async () => {
+        const viewport = document.getElementById('viewport');
+        const mapFile = filePath.split('/').pop().split('.')[0];
+
+        const preferredRenderer = SettingsManager.get('quake3e', 'preferredRenderer');
+
+        if (preferredRenderer === 'toji') {
+            await DependencyLoader.loadModule('toji');
+            let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
+            if (typeof initMap === 'function') {
+                initMap(gl, mapFile);
+            }
+        } else if (preferredRenderer === 'nunu') {
+            await DependencyLoader.loadModule('nunu');
+            // Add custom nunuStudio initialization hooks here if needed
+        } else {
+            // Default fallback: 'quake3e'
+            await DependencyLoader.loadModule('quake3e');
+        }
+    }, 200);
+
+    return true;
+}
+
+
 
 
 async function openImage(content, filePath) {
