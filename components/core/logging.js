@@ -55,14 +55,81 @@ function writeLog(msg, ...args) {
     }
 }
 
+
+
+/**
+ * Safely inspects and extracts properties from complex engine objects,
+ * walking up prototype chains without invoking dangerous getters.
+ */
+function rebuildComplexObjectAsText(obj, maxDepth = 3, currentDepth = 0, cache = new Set()) {
+    if (obj === null || obj === undefined) return String(obj);
+    if (typeof obj !== 'object' && typeof obj !== 'function') return String(obj);
+
+    // Prevent infinite cyclic loops
+    if (cache.has(obj)) return '[Circular]';
+    cache.add(obj);
+
+    if (currentDepth >= maxDepth) return '[Max Depth Reached]';
+
+    // Handle array configurations immediately
+    if (Array.isArray(obj)) {
+        if (obj.length === 0) return '[]';
+        return '[' + obj.map(item => rebuildComplexObjectAsText(item, maxDepth, currentDepth + 1, cache)).join(', ') + ']';
+    }
+
+    const lines = [];
+    const className = obj.constructor ? obj.constructor.name : 'Object';
+
+    // Walk up the prototype chain to catch inherited settings, stopping at base Object
+    let currentTarget = obj;
+    const visitedProps = new Set();
+
+    while (currentTarget && currentTarget !== Object.prototype) {
+        const props = Object.getOwnPropertyNames(currentTarget);
+
+        for (const prop of props) {
+            if (visitedProps.has(prop)) continue;
+            visitedProps.add(prop);
+
+            try {
+                const descriptor = Object.getOwnPropertyDescriptor(currentTarget, prop);
+
+                // CRITICAL: If it's an active getter, do NOT invoke it (could trigger errors)
+                if (descriptor && descriptor.get && !descriptor.value) {
+                    lines.push(`${'  '.repeat(currentDepth + 1)}${prop}: [Getter]`);
+                    continue;
+                }
+
+                const val = obj[prop]; // Safe to read raw values if it's a standard descriptor field
+
+                if (typeof val === 'function') {
+                    //lines.push(`${'  '.repeat(currentDepth + 1)}${prop}(): [Function]`);
+                } else if (typeof val === 'object' && val !== null) {
+                    lines.push(`${'  '.repeat(currentDepth + 1)}${prop}: ${rebuildComplexObjectAsText(val, maxDepth, currentDepth + 1, cache)}`);
+                } else {
+                    lines.push(`${'  '.repeat(currentDepth + 1)}${prop}: ${String(val)}`);
+                }
+            } catch (e) {
+                lines.push(`${'  '.repeat(currentDepth + 1)}${prop}: [Unreadable Property: ${e.message}]`);
+            }
+        }
+        currentTarget = Object.getPrototypeOf(currentTarget);
+    }
+
+    cache.delete(obj); // Allow sibling branches to evaluate correctly
+
+    if (lines.length === 0) return `${className} {}`;
+    return `${className} {\n${lines.join('\n')}\n${'  '.repeat(currentDepth)}}`;
+}
+
+
 function formatMessageItem(arg) {
     if (typeof arg === 'string') {
         return arg.trim();
     }
 
-    // 1. Handle Errors cleanly (Create isolated tracking wrapper if evaluating Error copies)
     if (arg instanceof Error) {
-        return `${arg.name}: ${arg.message}\n\r${arg.stack || ''}\n\r${formatMessageItem({ ...arg })}`;
+        return `${arg.name}: ${arg.message}\n\r${arg.stack || ''}\n\r[Context State Dump]:\n\r${rebuildComplexObjectAsText(arg)}`;
     }
 
     if (typeof arg === 'object' && arg !== null) {
@@ -70,19 +137,22 @@ function formatMessageItem(arg) {
             return (arg.name || arg.constructor.name || typeof arg) + ' ' + '{empty}';
         }
 
-        // Create a local tracking set specifically for THIS object's internal property tree serialization pass
-        const stringifyCache = new Set();
-
-        return (arg.name || arg.constructor.name || typeof arg) + ' ' + JSON.stringify(arg, (key, value) => {
-            if (typeof value === 'object' && value !== null) {
-                // If it's a true cyclical reference down the current tree branch
-                if (stringifyCache.has(value)) {
-                    return '[Circular]';
+        // Try the fast track native path first
+        try {
+            const stringifyCache = new Set();
+            return (arg.name || arg.constructor.name || typeof arg) + ' ' + JSON.stringify(arg, (key, value) => {
+                if (typeof value === 'object' && value !== null) {
+                    if (stringifyCache.has(value)) return '[Circular]';
+                    stringifyCache.add(value);
                 }
-                stringifyCache.add(value);
-            }
-            return value;
-        }, 4);
+                return value;
+            }, 4);
+        } catch (jsonCrash) {
+            // ─── DYNAMIC AUTOMATIC RECOVERY FALLBACK ───
+            // If the object contained hidden internal native toJSON hooks that crashed,
+            // or had complex un-scannable structures, manually rebuild it safely.
+            return `[Rebuilt Object Asset Dump due to serialization crash: ${jsonCrash.message}]\n` + rebuildComplexObjectAsText(arg);
+        }
     }
 
     return String(arg);

@@ -614,7 +614,15 @@
             return this._parseRawBinaryBuffer(data, rootNode);
         }
 
+
+
         _buildFromMeshData(meshData, rootNode) {
+            // --- CRITICAL FLUID RESOLUTION OF NUNUSTUDIO CUSTOM CLASSES ---
+            // If the editor wraps constructors globally or inside its own namespace,
+            // resolve them here. Fallback cleanly to THREE variants if not found.
+            const NunuMesh = window.Mesh || (window.nunu ? window.nunu.Mesh : null) || THREE.Mesh;
+            const NunuGroup = window.Group || (window.nunu ? window.nunu.Group : null) || THREE.Group;
+
             let rawVertices = meshData.vertices;
             let rawIndices = meshData.indices;
             let surfaces = meshData.surfaces || [];
@@ -664,71 +672,54 @@
                 geometry.computeBoundingBox();
                 geometry.computeBoundingSphere();
 
-                let textureLoader = new THREE.TextureLoader();
-                let shaderPath = surface.shaderName;
+                let textureShaderPath = surface.shaderName;
                 let mat;
 
                 let texture = null;
                 let isTransparent = false;
 
-                if (shaderPath && shaderPath !== "noshader") {
-                    // Default baseline asset URL path
-                    let finalImagePath = shaderPath + ".jpg";
+                if (textureShaderPath && textureShaderPath !== "noshader") {
+                    let finalImagePath = textureShaderPath + ".jpg";
 
-                    // Look up the cached metadata from the parsed registry using lowercase key mapping
-                    let lookupName = shaderPath.toLowerCase();
+                    let lookupName = textureShaderPath.toLowerCase();
                     let cachedShader = window.q3shader && window.q3shader.registry ? window.q3shader.registry[lookupName] : null;
 
                     if (cachedShader) {
-                        // Carry over sky flags or blend specifications for layout configuration
                         isTransparent = cachedShader.sky || cachedShader.blend || false;
 
-                        // Extract the map path directly out of the first parsed functional stage
                         if (cachedShader.stages && cachedShader.stages.length > 0) {
                             let firstStage = cachedShader.stages[0];
 
-                            // Catch actual textures, ignoring engine internal slots like $lightmap, $whiteimage, etc.
                             if (firstStage.map && !firstStage.map.includes('$') && firstStage.map !== 'anim') {
                                 finalImagePath = firstStage.map;
                             }
-                            // If the first stage was a lightmap but a second stage holds the texture file
                             else if (cachedShader.stages[1] && cachedShader.stages[1].map && !cachedShader.stages[1].map.includes('$')) {
                                 finalImagePath = cachedShader.stages[1].map;
                             }
                         }
-                    } else if (shaderPath.toLowerCase().includes('sky')) {
+                    } else if (textureShaderPath.toLowerCase().includes('sky')) {
                         isTransparent = true;
                     }
 
-
-                    // Only attempt loading if it isn't an internal engine token string
                     if (!finalImagePath.includes('$') && finalImagePath !== 'anim') {
-
-                        // Strip off whatever extension the BSP or shader provided (.tga, .jpg, etc.)
                         let basePath = finalImagePath.replace(/\.[^/.]+$/, "");
                         let extensions = ['.tga', '.jpg', '.png', '.webp', '.tga', '.jpg', '.png', '.webp'];
-
                         let baseUrl = "https://quake.games/demoq3/pak0.pk3dir/" + basePath;
 
-                        // Instantiate an empty texture placeholder immediately so the scene compiles without blocking
                         texture = new THREE.Texture();
                         texture.wrapS = THREE.RepeatWrapping;
                         texture.wrapT = THREE.RepeatWrapping;
                         texture.flipY = false;
 
-                        // High-fidelity fallback asset chain execution matching original id Tech behavior
                         (async function probeExtensions() {
-                            let imageLoader = new THREE.ImageLoader();
-                            imageLoader.setCrossOrigin('anonymous');
-                            let count = 0
+                            let count = 0;
                             for (let ext of extensions) {
                                 let candidateUrl = baseUrl + ext;
                                 if (count >= 4) {
-                                    candidateUrl = candidateUrl.toLocaleLowerCase()
+                                    candidateUrl = candidateUrl.toLocaleLowerCase();
                                 }
-                                count++
+                                count++;
                                 try {
-                                    // Use a promise to cleanly intercept image handshakes without triggering native 404 dumps
                                     let imageElement = await new Promise((resolve, reject) => {
                                         let img = new Image();
                                         img.crossOrigin = 'anonymous';
@@ -737,32 +728,24 @@
                                         img.src = candidateUrl;
                                     });
 
-                                    // Assign the loaded image element directly back into the instantiated texture matrix
                                     texture.image = imageElement;
-
-                                    // Formats fallback profile (Checks format structure for raw JPG data optimizations)
                                     let isJpeg = candidateUrl.search(/\.jpe?g($|\?)/i) > 0;
-                                    texture.format = isJpeg ? THREE.RGBFormat : THREE.RGBAFormat;
-
+                                    texture.format = isJpeg ? (THREE.RGBFormat || 1022) : (THREE.RGBAFormat || 1023);
                                     texture.needsUpdate = true;
 
-                                    // Force NunuStudio framework repaint if view targets are active
                                     if (window.nunu && window.nunu.gui) {
                                         window.nunu.gui.updateInterface();
                                     }
-                                    break; // Exit early as soon as a valid extension hit occurs!
-                                } catch (e) {
-                                    // Silently drop down to the next fallback extension step in line
-                                }
+                                    break;
+                                } catch (e) { }
                             }
                         })();
                     }
                 }
 
-                // 2. Map strictly to Three.js standard Phong variables with the corrected asset targets
                 mat = new THREE.MeshPhongMaterial({
                     name: surface.shaderName || "default_bsp",
-                    vertexColors: false, // Forces solid texture states overriding raw vertex alpha variations
+                    vertexColors: false,
                     side: THREE.DoubleSide,
                     map: texture || window.defaultTexture,
                     transparent: isTransparent,
@@ -770,11 +753,15 @@
                     shininess: 0
                 });
 
+                // --- INSTANTIATE VIA TARGET ARCHITECTURE CLASS ---
+                let surfaceMesh = new NunuMesh(geometry, mat);
 
-                let surfaceMesh = new THREE.Mesh(geometry, mat);
                 surfaceMesh.name = (surface.shaderName !== "noshader") ? surface.shaderName : "surface_" + s;
-                surfaceMesh.type = "Mesh";
-                surfaceMesh.isMesh = true;
+                surfaceMesh.frustumCulled = false;
+                surfaceMesh.matrixAutoUpdate = true;
+
+                surfaceMesh.folded = false;
+                surfaceMesh.locked = false;
                 surfaceMesh.castShadow = true;
                 surfaceMesh.receiveShadow = true;
 
@@ -784,12 +771,25 @@
                     elementCount: surface.elementCount
                 };
 
-                if (!surfaceMesh.uuid) {
-                    surfaceMesh.uuid = THREE.MathUtils.generateUUID();
-                }
-
+                // Inject baseline fallback hooks safely directly onto instance
                 surfaceMesh.isEmpty = function () { return true; };
-                surfaceMesh.toJSON = function (meta) { return THREE.Object3D.prototype.toJSON.call(this, meta); };
+                surfaceMesh.resize = function (x, y) {
+                    if (this.children && this.children.length > 0) {
+                        for (let i = 0; i < this.children.length; i++) {
+                            if (typeof this.children[i].resize === 'function') {
+                                this.children[i].resize(x, y);
+                            }
+                        }
+                    }
+                };
+
+                surfaceMesh.toJSON = function (meta) {
+                    const baseProto = Object.getPrototypeOf(this);
+                    if (baseProto && typeof baseProto.toJSON === 'function') {
+                        return baseProto.toJSON.call(this, meta);
+                    }
+                    return THREE.Object3D.prototype.toJSON.call(this, meta);
+                };
 
                 rootNode.add(surfaceMesh);
             }
@@ -1189,71 +1189,139 @@ window.addEventListener('observe', function (e) {
     }
 }, true);
 
+
+
+const q3bsp_base_folder = 'https://quake.games/demoq3/pak0.pk3dir';
+const mapShaders = [
+    'scripts/base.shader', 'scripts/base_button.shader', 'scripts/base_floor.shader',
+    'scripts/base_light.shader', 'scripts/base_object.shader', 'scripts/base_support.shader',
+    'scripts/base_trim.shader', 'scripts/base_wall.shader', 'scripts/common.shader',
+    'scripts/ctf.shader', 'scripts/eerie.shader', 'scripts/gfx.shader',
+    'scripts/gothic_block.shader', 'scripts/gothic_floor.shader', 'scripts/gothic_light.shader',
+    'scripts/gothic_trim.shader', 'scripts/gothic_wall.shader', 'scripts/hell.shader',
+    'scripts/liquid.shader', 'scripts/menu.shader', 'scripts/models.shader',
+    'scripts/organics.shader', 'scripts/sfx.shader', 'scripts/shrine.shader',
+    'scripts/skin.shader', 'scripts/sky.shader', 'scripts/test.shader'
+].map(s => q3bsp_base_folder + '/' + s);
+
+
+
 async function importBSP() {
-    const THREE = { Q3BSPLoader, Scene } = require('three');
-    let bspLoader = new Q3BSPLoader();
+    const THREE = require('three');
+    let bspLoader = new THREE.Q3BSPLoader();
     let activeScene = window.nunu.getScene();
-    const q3bsp_base_folder = 'https://quake.games/demoq3/pak0.pk3dir';
-    const mapName = q3bsp_base_folder + "/maps/q3dm17.bsp"
-    let mapShaders = [
-        'scripts/base.shader', 'scripts/base_button.shader', 'scripts/base_floor.shader',
-        'scripts/base_light.shader', 'scripts/base_object.shader', 'scripts/base_support.shader',
-        'scripts/base_trim.shader', 'scripts/base_wall.shader', 'scripts/common.shader',
-        'scripts/ctf.shader', 'scripts/eerie.shader', 'scripts/gfx.shader',
-        'scripts/gothic_block.shader', 'scripts/gothic_floor.shader', 'scripts/gothic_light.shader',
-        'scripts/gothic_trim.shader', 'scripts/gothic_wall.shader', 'scripts/hell.shader',
-        'scripts/liquid.shader', 'scripts/menu.shader', 'scripts/models.shader',
-        'scripts/organics.shader', 'scripts/sfx.shader', 'scripts/shrine.shader',
-        'scripts/skin.shader', 'scripts/sky.shader', 'scripts/test.shader'
-    ].map(s => q3bsp_base_folder + '/' + s);
 
-    await q3shader.loadList(mapShaders, () => {
+    const mapName = q3bsp_base_folder + "/maps/q3dm17.bsp";
 
-    })
+    await q3shader.loadList(mapShaders, () => { });
 
     bspLoader.load(mapName, function (bspGroup) {
         bspGroup.name = "q3dm17_Map";
+        bspGroup.type = "Group";
+        bspGroup.folded = false;
+        bspGroup.locked = false;
 
+        // Add container tree first
+        window.nunu.addObject(bspGroup, activeScene);
+
+        const surfaceChildren = [];
         bspGroup.traverse(function (child) {
-            if (child.isMesh) {
-                child.frustumCulled = false;
-                child.matrixAutoUpdate = true;
-                child.type = "Mesh";
-                child.constructor.prototype.isObject3D = true;
+            if (child.isMesh && child !== bspGroup) {
+                surfaceChildren.push(child);
+            }
+        });
+
+        // Decouple original flat arrays so action transactions maintain context
+        bspGroup.children = [];
+
+        surfaceChildren.forEach((surfaceMesh) => {
+            if (surfaceMesh.geometry) {
+                surfaceMesh.geometry.computeBoundingBox();
+                surfaceMesh.geometry.computeBoundingSphere();
             }
 
-            if (typeof child.isEmpty !== 'function') {
-                child.isEmpty = function () {
-                    return this.children ? this.children.length === 0 : true;
+            // 1. Hand off to the engine framework workspace first
+            window.nunu.addObject(surfaceMesh, bspGroup);
+        });
+
+        // 2. NOW safely query the framework's processed tree array and inject the methods 
+        // directly onto the actual live wrapper items nunu created.
+        bspGroup.traverse(function (liveChild) {
+            // Guarantee isEmpty exists on EVERYTHING inside this map cluster
+            if (typeof liveChild.isEmpty !== 'function') {
+                if (liveChild.isMesh) {
+                    liveChild.isEmpty = function () { return true; };
+                } else {
+                    liveChild.isEmpty = function () {
+                        return this.children ? this.children.length === 0 : true;
+                    };
+                }
+            }
+
+            if (typeof liveChild.resize !== 'function') {
+                liveChild.resize = function (x, y) {
+                    if (this.children && this.children.length > 0) {
+                        for (let i = 0; i < this.children.length; i++) {
+                            if (typeof this.children[i].resize === 'function') {
+                                this.children[i].resize(x, y);
+                            }
+                        }
+                    }
                 };
             }
 
-            if (typeof child.resize !== 'function') {
-                child.resize = function () {
-                    // No-op stub to safely catch layout updates smoothly
-                };
-            }
-
-            if (typeof child.toJSON !== 'function') {
-                child.toJSON = function (meta) {
+            if (typeof liveChild.toJSON !== 'function') {
+                liveChild.toJSON = function (meta) {
+                    const baseProto = Object.getPrototypeOf(this);
+                    if (baseProto && typeof baseProto.toJSON === 'function') {
+                        return baseProto.toJSON.call(this, meta);
+                    }
                     return THREE.Object3D.prototype.toJSON.call(this, meta);
                 };
             }
         });
 
-        if (typeof bspGroup.isEmpty !== 'function') { bspGroup.isEmpty = function () { return false; }; }
+        // Ensure the root group itself also has its interface methods locked down
+        bspGroup.isEmpty = function () {
+            return this.children ? this.children.length === 0 : true;
+        };
 
-        window.nunu.addObject(bspGroup, activeScene);
-        window.nunu.selectObject(bspGroup);
+        // Highlight first room mesh element to activate inspector pane metrics instantly
+        if (bspGroup.children.length > 0) {
+            window.nunu.selectObject(bspGroup.children[0]);
+        } else {
+            window.nunu.selectObject(bspGroup);
+        }
+
         window.nunu.gui.updateInterface();
     });
-
 }
 
 // Run this initialization right inside the wrapper closure frame:
 (function (THREE) {
     // Intercept standard TextureLoader initialization routines
     const OriginalTextureLoader = THREE.TextureLoader;
+
+
+    // --- GLOBAL PROTOTYPE FALLBACK INJECTIONS FOR NUNUSTUDIO WORKSPACE ---
+    if (typeof THREE.Object3D.prototype.isEmpty !== 'function') {
+        THREE.Object3D.prototype.isEmpty = function () {
+            if (this.isMesh) return true;
+            return this.children ? this.children.length === 0 : true;
+        };
+    }
+
+    if (typeof THREE.Object3D.prototype.resize !== 'function') {
+        THREE.Object3D.prototype.resize = function (x, y) {
+            if (this.children && this.children.length > 0) {
+                for (let i = 0; i < this.children.length; i++) {
+                    if (typeof this.children[i].resize === 'function') {
+                        this.children[i].resize(x, y);
+                    }
+                }
+            }
+        };
+    }
 
     THREE.TextureLoader = class ExtendedTextureLoader extends OriginalTextureLoader {
         load(url, onLoad, onProgress, onError) {
