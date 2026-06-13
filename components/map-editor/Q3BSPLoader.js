@@ -566,6 +566,67 @@
     THREE.q3ShaderRegistry = q3shader.registry;
 
     // =========================================================================
+    // NUNUSTUDIO CLASS RESOLUTION
+    // -------------------------------------------------------------------------
+    // nunuStudio (bundle.js) ships its own bundled copy of three.js that is a
+    // *different* module instance than the one require('three') returns here.
+    // Objects built with require('three') therefore fail the editor's
+    // `instanceof` checks, so the selection helper (yellow BoxHelper) is never
+    // created and the Inspector cannot resolve a panel for them.
+    //
+    // To integrate, geometry/material/texture/mesh must be built from the
+    // editor's copy. We harvest those constructors from the live editor: the
+    // default resources (defaultGeometry/Material/Texture) and an existing
+    // scene object give us the exact classes the editor uses. Plain numeric
+    // constants (wrap modes, sides, formats) are identical across copies, so
+    // the local THREE values are reused for those.
+    // =========================================================================
+    function resolveNunuClasses() {
+        const classes = {
+            Mesh: THREE.Mesh,
+            Object3D: THREE.Object3D,
+            BufferGeometry: THREE.BufferGeometry,
+            Float32BufferAttribute: THREE.Float32BufferAttribute,
+            Material: THREE.MeshStandardMaterial,
+            Texture: THREE.Texture
+        };
+
+        const K = (typeof window !== "undefined") ? window.nunu : null;
+        if (!K) return classes;
+
+        if (K.defaultGeometry) {
+            classes.BufferGeometry = K.defaultGeometry.constructor;
+            const posAttr = K.defaultGeometry.attributes && K.defaultGeometry.attributes.position;
+            if (posAttr) classes.Float32BufferAttribute = posAttr.constructor;
+        }
+        if (K.defaultMaterial) classes.Material = K.defaultMaterial.constructor;
+        if (K.defaultTexture) classes.Texture = K.defaultTexture.constructor;
+
+        // Harvest the editor's Mesh wrapper from an existing scene object.
+        let scene = null;
+        try { scene = K.getScene ? K.getScene() : null; } catch (e) { scene = null; }
+        const root = K.program || scene;
+        if (root && typeof root.traverse === "function") {
+            let mesh = null;
+            root.traverse(function (o) { if (!mesh && o.isMesh) mesh = o.constructor; });
+            if (mesh) classes.Mesh = mesh;
+        }
+
+        // Resolve the editor's Object3D by walking a live instance's prototype
+        // chain to the level that owns `isObject3D`.
+        const anchor = scene || root;
+        if (anchor) {
+            let proto = Object.getPrototypeOf(anchor);
+            while (proto && !Object.prototype.hasOwnProperty.call(proto, "isObject3D")) {
+                proto = Object.getPrototypeOf(proto);
+            }
+            if (proto && proto.constructor) classes.Object3D = proto.constructor;
+        }
+
+        return classes;
+    }
+
+    // =========================================================================
     // MAIN THREE.JS Q3BSPLOADER IMPLEMENTATION
     // =========================================================================
 
@@ -617,11 +678,12 @@
 
 
         _buildFromMeshData(meshData, rootNode) {
-            // --- CRITICAL FLUID RESOLUTION OF NUNUSTUDIO CUSTOM CLASSES ---
-            // If the editor wraps constructors globally or inside its own namespace,
-            // resolve them here. Fallback cleanly to THREE variants if not found.
-            const NunuMesh = window.Mesh || (window.nunu ? window.nunu.Mesh : null) || THREE.Mesh;
-            const NunuGroup = window.Group || (window.nunu ? window.nunu.Group : null) || THREE.Group;
+            // Resolve the editor's bundled three.js classes so the meshes we
+            // create satisfy nunuStudio's instanceof checks (selection helper +
+            // Inspector). Falls back to the local THREE classes when the editor
+            // is not present (e.g. headless/standalone usage).
+            const nunu = resolveNunuClasses();
+            const NunuMesh = nunu.Mesh;
 
             let rawVertices = meshData.vertices;
             let rawIndices = meshData.indices;
@@ -632,7 +694,7 @@
                 let surface = surfaces[s];
                 if (surface.elementCount === 0) continue;
 
-                let geometry = new THREE.BufferGeometry();
+                let geometry = new nunu.BufferGeometry();
                 let subIndices = [];
                 let subPositions = [];
                 let subNormals = [];
@@ -662,11 +724,11 @@
                     subIndices.push(vertMap[globalVertIdx]);
                 }
 
-                geometry.setAttribute("position", new THREE.Float32BufferAttribute(subPositions, 3));
-                geometry.setAttribute("normal", new THREE.Float32BufferAttribute(subNormals, 3));
-                geometry.setAttribute("uv", new THREE.Float32BufferAttribute(subUvs, 2));
-                geometry.setAttribute("color", new THREE.Float32BufferAttribute(subColors, 4));
-                geometry.setIndex(subIndices.length > 65535 ? new THREE.BufferAttribute(new Uint32Array(subIndices), 1) : new THREE.BufferAttribute(new Uint16Array(subIndices), 1));
+                geometry.setAttribute("position", new nunu.Float32BufferAttribute(subPositions, 3));
+                geometry.setAttribute("normal", new nunu.Float32BufferAttribute(subNormals, 3));
+                geometry.setAttribute("uv", new nunu.Float32BufferAttribute(subUvs, 2));
+                geometry.setAttribute("color", new nunu.Float32BufferAttribute(subColors, 4));
+                geometry.setIndex(subIndices);
 
                 geometry.computeVertexNormals();
                 geometry.computeBoundingBox();
@@ -743,15 +805,15 @@
                     }
                 }
 
-                mat = new THREE.MeshPhongMaterial({
+                mat = new nunu.Material({
                     name: surface.shaderName || "default_bsp",
-                    vertexColors: false,
                     side: THREE.DoubleSide,
-                    map: texture || window.defaultTexture,
+                    map: texture || (window.nunu ? window.nunu.defaultTexture : null) || window.defaultTexture,
                     transparent: isTransparent,
-                    opacity: 1.0,
-                    shininess: 0
+                    opacity: 1.0
                 });
+                if ("roughness" in mat) mat.roughness = 1.0;
+                if ("metalness" in mat) mat.metalness = 0.0;
 
                 // --- INSTANTIATE VIA TARGET ARCHITECTURE CLASS ---
                 let surfaceMesh = new NunuMesh(geometry, mat);
@@ -771,25 +833,8 @@
                     elementCount: surface.elementCount
                 };
 
-                // Inject baseline fallback hooks safely directly onto instance
-                surfaceMesh.isEmpty = function () { return true; };
-                surfaceMesh.resize = function (x, y) {
-                    if (this.children && this.children.length > 0) {
-                        for (let i = 0; i < this.children.length; i++) {
-                            if (typeof this.children[i].resize === 'function') {
-                                this.children[i].resize(x, y);
-                            }
-                        }
-                    }
-                };
-
-                surfaceMesh.toJSON = function (meta) {
-                    const baseProto = Object.getPrototypeOf(this);
-                    if (baseProto && typeof baseProto.toJSON === 'function') {
-                        return baseProto.toJSON.call(this, meta);
-                    }
-                    return THREE.Object3D.prototype.toJSON.call(this, meta);
-                };
+                // No need for fallback isEmpty/resize/toJSON shims: meshes built
+                // from the editor's Object3D inherit nunuStudio's versions.
 
                 rootNode.add(surfaceMesh);
             }
@@ -1221,9 +1266,11 @@ async function importBSP() {
         bspGroup.folded = false;
         bspGroup.locked = false;
 
-        // Add container tree first
-        window.nunu.addObject(bspGroup, activeScene);
-
+        // Collect the surfaces, then register the container and each surface
+        // through the editor so undo/redo and the Project Explorer tree stay in
+        // sync. The surfaces are built from the editor's own three.js classes
+        // (see resolveNunuClasses), so they already carry nunuStudio's Object3D
+        // methods and are recognized by the selection helper and Inspector.
         const surfaceChildren = [];
         bspGroup.traverse(function (child) {
             if (child.isMesh && child !== bspGroup) {
@@ -1231,62 +1278,16 @@ async function importBSP() {
             }
         });
 
+        window.nunu.addObject(bspGroup, activeScene);
+
         // Decouple original flat arrays so action transactions maintain context
         bspGroup.children = [];
 
         surfaceChildren.forEach((surfaceMesh) => {
-            if (surfaceMesh.geometry) {
-                surfaceMesh.geometry.computeBoundingBox();
-                surfaceMesh.geometry.computeBoundingSphere();
-            }
-
-            // 1. Hand off to the engine framework workspace first
             window.nunu.addObject(surfaceMesh, bspGroup);
         });
 
-        // 2. NOW safely query the framework's processed tree array and inject the methods 
-        // directly onto the actual live wrapper items nunu created.
-        bspGroup.traverse(function (liveChild) {
-            // Guarantee isEmpty exists on EVERYTHING inside this map cluster
-            if (typeof liveChild.isEmpty !== 'function') {
-                if (liveChild.isMesh) {
-                    liveChild.isEmpty = function () { return true; };
-                } else {
-                    liveChild.isEmpty = function () {
-                        return this.children ? this.children.length === 0 : true;
-                    };
-                }
-            }
-
-            if (typeof liveChild.resize !== 'function') {
-                liveChild.resize = function (x, y) {
-                    if (this.children && this.children.length > 0) {
-                        for (let i = 0; i < this.children.length; i++) {
-                            if (typeof this.children[i].resize === 'function') {
-                                this.children[i].resize(x, y);
-                            }
-                        }
-                    }
-                };
-            }
-
-            if (typeof liveChild.toJSON !== 'function') {
-                liveChild.toJSON = function (meta) {
-                    const baseProto = Object.getPrototypeOf(this);
-                    if (baseProto && typeof baseProto.toJSON === 'function') {
-                        return baseProto.toJSON.call(this, meta);
-                    }
-                    return THREE.Object3D.prototype.toJSON.call(this, meta);
-                };
-            }
-        });
-
-        // Ensure the root group itself also has its interface methods locked down
-        bspGroup.isEmpty = function () {
-            return this.children ? this.children.length === 0 : true;
-        };
-
-        // Highlight first room mesh element to activate inspector pane metrics instantly
+        // Select the first surface so the yellow selection helper + Inspector populate.
         if (bspGroup.children.length > 0) {
             window.nunu.selectObject(bspGroup.children[0]);
         } else {
