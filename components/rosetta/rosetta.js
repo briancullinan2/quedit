@@ -1279,7 +1279,43 @@ const ROSETTA_CROSS_LANGUAGE_MAPPING = {
     "reservedWord": ["keyword"],                      // Language system keywords matrix
     "keyword": ["keyword"],                            // Native reserved state statements
     "varModifier": ["storageClassSpecifier"],          // Variable lifecycle constraints (let, var, const)
-    "let_": ["storageClassSpecifier"]                  // Block-scoped local memory class markers
+    "let_": ["storageClassSpecifier"],                  // Block-scoped local memory class markers
+
+    // =====================================================================
+    // 1. HIGHER-LEVEL PARSER EXPR/RULE CONTEXTS (Parser Rules -> C Rules)
+    // =====================================================================
+    "file_": ["compilationUnit", "translationUnit"],             // Whole file root containing sequence blocks
+    "command_invocation": ["postfixExpression", "statement"],    // CMake macro/command execution binds to expression/statements
+    "single_argument": ["argumentExpressionList", "primaryExpression"], // Standard functional inputs
+    "compound_argument": ["argumentExpressionList", "expression"], // Nested argument groups layout like expression subsets
+    "Identifier": ["Identifier", "directDeclarator"],            // Built-in commands or variables behave like identifiers
+
+    // =====================================================================
+    // 2. LEXER TERMINAL CORES (Lexer Rules -> C Lexer Keys / Token Names)
+    // =====================================================================
+    "Quoted_argument": ["StringLiteral"],                       // Double-quoted textual data payloads
+    "Unquoted_argument": ["primaryExpression", "Identifier"],   // Loose raw barewords fallback to general primary atoms
+    "Bracket_argument": ["StringLiteral", "asmStringLiteral"],  // Multi-line block literals track like literal string arrays
+    "Line_comment": ["Comment", "Whitespace"],                  // Trailing `# ...` comments
+    "Bracket_comment": ["Comment"],                             // Block `#[==[ ... ]==]` structural comments
+    "Newline": ["Whitespace", "Newline"],                       // Line termination breaks
+    "Space": ["Whitespace"],                                    // Horizontal alignment spans
+
+    // Structural punctuators mapped directly down to native C delimiters
+    "(": ["LeftParen"],                                         // Opens macro signature parameters
+    ")": ["RightParen"],                                        // Closes macro signature parameters
+    "[": ["LeftBracket"],                                       // Raw multi-line container start boundaries
+    "]": ["RightBracket"],                                      // Raw multi-line container close boundaries
+
+    // =====================================================================
+    // 3. SUB-ELEMENT LEXICAL FRAGMENTS (Internal Layout Construction)
+    // =====================================================================
+    "Escape_sequence": ["EscapeSequence", "SimpleEscapeSequence"], // Standard runtime parameter overrides
+    "Escape_identity": ["EscapeSequence"],                       // Slash-escaped structural character passes (`\*`)
+    "Escape_encoded": ["SimpleEscapeSequence"],                 // Encoded system control sequences (`\n`, `\r`, `\t`)
+    "Escape_semicolon": ["EscapeSequence"],                     // Explicit inline token separators (`\;`)
+    "Quoted_cont": ["EscapeSequence"],                          // Escaped line-continuations inside active strings
+    "Bracket_arg_nested": ["StringLiteral"]                     // Internal recursive contents of raw block structures
 };
 
 
@@ -1436,9 +1472,10 @@ function structuralPartsAccumulatorPush(array, tag) {
 }
 
 
-function toRosettaToken(symbolicName, ruleName, lexer, parser, ctxOrToken, tokenStream) {
-    //console.log(`[STREAM PIPELINE] Processing token context via global stream index lookup.`);
 
+
+
+function toRosettaToken(symbolicName, ruleName, lexer, parser, ctxOrToken, tokenStream) {
     // 1. Setup localized token parsing payload state natively
     const state = {
         symbolicName: symbolicName || "", ruleName: ruleName || "",
@@ -1465,100 +1502,108 @@ function toRosettaToken(symbolicName, ruleName, lexer, parser, ctxOrToken, token
     }
     state.symbolicName ||= state.lexerSymbolicName;
 
-    const structuralParts = [];
+    // We split our targets to keep specific leaf-tokens separated from wide parent wrappers
+    const leafTokens = [];
+    const contextTokens = [];
 
-    // 2. Ingest Flat Non-Recursive Core Categories First
-    const coreBaseClass = toRosettaNonRecursive(state.ruleName, state.lexerSymbolicName);
-    coreBaseClass.split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
-
+    // ─── STEP 1: COLLECT LEAF-LEVEL TARGETS (MOST DETAILED) ───
+    // Run direct token/lexer name matches first before evaluating general rules
     if (state.symbolicName && GRAMMAR_CLASSIFIER_MATRIX[state.symbolicName]) {
-        GRAMMAR_CLASSIFIER_MATRIX[state.symbolicName].split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
-    }
-    if (state.ruleName && GRAMMAR_CLASSIFIER_MATRIX[state.ruleName]) {
-        GRAMMAR_CLASSIFIER_MATRIX[state.ruleName].split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
+        GRAMMAR_CLASSIFIER_MATRIX[state.symbolicName].split('.').forEach(p => structuralPartsAccumulatorPush(leafTokens, p));
     }
 
-    // Explicitly ingest the active rule's Rosetta Cross-Language mapping if it exists
+    // ─── STEP 2: COLLECT DIRECT RULE & CROSS MAPPINGS ───
+    const coreBaseClass = toRosettaNonRecursive(state.ruleName, state.lexerSymbolicName);
+    if (coreBaseClass && coreBaseClass !== "text") {
+        coreBaseClass.split('.').forEach(p => structuralPartsAccumulatorPush(leafTokens, p));
+    }
+
+    if (state.ruleName && GRAMMAR_CLASSIFIER_MATRIX[state.ruleName]) {
+        GRAMMAR_CLASSIFIER_MATRIX[state.ruleName].split('.').forEach(p => structuralPartsAccumulatorPush(leafTokens, p));
+    }
+
     if (state.ruleName && ROSETTA_CROSS_LANGUAGE_MAPPING[state.ruleName]) {
         ROSETTA_CROSS_LANGUAGE_MAPPING[state.ruleName].forEach(crossCKey => {
+            structuralPartsAccumulatorPush(leafTokens, crossCKey.toLowerCase());
             const nonRecCross = toRosettaNonRecursive(crossCKey, null);
-            if (nonRecCross !== "text") nonRecCross.split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
+            if (nonRecCross !== "text") {
+                nonRecCross.split('.').forEach(p => structuralPartsAccumulatorPush(leafTokens, p));
+            }
         });
     }
 
+    // ─── STEP 3: COLLECT ANCESTOR / PARENT CONTEXTS (LEAST DETAILED) ───
+    if (state.ruleHistory && state.ruleHistory.length > 0) {
+        state.ruleHistory.forEach(ancestorRule => {
+            if (ancestorRule === state.ruleName) return;
+
+            structuralPartsAccumulatorPush(contextTokens, `ctx_${ancestorRule.toLowerCase()}`);
+
+            if (GRAMMAR_CLASSIFIER_MATRIX[ancestorRule]) {
+                GRAMMAR_CLASSIFIER_MATRIX[ancestorRule].split('.').forEach(p =>
+                    structuralPartsAccumulatorPush(contextTokens, `meta_${p}`)
+                );
+            }
+        });
+    }
+
+    // Neighborhood associations evaluation
     const activeStreamTokens = tokenStream?.tokens || tokenStream || [];
     if (state.tokenIndex !== null && activeStreamTokens.length > 0) {
-
-        // Assemble unified configuration payload structure
         const evaluationPayload = {
-            tokenIndex: state.tokenIndex,
-            tokenSymbol: state.symbolicName,
-            tokenRule: state.lexerSymbolicName,
-            ruleName: state.ruleName,
-            text: state.literalText,
-            channel: state.tokenChannel,
-            ruleHistory: state.ruleHistory // ◄ Feeds structural history directly to the matcher metrics
+            tokenIndex: state.tokenIndex, tokenSymbol: state.symbolicName,
+            tokenRule: state.lexerSymbolicName, ruleName: state.ruleName,
+            text: state.literalText, channel: state.tokenChannel, ruleHistory: state.ruleHistory
         };
 
         for (const associationKey in ROSETTA_NEIGHBORHOOD_ASSOCIATIONS) {
             const matchResult = ROSETTA_NEIGHBORHOOD_ASSOCIATIONS[associationKey](evaluationPayload, activeStreamTokens);
             if (matchResult) {
-                matchResult.split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
+                matchResult.split('.').forEach(p => structuralPartsAccumulatorPush(contextTokens, p));
             }
         }
     }
 
-    // 4. Trace the Ancestral Rule Matrix Hierarchy sequentially
-    if (state.ruleHistory && state.ruleHistory.length > 0) {
-        state.ruleHistory.forEach(ancestorRule => {
-            // Append explicit architectural classifications if defined
-            if (GRAMMAR_CLASSIFIER_MATRIX[ancestorRule]) {
-                GRAMMAR_CLASSIFIER_MATRIX[ancestorRule].split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
-            }
+    // ─── STEP 4: MERGE WITH STRICT DOMINANCE PRESERVATION ───
+    // Combine arrays: Detailed Leaf Tokens ALWAYS go first, general context follow behind
+    let combinedParts = [...leafTokens, ...contextTokens];
+    let finalTokens = combinedParts.filter((item, idx) => combinedParts.indexOf(item) === idx);
 
-            // Unpack dynamic multi-language crossings safely
-            if (ROSETTA_CROSS_LANGUAGE_MAPPING[ancestorRule]) {
-                ROSETTA_CROSS_LANGUAGE_MAPPING[ancestorRule].forEach(crossCKey => {
-                    const nonRecCross = toRosettaNonRecursive(crossCKey, null);
-                    if (nonRecCross !== "text") nonRecCross.split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
-                });
-            }
-            // Append standard base rules if matched
-            const nonRecAncestor = toRosettaNonRecursive(ancestorRule, null);
-            if (nonRecAncestor !== "text") {
-                nonRecAncestor.split('.').forEach(p => structuralPartsAccumulatorPush(structuralParts, p));
-            }
-        });
-    }
-
-    // Remove text keywords from active tokens lists if a specialized class is present
-    let finalTokens = structuralParts.filter((item, idx) => structuralParts.indexOf(item) === idx);
     if (finalTokens.length > 1 && finalTokens.includes("text")) {
         finalTokens = finalTokens.filter(t => t !== "text");
     }
+
+    // Contextual sanity filters
     if (finalTokens.includes("key") || finalTokens.includes("jsonkey") || state.ruleName === 'jsonKey') {
-        // Purge all leaked C storage components, expression statements, and numerical operators
         finalTokens = finalTokens.filter(t => ![
             "keyword", "constant", "storage", "type", "operator",
             "assignmentexpression", "compoundstatement", "numeric", "text"
         ].includes(t.toLowerCase()));
-
-        // Ensure variable dominance is locked down at the front line
         if (!finalTokens.includes("variable")) finalTokens.unshift("variable");
-    }
-    // If we are looking at an explicit JSON literal string value context
-    else if (state.ruleName === 'jsonValue' && finalTokens.includes("string")) {
-        // Strip out cross-language leaks like numeric constants or operator states
+    } else if (state.ruleName === 'jsonValue' && finalTokens.includes("string")) {
         finalTokens = finalTokens.filter(t => !["constant", "numeric", "operator", "keyword"].includes(t.toLowerCase()));
         if (!finalTokens.includes("string")) finalTokens.unshift("string");
     }
-    // 5. Enforce Theme Dominance Layer Order Sorting
+
+    // ─── STEP 5: PRECISE INTENSITY SORTING ───
+    // 5. Enforce Theme Dominance Layer Order Sorting (Exclusive First-Match Variant)
+    let dominanceLocked = false;
     for (let i = ACE_COLORED_CLASSES.length - 1; i >= 0; i--) {
         const targetClass = ACE_COLORED_CLASSES[i];
         if (finalTokens.includes(targetClass)) {
             const classIndex = finalTokens.indexOf(targetClass);
             finalTokens.splice(classIndex, 1);
-            finalTokens.unshift(targetClass);
+
+            if (!dominanceLocked) {
+                finalTokens.unshift(targetClass);
+                // If it's a hard color rule, lock it so weaker fallbacks don't unshift on top of it
+                if (["function", "keyword", "string", "constant"].includes(targetClass)) {
+                    dominanceLocked = true;
+                }
+            } else {
+                // Weaker structural elements get appended behind the king-token instead
+                finalTokens.push(targetClass);
+            }
         }
     }
 
@@ -1980,6 +2025,7 @@ class AntlrBlockCollectorVisitor {
 
 // A minimal lookahead map of tokens that CANNOT start a expression line 
 // without a preceding semicolon safely in place.
+// TODO: make C do this on save
 const UNSAFE_LINE_STARTERS = ['[', '(', '`', '/', '+', '-'];
 
 function processJavaScriptASI(tokenStream) {

@@ -62,6 +62,7 @@ const EXTENSION_TO_MODE = {
     'plsql': 'antlr_worker', 'tsql': 'antlr_worker', 'mysql': 'antlr_worker',
     'sql': 'antlr_worker',
 
+    'cmakelists.txt': 'antlr_worker',
     'cmake': 'antlr_worker', 'proto': 'antlr_worker', 'toml': 'antlr_worker',
     'xml': 'antlr_worker', 'xsd': 'antlr_worker', 'xsl': 'antlr_worker',
     'csv': 'antlr_worker', 'properties': 'antlr_worker', 'props': 'antlr_worker',
@@ -231,7 +232,7 @@ const EXTENSION_TO_MODE = {
 function getModeByFilename(filePath) {
     const ext = filePath.split('.').pop().toLowerCase();
     const filenameAsType = filePath.split('/').pop().toLowerCase();
-    const modeKey = (!EXTENSION_TO_MODE[ext] && EXTENSION_TO_MODE[filenameAsType]) ? filenameAsType : ext;
+    const modeKey = ((!EXTENSION_TO_MODE[ext] || ext === 'txt') && EXTENSION_TO_MODE[filenameAsType]) ? filenameAsType : ext;
     return `ace/mode/${EXTENSION_TO_MODE[modeKey] || 'text'}`;
 }
 

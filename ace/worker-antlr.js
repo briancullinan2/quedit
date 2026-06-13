@@ -26,6 +26,7 @@ const EXTENSION_TO_PARSER_ID = {
     'clj': 'clojure',
     'cljs': 'clojure',
     'cls': 'apex',
+    'cmakelists.txt': 'cmake',
     'cmake': 'cmake',
     'cmd': 'batchfile',
     'cob': 'cobol',
@@ -198,7 +199,7 @@ const EXTENSION_TO_PARSER_ID = {
     'zig': 'zig',
     'zsh': 'sh',
 
-    
+
     'cam': 'q3camera',
     'shader': 'q3shader',
     'shaderx': 'q3shader',
@@ -214,8 +215,14 @@ const EXTENSION_TO_PARSER_ID = {
 function setLanguageContext(fileId) {
     const ext = fileId.split('.').pop().toLowerCase();
     const filenameAsType = fileId.split('/').pop().toLowerCase();
-    const modeKey = (!EXTENSION_TO_PARSER_ID[ext] && EXTENSION_TO_PARSER_ID[filenameAsType]) ? filenameAsType : ext;
+    const modeKey = ((!EXTENSION_TO_PARSER_ID[ext] || ext === 'txt') && EXTENSION_TO_PARSER_ID[filenameAsType]) ? filenameAsType : ext;
     this.languageKey = EXTENSION_TO_PARSER_ID[modeKey];
+    if (!this.languageKey) {
+        const textContent = this.doc.getValue();
+
+        const matchedLanguageNode = TEXT_LANGUAGE_DETECTOR_WATERFALL.find(lang => lang.match(textContent, cleanBuffer));
+
+    }
     this.activeFileId = fileId;
     this.deferredUpdate.schedule(); // Native trigger to fire onUpdate()
 }
