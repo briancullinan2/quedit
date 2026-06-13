@@ -72,10 +72,19 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
             // TODO: also open toji bsp viewer like the image editor
             setTimeout(async () => {
                 const viewport = document.getElementById('viewport')
-                await DependencyLoader.loadModule('toji');
-                let mapFile = filePath.split('/').pop().split('.')[0]
-                let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
-                initMap(gl, mapFile)
+                const mapFile = filePath.split('/').pop().split('.')[0]
+                // TODO: add nunuStudio here, as the default interaction
+                const preferredRenderer = SettingsManager.get('quake3e', 'preferredRenderer');
+                if (preferredRenderer !== 'quake3e') {
+                    await DependencyLoader.loadModule('toji');
+                    let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
+                    initMap(gl, mapFile)
+                } else if (preferredRenderer !== 'nunu') {
+                    await DependencyLoader.loadModule('nunu');
+                } else {
+                    await DependencyLoader.loadModule('quake3e');
+                    
+                }
             }, 200)
             latestPanelId = latestNotFilelist = 'viewport-frame'
         }

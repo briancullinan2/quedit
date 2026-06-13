@@ -1194,7 +1194,7 @@ async function importBSP() {
     let bspLoader = new Q3BSPLoader();
     let activeScene = window.nunu.getScene();
     const q3bsp_base_folder = 'https://quake.games/demoq3/pak0.pk3dir';
-    const mapName = "https://quake.games/demoq3/pak0.pk3dir/maps/q3dm17.bsp"
+    const mapName = q3bsp_base_folder + "/maps/q3dm17.bsp"
     let mapShaders = [
         'scripts/base.shader', 'scripts/base_button.shader', 'scripts/base_floor.shader',
         'scripts/base_light.shader', 'scripts/base_object.shader', 'scripts/base_support.shader',

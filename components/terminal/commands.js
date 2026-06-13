@@ -408,6 +408,14 @@ async function loadCommand(argv) {
 
     await DependencyLoader.loadModule(moduleToLoad);
 
+    if (moduleToLoad === 'nunu') {
+        renderTabsCommand('nunu')
+    }
+
+    if (moduleToLoad === 'audio' || moduleToLoad === 'audio-editor' ) {
+        renderTabsCommand('audio-editor')
+    }
+
     if (moduleToLoad === 'quake3e' || moduleToLoad === 'toji') {
         renderTabsCommand('viewport-frame')
     }

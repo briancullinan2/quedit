@@ -257,6 +257,14 @@ const IMPORT_SETTINGS = {
             default: 'toji',
             description: 'Specific configuration preferences passed to the WebGL vertex array and custom shading target context.'
         }
+    },
+
+    nunu: {
+        preferredRenderer: {
+            key: 'renderer_preference',
+            default: 'nunu',
+            description: 'Use nunuStudio as the default map renderer.'
+        }
     }
 };
 

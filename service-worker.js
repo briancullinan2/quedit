@@ -92,6 +92,10 @@ async function mkdirp(path, selected) {
 
         console.log(`📂 [SW-FS] Safely writing isolated directory block: "${dir}"`);
 
+        if(!(selected || api.environmentRepository) || !(selected || api.environmentRepository).split) {
+            debugger
+            console.log('What the fuck is wrong with you brain?')
+        }
         try {
             await putRecord(DB_STORE_NAME, {
                 path: dir,
@@ -103,6 +107,7 @@ async function mkdirp(path, selected) {
             // Mark it as safely committed to avoid parallel thrashing
             createdDirectories.add(dir);
         } catch (dbErr) {
+            debugger
             console.error(`❌ [SW-DATABASE] mkdirp failed to store record for "${dir}":`, dbErr);
         }
     }
@@ -495,6 +500,10 @@ async function lookupLocalVersion() {
         }
     } else {
         console.log(`⚠️ [SW-MESSAGE] No version file found across any databases. Fallback: ${localVersion}`);
+    }
+    if(!api.environmentRepository) {
+        debugger
+        console.log('You\'re a fucking idiot.')
     }
 }
 

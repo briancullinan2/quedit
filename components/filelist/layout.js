@@ -48,7 +48,8 @@ const DOESNT_AFFECT_UI = [
     'layout', 'share', 'pause', 'stop', 'save',
     'configuration', 'theme', 'repository',
     'wasi', 'theme', 'keybinding', 'reload',
-    'branch', 'owner', 'toolbar', 'fileHistory'
+    'branch', 'owner', 'toolbar', 'fileHistory',
+    
 ]
 
 let toolbarTabDebounce = null
