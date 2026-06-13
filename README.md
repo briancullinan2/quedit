@@ -69,11 +69,97 @@ surrounding it. I think if all of these things were done, this could be the firs
 5. **Live Map Editing via nunuStudio:** Add the open-source [nunuStudio Editor](https://github.com/tentone/nunuStudio) to your asset panel instead of trying to port heavy desktop map tools. This will let you edit `.map` files in the browser and watch the map walls move in real-time for all connected players, like a live Dungeon Master editing a VR space on the fly.
 6. **Global Code Dependency Sweeper:** Build a tool using ANTLR that checks your entire codebase and highlights every global variable used outside of the file it was created in. This gives you a clear warning list of exactly what will break if you start moving files around.
 7. **Spray paint live drawing:** Want to get the point where i can have the engine running next to miniPaint, and I save the image in paint and it automatically uploads it to the GPU between frames and swaps out the image in the engine using the replace texture interface. Then it streams the content to other players using the standard UDP downloads channel, without UI interruptions. This way i can spray tag on a wall, and then paint that sprayed image in real time to distract other players.
+8. 100% must show all the overlapping audio inside AudioMass as it is being played in the engine so somebody could pause the engine side and see all the effects sounds lined up to their current start offset marker with some positional (x,y,z) attributes noted inside audioMass effects so that audioMass reflects the same transformations that Quake3 is current running. that would be sick to see/hear the rocket fly past and have an audioMass capable view of that wave while it is going off into the distance.
+
+Need to implement all of these features as well:
+3rdparty\wasm-git-master.zip
+3rdparty\assimpjs-main.zip
+3rdparty\githttpserver-master.zip
+3rdparty\magick-wasm-main.zip
+3rdparty\opentype.js-master.zip
+3rdparty\toywasm-master.zip
+
 
 
 ## So far
 
 ---
+
+
+#### 6/13/2026
+
+I like this list from Gemini. These are really good ideas, and the image coallescing touches on something quake 3 engine suffers from.
+Most IDEs lack "Interactive AST & Abstract Config Graph Tree Nodes"
+
+
+When looking for solid, studio-grade tools to drop into a web ecosystem, you want things that compile neatly down to pure client-side execution (WASM/JS) and provide deep visual context.
+
+Here is the exact landscape for WASM/JS decompilers, followed by the specific structural tools your platform needs to rival enterprise setups like Unreal or Visual Studio.
+
+---
+
+##### 1. Studio-Style WASM & JS Decompilers
+
+For a professional web workspace, you do not want to write a raw static decompiler yourself. You should leverage tools that have been compiled into WASM modules so they run locally inside your app's service workers or main threads.
+
+###### The Standard: WABT (`wasm-decompile`)
+
+The WebAssembly Binary Toolkit (**WABT**) by the Bytecode Alliance is the gold standard.
+
+* **How it works:** It has been fully compiled to JS/WASM via Emscripten.
+* **What it does:** Instead of converting raw binary into hard-to-read, deeply nested S-expressions (`.wat`), it translates `.wasm` into a readable, expression-based, **C-like pseudo-syntax**. It automatically scans loads and stores to infer layout pointers and prints them out like inline objects.
+* **Implementation:** You can pull the official `wabt.js` build directly into your front end, pass it a `Uint8Array`, and output completely decompiled code directly into an Ace Editor session configured for C-style syntax highlighting.
+
+###### The JavaScript Equivalence: Prettier + Escodegen
+
+For raw JavaScript files that are heavily minified or obfuscated:
+
+* Combine a fast abstract syntax tree (AST) parser like **Merdian** or **Acorn** with **Escodegen** to reconstruct the structural layout.
+* Pipe the result directly into an embedded instance of **Prettier**'s standalone browser build. This instantly normalizes messy script sheets into highly uniform, readable source code trees.
+
+---
+
+##### 2. Competitive "Studio Viewers" to Blow Past the Competition
+
+If your web engine is going to compete with established studios, it needs to move beyond simple plain-text editing. It needs specialized visual layers for standard game assets.
+
+By adding the following five panels into your dashboard interface, you can elevate your app from a basic code editor into a full-scale game suite:
+
+###### 📊 1. Memory, Heap & Arena Budget Trackers
+
+When modders assemble assets or maps, they often crash engines because they overflow allocations (like max textures, max brushes, or max entities).
+
+* **The Visual Feature:** A dynamic, color-coded stack bar chart showing memory consumption.
+* **How to build it:** Scan `.bsp` files for lump headers or inspect `.map` string structures to count structural arrays (e.g., entity counts, surfedges, visibility matrices). Display these allocations using a clean, responsive gauge dashboard. This lets designers quickly see if their changes approach engine limitations.
+
+###### 🖼️ 2. Dynamic 2D Texture Atlas & Sprite Packing Sheets
+
+* **The Visual Feature:** A visual container that displays image directories packed neatly into uniform texture maps.
+* **How to build it:** Since you are already integrating image layers, combine them with an open-source, client-side bin-packing algorithm (like `maxrects-packer`). This allows users to drop a folder of loose PNG assets and instantly watch them snap together into an optimized texture sheet, complete with auto-generated JSON coordinates for their engine shaders.
+
+###### 📜 3. Interactive AST & Abstract Config Graph Tree Nodes
+
+* **The Visual Feature:** A node-graph layout canvas (similar to Blueprint or Material editors in Unreal) that maps out logical relationships.
+* **How to build it:** Use a library like **Rete.js** or **Litegraph.js**. You can use your custom ANTLR grammars to parse `.cfg` configuration systems, entity chains, or complex Quake scripts. Instead of forcing users to read raw text strings, render them as connected visual node trees. For instance, you could show a map's target entities linking directly to their trigger source blocks.
+
+```
+ [Trigger_Once Entity] ──(target)──> [Target_Speaker Entity]
+
+```
+
+###### 🔈 4. Web Audio API Waveform & Loop Node Visualizers
+
+Audio assets are often overlooked in web suites, but they are crucial for game feel.
+
+* **The Visual Feature:** Interactive waveform bars equipped with drag-and-drop region markers to define looping points.
+* **How to build it:** Use **Wavesurfer.js**. It hooks directly into the browser's Web Audio API and runs completely on the client side. When a user opens a `.wav` file, it calculates and displays the acoustic amplitude array. You can overlay boundary flags directly onto the timeline to visually read and write the exact frame data markers required for game engine loop parameters.
+
+###### 🌐 5. Package Inspector & Virtual ZIP/PK3 File Trees
+
+* **The Visual Feature:** A nested file directory sidebar that allows users to peek inside compressed packages without manually downloading or extracting them first.
+* **How to build it:** Integrate **FFlate** or **JSZip**. When a modder drags a `.pk3` archive into the interface, you can instantly read its header indexes in memory. This lets users traverse deep internal folder paths (`/maps/`, `/textures/`, `/scripts/`) and view individual file contents on demand. Combining this with your new `AssetInspector` allows users to seamlessly preview images, view scripts, or load 3D viewports directly from compressed archives.
+
+
 
 
 #### 6/11/2026
