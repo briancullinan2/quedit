@@ -565,6 +565,14 @@ body,
     flex-basis: 60px;
 }
 
+@media all and (max-height: 600px) {
+    #tabs {
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+}
+
+
 #list-wrapper ul.toolbar,
 #statusbar,
 #toolbar {
