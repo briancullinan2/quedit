@@ -94,51 +94,41 @@ function isDevToolsOpen() {
 
 
 
+// One-time terminal startup. This is only invoked by ensureTerminalStarted()
+// (terminal.js), which guarantees the panel is visible and xterm has a valid
+// cell size before we run -- so there is no setTimeout guesswork here. Ordering
+// is preserved by dumping the backlog first and only flipping
+// window.terminalLoaded (the live-write gate in logging.js) afterwards, so live
+// log lines can't interleave ahead of the backlog.
 function onLoadTerminal() {
-    // Force xterm panel element layout recalculations
-    // this is the panel management stuff i didn't post to gemini
-    //const wrapper = document.getElementById('terminal-container');
-    //if (wrapper) wrapper.classList.remove('hidden');
-    //if (wrapper) wrapper.classList.add('not-hidden');
-
-    // TODO: insert xterm startup
-
     lineCount += terminalLog.reduce((sum, l) => {
         const text = l.text || l; // handles both structured objects and raw strings
         return sum + (text.match(/\n/g) || []).length;
     }, 0)
 
-    // allow ux to adjust to class change and xterm to start
-    setTimeout(() => {
-        syncThemeWithAce()
-        forceFitLayout(true)
+    syncThemeWithAce()
+    forceFitLayout(true)
 
-        if (!window.terminalLoaded) {
+    // Dump the buffered backlog, then draw the prompt once it has been written.
+    // terminalLoaded is flipped synchronously right after queueing the backlog
+    // so that live log lines (logging.js) queue into xterm's ordered write
+    // buffer behind the backlog instead of being dropped or interleaved.
+    window.terminalFrameLimiter.requestFrameUpdate(() => {
+        const backlog = terminalLog.map(l => l.text || l).join('');
+        const hadBacklog = terminalLog.length > 0;
+        term.write(backlog, () => { if (hadBacklog) writePrompt(); });
+        window.terminalLoaded = true;
+    });
 
-            // 1. Wrap the initial log dump into the rate limiter queue
-            window.terminalFrameLimiter.requestFrameUpdate(() => {
-                term.write(terminalLog.map(l => l.text || l).join(''));
+    terminalContainer.focus()
 
-                if (!window.terminalLoaded && terminalLog.length > 0) {
-                    setTimeout(() => writePrompt(), 200);
-                }
-                window.terminalLoaded = true;
-            });
-        }
-        terminalContainer.focus()
-    }, 200)
-
-    // Execute internal scan loops matching your terminal selections
-    setTimeout(() => {
+    // Kick off the initial viewport scan on the render queue.
+    window.terminalFrameLimiter.requestFrameUpdate(() => {
         const searchInput = document.getElementById('search-terminal');
         if (typeof scanVisibleViewport === 'function' && searchInput) {
-
-            // 2. Wrap the viewport scanning pass into the rate limiter queue
-            window.terminalFrameLimiter.requestFrameUpdate(() => {
-                scanVisibleViewport(searchInput.value);
-            });
+            scanVisibleViewport(searchInput.value);
         }
-    }, 1000);
+    });
 }
 
 function onUnloadTerminal() {

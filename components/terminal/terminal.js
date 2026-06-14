@@ -26,6 +26,63 @@ const term = new Terminal({
 term.open(terminalContainer);
 window.terminalLoaded = false;
 
+// ---------------------------------------------------------------------------
+// Deterministic terminal startup.
+//
+// xterm measures its font/cell size lazily and only renders while visible, so
+// the first frame it can be laid out correctly is when #terminal-container
+// actually has a non-zero box AND a valid cell size -- not after some fixed
+// timeout. Keying startup off the first onRender + setTimeout was unreliable
+// because that fires before the panel layout has settled (the grid renders at
+// the default 24 rows, then snaps to its real size). Instead we drive startup
+// and every subsequent fit off a ResizeObserver on the container, gating the
+// real work behind an explicit readiness check.
+//
+// ensureTerminalStarted() is idempotent and self-retrying: it no-ops until the
+// terminal is genuinely ready, and only runs the one-time startup once.
+// ---------------------------------------------------------------------------
+let terminalStartupBegun = false;
+
+function terminalHasValidLayout() {
+    if (!terminalWrapper.classList.contains('not-hidden')) return false;
+    if (terminalWrapper.clientWidth === 0 || terminalWrapper.clientHeight === 0) return false;
+
+    const core = term._core;
+    if (!core) return false;
+
+    // The panel is visible now; force xterm to (re)measure the font if it
+    // hasn't yet, since it skips measuring while display:none.
+    if (core._charSizeService && !core._charSizeService.hasValidSize) {
+        core._charSizeService.measure();
+    }
+
+    const dims = core._renderService && core._renderService.dimensions;
+    return !!(dims && dims.css.cell.width > 0 && dims.css.cell.height > 0);
+}
+
+function ensureTerminalStarted() {
+    if (terminalStartupBegun) return;
+    if (!terminalHasValidLayout()) return;
+    terminalStartupBegun = true;
+    onLoadTerminal();
+}
+
+function handleTerminalLayoutChange() {
+    if (!terminalWrapper.classList.contains('not-hidden')) return;
+    if (!terminalStartupBegun) {
+        ensureTerminalStarted();
+    } else if (window.terminalLoaded) {
+        forceFitLayout(false);
+    }
+}
+
+if (typeof ResizeObserver !== 'undefined') {
+    const terminalResizeObserver = new ResizeObserver(() => {
+        window.terminalFrameLimiter.requestFrameUpdate(handleTerminalLayoutChange);
+    });
+    terminalResizeObserver.observe(terminalWrapper);
+}
+
 
 // Utility to convert rgb/rgba strings to hex
 function parseToHex(colorStr, backgroundStr = null) {
@@ -112,10 +169,15 @@ function forceFitLayout(first) {
     if (!terminalWrapper.classList.contains('not-hidden')) return;
 
     const core = term._core;
+    // Make sure the font has been measured now that we're visible before
+    // reading cell dimensions (xterm measures lazily and skips while hidden).
+    if (core?._charSizeService && !core._charSizeService.hasValidSize) {
+        core._charSizeService.measure();
+    }
     const dims = core?._renderService?.dimensions;
 
     if (!dims || dims.css.cell.width === 0) {
-        window.terminalFrameLimiter.requestFrameUpdate(forceFitLayout)
+        window.terminalFrameLimiter.requestFrameUpdate(() => forceFitLayout(first))
         return;
     }
 

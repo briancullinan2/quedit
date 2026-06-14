@@ -207,14 +207,23 @@ function createFrameRater(targetFps, callback) {
                 frameCount++;
                 const t = paintTime - startTime;
 
-                if (typeof callback === 'function') {
-                    // Drain the batch execution
-                    for (let i = 0; i < currentBatch.length; i++) {
-                        callback(currentBatch[i], t, frameCount);
+                try {
+                    if (typeof callback === 'function') {
+                        // Drain the batch execution. Isolate each callback so a
+                        // single throw can't drop the rest of the batch.
+                        for (let i = 0; i < currentBatch.length; i++) {
+                            try {
+                                callback(currentBatch[i], t, frameCount);
+                            } catch (e) {
+                                console.error('frame callback failed', e);
+                            }
+                        }
                     }
+                } finally {
+                    // Always release the lock, even if a callback throws, so the
+                    // limiter can never freeze permanently.
+                    isFlushing = false;
                 }
-
-                isFlushing = false; // Safely release the lock after execution terminates
             });
         }
     }, fpsInterval);

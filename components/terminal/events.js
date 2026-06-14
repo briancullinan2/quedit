@@ -503,12 +503,10 @@ term.onData(async data => {
 
 document.addEventListener('visibilitychange', refreshBlinkerState);
 window.addEventListener('focus', refreshBlinkerState);
-let xtermFirstTime = true
-term.onRender(() => {
-    if (xtermFirstTime) {
-        xtermFirstTime = false
-        onLoadTerminal()
-    }
-});
+// Belt-and-suspenders trigger: onRender only fires once the terminal is
+// actually visible and painting, so it's a safe (idempotent) point to attempt
+// startup. The ResizeObserver in terminal.js is the primary trigger; this just
+// covers visibility changes that don't alter the container's box size.
+term.onRender(() => ensureTerminalStarted());
 terminalContainer.addEventListener('focus', refreshBlinkerState);
 
