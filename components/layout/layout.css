@@ -430,6 +430,12 @@ canvas {
    TERMINAL AXIS BEHAVIORS (Applies regardless of order or sidebars)
    ========================================================================== */
 
+.layout-terminal #terminal-container #terminal {
+    visibility: visible;
+    position: relative;
+    z-index: 10;
+}
+
 .layout-terminal #terminal-container {
     display: flex;
     min-width: 200px;

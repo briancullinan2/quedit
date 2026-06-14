@@ -308,6 +308,11 @@ function rotateLayout(element = document.body) {
     const nextIndex = (currentIndex + 1) % ALL_LAYOUTS.length;
     const newLayoutClass = ALL_LAYOUTS[nextIndex].split(' ');
 
+    if (newLayoutClass.includes('layout-terminal')
+        && typeof term === 'undefined') {
+        DependencyLoader.loadModule('terminal')
+    }
+
     // 5. Inject it back onto the target DOM node element
     element.classList.add(...newLayoutClass);
 

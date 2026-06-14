@@ -44,7 +44,8 @@ window.terminalLoaded = false;
 let terminalStartupBegun = false;
 
 function terminalHasValidLayout() {
-    if (!terminalWrapper.classList.contains('not-hidden')) return false;
+    if (!terminalWrapper.classList.contains('not-hidden')
+        && !document.body.classList.contains('layout-terminal')) return false;
     if (terminalWrapper.clientWidth === 0 || terminalWrapper.clientHeight === 0) return false;
 
     const core = term._core;

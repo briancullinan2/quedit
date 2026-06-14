@@ -675,7 +675,6 @@
                     this._selectionService = this._register(this._instantiationService.createInstance(m.SelectionService, this.element, this.screenElement, s)),
                     this._instantiationService.setService(v.ISelectionService, this._selectionService);
                     this._register(this._selectionService.onRequestScrollLines((e => {
-                        debugger;
                         this.scrollLines(e.amount, e.suppressScrollEvent)
                     }))),
                     this._register(this._selectionService.onSelectionChange(( () => this._onSelectionChange.fire()))),
