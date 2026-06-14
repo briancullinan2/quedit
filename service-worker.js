@@ -695,18 +695,36 @@ self.addEventListener('fetch', event => {
         const gitHubMatch = requestUrlObj.pathname.match(/^\/repos\/([^\/]+)\/([^\/]+)\/?(.*)$/i);
         if (gitHubMatch) {
             const [_, owner, repo, restOfRoute] = gitHubMatch;
-            fallbackSelected = `${owner}/${repo}`; // Route override
-            const routeKey = restOfRoute || 'index';
-            const escapedRoute = routeKey.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-            assetUrl = `${escapedRoute}.json`;
+            fallbackSelected = `${owner}/${repo}`; // Route override context
+
             isGithubContents = restOfRoute.startsWith('contents/');
+
+            if (isGithubContents) {
+                // ✅ FIX: Keep the raw path structural elements completely untouched!
+                // This preserves "contents/maps/q3dm7.bsp" so the network request pulls the real file
+                assetUrl = restOfRoute;
+            } else {
+                // Baseline behavior for standard repo metadata API calls (like branches, commits etc.)
+                const routeKey = restOfRoute || 'index';
+                const escapedRoute = routeKey.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+                assetUrl = `${escapedRoute}.json`;
+            }
         }
     }
 
     if (!assetUrl) return;
 
     assetUrl = assetUrl.replace(/^\/?assets\/|^\//ig, '');
-    const localName = (!isGithubContents ? '/base' : '') + (assetUrl.startsWith('/') ? '' : '/') + assetUrl;
+
+    let localName;
+    if (isGithubContents) {
+        // Strip '/contents/' or 'contents/' prefix for local database lookups
+        let cleanPath = assetUrl.replace(/^contents\//i, '');
+        localName = '/' + cleanPath.replace(/^\//, '');
+    } else {
+        localName = '/base' + (assetUrl.startsWith('/') ? '' : '/') + assetUrl;
+    }
+
     const contentType = getMimeType(assetUrl);
 
     event.respondWith((async () => {

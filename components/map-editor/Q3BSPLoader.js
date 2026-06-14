@@ -1253,7 +1253,6 @@ const mapShaders = [
 ].map(s => q3bsp_base_folder + '/' + s);
 
 
-
 async function importBSP(mapFile, content) {
     const THREE = require('three');
     let bspLoader = new THREE.Q3BSPLoader();
@@ -1269,11 +1268,6 @@ async function importBSP(mapFile, content) {
         bspGroup.folded = false;
         bspGroup.locked = false;
 
-        // Collect the surfaces, then register the container and each surface
-        // through the editor so undo/redo and the Project Explorer tree stay in
-        // sync. The surfaces are built from the editor's own three.js classes
-        // (see resolveNunuClasses), so they already carry nunuStudio's Object3D
-        // methods and are recognized by the selection helper and Inspector.
         const surfaceChildren = [];
         bspGroup.traverse(function (child) {
             if (child.isMesh && child !== bspGroup) {
@@ -1281,23 +1275,51 @@ async function importBSP(mapFile, content) {
             }
         });
 
+        // 1. Immediately register the parent container so it appears in the Project Explorer tree
         window.nunu.addObject(bspGroup, activeScene);
 
         // Decouple original flat arrays so action transactions maintain context
         bspGroup.children = [];
 
-        surfaceChildren.forEach((surfaceMesh) => {
-            window.nunu.addObject(surfaceMesh, bspGroup);
-        });
+        // 2. Set up the time-sliced queue configuration
+        let index = 0;
+        const FRAME_BUDGET_MS = 12; // Yield back to the browser if a batch takes longer than 12ms (leaves ~4ms for browser rendering layout)
 
-        // Select the first surface so the yellow selection helper + Inspector populate.
-        if (bspGroup.children.length > 0) {
-            window.nunu.selectObject(bspGroup.children[0]);
-        } else {
-            window.nunu.selectObject(bspGroup);
+        function processBatch() {
+            const startTime = performance.now();
+
+            // Run until we exhaust the surface list OR exceed our maximum safe frame budget
+            while (index < surfaceChildren.length) {
+                const surfaceMesh = surfaceChildren[index];
+
+                // Add the individual map piece directly into its parent group context
+                window.nunu.addObject(surfaceMesh, bspGroup);
+                index++;
+
+                // Break execution block if we're hitting frame budgeting thresholds
+                if (performance.now() - startTime > FRAME_BUDGET_MS) {
+                    // Update interface incrementally so the user can watch the map load block by block
+                    window.nunu.gui.updateInterface();
+
+                    // Request the next animation tick frame to resume loading without locking up the UI
+                    requestAnimationFrame(processBatch);
+                    return;
+                }
+            }
+
+            // 3. Post-processing cleanup loop runs once all nodes have successfully streamed in
+            if (bspGroup.children.length > 0) {
+                window.nunu.selectObject(bspGroup.children[0]);
+            } else {
+                window.nunu.selectObject(bspGroup);
+            }
+
+            window.nunu.gui.updateInterface();
+            console.log(`Successfully streamed ${surfaceChildren.length} BSP surfaces incrementally.`);
         }
 
-        window.nunu.gui.updateInterface();
+        // Kick off the non-blocking loop
+        requestAnimationFrame(processBatch);
     });
 }
 
