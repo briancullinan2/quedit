@@ -162,13 +162,13 @@ async function openMap(content, filePath, sampleBytes) {
             const viewport = document.getElementById('viewport');
             let gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
             if (typeof initMap === 'function') {
-                initMap(gl, mapFile);
+                initMap(gl, mapFile, content);
             }
         }
         else if (preferredRenderer === 'nunu') {
             // Native editor pipeline unblocked by Devin
             if (typeof importBSP === 'function') {
-                await importBSP();
+                await importBSP(mapFile, content);
             }
         }
         else {
@@ -416,7 +416,9 @@ async function navigateFile(filePath, lineNumber, noBounce = false, noHide = fal
 
     if (!selected) return
 
-    hideOpenPanels()
+    if (!noHide) {
+        hideOpenPanels()
+    }
 
     if (selected === engineRepository)
         renderTabsCommand('filelist', true, false)

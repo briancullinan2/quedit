@@ -638,6 +638,9 @@
 
         load(url, onLoad, onProgress, onError) {
             let scope = this;
+            if (url instanceof ArrayBuffer) {
+                onLoad(scope.parse(url));
+            }
             let loader = new THREE.FileLoader(scope.manager);
             loader.setPath(scope.path);
             loader.setResponseType("arraybuffer");
@@ -1251,17 +1254,17 @@ const mapShaders = [
 
 
 
-async function importBSP() {
+async function importBSP(mapFile, content) {
     const THREE = require('three');
     let bspLoader = new THREE.Q3BSPLoader();
     let activeScene = window.nunu.getScene();
 
-    const mapName = q3bsp_base_folder + "/maps/q3dm17.bsp";
+    const mapName = q3bsp_base_folder + (mapFile.startsWith('/') ? '' : '/') + mapFile;
 
     await q3shader.loadList(mapShaders, () => { });
 
-    bspLoader.load(mapName, function (bspGroup) {
-        bspGroup.name = "q3dm17_Map";
+    bspLoader.load(content || mapName, function (bspGroup) {
+        bspGroup.name = mapFile.split('/').pop();
         bspGroup.type = "Group";
         bspGroup.folded = false;
         bspGroup.locked = false;

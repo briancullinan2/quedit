@@ -30,7 +30,7 @@ let polyfill = new WebXRPolyfill();
 // The bits that need to change to load different maps are right here!
 // ===========================================
 
-let mapName = 'q3tourney2';
+let mapName = 'maps/q3tourney2.bsp';
 
 // If you're running from your own copy of Quake 3, you'll want to use these shaders
 let mapShaders = [
@@ -109,14 +109,14 @@ function initGL(gl, canvas) {
     leftViewport = { x: 0, y: 0, width: 0, height: 0 };
     rightViewport = { x: 0, y: 0, width: 0, height: 0 };
 
-    initMap(gl);
+    initMap(gl, mapName);
 }
 
 let maploadDebouncer = null
 let previousMapName = null
 
 // Load the map
-function initMap(gl, mapFile, noBounce = false) {
+function initMap(gl, mapFile, mapContent, noBounce = false) {
     //let titleEl = document.getElementById("mapTitle");
     //titleEl.innerHtml = mapName.toUpperCase();
     if (!noBounce) {
@@ -124,7 +124,7 @@ function initMap(gl, mapFile, noBounce = false) {
             previousMapName = mapFile
             return
         }
-        maploadDebouncer = setTimeout(() => initMap(gl, mapFile, true), 300)
+        maploadDebouncer = setTimeout(() => initMap(gl, mapFile, mapContent, true), 300)
         return
     }
 
@@ -151,7 +151,7 @@ function initMap(gl, mapFile, noBounce = false) {
     map.onbsp = initPlayerMover;
     //map.onsurfaces = initSurfaces;
     map.loadShaders(mapShaders);
-    map.load('maps/' + mapName + '.bsp', tesselation);
+    map.load(mapContent || mapName, tesselation);
 
     maploadDebouncer = null
 }

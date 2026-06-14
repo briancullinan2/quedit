@@ -62,6 +62,11 @@ var shaders; // This needs to be kept here for collision detection (indicates no
 q3bsp = {};
 
 q3bsp.load = function (url, tesselationLevel, errorCallback) {
+    if (url instanceof ArrayBuffer) {
+        q3bsp.parse(new BinaryFile(request.responseText), tesselationLevel);
+        return
+    }
+
     var request = new XMLHttpRequest();
 
     request.addEventListener("load", function () {
