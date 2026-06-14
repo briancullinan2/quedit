@@ -426,6 +426,57 @@ canvas {
     flex-basis: min-content;
 }
 
+/* ==========================================================================
+   TERMINAL AXIS BEHAVIORS (Applies regardless of order or sidebars)
+   ========================================================================== */
+
+.layout-terminal #terminal-container {
+    display: flex;
+    min-width: 200px;
+    visibility: visible;
+    flex-grow: 1;
+    flex-basis: 40%;
+}
+
+.layout-terminal #toggle-wrapper {
+    flex-direction: column;
+}
+
+
+/* ==========================================================================
+   ORDER AXIS BEHAVIORS (Applies only when the ordering is reversed)
+   ========================================================================== */
+
+.layout-reverse-order #editor-container {
+    flex-direction: row-reverse;
+}
+
+
+/* ==========================================================================
+   SIDEBAR & ORDER CROSS-AXIS BEHAVIORS
+   ========================================================================== */
+
+/* Group 2 rule: Left files but with reversed viewport order */
+.layout-left-hand-files.layout-reverse-order #list-wrapper {
+    order: 1;
+}
+
+/* Groups 3 & 4 rule: Files sit on the right, no matter the direction order */
+.layout-right-hand-files #main-body {
+    flex-direction: row-reverse;
+}
+
+.layout-right-hand-files.layout-normal-order #list-wrapper {
+    order: 10;
+}
+
+
+.layout-focus-mode #toolbar .setting,
+.layout-focus-mode #toolbar .engine {
+    display: none;
+}
+
+
 @media all and (min-width: 1200px) {
     [class*="previous-"]:not(.panel-filelist):not(.panel-gamelist):not(.panel-assetlist):not(.panel-serchlist):not(.panel-database) #editor-container:has(.not-hidden) {
         flex-basis: 50%;
