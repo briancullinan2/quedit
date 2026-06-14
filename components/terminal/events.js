@@ -291,10 +291,7 @@ window.addEventListener('mouseup', () => {
 term.attachCustomKeyEventHandler((arg) => {
     // Trigger save and status updates instantly across inputs
     debounceTerminalStatus();
-    if (typeof window.triggerIncrementalSave === 'function') {
-        window.triggerIncrementalSave();
-    }
-
+    
     if (arg.type === "keydown" || arg.type === "keyup") {
         if (typeof window.updateModifierPressed === 'function') {
             window.updateModifierPressed(arg);
