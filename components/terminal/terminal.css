@@ -1,0 +1,194 @@
+#terminal {
+    flex: 1 1 auto;
+    flex-basis: 400px;
+    max-height: none;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+
+}
+
+#terminals,
+#terminal {
+    max-width: 100%;
+}
+
+#terminal-container {
+    max-width: 100%;
+    flex-basis: 100%;
+    position: relative;
+}
+
+
+#terminal .xterm .xterm-screen {
+    z-index: 0;
+    pointer-events: none;
+}
+
+#terminals {
+    flex-shrink: 0;
+    flex-grow: 0;
+    height: fit-content;
+}
+
+#terminals ul {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: stretch;
+}
+
+#terminals li {
+    flex-basis: min-content;
+    flex-grow: 1;
+    flex-shrink: 1;
+
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: ellipsis;
+    max-width: min-content;
+    min-width: 60px;
+    width: fit-content;
+}
+
+
+@media all and (max-width: 800px) {
+
+    #terminals li:nth-child(3),
+    #terminals li:nth-child(4),
+    #terminals li:nth-child(5),
+    #terminals li:nth-child(8),
+    #terminals li:nth-child(9) {
+        display: none;
+    }
+}
+
+
+@media all and (max-width: 1000px) {
+
+    #terminals li:nth-child(3),
+    #terminals li:nth-child(4) {
+        display: none;
+    }
+}
+
+
+@media all and (min-width: 1200px) {
+
+    #terminals li:nth-child(3),
+    #terminals li:nth-child(4),
+    #terminals li:nth-child(8),
+    #terminals li:nth-child(9) {
+        display: none;
+    }
+}
+
+#terminals li:last-child {
+    width: 100%;
+    max-width: none;
+}
+
+#terminals li:nth-last-child(2) {
+    max-width: none;
+}
+
+#terminals a {
+    text-decoration: none;
+    color: var(--ace-foreground);
+    padding: 2px 3px;
+    font-size: 16px;
+    border: 2px solid transparent;
+    display: block;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+/* ================================================================= */
+/* XTERM.JS VIEWPORT INTERACTIVE RESIZER ANCHORS                      */
+/* ================================================================= */
+
+/* 1. Base configuration for ALL registered boundary markers */
+.terminal-box-resize-t,
+.terminal-box-resize-b,
+.terminal-box-resize-l,
+.terminal-box-resize-r,
+.terminal-box-corner {
+    /* Force xterm to acknowledge pointer triggers on these overlays */
+    pointer-events: auto !important;
+
+    /* Keep it floating right over the respective text cell block */
+    position: absolute;
+    z-index: 100;
+
+    /* Transparent by default, but ready for a subtle structural glow on hover */
+    background-color: rgba(161, 68, 255, 0.0);
+    transition: background-color 0.15s ease-in-out;
+}
+
+/* Subtle visual feedback when hovering over a scaling track area */
+.terminal-box-resize-t:hover,
+.terminal-box-resize-b:hover,
+.terminal-box-resize-l:hover,
+.terminal-box-resize-r:hover,
+.terminal-box-corner:hover {
+    background-color: rgba(161, 68, 255, 0.15);
+    box-shadow: 0 0 4px rgba(161, 68, 255, 0.4);
+}
+
+/* 2. Vertical Edge Border Handles */
+.terminal-box-resize-l,
+.terminal-box-resize-r {
+    /* Horizontal east-west mapping cursor alignment */
+    cursor: ew-resize !important;
+}
+
+.terminal-box-resize-t {
+    cursor: move !important;
+}
+
+.terminal-box-resize-b {
+    /* Horizontal east-west mapping cursor alignment */
+    cursor: ns-resize !important;
+}
+
+.dragging,
+.dragging * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+/* 3. Diagonal Corner Node Enforcements */
+
+/* Top-Left to Bottom-Right Line Nodes (Northwest - Southeast) */
+.terminal-box-corner-tl,
+.terminal-box-corner-br {
+    cursor: nwse-resize !important;
+}
+
+/* Top-Right to Bottom-Left Line Nodes (Northeast - Southwest) */
+.terminal-box-corner-tr,
+.terminal-box-corner-bl {
+    cursor: nesw-resize !important;
+}
+
+@media all and (max-width: 1000px) {
+    #terminals li:nth-last-child(2) {
+        display: none;
+    }
+}
+
+@media all and (max-width: 800px) {
+    .xterm-screen,
+    .xterm-viewport {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    /* Hide the xterm-provided scrollbar element entirely */
+    .xterm-scrollbar {
+        display: none !important;
+    }
+}

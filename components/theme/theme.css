@@ -1023,7 +1023,7 @@ body,
 }
 
 /* Clouds Midnight - Twilight Gray-Blue */
-.theme-clouds_midnight {
+.theme-clouds-midnight {
     background: #191f26;
     background: linear-gradient(125deg, #191f26 0%, #252f3b 100%);
     background-size: 400% 400%;
@@ -1037,7 +1037,7 @@ body,
 }
 
 /* Crimson Editor - Crisp Light White */
-.theme-crimson_editor {
+.theme-crimson-editor {
     background: #ffffff;
     background: linear-gradient(125deg, #ffffff 0%, #fcedf0 100%);
     background-size: 400% 400%;
@@ -1093,7 +1093,7 @@ body,
 }
 
 /* Idle Fingers - Muted Industrial Charcoal */
-.theme-idle_fingers {
+.theme-idle-fingers {
     background: #323232;
     background: linear-gradient(125deg, #323232 0%, #212121 100%);
     background-size: 400% 400%;
@@ -1114,7 +1114,7 @@ body,
 }
 
 /* KR Theme - Rich Midnight Gold */
-.theme-kr_theme {
+.theme-kr-theme {
     background: #0b0a09;
     background: linear-gradient(125deg, #0b0a09 0%, #1c1a17 100%);
     background-size: 400% 400%;
@@ -1135,7 +1135,7 @@ body,
 }
 
 /* Merbivore Soft - Muted Pastel Charcoal */
-.theme-merbivore_soft {
+.theme-merbivore-soft {
     background: #1c1c1c;
     background: linear-gradient(125deg, #1c1c1c 0%, #2c2523 100%);
     background-size: 400% 400%;
@@ -1149,42 +1149,42 @@ body,
 }
 
 /* Mono Industrial - Cold Tech Asphalt */
-.theme-mono_industrial {
+.theme-mono-industrial {
     background: #222324;
     background: linear-gradient(125deg, #222324 0%, #151617 100%);
     background-size: 400% 400%;
 }
 
 /* Nord Dark - Frost Aurora Dusk */
-.theme-nord_dark {
+.theme-nord-dark {
     background: #2e3440;
     background: linear-gradient(125deg, #2e3440 0%, #3b4252 50%, #81a1c1 100%);
     background-size: 400% 400%;
 }
 
 /* One Dark - Modern Sleek Slate */
-.theme-one_dark {
+.theme-one-dark {
     background: #282c34;
     background: linear-gradient(125deg, #282c34 0%, #21252b 70%, #61afef 100%);
     background-size: 400% 400%;
 }
 
 /* Pastel On Dark - Cozy Studio Soft Mix */
-.theme-pastel_on_dark {
+.theme-pastel-on-dark {
     background: #2c2828;
     background: linear-gradient(125deg, #2c2828 0%, #353030 50%, #757ad8 100%);
     background-size: 400% 400%;
 }
 
 /* Solarized Dark - Mathematical Calibrated Teal */
-.theme-solarized_dark {
+.theme-solarized-dark {
     background: #002b36;
     background: linear-gradient(125deg, #002b36 0%, #073642 70%, #2aa198 100%);
     background-size: 400% 400%;
 }
 
 /* Solarized Light - Mathematical Calibrated Cream */
-.theme-solarized_light {
+.theme-solarized-light {
     background: #fdf6e3;
     background: linear-gradient(125deg, #fdf6e3 0%, #eee8d5 100%);
     background-size: 400% 400%;
@@ -1219,28 +1219,28 @@ body,
 }
 
 /* Tomorrow Night - Balanced Neutral Dark */
-.theme-tomorrow_night {
+.theme-tomorrow-night {
     background: #1d1f21;
     background: linear-gradient(125deg, #1d1f21 0%, #282a2e 100%);
     background-size: 400% 400%;
 }
 
 /* Tomorrow Night Blue - Deep Royal Denim Dark */
-.theme-tomorrow_night_blue {
+.theme-tomorrow-night-blue {
     background: #002451;
     background: linear-gradient(125deg, #002451 0%, #001b3d 60%, #ff9da4 100%);
     background-size: 400% 400%;
 }
 
 /* Tomorrow Night Bright - Deep Midnight Cyber Dark */
-.theme-tomorrow_night_bright {
+.theme-tomorrow-night-bright {
     background: #000000;
     background: linear-gradient(125deg, #000000 0%, #1a1a1a 50%, #e78c45 100%);
     background-size: 400% 400%;
 }
 
 /* Tomorrow Night 80s - Retro Tech Charcoal */
-.theme-tomorrow_night_eighties {
+.theme-tomorrow-night-eighties {
     background: #2d2d2d;
     background: linear-gradient(125deg, #2d2d2d 0%, #393939 100%);
     background-size: 400% 400%;
@@ -1254,7 +1254,7 @@ body,
 }
 
 /* Vibrant Ink - Intense Cyberpunk High-Glow Void */
-.theme-vibrant_ink {
+.theme-vibrant-ink {
     background: #000000;
     background: linear-gradient(125deg, #000000 0%, #120024 50%, #ff007f 100%);
     background-size: 400% 400%;
@@ -1461,7 +1461,7 @@ body {
     padding: 0 10px;
 }
 
-#editor .ace_marker-layer .ace_active_block_scope_highlight {
+#editor .ace-marker-layer .ace_active_block_scope_highlight {
     background-color: rgb(from var(--ace-selection-bg, rgba(39, 95, 255, 0.3)) r g b / 05%) !important;
     border-left: 3px solid rgb(from var(--ace-selection-bg, rgba(39, 95, 255, 0.3)) r g b / 60%) !important;
     border-radius: 2px 0 0 2px;

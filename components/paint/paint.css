@@ -1,0 +1,358 @@
+#paint .wrapper {
+    top: 0 !important;
+}
+
+#paint button,
+#paint input[type="button"] {
+    box-shadow: none !important;
+}
+
+#paint button:hover {
+    z-index: 10;
+}
+
+#paint .sidebar_left .item {
+    height: 30px !important;
+    width: 30px !important;
+}
+
+#paint .sidebar_left {
+    min-width: min-content;
+}
+
+#paint .wrapper {
+    position: absolute !important;
+    overflow: unset !important;
+}
+
+#paint .main_menu {
+    position: absolute !important;
+    top: unset !important;
+    bottom: 100%;
+}
+
+#paint .sidebar_left .item::before {
+    border-color: var(--ace-blue);
+}
+
+#paint .sidebar_left {
+    background: transparent !important;
+    width: 100px !important;
+}
+
+#paint {
+    padding-top: 0 !important;
+    font-size: unset !important;
+    background: transparent !important;
+    color: var(--ace-foreground) !important;
+}
+
+#paint .submenu {
+    background: transparent !important;
+    justify-content: flex-start;
+}
+
+#paint .attributes {
+    width: auto !important;
+    background-color: transparent !important;
+    border: none !important;
+}
+
+#paint .sidebar_right .block {
+    box-shadow: none !important;
+    border-bottom: 2px solid var(--border-color) !important;
+}
+
+#paint #mouse.circle {
+    border-width: 2px !important;
+}
+
+
+#paint .ui_toggle_button:before,
+#paint .sidebar_left .item:before {
+    font-family: 'boxicons' !important;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    display: inline-block;
+    font-size: 20px;
+}
+
+#paint .sidebar_left .item {
+    padding: 2px !important;
+}
+
+
+
+#paint .sidebar_left .select:before {
+    content: "\f377";
+}
+
+/* .bx-mouse-alt */
+#paint .sidebar_left .selection:before {
+    content: "\f235";
+}
+
+/* .bx-border-radius */
+#paint .sidebar_left .brush:before {
+    content: "\f255";
+}
+
+/* .bx-brush */
+#paint .sidebar_left .pencil:before {
+    content: "\f626";
+}
+
+/* .bx-pencil */
+#paint .sidebar_left .pick_color:before {
+    content: "\f339";
+}
+
+/* .bx-color-fill */
+#paint .sidebar_left .erase:before {
+    content: "\f3e7";
+}
+
+/* .bx-eraser */
+#paint .sidebar_left .magic_erase:before {
+    content: "\f54e";
+}
+
+/* .bx-magic-wand */
+#paint .sidebar_left .fill:before {
+    content: "\f609";
+}
+
+/* .bx-paint-roll */
+#paint .sidebar_left .shape:before {
+    content: "\f706";
+}
+
+/* .bx-shapes */
+#paint .sidebar_left .line:before {
+    content: "\f5c0";
+}
+
+/* .bx-minus */
+#paint .sidebar_left .arrow:before {
+    content: "\f1a4";
+}
+
+/* .bx-arrow-right */
+#paint .sidebar_left .rectangle:before {
+    content: "\f686";
+}
+
+/* .bx-rectangle */
+#paint .sidebar_left .ellipse:before {
+    content: "\f305";
+}
+
+/* .bx-circle */
+#paint .sidebar_left .media:before {
+    content: "\f4dd";
+}
+
+/* .bx-image-plus */
+#paint .sidebar_left .triangle:before {
+    content: "\f7db";
+}
+
+/* .bx-triangle */
+#paint .sidebar_left .right_triangle:before {
+    content: "\f6a6";
+}
+
+/* .bx-right-angle-triangle */
+#paint .sidebar_left .romb:before {
+    content: "\f38a";
+}
+
+/* .bx-diamond */
+#paint .sidebar_left .parallelogram:before {
+    content: "\f704";
+}
+
+/* .bx-shapes-alt-2 */
+#paint .sidebar_left .trapezoid:before {
+    content: "\f705";
+}
+
+/* .bx-shapes-alt */
+#paint .sidebar_left .plus:before {
+    content: "\f65b";
+}
+
+/* .bx-plus */
+#paint .sidebar_left .pentagon:before {
+    content: "\f627";
+}
+
+/* .bx-pentagon */
+#paint .sidebar_left .hexagon:before {
+    content: "\f4b8";
+}
+
+/* .bx-hexagon */
+#paint .sidebar_left .star:before {
+    content: "\f75e";
+}
+
+/* .bx-star */
+#paint .sidebar_left .heart:before {
+    content: "\f4b3";
+}
+
+/* .bx-heart */
+#paint .sidebar_left .cylinder:before {
+    content: "\f37a";
+}
+
+/* .bx-cylinder */
+#paint .sidebar_left .human:before {
+    content: "\f104";
+}
+
+/* .bx-accessibility */
+#paint .sidebar_left .tear:before {
+    content: "\f82f";
+}
+
+/* .bx-water-drop */
+#paint .sidebar_left .cog:before {
+    content: "\f334";
+}
+
+/* .bx-cog */
+#paint .sidebar_left .bezier_curve:before {
+    content: "\f808";
+}
+
+/* .bx-vector */
+#paint .sidebar_left .moon:before {
+    content: "\f5d5";
+}
+
+/* .bx-moon */
+#paint .sidebar_left .callout:before {
+    content: "\f58b";
+}
+
+/* .bx-message-bubble */
+#paint .sidebar_left .text:before {
+    content: "\f4a9";
+}
+
+/* .bx-heading */
+#paint .sidebar_left .gradient:before {
+    content: "\f480";
+}
+
+/* .bx-gradient */
+#paint .sidebar_left .clone:before {
+    content: "\f354";
+}
+
+/* .bx-copy */
+#paint .sidebar_left .crop:before {
+    content: "\f35d";
+}
+
+/* .bx-crop */
+#paint .sidebar_left .blur:before {
+    content: "\f211";
+}
+
+/* .bx-blur */
+#paint .sidebar_left .sharpen:before {
+    content: "\f70d";
+}
+
+/* .bx-shield-quarter */
+#paint .sidebar_left .desaturate:before {
+    content: "\f5e6";
+}
+
+/* .bx-movie */
+#paint .sidebar_left .bulge_pinch:before {
+    content: "\f72a";
+}
+
+/* .bx-size-distort */
+#paint .sidebar_left .animation:before {
+    content: "\f416";
+}
+
+/* .bx-film */
+#paint .sidebar_left .polygon:before {
+    content: "\f65f";
+}
+
+#paint .layers_list .visibility,
+#paint .layers_list .delete,
+#paint .layers_list .visible,
+#paint [class*="menu"] button:empty {
+    text-decoration: none;
+    padding: 3px 5px;
+    font-size: 24px;
+    color: var(--ace-foreground);
+    border: 2px solid transparent;
+}
+
+#paint [class*="menu"] button:empty {
+    background-color: transparent;
+}
+
+#paint .block.details button.reset:after,
+#paint .layers_list .delete:after,
+#paint .layers_list .visible:after,
+#paint .layers_list .visibility:after {
+    display: none;
+}
+
+#paint .block.details button.reset {
+    font-size: small;
+    padding: 2px 3px;
+    margin: 1px;
+    width: 24px;
+}
+
+#paint .layers_list .visibility,
+#paint .layers_list .delete,
+#paint .layers_list .visible {
+    font-size: small;
+    padding: 1px;
+    margin: 1px;
+    width: auto;
+}
+
+#paint .block.details button.reset:before {
+    content: "\f6b5";
+}
+
+#paint .layers_list .delete:before {
+    content: "\f7d3";
+}
+
+#paint .layers_list .visibility.visible:before,
+#paint .layers_list .visible:before {
+    content: "\f3f5";
+}
+
+#paint .layers_list .visibility:before {
+    content: "\f3f6";
+}
+
+.pk_hdr {
+    display: none;
+}
+
+.pk_tb .pk_btn:not(.pk_act):hover span {
+    display: none;
+}
+
+.pk_ttip.pk_act {
+    display: none;
+}

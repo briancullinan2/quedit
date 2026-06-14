@@ -1,0 +1,345 @@
+#nunu div[style*="e-resize"] {
+    z-index: 100;
+    order: 2;
+    width: 10px !important;
+    flex-shrink: 0;
+}
+
+
+#nunu div[style*="n-resize"] {
+    z-index: 100;
+    order: 2;
+    height: 10px !important;
+    flex-shrink: 0;
+    background-color: var(--ace-selection-bg) !important;
+}
+
+#nunu div:has(>div:first-child>[draggable]>img[src*="close"])>div:first-child>[draggable] {
+    user-drag: none;
+    -webkit-user-drag: none;
+}
+
+#nunu [draggable] {}
+
+#nunu.not-hidden {
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+    user-drag: none;
+    -webkit-user-drag: none;
+    overflow: hidden;
+    touch-action: none;
+    overscroll-behavior: none;
+    color: var(--ace-foreground);
+}
+
+#nunu>div:nth-child(1) {
+    order: 2;
+    height: 100% !important;
+}
+
+#nunu>div:nth-child(2) {
+    order: 1;
+    display: flex;
+    height: auto !important;
+    display: none;
+}
+
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div,
+#nunu>div:nth-child(1)>div>div {
+    position: static !important;
+}
+
+
+#nunu>div:nth-child(1)>div>div:nth-child(3),
+#nunu>div:nth-child(1)>div>div:nth-child(2),
+#nunu>div:nth-child(1)>div,
+#nunu>div:nth-child(2)>div:nth-child(even),
+#nunu>div:nth-child(2)>div:nth-child(even)>* {
+    position: static !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    height: auto !important;
+    max-height: 100%;
+    max-width: 100%;
+}
+
+
+#nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(3)>div:nth-child(2)>div>div:first-child {
+    width: calc(100% - 40px) !important;
+    height: 100% !important;
+}
+
+#nunu div:has(>div:first-child>[draggable]>img[src*="close"])>div:first-child>div>img {
+    margin: 1px 4px;
+}
+
+#nunu canvas,
+#nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(3)>div:nth-child(2)>div {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(3)>div:nth-child(2)>div>div:nth-child(7) {
+    left: 50% !important;
+    margin-left: -140px;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(3)>div:nth-child(2) {
+    width: 100% !important;
+    height: calc(100% - var(--global-height)) !important;
+}
+
+#nunu>div:nth-child(2)>div:nth-child(even) {
+    width: auto !important;
+}
+
+#nunu>div {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: 100% !important;
+}
+
+#nunu>div:nth-child(1)>div {
+    display: flex !important;
+    height: 100% !important;
+    background-color: transparent !important;
+    overflow: hidden !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(1) {
+    order: 2;
+    background-color: var(--ace-selection-bg) !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(2) {
+    order: 1;
+    display: flex !important;
+    flex-direction: column;
+    background-color: transparent !important;
+    width: auto !important;
+    flex-basis: 100%;
+    min-width: 200px;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(2)>div {
+    width: 100% !important;
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: 100% !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(3)>div:nth-child(2)>div>div:nth-child(2) {
+    background-color: transparent !important;
+    height: 100% !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(2) {
+    order: 3;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(3) {
+    order: 1;
+    background-color: transparent !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(3) {
+    order: 3;
+    display: flex !important;
+    flex-direction: column;
+    height: 100% !important;
+    /*max-height: calc(100% - var(--global-height)) !important;*/
+    background-color: transparent !important;
+}
+
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(1) {
+    order: 2;
+    background-color: var(--ace-selection-bg) !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(3) {
+    order: 1;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(2) {
+    order: 3;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(2),
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(3) {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(2) {
+    /*height: unset !important;*/
+    overflow: visible !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(3)>div:nth-child(2),
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(2)>div:nth-child(2) {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    height: calc(100% - var(--global-height)) !important;
+}
+
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(3)>div:nth-child(2) {
+    height: calc(100% - var(--global-height)) !important;
+}
+
+
+#nunu div:has(>div:first-child>[draggable]>img[src*="close"]) {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    display: flex !important;
+    background-color: transparent !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(3)>div:nth-child(2)>div>div>* {
+    position: relative !important;
+    top: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(2)>div:nth-child(2)>div>div {
+    width: 100% !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(2)>div:nth-child(2)>div:nth-child(2)>div>div:first-child {
+    height: calc(100% - var(--global-height)) !important;
+}
+
+#nunu div:has(>div:first-child>[draggable]>img[src*="close"])>div:nth-child(2)>div {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+#nunu div:has(>div:first-child>[draggable]>img[src*="close"])>div:nth-child(2) {
+    width: 100% !important;
+    height: calc(100% - var(--global-height)) !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(3)>div:nth-child(2)>div>div {
+    flex-shrink: 0;
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    display: flex !important;
+    height: var(--global-height);
+    align-items: center;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(3)>div:nth-child(2)>div,
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(2)>div:nth-child(2)>div {
+    position: static !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: auto !important;
+    background-color: var(--ace-bg) !important;
+    color: var(--ace-foreground) !important;
+}
+
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(3)>div:nth-child(2)>div {
+    flex-direction: column;
+
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(2)>div:nth-child(2)>div>div {
+    overflow: visible !important;
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    height: min-content !important;
+}
+
+#nunu>div:nth-child(1)>div>div:nth-child(3)>div:nth-child(2)>div:nth-child(2)>div>div>div {
+    overflow: visible !important;
+    position: static !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    height: min-content !important;
+}
+
+#nunu div:has(>div:first-child>[draggable]>img[src*="close"])>div:first-child {
+    position: static !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    display: flex !important;
+    height: var(--global-height) !important;
+    flex-shrink: 0;
+    background-color: transparent !important;
+}
+
+
+#nunu img[src*="icons/"] {
+    filter: invert(0.5) sepia(1) saturate(5) hue-rotate(calc(var(--ace-blue-hue) - 40deg)) brightness(0.8);
+}
+
+#nunu div:has(>div:first-child>[draggable]>img[src*="close"])>div:first-child>div {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: auto !important;
+    display: flex !important;
+    align-items: center;
+    background-color: var(--ace-gutter-bg) !important;
+    color: var(--ace-foreground) !important;
+    height: var(--global-height) !important;
+}
+
+#nunu div:has(>div:first-child>[draggable]>img[src*="close"])>div:first-child>div>* {
+    position: static !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    color: var(--ace-foreground) !important;
+}

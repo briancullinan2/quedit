@@ -46,7 +46,7 @@ const DependencyLoader = {
 
     async loadStyle(href) {
         const absoluteUrl = new URL(href, window.location.origin).pathname;
-        const existingTheme = document.querySelector('link[href*="/main.css"]', document.head)
+        const existingTheme = document.querySelector('link[href*="/theme.css"]', document.head)
 
         // ─── THE CONCURRENCY LOCK CHECK ───
         if (this.registry.has(absoluteUrl)) {

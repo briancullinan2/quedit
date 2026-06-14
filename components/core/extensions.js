@@ -6,15 +6,20 @@ const IMPORT_CSS = {
         // INCLUDED in index.html
         //'/boxicons.min.css',
         '/components/theme/boxicons.min.css',
-        '/components/core/main.css',
+        '/components/core/base.css',
+        '/components/filelist/tree.css',
+        '/components/layout/layout.css',
+        '/components/layout/components.css',
+        '/components/filelist/search.css',
         '/components/core/history.css',
         '/components/paint/css/menu.css',
-        '/components/core/theme.css',
+        '/components/theme/theme.css',
     ],
 
     // Loaded dynamically on demand
     terminal: [
-        '/components/terminal/xterm.css'
+        '/components/terminal/xterm.css',
+        '/components/terminal/terminal.css',
     ],
 
     paint: [
@@ -26,14 +31,18 @@ const IMPORT_CSS = {
         '/components/paint/css/print.css',
         '/components/paint/css/reset.css',
         '/components/paint/css/utility.css',
-        '/components/paint/css/theme.css'
+        '/components/paint/css/theme.css',
+        '/components/paint/paint.css',
     ],
 
-    editor: [], // Handled internally by Ace's DOM-injected themes
+    editor: [
+        '/components/editor/editor.css',
+    ], // Handled internally by Ace's DOM-injected themes
 
     nunu: [
         '/components/map-editor/codemirror.css',
-        '/components/map-editor/styles.css'
+        '/components/map-editor/styles.css',
+        '/components/map-editor/nunu.css',
     ],
 
     audio: [
