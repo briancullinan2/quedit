@@ -18,6 +18,16 @@ const COMMAND_SCHEMA = {
             { cmd: "help build", desc: "Profile parameters, targets, and modes for the build compiler pipeline" }
         ]
     },
+    hello: {
+        execute: hello,
+        description: "Greet the currently authenticated cloud shell profile or custom user identifier.",
+        args: [{ name: "name", type: ARG_TYPES.STRING, description: "Fallback custom display moniker if profile is offline" }],
+        flags: {},
+        demos: [
+            { cmd: "hello", desc: "Query the active gcloud profile identity and print a customized terminal greeting" },
+            { cmd: "hello Megamind", desc: "Execute an explicit string greet bypass to the terminal stream output" }
+        ]
+    },
     status: {
         execute: status,
         description: "Show working file mutations, additions, or deletions against the remote repository branch.",
@@ -329,7 +339,6 @@ const COMMAND_SCHEMA = {
     terminate: { alias: "kill" },
     stop: { alias: "kill" },
     start: { alias: "run" },
-    hello: { alias: "help" }
 };
 
 function writeCommandHelp(targetCommand, argv) {
@@ -412,7 +421,7 @@ async function loadCommand(argv) {
         renderTabsCommand('nunu')
     }
 
-    if (moduleToLoad === 'audio' || moduleToLoad === 'audio-editor' ) {
+    if (moduleToLoad === 'audio' || moduleToLoad === 'audio-editor') {
         renderTabsCommand('audio-editor')
     }
 
