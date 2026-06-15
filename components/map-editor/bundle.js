@@ -1,5 +1,5 @@
 /*! For license information please see bundle.js.LICENSE.txt */
-((requestAnimationFrame) => {
+((requestAnimationFrame, layoutObserver, canvasSize, canvasResizeTime, guiThrottleTimeout, lastGuiCallTime) => {
     var __webpack_modules__ = {
         872: (t, e, i) => {
             "use strict";
@@ -142706,11 +142706,34 @@
             ,
             Sp.updateGUI = function () {
                 K_.updateObjectsViewsGUI()
+            },
+            Tp.throttledUpdateGUI = function () {
+                const now = performance.now();
+                const remaining = 1000 - (now - lastGuiCallTime);
+
+
+                // Scenario A: First call or enough time has passed -> Update immediately!
+                if (remaining <= 0 && !window.isLoadingBSP) {
+                    if (guiThrottleTimeout) {
+                        clearTimeout(guiThrottleTimeout);
+                        guiThrottleTimeout = null;
+                    }
+                    lastGuiCallTime = now;
+                    Tp.updateGUI(); // Call the original heavy function
+                }
+                // Scenario B: Called too quickly -> Queue up a guaranteed trailing edge update
+                else if (!guiThrottleTimeout && !window.isLoadingBSP) {
+                    guiThrottleTimeout = setTimeout(() => {
+                        lastGuiCallTime = performance.now();
+                        guiThrottleTimeout = null;
+                        Tp.updateGUI(); // Guarantees the final state is captured
+                    }, remaining);
+                }
             }
             ,
             Tp.prototype.apply = function () {
                 xp.addResource(this.manager, this.resource, this.category),
-                    Tp.updateGUI()
+                    Tp.throttledUpdateGUI()
             }
             ,
             Tp.prototype.revert = function () {
@@ -146447,7 +146470,7 @@
 
                 if (typeof this.update !== 'undefined') {
                     const t = this;
-                    const e = () => {
+                    const e = (time) => {
                         if (t.active) {
                             t.update();
                             t.nunuFrameLimiter.requestFrameUpdate(e);
@@ -146455,11 +146478,29 @@
                     }
                     // 2. Instantiate your custom framework frame rater (Targeting 60 FPS)
                     // Your callback receives the batch items, current time, and overall frame count
-                    t.nunuFrameLimiter = createFrameRater(25, function (e2) {
-                        e2()
+                    t.nunuFrameLimiter = createFrameRater(25, function (e2, time) {
+                        e2(time)
                     });
                     requestAnimationFrame = t.nunuFrameLimiter.requestFrameUpdate
                     requestAnimationFrame(e)
+
+
+                    if (!layoutObserver) {
+                        layoutObserver = new ResizeObserver(entries => {
+                            for (let entry of entries) {
+                                canvasSize ||= {}
+                                // Reads are safe here because the browser schedules this callback after layout steps
+                                canvasSize.clientWidth = entry.contentRect.width;
+                                canvasSize.clientHeight = entry.contentRect.height;
+                                canvasSize.width = entry.target.width;
+                                canvasSize.height = entry.target.height;
+                                canvasSize.left = entry.contentRect.left;
+                                canvasSize.top = entry.contentRect.top;
+                            }
+                        })
+                        layoutObserver.observe(t.canvas.canvas);
+                    }
+
                 }
 
                 this.active = true;

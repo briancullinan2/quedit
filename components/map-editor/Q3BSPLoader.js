@@ -1450,6 +1450,7 @@ async function importBSP(mapFile, content) {
     let bspLoader = new THREE.Q3BSPLoader();
     let activeScene = window.nunu.getScene();
 
+    window.isLoadingBSP = true
     const mapName = q3bsp_base_folder + (mapFile.startsWith('/') ? '' : '/') + mapFile;
 
     await q3shader.loadList(mapShaders, () => { });
@@ -1509,6 +1510,7 @@ async function importBSP(mapFile, content) {
 
             window.nunu.gui.updateInterface();
             console.log(`Successfully streamed ${surfaceChildren.length} BSP surfaces incrementally.`);
+            window.isLoadingBSP = false
         }
 
         // Kick off the non-blocking loop
