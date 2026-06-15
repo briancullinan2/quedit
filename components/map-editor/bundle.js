@@ -1,5 +1,5 @@
 /*! For license information please see bundle.js.LICENSE.txt */
-(() => {
+((requestAnimationFrame) => {
     var __webpack_modules__ = {
         872: (t, e, i) => {
             "use strict";
@@ -146445,28 +146445,21 @@
                     this.deactivate();
                 }
 
-                if (this.update !== undefined) {
-                    var t = this;
-
-                    // 2. Instantiate your custom framework frame rater (Targeting 60 FPS)
-                    // Your callback receives the batch items, current time, and overall frame count
-                    t.nunuFrameLimiter = createFrameRater(60, function (mockEvent, timestamp, frameCount) {
+                if (typeof this.update !== 'undefined') {
+                    const t = this;
+                    const e = () => {
                         if (t.active) {
                             t.update();
+                            t.nunuFrameLimiter.requestFrameUpdate(e);
                         }
+                    }
+                    // 2. Instantiate your custom framework frame rater (Targeting 60 FPS)
+                    // Your callback receives the batch items, current time, and overall frame count
+                    t.nunuFrameLimiter = createFrameRater(25, function (e2) {
+                        e2()
                     });
-
-                    // 3. Simple, non-leaking recursive ticker loop to continually 
-                    // feed updates straight into your engine event stack
-                    var runLoop = function () {
-                        if (t.active) {
-                            t.nunuFrameLimiter.requestFrameUpdate({ type: 'nunu-tick' });
-                            requestAnimationFrame(runLoop);
-                        }
-                    };
-
-                    // Fire the introductory frame handshake
-                    requestAnimationFrame(runLoop);
+                    requestAnimationFrame = t.nunuFrameLimiter.requestFrameUpdate
+                    requestAnimationFrame(e)
                 }
 
                 this.active = true;

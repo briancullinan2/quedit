@@ -1467,11 +1467,11 @@ async function importBSP(mapFile, content) {
             }
         });
 
-        // 1. Immediately register the parent container so it appears in the Project Explorer tree
-        window.nunu.addObject(bspGroup, activeScene);
-
         // Decouple original flat arrays so action transactions maintain context
         bspGroup.children = [];
+
+        // 1. Immediately register the parent container so it appears in the Project Explorer tree
+        window.nunu.addObject(bspGroup, activeScene);
 
         // 2. Set up the time-sliced queue configuration
         let index = 0;
@@ -1489,7 +1489,8 @@ async function importBSP(mapFile, content) {
                 index++;
 
                 // Break execution block if we're hitting frame budgeting thresholds
-                if (performance.now() - startTime > FRAME_BUDGET_MS) {
+                //if (performance.now() - startTime > FRAME_BUDGET_MS) 
+                {
                     // Update interface incrementally so the user can watch the map load block by block
                     window.nunu.gui.updateInterface();
 
