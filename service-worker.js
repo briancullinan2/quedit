@@ -36,7 +36,10 @@ async function initializeCoreScripts() {
     const scriptsToLoad = [
         '/components/core/local.js',
         '/components/core/extensions.js',
-        '/components/filelist/github.js'
+        '/components/filelist/github.js',
+        '/components/map-editor/tern/browser.json',
+        '/components/map-editor/tern/emcascript.json',
+        '/components/map-editor/tern/threejs.json',
     ];
 
     for (const script of scriptsToLoad) {
@@ -774,10 +777,10 @@ self.addEventListener('fetch', event => {
 
 function getMimeType(url) {
     if (url.endsWith('.wasm')) return 'application/wasm';
-    if (url.endsWith('.js')) return 'application/javascript';
-    if (url.endsWith('.json')) return 'application/json';
-    if (url.endsWith('.html')) return 'text/html';
-    if (url.endsWith('.css')) return 'text/css';
+    if (url.endsWith('.js')) return 'application/javascript; charset=utf-8';
+    if (url.endsWith('.json')) return 'application/json; charset=utf-8';
+    if (url.endsWith('.html')) return 'text/html; charset=utf-8';
+    if (url.endsWith('.css')) return 'text/css; charset=utf-8';
     if (url.endsWith('.ttf')) return 'font/ttf';
     if (url.endsWith('.woff')) return 'font/woff';
     if (url.endsWith('.woff2')) return 'font/woff2';

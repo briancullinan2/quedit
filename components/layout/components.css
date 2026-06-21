@@ -393,6 +393,11 @@ select:not(:has(option[value=""]:checked)),
     display: none;
 }
 
+.mobile_menu_spacer {
+    width: max-content;
+    flex-basis: max-content;
+}
+
 /* The container/track */
 #toolbar input[type="checkbox"] {
     appearance: none;
@@ -415,10 +420,6 @@ select:not(:has(option[value=""]:checked)),
     font-weight: bold;
 }
 
-.mobile_menu_spacer {
-    width: max-content;
-    flex-basis: max-content;
-}
 
 /* The sliding dot (thumb) */
 #toolbar input[type="checkbox"]::before {

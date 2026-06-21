@@ -110768,22 +110768,74 @@
             s.Loader.call(this, t),
                 this.reversed = !1
         };
-        function Ao(t) {
+        function Ao(t, isPreloaded) {
+            if (!(this instanceof Ao)) {
+                return new Ao(t, isPreloaded);
+            }
+
             Zr.call(this, "font", "Font"),
                 this.reversed = !1,
-                this.font = null,
-                void 0 !== t && (t instanceof ArrayBuffer ? (this.data = t,
-                    this.format = "arraybuffer",
-                    this.loadTTF()) : "object" == typeof t ? (this.data = t,
-                        this.font = t,
-                        this.format = "json",
-                        this.encoding = "json") : (this.encoding = qh.getFileExtension(t),
-                            this.name = qh.getFileName(t),
-                            "json" === this.encoding ? (this.data = JSON.parse(qh.readFile(t)),
-                                this.format = "json",
-                                this.font = this.data) : "ttf" !== this.encoding && "otf" !== this.encoding && "ttc" !== this.encoding && "otc" !== this.encoding || (this.data = qh.readFileArrayBuffer(t),
-                                    this.format = "arraybuffer",
-                                    this.loadTTF())))
+                this.font = null;
+
+            if (void 0 !== t) {
+                if (t instanceof ArrayBuffer) {
+                    this.data = t;
+                    this.format = "arraybuffer";
+                    this.loadTTF();
+                } else if ("object" == typeof t) {
+                    this.data = t;
+                    this.font = t;
+                    this.format = "json";
+                    this.encoding = "json";
+                } else if (isPreloaded) {
+                    // This path handles data that was pulled asynchronously via the Factory Method
+                    this.encoding = qh.getFileExtension(t);
+                    this.name = qh.getFileName(t);
+
+                    if ("json" === this.encoding) {
+                        this.data = isPreloaded.data;
+                        this.format = "json";
+                        this.font = this.data;
+                    } else {
+                        this.data = isPreloaded.data;
+                        this.format = "arraybuffer";
+                        this.loadTTF();
+                    }
+                } else {
+                    // Fallback warning path if someone calls standard synchronous string constructor
+                    console.warn("Synchronous file loading via constructor is deprecated for: " + t);
+                    this.encoding = qh.getFileExtension(t);
+                    this.name = qh.getFileName(t);
+                    if ("json" === this.encoding) {
+                        this.data = JSON.parse(qh.readFile(t));
+                        this.format = "json";
+                        this.font = this.data;
+                    } else if ("ttf" === this.encoding || "otf" === this.encoding || "ttc" === this.encoding || "otc" === this.encoding) {
+                        this.data = qh.readFileArrayBuffer(t);
+                        this.format = "arraybuffer";
+                        this.loadTTF();
+                    }
+                }
+            }
+        }
+        Ao.load = async function (t) {
+            if (typeof t !== "string") {
+                return new Ao(t);
+            }
+
+            const encoding = qh.getFileExtension(t);
+            let loadedData = null;
+
+            if ("json" === encoding) {
+                const text = await qh.readFileAsync(t); // Uses async fetch / hits service worker
+                loadedData = JSON.parse(text);
+            } else if ("ttf" === encoding || "otf" === encoding || "ttc" === encoding || "otc" === encoding) {
+                // Presumes you have an async ArrayBuffer reader method matching your setup
+                const response = await fetch(t);
+                loadedData = await response.arrayBuffer();
+            }
+
+            return new Ao(t, { data: loadedData });
         }
         function Co() {
             Zr.call(this, "model", "Model")
@@ -111959,6 +112011,7 @@
             }
             ,
             Io.prototype.run = function () {
+                debugger
                 if (null !== this.program) {
                     if (this.renderer = this.program.rendererConfig.createRenderer(this.canvas),
                         window.app = this.program.app = this,
@@ -112808,12 +112861,12 @@
             }
             ,
             Zo.prototype.load = function (t, e, i, n) {
-                new s.FileLoader(this.manager).load(t, function (t) {
-                    e(new Ao(JSON.parse(t)))
+                new s.FileLoader(this.manager).load(t, async function (t) {
+                    e(await Ao.load(JSON.parse(t)))
                 }, i, n)
             }
             ,
-            Zo.prototype.parse = function (t) {
+            Zo.prototype.parse = async function (t) {
                 if (void 0 !== t.data) {
                     var e = new Ao;
                     return e.name = t.name,
@@ -112829,7 +112882,7 @@
                                     e.font = t.data),
                         e
                 }
-                return new Ao(t)
+                return await Ao.load(t)
             }
             ,
             Ko.prototype.setCrossOrigin = function (t) {
@@ -126183,13 +126236,29 @@
                     this.xrEnabled = !1)
             }
             ,
-            zh.prototype.setScene = function (t) {
-                "string" == typeof t && (t = this.getObjectByName(t)),
-                    null !== this.scene && this.scene.dispose(),
-                    window.scene = this.scene = t,
-                    null !== this.scene ? (null === this.scene.defaultCamera && (this.scene.defaultCamera = this.defaultCamera),
-                        this.scene.initialize(),
-                        null !== this.canvas && this.scene.resize(this.canvas.width, this.canvas.height)) : console.warn("nunuStudio: Program setScene scene is null.")
+            zh.prototype.setScene = async function (t) { // Added async keyword
+                "string" == typeof t && (t = this.getObjectByName(t));
+
+                if (null !== this.scene) {
+                    this.scene.dispose();
+                }
+
+                window.scene = this.scene = t;
+
+                if (null !== this.scene) {
+                    if (null === this.scene.defaultCamera) {
+                        this.scene.defaultCamera = this.defaultCamera;
+                    }
+
+                    // --- CRITICAL: Wait for the scene graph to fully resolve out of IDB/VFS ---
+                    await this.scene.initialize();
+
+                    if (null !== this.canvas) {
+                        this.scene.resize(this.canvas.width, this.canvas.height);
+                    }
+                } else {
+                    console.warn("nunuStudio: Program setScene scene is null.");
+                }
             }
             ,
             zh.prototype.remove = function (t) {
@@ -126266,14 +126335,27 @@
             }
             ,
             Dh.prototype = Object.create(s.Scene.prototype),
-            Dh.prototype.initialize = function () {
-                this.program = this.parent,
-                    this.canvas = this.parent.canvas,
-                    s.Object3D.prototype.initialize.call(this);
-                for (var t = 0; t < this.children.length; t++)
-                    this.children[t].traverse(function (t) {
-                        t.initialize()
-                    })
+            Dh.prototype.initialize = async function () {
+                this.program = this.parent;
+                this.canvas = this.parent.canvas;
+
+                s.Object3D.prototype.initialize.call(this);
+
+                // Collect all initialization promises from the children tree
+                const initPromises = [];
+
+                for (var t = 0; t < this.children.length; t++) {
+                    this.children[t].traverse(function (child) {
+                        // If initialize() returns a promise, capture it
+                        const result = child.initialize();
+                        if (result instanceof Promise) {
+                            initPromises.push(result);
+                        }
+                    });
+                }
+
+                // Wait for every single object in the hierarchy to be fully ready
+                await Promise.all(initPromises);
             }
             ,
             Dh.prototype.update = function (t) {
@@ -126915,6 +126997,15 @@
             return !(t.startsWith("http") || t.startsWith("blob") || t.startsWith("data"))
         }
             ,
+            qh.readFileAsync = async function (url) {
+                // If running offline, your service-worker will seamlessly intercept this async fetch!
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Failed to load file: ${url}`);
+                }
+                return await response.text();
+            }
+            ,
             qh.readFile = function (t, e, i, n, r) {
                 if (void 0 === e && (e = !0),
                     qh.fs && qh.isLocalFile(t)) {
@@ -126930,7 +127021,7 @@
                 }
                 var o = new XMLHttpRequest;
                 return o.overrideMimeType("text/plain"),
-                    o.open("GET", t, !e),
+                    o.open("GET", t, true),
                     void 0 !== i && (o.onload = function () {
                         i(o.response)
                     }
@@ -126954,7 +127045,7 @@
                         null
                 }
                 var o = new XMLHttpRequest;
-                return o.open("GET", t, !e),
+                return o.open("GET", t, true),
                     o.overrideMimeType("text/plain; charset=x-user-defined"),
                     void 0 !== i && (o.onload = function () {
                         i(u.fromBinaryString(o.response))
@@ -126979,7 +127070,7 @@
                         null
                 }
                 var o = new XMLHttpRequest;
-                return o.open("GET", t, !e),
+                return o.open("GET", t, true),
                     o.overrideMimeType("text/plain; charset=x-user-defined"),
                     void 0 !== i && (o.onload = function () {
                         i(h.fromBinaryString(o.response))
@@ -143616,11 +143707,11 @@
                 var i = qh.getFileName(t.name)
                     , n = qh.getFileExtension(t.name)
                     , r = new FileReader;
-                r.onload = function () {
+                r.onload = async function () {
                     if ("json" === n)
-                        var t = new Ao(JSON.parse(r.result));
+                        var t = await Ao.load(JSON.parse(r.result));
                     else
-                        (t = new Ao(r.result)).encoding = n;
+                        (t = await Ao.load(r.result)).encoding = n;
                     t.name = i,
                         void 0 !== e && e(t),
                         K_.addAction(new Tp(t, K_.program, "fonts"))
@@ -144853,6 +144944,7 @@
                 Qp.call(this)
         }
         function ef() {
+            debugger
             var t = new s.Geometry
                 , e = new s.Mesh(new s.BoxGeometry(.125, .125, .125));
             e.position.y = .5,
@@ -148330,6 +148422,7 @@
             }
             ,
             Of.prototype.runProgram = function () {
+                debugger
                 try {
                     this.program.defaultCamera = new yo(60, 1, .1, 1e10),
                         this.program.defaultCamera.position.set(0, 5, -5),
@@ -164831,21 +164924,19 @@
                     this.tab.updateInterface()
             }
             ,
-            K_.initialize = function () {
-                if (Xh.webGLAvailable() || (K_.alert(Zh.webglNotSupported),
-                    K_.exit()),
+            K_.initialize = async function () { // Added async keyword
+                if (Xh.webGLAvailable() || (K_.alert(Zh.webglNotSupported), K_.exit()),
                     K_.settings = new Qh,
                     K_.settings.load(),
                     K_.ternDefinitions = [],
-                    K_.ternDefinitions.push(JSON.parse(qh.readFile(vp + "tern/threejs.json"))),
-                    K_.ternDefinitions.push(JSON.parse(qh.readFile(vp + "tern/browser.json"))),
-                    K_.ternDefinitions.push(JSON.parse(qh.readFile(vp + "tern/ecmascript.json"))),
-                    /*
-                    document.body.style.overflow = "hidden",
-                    document.body.style.fontFamily = "var(--font-main-family)",
-                    document.body.style.color = "var(--font-main-color)",
-                    document.body.style.fontSize = "var(--font-main-size)",
-                    */
+
+                    // --- ASYNC BREAKPOINT ---
+                    // Change qh.readFile to an async implementation or a standard fetch wrapper
+                    K_.ternDefinitions.push(JSON.parse(await qh.readFileAsync(vp + "tern/threejs.json"))),
+                    K_.ternDefinitions.push(JSON.parse(await qh.readFileAsync(vp + "tern/browser.json"))),
+                    K_.ternDefinitions.push(JSON.parse(await qh.readFileAsync(vp + "tern/ecmascript.json"))),
+
+                    // Break the comma chain here and use semicolon statements for the rest of the initialization
                     document.body.oncontextmenu = function () {
                         return !1
                     }
@@ -165097,9 +165188,9 @@
                 K_.history.undo() ? K_.updateObjectsViewsGUI() : K_.alert(Zh.nothingToUndo)
             }
             ,
-            K_.createDefaultResouces = function () {
+            K_.createDefaultResouces = async function () {
                 K_.defaultImage = new Kr(vp + "uv_color.jpg"),
-                    K_.defaultFont = new Ao(vp + "default.json"),
+                    K_.defaultFont = await Ao.load(vp + "default.json"),
                     K_.defaultAudio = new Ro(vp + "default.mp3"),
                     K_.defaultTexture = new s.Texture(K_.defaultImage),
                     K_.defaultTexture.name = "texture",
@@ -165148,12 +165239,20 @@
                     K_.gui.tab.updateSelection()
             }
             ,
-            K_.createNewProgram = function () {
+            K_.createNewProgram = async function () { // Added async keyword
                 var t = new zh;
-                K_.createDefaultResouces(),
-                    K_.setProgram(t),
-                    K_.addDefaultScene(K_.defaultMaterial),
-                    K_.setOpenFile(null)
+
+                // 1. Force the engine to finish loading default materials and fonts from your VFS
+                await K_.createDefaultResouces();
+
+                // 2. Set the program context
+                K_.setProgram(t);
+
+                // 3. Now K_.defaultMaterial is guaranteed to be hydrated and ready!
+                await K_.addDefaultScene(K_.defaultMaterial);
+
+                // 4. Reset file state
+                K_.setOpenFile(null);
             }
             ,
             K_.addDefaultScene = function (t) {

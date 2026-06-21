@@ -2314,6 +2314,8 @@ body .terminal-file-underline {
     color: var(--ace-foreground);
 }
 
+
+
 #toolbar input[type="checkbox"] {
     background-color: var(--ace-gutter-bg);
     border-color: var(--ace-blue);
@@ -2329,8 +2331,6 @@ body .terminal-file-underline {
     height: calc(var(--global-height) - 4px);
 
 }
-
-
 
 
 #toolbar input[type="checkbox"]::after {
