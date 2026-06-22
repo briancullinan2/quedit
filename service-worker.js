@@ -37,9 +37,6 @@ async function initializeCoreScripts() {
         '/components/core/local.js',
         '/components/core/extensions.js',
         '/components/filelist/github.js',
-        '/components/map-editor/tern/browser.json',
-        '/components/map-editor/tern/emcascript.json',
-        '/components/map-editor/tern/threejs.json',
     ];
 
     for (const script of scriptsToLoad) {
@@ -663,6 +660,10 @@ const uniqueAssets = [
     '/components/theme/boxicons.ttf',
     '/components/theme/boxicons.woff',
     '/components/theme/boxicons.woff2',
+    '/components/map-editor/tern/browser.json',
+    '/components/map-editor/tern/emcascript.json',
+    '/components/map-editor/tern/threejs.json',
+
     ...new Set([
         ...Object.values(IMPORT_CSS).flatMap(o => o),
         ...Object.values(IMPORT_JS).flatMap(o => o)

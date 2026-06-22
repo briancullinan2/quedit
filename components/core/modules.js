@@ -181,7 +181,7 @@ async function manageServiceWorker() {
                 isCheckDone = true;
                 try {
                     if (event.data.version)
-                        swVersion = JSON.parse(new TextDecoder('utf-8').decode(event.data.version))[1];
+                        swVersion = new Date(event.data.version);
                 }
                 catch (e) { }
             }

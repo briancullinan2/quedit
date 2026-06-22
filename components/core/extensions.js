@@ -61,7 +61,7 @@ const IMPORT_JS = {
         '/components/core/local.js',
         '/components/filelist/search.js',
         //'/components/filelist/iso-git.min.js',
-        '/components/filelist/sys_fsgit.js',
+        //'/components/filelist/sys_fsgit.js',
         '/components/engine/sys_fs.js', // Core shared filesystem bridge
         '/components/filelist/tree.js',
         '/components/layout/configuration.js',
