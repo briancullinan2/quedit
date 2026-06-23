@@ -962,6 +962,8 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
     return;
   }
 
+
+
   // =========================================================================
   // REPAINT ENGINE DISPATCH BINDINGS
   // =========================================================================
@@ -983,7 +985,57 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
 
     CL_R_FinishImage3(imageAddress, EMGL.location, 0x1908 /* GL_RGBA */, 0)
   }, false)
+
+
+  /* 
+  // Possible image replacement capture instead of canvas 2D 
+  // =========================================================================
+  // REPAINT ENGINE DISPATCH BINDINGS (MODERN DECOUPLED VERSION)
+  // =========================================================================
+  thisImage.addEventListener('load', async function () {
+    const width = thisImage.width;
+    let height = thisImage.height;
+
+    // 1. Create the low-level graphics bitmap handle
+    const bitmap = await createImageBitmap(thisImage);
+
+    // 2. Wrap it in a VideoFrame to extract raw pixel chunks without canvas allocation
+    const frame = new VideoFrame(bitmap);
+
+    // Calculate size properties mirroring your max clamp logic
+    let totalBytes = width * height * 4; // RGBA = 4 bytes per pixel
+    if (totalBytes > MAX_IMAGE_SIZE) {
+      height = Math.floor(MAX_IMAGE_SIZE / 4 / width);
+      totalBytes = width * height * 4;
+    }
+
+    // 3. Allocate a tiny scratch view or copy directly into the WebAssembly heap destination
+    const destinationBuffer = new Uint8Array(HEAPU8.buffer, EMGL.location, totalBytes);
+
+    // Natively copy the raw video frame bytes out into your Wasm buffer
+    await frame.copyTo(destinationBuffer);
+
+    // 4. Update your Wasm memory pointers and size bounds
+    HEAP32[widthAddress >> 2] = width;
+    HEAP32[heightAddress >> 2] = height;
+    if (totalBytes > MAX_IMAGE_SIZE) {
+      thisImage.height = height; // Sync back to tracking property if needed
+    }
+
+    // 5. Clean up the explicit memory handles immediately
+    frame.close();
+    bitmap.close();
+
+    // 6. Trigger your engine texture upload finish
+    CL_R_FinishImage3(imageAddress, EMGL.location, 0x1908, 0);
+  }, false);
+  */
+
 }
+
+
+
+
 
 let INPUT = {
   editorActive: false,

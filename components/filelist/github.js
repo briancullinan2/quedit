@@ -23,7 +23,6 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
             // Using 'token ' works universally for both classic and fine-grained PATs
             headers['Authorization'] = `Bearer  ${token}`;
         } else if (!token) {
-            debugger
         }
 
         const response = await fetch(fullUrl, {
