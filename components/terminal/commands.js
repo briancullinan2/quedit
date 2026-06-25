@@ -28,6 +28,15 @@ const COMMAND_SCHEMA = {
             { cmd: "hello Megamind", desc: "Execute an explicit string greet bypass to the terminal stream output" }
         ]
     },
+    error: {
+        execute: error,
+        description: "Generate an application error to test editing application files.",
+        args: [],
+        flags: {},
+        demos: [
+            { cmd: "error", desc: "Trigger a synthetic runtime exception to verify error handling and log capture when modifying application files" }
+        ]
+    },
     status: {
         execute: status,
         description: "Show working file mutations, additions, or deletions against the remote repository branch.",
@@ -715,10 +724,17 @@ async function ls(argv, database) {
 
 async function hello(argv) {
     const name = argv[0] || 'User';
-    let user = (await getAuthenticatedUser()).login
+    let user = (await getAuthenticatedUser())?.login
     terminalWrite(`Hello, ${user || name}!\n\r`);
 }
 
+
+
+async function error(argv) {
+    const name = argv[0] || 'User';
+    let user = (void 0).login
+    terminalWrite(`Hello, ${user || name}!\n\r`);
+}
 
 
 
