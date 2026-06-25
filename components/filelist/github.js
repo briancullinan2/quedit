@@ -160,7 +160,7 @@ async function loadGitHubTree(repoOwner, repoName, branch) {
             await setupDatabase(database, DB_SCHEME)
         }
 
-        if (Object.keys(mapFiles).length > 1) {
+        if (Object.keys(mapFiles).length > 1 && typeof updateSelectOptions !== 'undefined') {
             updateSelectOptions('map', mapFiles);
         }
 
