@@ -2531,3 +2531,8 @@ body .terminal-file-underline {
 .pk_modal_bottom {
     height: auto !important;
 }
+
+a {
+    color: var(--ace-blue);
+    vertical-align: middle;
+}
