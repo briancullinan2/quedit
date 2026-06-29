@@ -4,8 +4,8 @@ Quake 3 browser game editor.
 
 ## Goals/Bugs
 
-Redoing my list of bugs because of AI slop.  My mind used to be employable. Now my memory is junk because anything that 
-my brain thinks Google knows, it automatically discards and can only be recalled from exact context and wording 
+Redoing my list of bugs because of AI slop.  My mind used to be employable. Now my memory is junk because anything that
+my brain thinks Google knows, it automatically discards and can only be recalled from exact context and wording
 surrounding it. I think if all of these things were done, this could be the first project where I actually consider it completed.
 
 ---
@@ -25,6 +25,7 @@ surrounding it. I think if all of these things were done, this could be the firs
 11. **Isolated File Tree Selection:** Fix file highlighting in the sidebar. Disable the default [TreeJS Selection Overrides](https://www.google.com/search?q=https://cloudfour.com/thinks/a-guarded-defense-of-the-tree-view/) that automatically highlight every single sub-file when a parent folder expands. Restructure the selection handlers so clicking a folder only targets that specific folder, keeping the "Add File" and "Rename" buttons working properly.
 12. DONE: **OFFLINE MODE!** I have a worker in quake3e-portals branch and in Atrium that I did more work on from the portals branchs originally. This has a special caveate that the whole environment is also editable and needs to upgrade itself.
 13. **Load local environment javascripts** like core/ (anything other than module.js) off of the IDB store instead of from the webserver. Should install itself into IDB and offline mode first time the page loads.
+14. **FileSystemAccess API** for loading game assets directory or github stores directly off the file system, so we aren't copying those files twice into the IDB.
 
 
 ---
@@ -257,7 +258,7 @@ Connected miniPaint, still need to override the menu it generates and lookup IDs
 need to connect https://tentone.github.io/nunuStudio/editor/index.html
 and https://github.com/pkalogiros/audiomass
 Then I can prompt AI from the terminal and ask it to convert voice recording to demonic announcer sounds.
-Need to tackle QVM building again and figure out whats wrong with fd_read interactions or simply change 
+Need to tackle QVM building again and figure out whats wrong with fd_read interactions or simply change
 functions in q3lcc. If that doesn't work, i need to try and build with SHLIB parameters and link QVMs
 like independent modules with publicized functions in between, slower, but might work.
 
@@ -265,7 +266,7 @@ like independent modules with publicized functions in between, slower, but might
 
 #### 5/16/2026
 
-Still fine tuning javascript build process and almost got to compiling QVMs but something is severely 
+Still fine tuning javascript build process and almost got to compiling QVMs but something is severely
 broken in final output of the qvm file. it's not a stopping point, i can still try "native"-wasm in
 the browser, and i can still fallback to github CI like i had planned originally.
 
@@ -274,7 +275,7 @@ the browser, and i can still fallback to github CI like i had planned originally
 
 ####  5/14/2026
 
-More build tools. QVMs nearly linking in the browser from wasms built with clang in the browser. 
+More build tools. QVMs nearly linking in the browser from wasms built with clang in the browser.
 Trying to harden start up process so basic commands can be run and every builds locally.
 
 
@@ -285,8 +286,8 @@ Trying to harden start up process so basic commands can be run and every builds 
 
 #### 5/9/2026
 
-Entire engine builds and runs with clang wasm. needs to be able to save 
-an entire commit to github, detect file mtime from logs, and #1 
+Entire engine builds and runs with clang wasm. needs to be able to save
+an entire commit to github, detect file mtime from logs, and #1
 is complete.
 
 ![Engine](./Screenshot%202026-05-09%20100538.png)
@@ -295,6 +296,6 @@ is complete.
 
 #### 5/7/2026
 
-ace loads, treejs loads, xterm loads, no wiring between anything. 
+ace loads, treejs loads, xterm loads, no wiring between anything.
 
 
