@@ -44,7 +44,7 @@ function updateSelectOptions(elementId, items, selectedValue = 'main') {
         selector.appendChild(option);
     });
 
-    // 4. Force layout recalculation 
+    // 4. Force layout recalculation
     // This helps with the "wont shrink" issue if the new text is shorter
     selector.style.minWidth = '0';
 }
@@ -105,84 +105,6 @@ function clearToken() {
     updatePlaceholder();
 }
 
-
-function addRepoIfNotExists(newRepo) {
-    if (!newRepo || newRepo.includes('briancullinan2')) {
-        console.error('Assertion repo name is briancullinan2')
-        debugger
-        return
-    }
-
-    if (newRepo.trim().length > 0 && !document.querySelector(`#repository option[value="${newRepo}"]`)) {
-        const option = document.createElement('option');
-
-        option.value = newRepo;
-        option.textContent = newRepo;
-        //option.selected = true;
-
-        repository.appendChild(option);
-        localStorage.setItem('repositories', Array.from(repository.children).map(c => c.value).join(';'))
-    }
-}
-
-
-function addOwnerIfNotExists(newOwner) {
-    if (newOwner.includes('Quake3e')) {
-        console.error('Assertion owner name is Quake3e should be briancullinan2')
-        debugger
-        return
-    }
-
-    if (newOwner && newOwner.trim().length > 0 && !document.querySelector(`#owner option[value="${newOwner}"]`)) {
-        const option = document.createElement('option');
-
-        option.value = newOwner;
-        option.textContent = newOwner;
-        option.selected = true;
-
-        owner.appendChild(option);
-        localStorage.setItem('owners', Array.from(owner.children).map(c => c.value).join(';'))
-    }
-}
-
-
-function parseRepository(newRepo) {
-    if (newRepo.trim().replace(/\/$|^\//, '').length == 0) {
-        return [,]
-    }
-    const parts = newRepo.split('/')
-    const ownerName = parts.length == 2 ? parts[0] : owner.value
-    const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value
-
-    return [ownerName, repoName]
-}
-
-function configureRepository(newRepo) {
-    const [ownerName, repoName] = parseRepository(newRepo)
-    if (!ownerName || ownerName.length === 0 || !repoName || repoName.length === 0)
-        return
-
-    addRepoIfNotExists(repoName)
-    addOwnerIfNotExists(ownerName)
-
-    return [ownerName, repoName]
-}
-
-async function setRepository(newRepo) {
-    const [ownerName, repoName] = configureRepository(newRepo)
-    if (ownerName === 'Quake3e' || ownerName === '') {
-        console.error('Assertion: newOwner set to Quake3e should be ec- or briancullinan2')
-        debugger
-    }
-    if (!ownerName || ownerName.trim() === '' || !repoName || repoName.trim === '') return
-    if (ownerName && ownerName.trim())
-        owner.value = ownerName;
-    if (repoName)
-        repository.value = repoName;
-    const branches = await getBranches(owner.value, repository.value)
-    updateSelectOptions('branch', branches)
-}
-
 function createFrameRater(targetFps, callback) {
     const fpsInterval = 1000 / targetFps;
 
@@ -240,8 +162,8 @@ function createFrameRater(targetFps, callback) {
 const TESTPATH_ROOTS = ['', 'demoq3/pak0.pk3dir', 'docs/demoq3/pak0.pk3dir'];
 
 /**
- * High-level workspace resolver. Ingests raw window paths, hashes, or explicit links, 
- * extracts line numbers, runs prefix multiplexing, scans active VFS/IDB spaces, 
+ * High-level workspace resolver. Ingests raw window paths, hashes, or explicit links,
+ * extracts line numbers, runs prefix multiplexing, scans active VFS/IDB spaces,
  * and maps the request to a final active file node.
  * * @param {string} [hintPath] - Optional explicit file path to search instead of window state.
  * @returns {Promise<Array>} [resolvedLocation, repositoryKey, fileNode, lineNumber]
@@ -437,7 +359,7 @@ function generateUUID() {
 =======================================================================
 Sys_CompileJsToWasmRef
 
-Dynamically generates a minimal, isolated WebAssembly module in memory 
+Dynamically generates a minimal, isolated WebAssembly module in memory
 that binds a JavaScript function to a true native WASM execution vector.
 =======================================================================
 */

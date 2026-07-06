@@ -1,0 +1,300 @@
+import { getBranches } from "./github-api";
+import { SettingConfig } from "./settings";
+
+// --- Environmental Declarations ---
+declare const owner: HTMLSelectElement;
+declare const repository: HTMLSelectElement;
+declare const api: any;
+
+export function addRepoIfNotExists(newRepo: string): void
+{
+	if(!newRepo || newRepo.includes('briancullinan2'))
+	{
+		console.error('Assertion repo name is briancullinan2');
+		debugger;
+		return;
+	}
+
+	if(newRepo.trim().length > 0 && !document.querySelector(`#repository option[value="${newRepo}"]`))
+	{
+		const option = document.createElement('option');
+
+		option.value = newRepo;
+		option.textContent = newRepo;
+
+		repository.appendChild(option);
+		localStorage.setItem('repositories', Array.from(repository.children).map(c => (c as HTMLOptionElement).value).join(';'));
+	}
+}
+
+export function addOwnerIfNotExists(newOwner: string): void
+{
+	if(newOwner.includes('Quake3e'))
+	{
+		console.error('Assertion owner name is Quake3e should be briancullinan2');
+		debugger;
+		return;
+	}
+
+	if(newOwner && newOwner.trim().length > 0 && !document.querySelector(`#owner option[value="${newOwner}"]`))
+	{
+		const option = document.createElement('option');
+
+		option.value = newOwner;
+		option.textContent = newOwner;
+		option.selected = true;
+
+		owner.appendChild(option);
+		localStorage.setItem('owners', Array.from(owner.children).map(c => (c as HTMLOptionElement).value).join(';'));
+	}
+}
+
+export function parseRepository(newRepo: string): [string | undefined, string | undefined]
+{
+	if(newRepo.trim().replace(/\/$|^\//, '').length === 0)
+	{
+		return [undefined, undefined];
+	}
+	const parts = newRepo.split('/');
+	const ownerName = parts.length === 2 ? parts[0] : owner.value;
+	const repoName = parts.length === 2 ? parts[1] : parts[0] || repository.value;
+
+	return [ownerName, repoName];
+}
+
+export function configureRepository(newRepo: string): [string, string] | undefined
+{
+	const [ownerName, repoName] = parseRepository(newRepo);
+	if(!ownerName || ownerName.length === 0 || !repoName || repoName.length === 0)
+	{
+		return;
+	}
+
+	addRepoIfNotExists(repoName);
+	addOwnerIfNotExists(ownerName);
+
+	return [ownerName, repoName];
+}
+
+export async function setRepository(newRepo: string): Promise<void>
+{
+	const configResult = configureRepository(newRepo);
+	if(!configResult) return;
+
+	const [ownerName, repoName] = configResult;
+
+	if(ownerName === 'Quake3e' || ownerName === '')
+	{
+		console.error('Assertion: newOwner set to Quake3e should be ec- or briancullinan2');
+		debugger;
+	}
+
+	if(!ownerName || ownerName.trim() === '' || !repoName || repoName.trim() === '') return;
+
+	owner.value = ownerName;
+	repository.value = repoName;
+
+	const branches = await getBranches(owner.value, repository.value);
+	updateSelectOptions('branch', branches);
+}
+
+
+
+
+interface NormalizedSelectItem
+{
+	value: string;
+	text: string;
+}
+
+interface GitHubBranchLike
+{
+	name: string;
+	[key: string]: any;
+}
+
+export function updateSelectOptions(
+	elementId: string | Element,
+	items: Record<string, string> | Array<string | GitHubBranchLike>,
+	selectedValue: string = 'main'
+): void
+{
+	const selector = elementId instanceof Element
+		? (elementId as HTMLSelectElement)
+		: (document.getElementById(elementId) as HTMLSelectElement | null);
+
+	if(!selector) return;
+
+	// 1. Clear existing options
+	selector.innerHTML = '';
+
+	// 2. Normalize input items into a standard loopable collection
+	let normalizedItems: NormalizedSelectItem[] = [];
+
+	if(items && typeof items === 'object' && !Array.isArray(items))
+	{
+		// Handle key: value pair object (Dictionary)
+		normalizedItems = Object.entries(items).map(([key, val]) => ({
+			value: key,
+			text: val
+		}));
+	} else if(Array.isArray(items))
+	{
+		// Handle flat arrays of strings or GitHub/Engine branch objects
+		normalizedItems = items.map(item =>
+		{
+			const name = typeof item === 'object' && item !== null ? item.name : (item as string);
+			return {
+				value: name,
+				text: name
+			};
+		});
+	}
+
+	// 3. Create and append normalized entries
+	normalizedItems.forEach(item =>
+	{
+		const option = document.createElement('option');
+
+		option.value = item.value;
+		option.textContent = item.text;
+
+		// Check matching state against the intended target option value
+		if(item.value === selectedValue || item.text === selectedValue)
+		{
+			option.selected = true;
+		}
+
+		selector.appendChild(option);
+	});
+
+	// 4. Force layout recalculation
+	// This helps with the "wont shrink" issue if the new text is shorter
+	selector.style.minWidth = '0';
+}
+
+
+declare global
+{
+	interface Window
+	{
+		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
+	}
+}
+
+
+const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
+	github: {
+		githubToken: {
+			key: 'github_token',
+			default: '',
+			description: 'Personal GitHub Access Token used to authenticate API requests, bypass rate limits, and securely fetch repository source files or assets.',
+			set: (val: string): void =>
+			{
+				if(typeof api === 'undefined') return;
+				api.github_token = val; // share with worker
+			}
+		},
+		ownersList: {
+			key: 'owners',
+			default: ['briancullinan2', 'ec-'],
+			elementId: 'owner',
+			type: 'csv', // Semicolon separated array mapping
+			description: 'A list of authorized GitHub organization names or usernames hosting the source code and forks relevant to this project environment.',
+			set: (val: string[]): void =>
+			{
+				updateSelectOptions('owner', val);
+			}
+		},
+		repositoriesList: {
+			key: 'repositories',
+			default: ['Quake3e', 'baseq3a'],
+			elementId: 'repository',
+			type: 'csv',
+			description: 'Comma/semicolon-separated list of target GitHub repository names available for compilation selection.',
+			set: (val: string[]): void =>
+			{
+				updateSelectOptions('repository', val);
+			}
+		},
+		defaultRepository: {
+			key: 'default_repository',
+			default: 'briancullinan2/Quake3e',
+			elementId: 'repository',
+			description: 'The fallback or preferred primary repository string formatted as "owner/repo" used when loading the workspace workspace initial state.',
+			get: (storage: string | null, defaultRepo: string): string =>
+			{
+				return owner.value && repository.value
+					? `${owner.value}/${repository.value}`
+					: (storage || defaultRepo);
+			},
+			set: setRepository
+		},
+		engineRepository: {
+			key: 'engine_repository',
+			default: 'briancullinan2/Quake3e',
+			description: 'The specific Git repository designated for compiling the core Quake 3 WebAssembly engine architecture.',
+			set: configureRepository
+		},
+		gameRepository: {
+			key: 'game_repository',
+			default: 'briancullinan2/baseq3a',
+			description: 'The repository source housing the game logic mod components, including cgame, game, and ui modules.',
+			set: configureRepository
+		},
+		assetRepository: {
+			key: 'asset_repository',
+			default: '',
+			description: 'Optional storage repository dedicated to static game assets, maps, texturing bundles, or audio assets required to run the game.',
+			set: configureRepository
+		},
+		toolsRepository: {
+			key: 'tools_repository',
+			default: 'briancullinan2/q3lcc',
+			description: 'Primary compiler tooling repository containing components such as q3lcc (the Quake 3 ANSI C compiler targeting virtual machine bytecode).',
+			set: configureRepository
+		},
+		tools2Repository: {
+			key: 'tools_repository',
+			default: 'ec-/q3asm',
+			description: 'Secondary toolchain repository hosting utilities like q3asm to assemble the intermediate bytecode files into final .qvm files.',
+			set: configureRepository
+		},
+		rendererRepository: {
+			key: 'renderer_repository',
+			default: 'briancullinan2/Quake3e',
+			description: 'Repository handling the graphical subsystems and pipeline routines tasked with translating engine calculations to browser contexts.',
+			set: configureRepository
+		},
+		environmentRepository: {
+			key: 'environment_repository',
+			default: 'briancullinan2/quedit',
+			description: 'Repository for this workspace, the entire IDE, code editor and engine runner, for editing the environment inside the workspace.',
+			set: configureRepository
+		},
+		environmentVersion: {
+			key: 'environment_version',
+			default: new Date(0),
+			description: 'The last commit date for the environment repository set automatically.',
+		},
+
+	}
+};
+
+if(!window.IMPORT_SETTINGS)
+{
+	window.IMPORT_SETTINGS = {};
+}
+
+for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
+{
+	window.IMPORT_SETTINGS[moduleKey] = {
+		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+		...configs
+	};
+}
+
+// 4. Export the unified reference for standard module compilation tracking
+export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
+
+
