@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Quake 3 Editor</title>
+    <link href="/components/theme/boxicons.min.css" rel="stylesheet">
+    <link href="/components/layout/layout.css" rel="stylesheet" />
+    <link href="/components/paint/css/menu.css" rel="stylesheet" />
+    <link href="/components/theme/theme.css" rel="stylesheet" />
+
+    <link rel="icon" type="image/png" href="/components/engine/quakejs-bnw.png">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body class="theme-monokai previous-viewport-frame panel-editor">
+
+    <div id="token-modal" class="hidden">
+        <div class="modal-content">
+            <form id="token-form" action="#">
+                <button class="close-btn bx bx-x"></button>
+                <h3>GitHub Access Token</h3>
+                <p>Required for API access<br />
+                <a id="github-login" alt="Github login" target="_blank"
+                    href="https://github.com/settings/tokens?type=beta">
+                    <i class="bx bx-key"></i>Create a Github Token</a></p>
+                <div placeholder="Enter ghp your token here...">
+                    <input placeholder="Enter ghp your token here..." type="password" id="gh-token-input"
+                        name="gh-token-input" autocomplete="one-time-code" />
+                </div>
+                <div class="actions">
+                    <button class="save-token">Save Token</button>
+                    <button class="clear-token danger">Clear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="popups"></div>
+    <ul class="dropdown-menu" id="historyMenu">
+        <li class="history-item undo">
+            <div class="item-header">
+                <span class="action-icon">↩️</span>
+                <strong>Deleted Paragraph</strong>
+            </div>
+            <p class="item-desc">Removed 140 characters from section 2.</p>
+        </li>
+
+        <li class="history-item current">
+            <div class="item-header">
+                <span class="action-icon">📍</span>
+                <strong>Current State</strong>
+            </div>
+            <p class="item-desc">Saved 2 mins ago.</p>
+        </li>
+
+        <li class="history-item redo disabled">
+            <div class="item-header">
+                <span class="action-icon">↪️</span>
+                <strong>Typed "Hello World"</strong>
+            </div>
+            <p class="item-desc">Redo available.</p>
+        </li>
+    </ul>
+
+    <div id="main" class="panel-column">
+        <div id="toolbar">
+            <ul>
+                <li>
+                    <nav aria-label="Main Menu" class="main_menu" id="main_menu">
+
+                    </nav>
+                </li>
+                <li>
+                    <ul>
+                        <li><a id="github-login" alt="Github login" class="bx bx-key"
+                                target="_blank" href="https://github.com/settings/tokens?type=beta"></a></li>
+                        <li><a alt="Console" href="#terminal-container" class="bx bx-terminal"></a></li>
+                        <li><a alt="Edit settings" href="#settings" class="bx bx-gear"></a></li>
+                        <li><a alt="Sharable game link" href="#share" class="bx bx-share"></a></li>
+                        <li><a alt="Toggle layout" href="#layout" class="bx bx-iframe"></a></li>
+                        <li><a alt="Fullscreen mode" href="#fullscreen" class="bx bx-fullscreen"></a></li>
+                    </ul>
+                </li>
+                <li>
+                    <ul>
+                        <li>
+                            <a alt="Compile" href="#compile" class="bx bx-code"></a>
+                        </li>
+                        <li><a alt="Run" href="#play" class="bx bx-play"></a></li>
+                        <li><a alt="Pause" href="#pause" class="bx bx-pause"></a></li>
+                        <li><a alt="Stop" href="#stop" class="bx bx-stop"></a></li>
+                        <li><a alt="Reload" href="#reload" class="bx bx-refresh-cw-alt"></a></li>
+                    </ul>
+                </li>
+                <li>
+                    <ul>
+                        <li>
+                            <a alt="New file" href="#new" class="bx bx-file-plus"></a>
+                        </li>
+                        <li><a alt="Save file" href="#save" class="bx bx-save"></a></li>
+                        <li><a alt="Upload file" href="#upload" class="bx bx-folder-up-arrow"></a></li>
+                        <li><a alt="Back" href="#back" class="bx bx-undo"></a></li>
+                        <li><a alt="Next" href="#next" class="bx bx-redo"></a></li>
+                    </ul>
+                </li>
+                <li popovertarget="global-tooltip" placeholder="Current filename">
+                    <button name="fileHistory" class="select-box-trigger" aria-haspopup="listbox" id="fileHistory">
+                        <div class="selected-value">
+                            <i class="bx bx-undo"></i>
+                            <span>Deleted Paragraph (10:42 AM)</span>
+                        </div>
+                        <i class="bx bx-chevron-down toggle-arrow"></i>
+                    </button>
+                </li>
+                <li class="setting" placeholder="Key binding">
+                    <select required name="keybinding" id="keybinding">
+                        <option value="" disabled>Key binding</option>
+                        <option value="null">Ace</option>
+                        <option value="ace/keybinding/combined" selected>Combined</option>
+                        <option value="ace/keybinding/vim">Vim</option>
+                        <option value="ace/keybinding/emacs">Emacs</option>
+                        <option value="ace/keybinding/sublime">Sublime</option>
+                        <option value="ace/keybinding/vscode">VS Code</option>
+                    </select>
+                </li>
+                <li class="setting" placeholder="Build configuration">
+                    <select required name="configuration" id="configuration">
+                        <option value="" disabled selected>Build configuration</option>
+                        <option value="debug">Debug</option>
+                        <option value="release">Release</option>
+                        <option value="pre">Preprocess</option>
+                        <option value="qvms">Renderer Only</option>
+                        <option value="qvms">Shared Libraries</option>
+                        <option value="qvms">QVMs Only</option>
+                        <option value="tools">QVM Tools Only</option>
+                        <option value="assets">Assets Only</option>
+                        <option value="publish">Publish</option>
+                        <option value="sanitize">Sanitize</option>
+                        <option value="analyze">Analyze</option>
+                    </select>
+                </li>
+                <li class="setting" placeholder="Automatically reload">
+                    <div style="display: flex; align-items: center;">
+                        <span>Hot reload: &nbsp; </span>
+                        <input type="checkbox" name="reload" id="reload" checked="checked" />
+                    </div>
+                </li>
+                <li class="setting" placeholder="Current WASI-SDK">
+                    <select required name="wasi" id="wasi">
+                        <option value="" selected disabled>WASI-SDK v33 (Not downloaded)</option>
+                    </select>
+                </li>
+                <li class="setting" placeholder="Current theme">
+                    <select required name="theme" id="theme">
+                        <option value="" selected disabled>Current theme</option>
+
+                        <optgroup label="The Coders" Heritage">
+                            <option value="ace/theme/monokai" selected>Monokai (OG High Contrast)</option>
+                            <option value="ace/theme/textmate">TextMate (The Standard)</option>
+                            <option value="ace/theme/github">GitHub (Legacy Light)</option>
+                            <option value="ace/theme/eclipse">Eclipse (Java Classic)</option>
+                            <option value="ace/theme/xcode">XCode (Apple Classic)</option>
+                        </optgroup>
+
+                        <optgroup label="Sci-Fi Voids & Cyber Terminals">
+                            <option value="ace/theme/terminal">Retro Terminal (Classic Amber/Green)</option>
+                            <option value="ace/theme/gob">Green on Black (The Matrix)</option>
+                            <option value="ace/theme/nightvision">Night Vision (Matrix Green)</option>
+                            <option value="ace/theme/invertedneon">Inverted Neon (vs Night Vision)</option>
+                            <option value="ace/theme/vibrant_ink">Vibrant Ink (Neon)</option>
+                            <option value="ace/theme/chaos">Chaos (Extreme Contrast)</option>
+                            <option value="ace/theme/midnightvoid">Midnight Void (vs Daybreak)</option>
+                        </optgroup>
+
+                        <optgroup label="Atmospheric Dawns & Sunsets">
+                            <option value="ace/theme/daybreak">Daybreak (Classic Sunrise)</option>
+                            <option value="ace/theme/dawn">Dawn (Soft Sunrise)</option>
+                            <option value="ace/theme/desertsunset">Desert Sunset (Banded Gold)</option>
+                            <option value="ace/theme/arcticthaw">Arctic Thaw (vs Desert Sunset)</option>
+                            <option value="ace/theme/solarflare">Solar Flare (vs Dusk)</option>
+                            <option value="ace/theme/dusk">Dusk (Atmospheric Night)</option>
+                        </optgroup>
+
+                        <optgroup label="Deep Water & Organic Ecosystems">
+                            <option value="ace/theme/cobalt">Cobalt (Deep Sea Blue)</option>
+                            <option value="ace/theme/oceanripple">Ocean Ripple (Deep Reflective)</option>
+                            <option value="ace/theme/abyssaltrench">Abyssal Trench (vs Ocean Ripple)</option>
+                            <option value="ace/theme/coralreef">Coral Reef (Tropical Cyan)</option>
+                            <option value="ace/theme/deepseakelp">Deep Sea Kelp (vs Coral Reef)</option>
+                            <option value="ace/theme/emeraldforest">Emerald Forest (Vibrant Green)</option>
+                            <option value="ace/theme/sourlime">Sour Lime (vs Berry Blast)</option>
+                            <option value="ace/theme/berryblast">Berry Blast (Candy Red/Blue)</option>
+                        </optgroup>
+
+                        <optgroup label="Industrial Foundry & Metallic Elements">
+                            <option value="ace/theme/mono_industrial">Mono Industrial (Raw Slate)</option>
+                            <option value="ace/theme/darkslate">Dark Slate (vs Shale Life)</option>
+                            <option value="ace/theme/silverchrome">Silver Chrome (Metallic)</option>
+                            <option value="ace/theme/oxidizediron">Oxidized Iron (vs Silver Chrome)</option>
+                            <option value="ace/theme/leadfortress">Lead Fortress (vs Golden Gate)</option>
+                            <option value="ace/theme/goldengate">Golden Gate (Polished Gold)</option>
+                        </optgroup>
+
+                        <optgroup label="Academic Pages & Editorial Finishes">
+                            <option value="ace/theme/ivory">Atrium Ivory (vs Default Purple)</option>
+                            <option value="ace/theme/parchment">Parchment (Academic Beige)</option>
+                            <option value="ace/theme/obsidianledger">Obsidian Ledger (vs Parchment)</option>
+                            <option value="ace/theme/kuroir">Kuroir (Paper White)</option>
+                            <option value="ace/theme/crimson_editor">Crimson Editor</option>
+                            <option value="ace/theme/sqlserver">SQL Server Management Studio</option>
+                            <option value="ace/theme/dreamweaver">Dreamweaver Classic</option>
+                        </optgroup>
+
+                        <optgroup label="Cozy Studio Earth Tones">
+                            <option value="ace/theme/dracula">Dracula (Vampire Mode)</option>
+                            <option value="ace/theme/one_dark">One Dark (Atom Style)</option>
+                            <option value="ace/theme/nord_dark">Nord Dark (Arctic Frost)</option>
+                            <option value="ace/theme/gruvbox">Gruvbox (Earth Tones)</option>
+                            <option value="ace/theme/pastel_on_dark">Pastel on Dark</option>
+                            <option value="ace/theme/twilight">Twilight (Warm Dark)</option>
+                            <option value="ace/theme/ambiance">Ambiance (Smooth Espresso)</option>
+                            <option value="ace/theme/idle_fingers">idle Fingers</option>
+                            <option value="ace/theme/merbivore_soft">Merbivore Soft</option>
+                            <option value="ace/theme/merbivore">Merbivore</option>
+                        </optgroup>
+
+                        <optgroup label="Prisms & Chromatic Experiments">
+                            <option value="ace/theme/solarized_dark">Solarized Dark (Precision Calibrated)</option>
+                            <option value="ace/theme/solarized_light">Solarized Light (Precision Calibrated)</option>
+                            <option value="ace/theme/rainbowpeak">Rainbow Peak (Full Spectrum)</option>
+                            <option value="ace/theme/monochromematrix">Monochrome Matrix (vs Rainbow)</option>
+                            <option value="ace/theme/tomorrow_night_blue">Tomorrow Night Blue</option>
+                            <option value="ace/theme/tomorrow_night_bright">Tomorrow Night Bright</option>
+                            <option value="ace/theme/tomorrow_night_eighties">Tomorrow Night 80s</option>
+                            <option value="ace/theme/tomorrow_night">Tomorrow Night</option>
+                            <option value="ace/theme/tomorrow">Tomorrow Light</option>
+                            <option value="ace/theme/katzenmilch">KatzenMilch (Warm Gray)</option>
+                            <option value="ace/theme/iplastic">IPlastic</option>
+                            <option value="ace/theme/kr_theme">krTheme</option>
+                            <option value="ace/theme/clouds_midnight">Clouds Midnight</option>
+                            <option value="ace/theme/clouds">Clouds Light</option>
+                        </optgroup>
+                    </select>
+                </li>
+
+                <li class="engine">
+                    <ul>
+                        <li placeholder="Spawn point">
+                            <select required name="spawn" id="spawn">
+                                <option value="" selected disabled>Spawn point</option>
+                            </select>
+                        </li>
+                        <li class="engine" placeholder="Current map">
+                            <select required name="map" id="map">
+                                <option value="" selected disabled>Current map</option>
+                            </select>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <div id="main-body" class="panel-row">
+            <div id="tabs">
+                <ul>
+                    <li><a alt="Collapse" href="#collapse" class="bx bx-arrow-in-left-square-half"></a></li>
+                    <li><a alt="Edit code" href="#editor" class="bx bx-code"></a></li>
+                    <li><a alt="Edit images" href="#paint" class="bx bx-palette"></a></li>
+                    <li><a alt="Edit vectors" href="#nunu" class="bx bx-vector-triangle"></a></li>
+                    <li><a alt="Edit audio" href="#audio-editor" class="bx bx-sine-wave"></a></li>
+                    <li><a alt="Search files" href="#searchlist" class="bx bx-search"></a></li>
+                    <li><a alt="Engine files" href="#filelist" class="active bx bx-folder-code"></a></li>
+                    <li><a alt="Game files" href="#gamelist" class="bx bx-handheld-alt"></a></li>
+                    <li><a alt="Assets" href="#assetlist" class="bx bx-treasure-chest"></a></li>
+                    <li><a alt="Local database" href="#database" class="bx bx-database"></a></li>
+                    <li><a alt="Github commit" href="#github" class="bx bx-git-repo-forked"></a></li>
+                    <li><a alt="Edit settings" href="#settings" class="bx bx-gear"></a></li>
+                    <li><a alt="Show engine" href="#viewport-frame" class="bx bx-joystick"></a></li>
+                    <li><a alt="Show console" href="#terminal-container" class="bx bx-terminal"></a></li>
+                </ul>
+            </div>
+
+            <div id="toggle-wrapper" class="panel-row">
+                <div id="editor-container" class="panel-row">
+                    <div id="list-wrapper">
+                        <ul class="toolbar">
+                            <li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
+                            <li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
+                            <li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
+                            <li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
+                            <li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
+                            <li class="setting" placeholder="Repository owner">
+                                <select required name="owner" id="owner">
+                                    <option value="" selected disabled>Repository owner</option>
+                                    <option value="briancullinan2">briancullinan2</option>
+                                    <option value="ec-">ec-</option>
+                                </select>
+                            </li>
+                            <li class="setting" placeholder="Current repository">
+                                <select required name="repository" id="repository">
+                                    <option value="" selected disabled>Current repository</option>
+                                    <option value="Quake3e">Quake3e</option>
+                                    <option value="baseq3a">baseq3a</option>
+                                </select>
+                            </li>
+                            <li class="setting" placeholder="Current branch">
+                                <select required name="branch" id="branch">
+                                    <option value="" selected disabled>Current branch</option>
+                                    <option value="main">main</option>
+                                </select>
+                            </li>
+                        </ul>
+                        <div id="searchlist" class="hidden">
+                            <div placeholder="Search many...">
+                                <input type="text" id="search" name="search" placeholder="Search many..." />
+                            </div>
+                            <div id="search-status">
+
+                            </div>
+                            <div id="search-results">
+
+                            </div>
+                        </div>
+                        <div id="filelist" class="not-hidden" data-repository="briancullinan2/Quake3e">
+
+                        </div>
+                        <div id="gamelist" data-repository="ec-/baseq3a" class="hidden">
+
+                        </div>
+                        <div id="assetlist" class="hidden">
+
+                        </div>
+                        <div id="database" class="hidden">
+
+                        </div>
+                        <div id="github" class="hidden">
+
+                        </div>
+                    </div>
+<div id="editor">
+#include &lt;stdio.h&gt;
+
+// this is a comment
+
+int main() {
+    printf("Hello World!\n")
+    printf("WASI Compiler Check: SUCCESS\n");
+    return 0;
+}
+
+</div>
+                    <div id="nunu"></div>
+                    <div id="audio-editor"></div>
+                    <div id="paint">
+                        <div class="wrapper">
+
+                            <div class="submenu">
+                                <button popovertarget="global-popup" placeholder="Toggle Menu" class="left_mobile_menu"
+                                    id="left_mobile_menu_button" type="button"></button>
+                                <div class="block attributes" id="action_attributes"></div>
+                                <button placeholder="Undo" class="undo_button" id="undo_button" type="button"></button>
+                                <span class="mobile_menu_spacer" style="max-width: none; flex-grow: 1;"></span>
+                                <button popovertarget="global-popup" placeholder="Toggle Menu" class="right_mobile_menu"
+                                    id="mobile_menu_button" type="button"></button>
+                            </div>
+
+                            <div class="sidebar_left" id="tools_container"></div>
+
+
+                            <div class="middle_area" id="middle_area">
+
+                                <canvas class="ruler_left" id="ruler_left"></canvas>
+                                <canvas class="ruler_top" id="ruler_top"></canvas>
+
+                                <div class="main_wrapper" id="main_wrapper">
+                                    <div class="canvas_wrapper" id="canvas_wrapper">
+                                        <div id="mouse"></div>
+                                        <div class="transparent-grid" id="canvas_minipaint_background"></div>
+                                        <canvas id="canvas_minipaint">
+                                            <div class="trn error">
+                                                Your browser does not support canvas or JavaScript is not enabled.
+                                            </div>
+                                        </canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="sidebar_right">
+                                <div class="preview block">
+                                    <h2 class="trn toggle" data-target="toggle_preview">Preview</h2>
+                                    <div id="toggle_preview"></div>
+                                </div>
+
+                                <div class="colors block">
+                                    <h2 class="trn toggle" data-target="toggle_colors">Colors</h2>
+                                    <div class="content" id="toggle_colors"></div>
+                                </div>
+
+                                <div class="block" id="info_base">
+                                    <h2 class="trn toggle toggle-full" data-target="toggle_info">Information</h2>
+                                    <div class="content" id="toggle_info"></div>
+                                </div>
+
+                                <div class="details block" id="details_base">
+                                    <h2 class="trn toggle toggle-full" data-target="toggle_details">Layer details</h2>
+                                    <div class="content details-content" id="toggle_details"></div>
+                                </div>
+
+                                <div class="layers block">
+                                    <h2 class="trn">Layers</h2>
+                                    <div class="content" id="layers_base"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="hidden" id="tmp"></div>
+
+                    </div>
+                </div>
+                <div id="viewport-frame">
+                    <div id="dialog">
+                        <h4 class="title"></h4>
+                        <p class="description"></p>
+                    </div>
+                    <div id="flipper">
+                        <div class="front">
+                            <!-- front content -->
+                        </div>
+                        <div class="back">
+                            <!-- back content -->
+                        </div>
+                    </div>
+                    <div id="left-joystick"></div>
+                    <div id="right-joystick"></div>
+                    <canvas id="viewport">
+                        Sorry, but your browser does not support WebGL or does not have it enabled.
+                        To get a WebGL-enabled browser, please see:<br />
+                        <a href="http://get.webgl.org/" target="_blank">
+                            http://get.webgl.org/
+                        </a>
+                    </canvas>
+                </div>
+                <canvas id="scratch"></canvas>
+
+                <div id="terminal-container" class="panel-column">
+                    <div id="terminals">
+                        <ul>
+                            <li><a class="active" href="#all">All</a></li>
+                            <li><a href="#error">Error</a></li>
+                            <li><a href="#warn">Warn</a></li>
+                            <li><a href="#info">Info</a></li>
+                            <li><a href="#soft">CLI Render</a></li>
+                            <li><a href="#immediate">Immediate</a></li>
+                            <li><a href="#build">Build</a></li>
+                            <li><a href="#console">Console</a></li>
+                            <li><a href="#ai">AI Integration</a></li>
+                            <li style="flex-grow: 1;"><span>&nbsp;</span></li>
+                            <li placeholder="Search..."><input autocomplete="off" type="search" id="search-terminal"
+                                    name="search-terminal" placeholder="Search..." /></li>
+                        </ul>
+                    </div>
+                    <div id="terminal">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="statusbar">
+            <span>Status: </span>
+            <span>No engine</span>
+        </div>
+    </div>
+    <div id="global-tooltip" class="tooltip-box" popover></div>
+
+
+    <script src="/components/core/extensions.js" type="text/javascript" defer></script>
+    <script src="/components/core/events.js" type="text/javascript" defer></script>
+    <script src="/components/core/modules.js" type="text/javascript" defer></script>
+</body>
+
+</html>
