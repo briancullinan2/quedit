@@ -2,11 +2,12 @@ import { BoxPanel, DockPanel, Widget, Menu, MenuBar } from '@lumino/widgets';
 import { CommandRegistry } from '@lumino/commands';
 import * as widgets from '@lumino/widgets';
 import * as messaging from '@lumino/messaging';
-import { initializeMenus } from './menu';
-import '@lumino/widgets/style/index.css';
+import { createTopBar, initializeMenus } from './menu';
 import { StatusBarWidget } from './status';
 import { ServiceWorkerManager } from './worker';
 import { SettingConfig } from './settings';
+
+import '@lumino/widgets/style/index.css';
 
 // 1. Expose Lumino globally for your future dynamic ES6 modules
 (window as any).Lumino = {
@@ -16,46 +17,26 @@ import { SettingConfig } from './settings';
 
 console.log("Lumino Core injected into global window space.");
 
+
 function main(): void
 {
-	// Initialize the Command Registry for our File Menu system
+	// Initialize the Command Registry
 	const commands = new CommandRegistry();
 
 	// Create the central DockPanel target area
 	const mainDock = new DockPanel();
 	mainDock.id = 'main-workspace';
 
-	// Add a sample command to demonstrate the File Menu system
-	commands.addCommand('file-exit', {
-		label: 'Exit IDE',
-		iconClass: 'bx bx-power',
-		execute: () =>
-		{
-			if(confirm('Are you sure you want to exit?'))
-			{
-				window.close();
-			}
-		}
-	});
-
-	// Build the File Menu structure
-	const fileMenu = new Menu({ commands });
-	fileMenu.title.label = 'File';
-	fileMenu.addItem({ command: 'file-exit' });
-
-	// Instantiate the global Top MenuBar
-	const menuBar = new MenuBar();
-	menuBar.id = 'top-menubar';
-	menuBar.node.style.minHeight = '30px';
-	menuBar.addMenu(fileMenu);
+	// Generate the top application header structures using our unified layout export
+	const { headerRow, menuBar } = createTopBar(commands);
 
 	// Build a manual sidebar widget for the left boundary (VSCode style)
 	const toolbar = new Widget();
 	toolbar.id = 'left-toolbar';
 	toolbar.node.style.minWidth = '50px';
 
+	// Initialize remaining menus safely passing down the clean tracking components
 	initializeMenus(commands, menuBar, mainDock, toolbar.node);
-
 
 	const statusBar = new StatusBarWidget();
 	(window as any).appStatusBar = statusBar;
@@ -71,14 +52,14 @@ function main(): void
 	workspaceBox.addWidget(toolbar);
 	workspaceBox.addWidget(mainDock);
 
-	// Assemble Main Window (MenuBar Stacked Top-to-Bottom above Workspace)
+	// Assemble Main Window layout
 	const windowRoot = new BoxPanel({ direction: 'top-to-bottom', spacing: 0 });
 	windowRoot.id = 'app-root';
-	BoxPanel.setStretch(menuBar, 0);
+	BoxPanel.setStretch(headerRow, 0);
 	BoxPanel.setStretch(workspaceBox, 1);
 	BoxPanel.setStretch(statusBar, 0);
 
-	windowRoot.addWidget(menuBar);
+	windowRoot.addWidget(headerRow);
 	windowRoot.addWidget(workspaceBox);
 	windowRoot.addWidget(statusBar);
 
@@ -93,7 +74,6 @@ function main(): void
 
 	startServiceWorker();
 }
-
 
 function startServiceWorker()
 {

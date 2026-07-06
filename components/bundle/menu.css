@@ -1,0 +1,96 @@
+/* Jupyter-style Top MenuBar Styling */
+#top-menubar {
+	background: #252526;
+	color: #cccccc;
+	font-size: 13px;
+	border-bottom: 1px solid #2d2d2d;
+	z-index: 10;
+}
+
+.lm-MenuBar-item {
+	padding: 6px 10px;
+	cursor: pointer;
+}
+
+.lm-MenuBar-item:hover,
+.lm-MenuBar-item.lm-mod-active {
+	background: #3c3c3c;
+	color: #ffffff;
+}
+
+.lm-Menu {
+	background: #252526;
+	border: 1px solid #454545;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+	color: #cccccc;
+}
+
+.lm-Menu-item:hover,
+.lm-Menu-item.lm-mod-active {
+	background: #007acc;
+	color: #ffffff;
+}
+
+.lm-Menu-itemIcon {
+	padding: 4px;
+}
+
+
+/* Container holding the MenuBar and Custom Controls side-by-side */
+#app-top-header-row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	background: #1e1e1e;
+	border-bottom: 1px solid #3c3c3c;
+	overflow: visible !important;
+	/* CRITICAL: Allows Lumino dropdown menus to overflow down */
+}
+
+/* Ensure the MenuBar sizing matches its text footprint */
+#top-menubar {
+	display: flex;
+	flex-shrink: 0;
+	overflow: visible !important;
+}
+
+/* Clear, aligned spacing for your script tools */
+#script-inline-toolbar {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 8px;
+	padding-left: 12px;
+	color: #ccc;
+	font-size: 12px;
+}
+
+#script-inline-toolbar button {
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	font-size: 16px;
+	padding: 2px 4px;
+}
+
+#top-bar-btn-play {
+	color: #4ec9b0;
+}
+
+#top-bar-btn-stop {
+	color: #f44747;
+}
+
+.top-bar-divider {
+	border-left: 1px solid #3c3c3c;
+	height: 16px;
+	margin: 0 4px;
+}
+
+#script-inline-toolbar select {
+	background: #252526;
+	color: #ccc;
+	border: 1px solid #3c3c3c;
+	padding: 2px 4px;
+	border-radius: 2px;
+}

@@ -65,43 +65,6 @@ html {
 	color: #ffffff;
 }
 
-/* Jupyter-style Top MenuBar Styling */
-#top-menubar {
-	background: #252526;
-	color: #cccccc;
-	font-size: 13px;
-	border-bottom: 1px solid #2d2d2d;
-	z-index: 10;
-}
-
-.lm-MenuBar-item {
-	padding: 6px 10px;
-	cursor: pointer;
-}
-
-.lm-MenuBar-item:hover,
-.lm-MenuBar-item.lm-mod-active {
-	background: #3c3c3c;
-	color: #ffffff;
-}
-
-.lm-Menu {
-	background: #252526;
-	border: 1px solid #454545;
-	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-	color: #cccccc;
-}
-
-.lm-Menu-item:hover,
-.lm-Menu-item.lm-mod-active {
-	background: #007acc;
-	color: #ffffff;
-}
-
-.lm-Menu-itemIcon {
-	margin: 2px 3px;
-}
-
 /* Visible Splitter Bars (The drag handles between panels) */
 .lm-SplitPanel-handle,
 .lm-DockPanel-handle {
