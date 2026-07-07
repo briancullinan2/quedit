@@ -1,9 +1,9 @@
 /* Jupyter-style Top MenuBar Styling */
 #top-menubar {
-	background: #252526;
-	color: #cccccc;
+	background: var(--ace-bg);
+	color: var(--ace-foreground);
 	font-size: 13px;
-	border-bottom: 1px solid #2d2d2d;
+	border-bottom: 1px solid var(--ace-gutter-bg);
 	z-index: 10;
 }
 
@@ -14,21 +14,27 @@
 
 .lm-MenuBar-item:hover,
 .lm-MenuBar-item.lm-mod-active {
-	background: #3c3c3c;
-	color: #ffffff;
+	background: rgb(from var(--ace-selection-bg) r g b / 30%);
+	color: var(--ace-foreground);
 }
 
 .lm-Menu {
-	background: #252526;
-	border: 1px solid #454545;
-	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-	color: #cccccc;
+	background: var(--ace-bg);
+	border: 1px solid var(--ace-gutter-bg);
+	box-shadow: 0 4px 8px rgb(from var(--ace-bg) r g b / 80%);
+	color: var(--ace-foreground);
 }
+
+.lm-Menu-item {
+	padding: 4px;
+	display: block !important;
+}
+
 
 .lm-Menu-item:hover,
 .lm-Menu-item.lm-mod-active {
-	background: #007acc;
-	color: #ffffff;
+	background: rgb(from var(--ace-selection-bg) r g b / 30%);
+	color: var(--ace-foreground);
 }
 
 .lm-Menu-itemIcon {
@@ -41,8 +47,8 @@
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	background: #1e1e1e;
-	border-bottom: 1px solid #3c3c3c;
+	background: var(--ace-bg);
+	border-bottom: 1px solid var(--ace-gutter-bg);
 	overflow: visible !important;
 	/* CRITICAL: Allows Lumino dropdown menus to overflow down */
 }
@@ -61,7 +67,7 @@
 	align-items: center;
 	gap: 8px;
 	padding-left: 12px;
-	color: #ccc;
+	color: var(--ace-foreground);
 	font-size: 12px;
 }
 
@@ -74,23 +80,34 @@
 }
 
 #top-bar-btn-play {
-	color: #4ec9b0;
+	color: var(--ace-green);
 }
 
 #top-bar-btn-stop {
-	color: #f44747;
+	color: var(--ace-pink);
 }
 
 .top-bar-divider {
-	border-left: 1px solid #3c3c3c;
+	border-left: 1px solid var(--ace-gutter-bg);
 	height: 16px;
 	margin: 0 4px;
 }
 
 #script-inline-toolbar select {
-	background: #252526;
-	color: #ccc;
-	border: 1px solid #3c3c3c;
+	background: var(--ace-gutter-bg);
+	color: var(--ace-foreground);
+	border: 1px solid var(--ace-selection-bg);
 	padding: 2px 4px;
 	border-radius: 2px;
+}
+
+.toolbar .bx {
+	color: var(--ace-comment);
+	text-decoration: none;
+}
+
+
+.toolbar .bx:hover {
+	color: var(--ace-foreground);
+	text-decoration: none;
 }

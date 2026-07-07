@@ -12,6 +12,46 @@ export const path = {
 			})
 			.filter((part: string) => part.length > 0)
 			.join('/');
+	},
+	resolve: (...parts: string[]): string =>
+	{
+		let resolvedSegments: string[] = [];
+
+		for(const part of parts)
+		{
+			if(!part) continue;
+
+			// If a segment starts with '/', it acts as an absolute root reset
+			if(part.startsWith('/'))
+			{
+				resolvedSegments = part.split('/');
+			} else
+			{
+				resolvedSegments.push(...part.split('/'));
+			}
+		}
+
+		// Normalize the accumulated stack (. and .. processing)
+		const stack: string[] = [];
+		for(const segment of resolvedSegments)
+		{
+			if(segment === '' || segment === '.')
+			{
+				continue;
+			}
+			if(segment === '..')
+			{
+				if(stack.length > 0)
+				{
+					stack.pop();
+				}
+				continue;
+			}
+			stack.push(segment);
+		}
+
+		// Reconstruct the path ensuring it behaves as an absolute result
+		return '/' + stack.join('/');
 	}
 };
 
@@ -68,19 +108,22 @@ export const dirs = {
 };
 
 
-declare global {
-    interface Window {
-        FS?: {
-            virtual: Record<string, FileRecord | null | undefined>;
-        };
-    }
+declare global
+{
+	interface Window
+	{
+		FS?: {
+			virtual: Record<string, FileRecord | null | undefined>;
+		};
+	}
 }
 
 // 2. Safely capture or initialize the instance on window
 const FSInstance = window.FS || { virtual: {} };
 
-if (!window.FS) {
-    window.FS = FSInstance;
+if(!window.FS)
+{
+	window.FS = FSInstance;
 }
 
 // 3. Export it cleanly for module usage

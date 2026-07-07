@@ -1,0 +1,990 @@
+/* Global Styles */
+body {
+	font-size: var(--default-size);
+	line-height: var(--global-height);
+	animation: waveMovement 18s ease infinite;
+
+}
+
+
+#toolbar>ul>li>ul {
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	width: max-content;
+	border-left: 2px solid var(--ace-selection-bg);
+	border-right: 2px solid var(--ace-selection-bg);
+	margin: 0 10px;
+	padding: 0 10px;
+}
+
+#editor .ace-marker-layer .ace_active_block_scope_highlight {
+	background-color: rgb(from var(--ace-selection-bg, rgba(39, 95, 255, 0.3)) r g b / 05%) !important;
+	border-left: 3px solid rgb(from var(--ace-selection-bg, rgba(39, 95, 255, 0.3)) r g b / 60%) !important;
+	border-radius: 2px 0 0 2px;
+	position: absolute;
+}
+
+
+/*
+.ace_gutter-cell .ace_fold-widget {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 16px !important;
+    height: 16px !important;
+    cursor: pointer !important;
+}
+
+.ace_fold-widget.ace_start:before {
+    content: "▼" !important;
+    font-size: 10px;
+    color: rgb(from var(--ace-selection-bg, #234A97) r g b / 60%);
+}
+
+.ace_fold-widget.ace_start.ace_open:before {
+    content: "▼" !important;
+}
+
+.ace_fold-widget.ace_start.ace_closed:before {
+    content: "▶" !important;
+    color: rgb(from var(--ace-selection-bg, #234A97) r g b / 90%) !important;
+}
+
+.ace_gutter-layer .ace_gutter-cell span.ace_fold-widget {
+    display: inline-block !important;
+    visibility: visible !important;
+    width: 12px !important;
+    height: 12px !important;
+    margin-left: 4px !important;
+    cursor: pointer !important;
+}
+
+.ace_gutter-layer .ace_gutter-cell span.ace_fold-widget.ace_open:before {
+    content: "▼" !important;
+    font-size: 9px !important;
+    position: relative;
+    top: -1px;
+    color: rgb(from var(--ace-selection-bg, #234A97) r g b / 50%) !important;
+}
+
+.ace_gutter-layer .ace_gutter-cell span.ace_fold-widget.ace_closed:before {
+    content: "▶" !important;
+    font-size: 9px !important;
+    position: relative;
+    top: -1px;
+    color: rgb(from var(--ace-selection-bg, #234A97) r g b / 90%) !important;
+}
+
+*/
+
+#github,
+#assetlist,
+#gamelist,
+#database,
+#searchlist,
+#filelist {
+	/*background-color: var(--ace-gutter-bg);*/
+	background-color: transparent;
+	/* Darker than editor */
+	color: var(--ace-foreground);
+}
+
+.treejs-node__open>.treejs-label {
+	color: var(--ace-green);
+	/* Use the Monokai green for active folder */
+}
+
+/* Style your custom data-extension icons from earlier */
+.treejs-node[data-extension="c"]>.treejs-label::before {
+	color: var(--ace-blue);
+}
+
+
+/*
+#terminal .xterm .xterm-scrollable-element>.scrollbar.vertical {
+    height: 100%;
+    top: 40px !important;
+}
+*/
+
+.xterm,
+.xterm-viewport,
+.xterm-scrollable-element,
+.xterm-screen {
+	min-width: 120ch;
+}
+
+
+#terminal .xterm .xterm-scrollable-element>.scrollbar.horizontal {
+	width: 100%;
+}
+
+#terminal .xterm .xterm-scrollable-element>.scrollbar>.slider,
+#terminal .xterm .xterm-scrollable-element>.scrollbar {
+	z-index: 1000;
+	opacity: 1;
+	pointer-events: all;
+}
+
+#main_menu>ul.menu_dropdown::-webkit-scrollbar,
+::-webkit-scrollbar,
+.xterm-viewport ::-webkit-scrollbar,
+.xterm-scrollable-element::-webkit-scrollbar,
+.ace_editor ::-webkit-scrollbar,
+.xterm .xterm-scrollable-element>.scrollbar {
+	width: 10px !important;
+	height: 10px !important;
+	background-color: transparent !important;
+}
+
+::-webkit-scrollbar-track-piece {
+	background: transparent !important;
+}
+
+
+#main_menu>ul.menu_dropdown::-webkit-scrollbar-track,
+::-webkit-scrollbar-track,
+.xterm-viewport ::-webkit-scrollbar-track,
+.ace_editor ::-webkit-scrollbar-track,
+.ace_scrollbar::-webkit-scrollbar-track,
+.ace_editor .ace_scrollbar-h::-webkit-scrollbar-track,
+.xterm .xterm-scrollable-element>.scrollbar {
+	background: transparent !important;
+}
+
+/* Global text selection styles */
+::selection {
+	background-color: rgb(from var(--ace-selection-bg) r g b / 50%);
+	/* Highlight background */
+	/*color: #00FF00;*/
+	/* Highlight text color */
+}
+
+
+#main_menu>ul.menu_dropdown::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb,
+.xterm-scrollable-element::-webkit-scrollbar-thumb,
+.xterm-viewport ::-webkit-scrollbar-thumb,
+.xterm .xterm-scrollable-element>.scrollbar>.slider,
+#terminal-container .scrollbar>.slider,
+#terminal-container .xterm-viewport::-webkit-scrollbar-thumb,
+.ace_editor ::-webkit-scrollbar-thumb {
+	width: 10px !important;
+
+	/*background: rgb(from var(--ace-selection-bg) r g b / 50%) !important;*/
+	background: rgb(from var(--ace-selection-bg) r g b / 50%) !important;
+	border-radius: 4px !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+	box-shadow: 1px 2px 3px rgb(from var(--ace-gutter-bg) r g b / 100%) !important;
+}
+
+.xterm .xterm-selection div {
+	background-color: rgb(from var(--ace-selection-bg) r g b / 50%) !important;
+}
+
+
+.xterm .xterm-rows {
+	color: var(--ace-foreground) !important;
+}
+
+/* --- FOREGROUND COLORS (ANSI 0 - 15) --- */
+
+/* Normal Block (0 - 7) */
+.xterm .xterm-fg-0 {
+	color: var(--ace-bg) !important;
+}
+
+/* Black (Inverse Fallback) */
+.xterm .xterm-fg-1 {
+	color: var(--ace-pink) !important;
+}
+
+
+/* Red */
+.xterm .xterm-fg-2 {
+	color: var(--ace-green) !important;
+}
+
+/* Green */
+.xterm .xterm-fg-3 {
+	color: var(--ace-yellow) !important;
+}
+
+/* Yellow */
+.xterm .xterm-fg-4 {
+	color: var(--ace-blue) !important;
+}
+
+/* Blue */
+.xterm .xterm-fg-5 {
+	color: var(--ace-pink) !important;
+}
+
+/* Magenta */
+.xterm .xterm-fg-6 {
+	color: var(--ace-purple) !important;
+}
+
+/* Cyan */
+.xterm .xterm-fg-7 {
+	color: var(--ace-foreground) !important;
+}
+
+/* White */
+
+/* Bright/Bold Block (8 - 15) */
+.xterm .xterm-fg-8 {
+	color: var(--ace-selection-bg) !important;
+}
+
+/* Bright Black (Dark Gray / Gutter) */
+.xterm .xterm-fg-9 {
+	color: var(--ace-orange) !important;
+}
+
+/* Bright Red */
+.xterm .xterm-fg-10 {
+	color: rgb(from var(--ace-green) r g b) !important;
+}
+
+/* Bright Green */
+.xterm .xterm-fg-11 {
+	color: var(--ace-orange) !important;
+}
+
+/* Bright Yellow */
+.xterm .xterm-fg-12 {
+	color: rgb(from var(--ace-blue) r g b) !important;
+}
+
+/* Bright Blue */
+.xterm .xterm-fg-13 {
+	color: var(--ace-purple) !important;
+}
+
+/* Bright Magenta */
+.xterm .xterm-fg-14 {
+	color: var(--ace-blue) !important;
+}
+
+/* Bright Cyan */
+.xterm .xterm-fg-15 {
+	color: var(--ace-white, #ffffff) !important;
+}
+
+/* Bright White */
+
+
+/* --- BACKGROUND COLORS (ANSI 0 - 15) --- */
+
+/* Normal Block (0 - 7) */
+.xterm .xterm-bg-0 {
+	background-color: var(--ace-bg) !important;
+}
+
+.xterm .xterm-bg-1 {
+	background-color: var(--ace-pink) !important;
+}
+
+.xterm .xterm-bg-2 {
+	background-color: var(--ace-green) !important;
+}
+
+.xterm .xterm-bg-3 {
+	background-color: var(--ace-yellow) !important;
+}
+
+.xterm .xterm-bg-4 {
+	background-color: var(--ace-blue) !important;
+}
+
+.xterm .xterm-bg-5 {
+	background-color: var(--ace-pink) !important;
+}
+
+.xterm .xterm-bg-6 {
+	background-color: var(--ace-purple) !important;
+}
+
+.xterm .xterm-bg-7 {
+	background-color: var(--ace-foreground) !important;
+}
+
+/* Bright/Bold Block (8 - 15) */
+.xterm .xterm-bg-8 {
+	background-color: var(--ace-gutter-bg) !important;
+}
+
+.xterm .xterm-bg-9 {
+	background-color: var(--ace-orange) !important;
+}
+
+.xterm .xterm-bg-10 {
+	background-color: var(--ace-green) !important;
+}
+
+.xterm .xterm-bg-11 {
+	background-color: var(--ace-orange) !important;
+}
+
+.xterm .xterm-bg-12 {
+	background-color: var(--ace-blue) !important;
+}
+
+.xterm .xterm-bg-13 {
+	background-color: var(--ace-purple) !important;
+}
+
+.xterm .xterm-bg-14 {
+	background-color: var(--ace-blue) !important;
+}
+
+.xterm .xterm-bg-15 {
+	background-color: var(--ace-white, #ffffff) !important;
+}
+
+/* ==========================================================================
+   EXTENDED 256-COLOR ANSI OVERRIDES (MAPPED TO EXTRACTED LOG PREAMBLES)
+   ========================================================================== */
+
+/* --- BLUES & CYANS --- */
+.xterm .xterm-fg-27 {
+	color: var(--ace-blue) !important;
+}
+
+/* GITHUB */
+.xterm .xterm-fg-32 {
+	color: var(--ace-blue) !important;
+}
+
+/* LOG */
+.xterm .xterm-fg-33 {
+	color: var(--ace-blue) !important;
+}
+
+/* WARN */
+.xterm .xterm-fg-39 {
+	color: var(--ace-blue) !important;
+}
+
+/* FETCH */
+.xterm .xterm-fg-45 {
+	color: var(--ace-blue) !important;
+}
+
+/* API_RUN */
+
+/* --- GREENS & TEALS --- */
+.xterm .xterm-fg-36 {
+	color: var(--ace-green) !important;
+}
+
+/* INFO, ENGINE (Quake3e) */
+.xterm .xterm-fg-76 {
+	color: var(--ace-green) !important;
+}
+
+/* API_BUILD */
+.xterm .xterm-fg-118 {
+	color: var(--ace-green) !important;
+}
+
+/* API_LINK, BUILD */
+.xterm .xterm-fg-121 {
+	color: var(--ace-green) !important;
+}
+
+/* TOOLS */
+
+/* --- PURPLES & MAGENTAS --- */
+.xterm .xterm-fg-134 {
+	color: var(--ace-purple) !important;
+}
+
+/* UNZIP */
+.xterm .xterm-fg-165 {
+	color: var(--ace-purple) !important;
+}
+
+/* QVM */
+
+/* --- TAN & YELLOWS --- */
+.xterm .xterm-fg-179 {
+	color: var(--ace-yellow) !important;
+}
+
+/* TAR (Falls back cleanly if orange fails) */
+.xterm .xterm-fg-221 {
+	color: var(--ace-yellow) !important;
+}
+
+/* API_HEADER */
+
+/* --- ORANGES --- */
+.xterm .xterm-fg-202 {
+	color: var(--ace-orange) !important;
+}
+
+/* QVMERR */
+.xterm .xterm-fg-208 {
+	color: var(--ace-orange) !important;
+}
+
+/* API_COMPILE */
+.xterm .xterm-fg-214 {
+	color: var(--ace-orange) !important;
+}
+
+/* API_PREAMBLE */
+
+/* --- PINKS & REDS --- */
+.xterm .xterm-fg-196 {
+	color: var(--ace-pink) !important;
+}
+
+/* CMD_PREAMBLE, ERROR */
+.xterm .xterm-fg-201 {
+	color: var(--ace-pink) !important;
+}
+
+/* EDITOR */
+.xterm .xterm-fg-203 {
+	color: var(--ace-pink) !important;
+}
+
+/* TOOLERR */
+
+/* --- MUTED SYSTEM CONTROLS --- */
+.xterm .xterm-fg-244 {
+	color: var(--ace-comment) !important;
+}
+
+/* API_REMOVE (Slate Gray) */
+
+/* --- SELECTION & DECORATION TRAPS --- */
+
+/* Dynamic Selection Background with alpha generation */
+.xterm .xterm-selection div {
+	background-color: rgb(from var(--ace-selection-bg) r g b / 30%) !important;
+}
+
+/* Match your custom selection hacks safely */
+.xterm-decoration-top[style*="#DEADBEEF"],
+.xterm-decoration-top[style*="#DEADBE"],
+.xterm-decoration-top[style*="#deadbe"],
+.xterm-decoration-top[style*="rgb(222, 173, 190)"] {
+	background-color: rgb(from var(--ace-selection-bg) r g b / 10%) !important;
+}
+
+/* Optional: Customize the color of selected text if using the DOM backend */
+.xterm-rows .xterm-selection-selected {
+	color: #ffffff !important;
+}
+
+.ace_editor {
+	/*background-color: transparent !important;*/
+	background-color: rgb(from var(--ace-bg) r g b / 90%);
+}
+
+/* Ensure the outer wrapper container doesn't hard-clip the sub-components */
+#editor-container,
+.ace_editor {
+	overflow: visible !important;
+}
+
+
+/* Ensure the horizontal scrollbar wrapper is never pushed outside the viewport */
+.ace_editor .ace_scrollbar-h {
+	bottom: 0 !important;
+	height: 15px !important;
+	/* Forces your layout track height constraint explicitly */
+	z-index: 5 !important;
+	/* Keeps it layered safely on top of background blocks */
+	background: transparent !important;
+}
+
+/* Push the text layer canvas up slightly so text never hides underneath the scrollbar */
+.ace_editor .ace_scroller {
+	bottom: 11px !important;
+	/* Must match the height of your scrollbar exactly */
+}
+
+/* --- Pin Vertical Scrollbar Only --- */
+.ace_editor .ace_scrollbar-v {
+	display: block !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+}
+
+/* Force the vertical tracking layer to always calculate a scrollable space */
+.ace_editor .ace_scrollbar-v .ace_scrollbar-inner {
+	min-height: 100.1% !important;
+	/* Continuous scroll buffer */
+}
+
+/* --- Completely Release Horizontal Scrollbar to Engine Control --- */
+.ace_editor .ace_scrollbar-h {
+	/* Let Ace determine display block/none properties dynamically */
+}
+
+.ace_editor .ace_scrollbar-h .ace_scrollbar-inner {
+	/* No minimal overrides here—prevents horizontal layout calculation loops */
+}
+
+/* --- Global Scrollbar Maintenance Styles --- */
+.ace_editor .ace_scrollbar-fade {
+	opacity: 1 !important;
+	visibility: visible !important;
+}
+
+/* Strip away the automated fading layout routine entirely */
+.ace_editor .ace_scrollbar-fade {
+	opacity: 1 !important;
+	visibility: visible !important;
+}
+
+#terminal-container .scrollbar.vertical>.slider {
+	max-height: 100%;
+}
+
+#terminal-container .scrollbar.vertical {
+	position: absolute !important;
+
+	/* Lock it strictly to the right side of the layout screen */
+	top: 40px !important;
+	bottom: 15px !important;
+	right: 0px !important;
+
+	/* Fix the sizing collapse */
+	width: 14px !important;
+	max-height: inherit !important;
+	height: auto !important;
+	/* Forces it to match parent terminal bounding box height */
+
+	/* Ensure it floats on top of passing code text blocks */
+	z-index: 100 !important;
+}
+
+
+
+.xterm-scrollable-element,
+.xterm-viewport {
+	background-color: transparent !important;
+}
+
+.terminal-search-highlight {
+	/*
+    color: var(--ace-bg);
+    background-color: var(--ace-foreground);
+    backdrop-filter: invert(100%);
+     The actual inversion
+    z-index: 10;
+    opacity: 1;
+    */
+}
+
+.terminal-search-highlight {
+	mix-blend-mode: difference;
+	background-color: #ffffff !important;
+	/* Forces absolute, high-contrast inversion math */
+	color: transparent !important;
+	/* Ensures no inner text CSS blocks the math */
+}
+
+.terminal-file-underline {
+	background-color: transparent;
+	border-bottom: 2px dashed var(--ace-blue) !important;
+	cursor: pointer !important;
+}
+
+/*
+.xterm .xterm-viewport {
+    z-index: -1;
+}
+*/
+
+body .terminal-file-underline {
+	pointer-events: all !important;
+}
+
+#statusbar {
+	background-color: var(--ace-gutter-bg);
+	color: var(--ace-foreground);
+	max-height: var(--global-height);
+}
+
+
+#main-body:not(:has(#github.not-hidden)):not(:has(#filelist.not-hidden)):not(:has(#gamelist.not-hidden)):not(:has(#assetlist.not-hidden)):not(:has(#database.not-hidden)) a[href="#collapse"]::before {
+	content: "\f16e";
+}
+
+#main-body:not(:has(#github.not-hidden)):not(:has(#filelist.not-hidden)):not(:has(#gamelist.not-hidden)):not(:has(#assetlist.not-hidden)):not(:has(#database.not-hidden)) a[href="#collapse"]::after {
+	content: "Expand";
+}
+
+#toolbar {
+	color: var(--ace-foreground);
+}
+
+#paint [class*="menu"] button:empty:hover,
+[class*="menu"] button:empty:hover,
+#terminals a:active,
+#terminals a.active,
+#terminals a:hover,
+#list-wrapper ul.toolbar a:hover,
+#list-wrapper ul.toolbar a:active,
+#tabs a.active,
+#toolbar a.active,
+#tabs a:active,
+#toolbar a:active,
+#tabs a:hover,
+#toolbar a:hover {
+	background: rgb(from var(--ace-selection-bg) r g b / 50%);
+	border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+}
+
+
+#terminals a.active,
+#tabs a.active,
+#toolbar a.active {
+	background-color: var(--ace-blue);
+	border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+}
+
+#paint [class*="menu"] button:empty:hover:active,
+[class*="menu"] button:empty:hover:active,
+#terminals a:hover:active,
+#list-wrapper ul.toolbar a:hover:active,
+#tabs a:hover:active,
+#toolbar a:hover:active,
+#terminals a:active,
+#tabs a:active,
+#toolbar a:active {
+	background-color: var(--ace-bg);
+	border-color: 2px solid var(--ace-blue);
+}
+
+
+
+#terminals a.active,
+#terminals a:active {
+	border-color: transparent;
+	border-top-color: #333;
+}
+
+#list-wrapper ul.toolbar a:active,
+#tabs a.active,
+#toolbar a.active,
+#tabs a:active,
+#toolbar a:active {
+	border-color: transparent;
+	border-left-color: #333;
+}
+
+#terminals a {
+	font-size: var(--default-size);
+}
+
+
+/* Use the pseudo-element to extract the text and style the bubble */
+/*
+#global-tooltip::before {
+    background: #222;
+    color: green;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+*/
+
+.pk_ftr .pk_btn span,
+.pk_tb .pk_btn span,
+.pk_mt_head button span,
+.pk_mt_track button span,
+.pk_mt_knob span,
+.tooltip,
+.ace_doc-tooltip,
+.ace_tooltip,
+.minipaint-tooltip,
+#global-tooltip {
+	background: var(--ace-gutter-bg) !important;
+	/* Use your Monokai variables! */
+	color: var(--ace-foreground);
+	border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+	font-family:
+		/* 1. MacOS/iOS: The gold standard for modern screens */
+		"SF Mono",
+		/* 2. MacOS Legacy: Still looks great */
+		"Menlo",
+		/* 3. Windows 10/11: Built specifically for coding */
+		"Cascadia Code",
+		/* 4. Windows Legacy: The classic VS look */
+		"Consolas",
+		/* 5. Linux: Clean and highly readable */
+		"Liberation Mono",
+		/* 6. General Linux: Wide support */
+		"DejaVu Sans Mono",
+		/* 7. The Final Safety Net */
+		monospace;
+	line-height: var(--global-height);
+	font-size: var(--default-size);
+	z-index: 1000;
+	filter: none;
+}
+
+
+
+#github .treejs .treejs-switcher:before,
+#assetlist .treejs .treejs-switcher:before,
+#gamelist .treejs .treejs-switcher:before,
+#database .treejs .treejs-switcher:before,
+#searchlist .treejs .treejs-switcher:before,
+#filelist .treejs .treejs-switcher:before {
+	border-top-color: var(--ace-foreground);
+}
+
+
+.modal-content {
+	background: rgb(from var(--ace-gutter-bg) r g b / 80%);
+	color: var(--ace-foreground);
+	border: 2px solid var(--ace-gutter-bg);
+	box-shadow: 0 10px 30px rgb(from var(--ace-bg) r g b / 80%);
+}
+
+.modal-content h3 {
+	color: var(--ace-foreground);
+	border-bottom: 2px solid var(--ace-gutter-bg);
+}
+
+.modal-content p {
+	color: var(--ace-foreground);
+}
+
+.main_menu>ul.menu_dropdown>li>a[aria-haspopup="true"]::after {
+	color: var(--ace-foreground);
+}
+
+
+
+#toolbar input[type="checkbox"] {
+	background-color: var(--ace-gutter-bg);
+	border-color: var(--ace-blue);
+	height: calc(var(--global-height) + 4px);
+	transition: box-shadow ease-in-out 0.3s;
+}
+
+
+#toolbar input[type="checkbox"]::before {
+	background-color: var(--ace-bg);
+	box-shadow: -1px -2px 5px inset rgb(from var(--ace-gutter-bg) r g b / 50%);
+	width: calc(var(--global-height) - 4px);
+	height: calc(var(--global-height) - 4px);
+
+}
+
+
+#toolbar input[type="checkbox"]::after {
+	color: var(--ace-foreground);
+}
+
+#toolbar input[type="checkbox"]:checked::after {
+	color: var(--ace-bg);
+}
+
+#toolbar input[type="checkbox"]:checked:focus,
+#toolbar input[type="checkbox"]:checked {
+	background-color: var(--ace-blue);
+	/* iOS Green */
+	border-color: rgb(from var(--ace-blue) r g b / 50%);
+	box-shadow: 1px 2px 3px rgb(from var(--ace-foreground) r g b / 50%);
+}
+
+#toolbar input[type="checkbox"]:checked::before {
+	transform: translateX(26px);
+	transform: translateX(calc(60px - var(--global-height) - 4px));
+}
+
+#toolbar input[type="checkbox"]:focus-visible {
+	box-shadow: 0 0 0 2px rgb(from var(--ace-green) r g b / 50%);
+}
+
+
+@keyframes universalLineFlash {
+	0% {
+		background-color: var(--ace-gutter-bg);
+		box-shadow: inset 0 0 0 2000px transparent;
+		filter: hue-rotate(0deg) saturate(1) brightness(1);
+	}
+
+	10% {
+		/* Distorts the theme's native color into an intense, glowing contrast peak */
+		background-color: var(--ace-yellow) !important;
+		box-shadow: inset 0 0 0 2000px rgba(241, 196, 15, 0.45) !important;
+		filter: hue-rotate(180deg) saturate(3) brightness(1.4);
+	}
+
+	100% {
+		/* Smoothly fades back to the exact default theme appearance */
+		background-color: var(--ace-gutter-bg);
+		filter: hue-rotate(0deg) saturate(1) brightness(1);
+		box-shadow: inset 0 0 0 2000px transparent;
+	}
+}
+
+/* Apply globally to ALL themes across your editor instance */
+/*#editor.ace_editor .ace_marker-layer {
+    background-color: white;
+    z-index: 1;
+    animation: universalLineFlash 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}*/
+
+[class*="line-"] #editor.ace_editor .ace_marker-layer .ace_active-line {
+	animation: universalLineFlash 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+/*
+
+@keyframes globalYellowFlash {
+    0% {
+        box-shadow: inset 0 0 0 2000px transparent;
+    }
+
+    10% {
+        box-shadow: inset 0 0 0 2000px rgba(241, 196, 15, 0.45) !important;
+    }
+
+    100% {
+        box-shadow: inset 0 0 0 2000px transparent;
+    }
+}
+
+.ace_editor .ace_active-line,
+.ace_editor .ace_gutter-active-line {
+    animation: globalYellowFlash 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+*/
+
+[class*="line-"] #editor .ace_gutter .ace_gutter-active-line {
+
+	animation: windowGutterLineFlash 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+
+}
+
+@keyframes windowGutterLineFlash {
+
+	0% {
+		background-color: var(--ace-gutter-bg);
+	}
+
+
+
+	10% {
+		background-color: var(--ace-yellow) !important;
+	}
+
+	100% {
+		background-color: var(--ace-gutter-bg);
+	}
+}
+
+.pk_av {
+	background: var(--ace-bg);
+}
+
+.pk_tbc {
+	background: var(--ace-gutter-bg);
+}
+
+.pk_tb {
+	background: transparent;
+	height: calc(var(--global-height) * 2);
+}
+
+.pk_selection,
+.pk_ctns,
+.pk_transport {
+	background: transparent;
+}
+
+.pk_selection .pk_dat {
+	background: transparent;
+}
+
+.pk_tb .pk_btn {
+	border-radius: 0;
+}
+
+.pk_tb .pk_btn:not(.pk_act) {
+	border: 2px solid transparent;
+	color: var(--ace-foreground);
+	text-shadow: 1px 2px 3px rgb(from var(--ace-gutter-bg) r g b / 100%);
+	cursor: pointer;
+}
+
+.pk_tb .pk_btn:not(.pk_act):hover {
+	background: rgb(from var(--ace-selection-bg) r g b / 50%);
+	border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+	box-shadow: none;
+	color: var(--ace-foreground);
+}
+
+
+.pk_tb .pk_btn:not(.pk_act):active,
+.pk_tb .pk_btn:not(.pk_act):focus,
+.pk_tb .pk_btn:not(.pk_act):active:focus {
+	border-color: var(--ace-blue);
+	background: var(--ace-bg);
+	color: var(--ace-foreground);
+}
+
+
+@media only screen and (max-width: 1250px) {
+	.pk_tb .pk_btn {
+		font-size: small;
+		height: var(--global-height);
+	}
+
+	.pk_ctns,
+	.pk_transport,
+	.pk_mtbeat {
+		height: var(--global-height);
+	}
+
+	.pk_tb .pk_btn:not(.pk_act):before {
+		position: relative;
+		top: -3px;
+	}
+
+}
+
+
+.pk_selection .pk_sellist,
+.pk_tmpMsg {
+	color: var(--ace-foreground);
+	text-shadow: 1px 2px 3px rgb(from var(--ace-gutter-bg) r g b / 100%);
+}
+
+.pk_total_dur,
+.pk_hover_dur {
+	top: 3px;
+}
+
+.pk_hover_dur {
+	top: var(--global-height);
+}
+
+.icon-rec:before {
+	content: "&bull;"
+}
+
+
+.pk_modal_bottom {
+	height: auto !important;
+}
+
+a {
+	color: var(--ace-blue);
+	vertical-align: middle;
+}

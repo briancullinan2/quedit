@@ -1,12 +1,8 @@
 // components/FileListWidget.ts
 import { Widget, DockPanel } from '@lumino/widgets';
 import { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
+const Tree = require('./tree.js') as any;
 
-// Declaring tree.js interfaces for type safety
-declare class Tree
-{
-	constructor(elementIdOrNode: HTMLElement, config: any);
-}
 
 declare global
 {
@@ -135,7 +131,7 @@ export class FileListWidget extends Widget
 
 		// Build or update the structural TreeJS component
 		targetTreeElement.innerHTML = ''; // Clear container bounds
-		this.treeInstance = new Tree(targetTreeElement, {
+		this.treeInstance = new Tree('#' + this.treeContainerId, {
 			data: window.convertFlatToNested(Object.values(treeData)),
 			autoOpen: false,
 			closeDepth: 2,

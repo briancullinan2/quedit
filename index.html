@@ -1,22 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <title>Quake 3 Editor</title>
-    <link href="/components/theme/boxicons.min.css" rel="stylesheet">
-	<link href="/components/core/base.css" rel="stylesheet" />
-    <link href="/components/bundle/lumino.css" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="/components/engine/quakejs-bnw.png">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
+	<head>
+		<meta charset="UTF-8">
+		<title>Quake 3 Editor</title>
+		<link href="/components/theme/boxicons.min.css" rel="stylesheet">
+		<link href="/components/core/base.css" rel="stylesheet" />
+		<link href="/components/bundle/lumino.css" rel="stylesheet" />
+		<link href="/components/theme/theme.css" rel="stylesheet" />
+		<link rel="icon" type="image/png" href="/components/engine/quakejs-bnw.png">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	</head>
 
-<body>
+	<body class="theme-darkslate">
+		<div class="animated-bg-layer"></div>
+		<!-- App entries are appended via Lumino Widget.attach() -->
+		<script src="dist/babel.min.js" defer></script>
+		<script src="dist/app.bundle.js" defer></script>
 
-    <!-- App entries are appended via Lumino Widget.attach() -->
-    <script src="dist/babel.min.js" defer></script>
-    <script src="dist/app.bundle.js" defer></script>
-
-</body>
+	</body>
 
 </html>

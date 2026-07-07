@@ -4,10 +4,15 @@ import { CommandRegistry } from '@lumino/commands';
 
 import './menu.css';
 import { ScriptToolbar } from './menu-repos';
-import { PluginObj, NodePath, transform, types as tType } from '@babel/standalone';
+import
+{
+	transformFromAstSync, PluginObj, NodePath, transform
+	, types as tType, parseSync, traverse
+} from '@babel/standalone';
 import { DB_STORE_NAME, FS_FILE, putRecord } from './local';
 import { Settings, SettingsManager } from './settings';
 import { getGitShaBrowser } from './github-tools';
+import { path } from './global';
 
 
 export interface TopBarComponents
@@ -44,11 +49,32 @@ const MODULE_REGISTRY: Record<string, ComponentRoute> = {
 	'terminal-container': { label: 'Show Console', url: './components/ConsoleWidget.ts', className: 'ConsoleWidget', iconClass: 'bx bx-terminal' },
 };
 
+export const registry = new Map<string, Promise<void>>(
+	[...document.scripts]
+		.map((s: HTMLScriptElement) => s.getAttribute('src'))
+		.filter((src): src is string => Boolean(src))
+		.concat([...document.styleSheets].map((s: CSSStyleSheet) => s.href).filter((href): href is string => Boolean(href)))
+		.map((url: string): [string, Promise<void>] =>
+		{
+			const absoluteUrl = new URL(url, window.location.origin).pathname;
+			// Pre-seed the Map with an instantly resolved promise for elements already loaded
+			return [absoluteUrl, Promise.resolve()];
+		})
+);
+
+
+
 async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 {
 	if(!route.url || !route.className)
 	{
 		throw new Error(`Route definition "${route.label}" is missing execution target pathways.`);
+	}
+
+	if(route.url.endsWith('.js'))
+	{
+		const module = await import(/* webpackIgnore: true */ route.url + '?t=' + Date.now() + '&local-csp=true');
+		return new module[route.className](route.label);
 	}
 
 	const response = await fetch(route.url + '?t=' + Date.now());
@@ -57,12 +83,58 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 	if(!response.ok) throw new Error('Component not found: ' + route.url);
 	if(!transform) throw new Error("Babel standalone runner not found on the window context.");
 
+	const dependenciesToFetch: string[] = [];
+
+	transform(rawCode, {
+		presets: ['env'],
+		plugins: [
+			['transform-typescript', { isTSX: false }],
+			function dependencyScanner()
+			{
+				return {
+					visitor: {
+						CallExpression(babelPath)
+						{
+							if(
+								babelPath.node.callee.name === 'require' &&
+								babelPath.node.arguments.length === 1 &&
+								babelPath.node.arguments[0].type === 'StringLiteral'
+							)
+							{
+								const moduleName = babelPath.node.arguments[0].value;
+								if(moduleName === './tree.js' && route.url)
+								{
+									dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName) + '?t=' + Date.now());
+								}
+							}
+						}
+					}
+				};
+			}
+		]
+	});
+
+
+
+	if(dependenciesToFetch.length > 0)
+	{
+		await Promise.all(dependenciesToFetch.map(url =>
+		{
+			if(url.includes('.mjs'))
+			{
+				return import(url);
+			} else
+			{
+				return loadScript(url);
+			}
+		}));
+	}
+
+
 	const transpiled = transform(rawCode, {
 		presets: ['env'],
 		plugins: [
 			['transform-typescript', { isTSX: false }],
-
-			// A lightweight, custom plugin to intercept requirements and link them to our window
 			function (babel: { types: typeof tType, template: any; }): PluginObj
 			{
 				const { types: t, template } = babel;
@@ -78,6 +150,8 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 							{
 								const moduleName = path.node.arguments[0].value;
 
+								console.warn('replacing: ' + moduleName);
+
 								// Map the Node modules cleanly to your exposed globals
 								if(moduleName === '@lumino/widgets')
 								{
@@ -85,6 +159,9 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 								} else if(moduleName === '@lumino/messaging')
 								{
 									path.replaceWithSourceString('window.Lumino.messaging');
+								} else if(moduleName === './tree.js')
+								{
+									path.replaceWithSourceString('window.Tree');
 								}
 							}
 						},
@@ -196,6 +273,44 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 	// Import directly from the pipeline URL rather than an ephemeral blob URL
 	const module = await import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
 	return new module[route.className](route.label);
+}
+
+
+// Define the class property registry somewhere above this method in your class:
+// private registry = new Map<string, Promise<any>>();
+
+export async function loadScript(src: string): Promise<any>
+{
+	const absoluteUrl: string = new URL(src, window.location.origin).pathname;
+
+	// ─── THE CONCURRENCY LOCK CHECK ───
+	// If it's already loaded OR currently downloading, return the existing tracking handle
+	const existingPromise = registry.get(absoluteUrl);
+	if(existingPromise)
+	{
+		return existingPromise;
+	}
+
+	// Create the promise and cache it immediately to block secondary asset creation runs
+	const scriptPromise = new Promise<void>((resolve, reject) =>
+	{
+		const script: HTMLScriptElement = document.createElement('script');
+		script.src = src;
+		script.type = 'text/javascript';
+		script.async = false; // Preserves literal script tree order
+
+		script.onload = () => resolve();
+		script.onerror = () =>
+		{
+			registry.delete(absoluteUrl); // Evict on failure so a retry can clear the pipe
+			reject(new Error(`Failed execution pipeline: ${src}`));
+		};
+
+		document.head.appendChild(script);
+	});
+
+	registry.set(absoluteUrl, scriptPromise);
+	return scriptPromise;
 }
 
 export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): Promise<void>
