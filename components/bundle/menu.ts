@@ -1,5 +1,5 @@
 // menu.ts
-import { Menu, MenuBar, DockPanel, Panel, Widget } from '@lumino/widgets';
+import { Menu, MenuBar, DockPanel, Panel, Widget, BoxPanel } from '@lumino/widgets';
 import { CommandRegistry } from '@lumino/commands';
 
 import './menu.css';
@@ -8,12 +8,15 @@ import
 {
 	transformFromAstSync, PluginObj, NodePath, transform
 	, types as tType, parseSync, traverse
+	, packages
 } from '@babel/standalone';
 import { DB_STORE_NAME, FS_FILE, putRecord } from './local';
 import { Settings, SettingsManager } from './settings';
 import { getGitShaBrowser } from './github-tools';
 import { path } from './global';
 
+const parseBabel = packages.parser.parse;
+const traverse = packages.traverse.default;
 
 export interface TopBarComponents
 {
@@ -22,11 +25,20 @@ export interface TopBarComponents
 }
 
 
+declare global
+{
+	interface Window
+	{
+		resizeHandler: () => void;
+	}
+}
+
 
 interface ComponentRoute
 {
 	label: string;
 	url?: string;
+	port?: string;
 	className?: string;
 	iconClass: string; // The specific Boxicons layout string tokens
 }
@@ -39,7 +51,7 @@ const MODULE_REGISTRY: Record<string, ComponentRoute> = {
 	'nunu': { label: 'nunuStudio', url: './components/NunuStudioWidget.ts', className: 'NunuStudioWidget', iconClass: 'bx bx-vector-triangle' },
 	'audio-editor': { label: 'AudioMass', url: './components/AudioEditorWidget.ts', className: 'AudioEditorWidget', iconClass: 'bx bx-sine-wave' },
 	'searchlist': { label: 'Search Files', url: './components/SearchWidget.ts', className: 'SearchWidget', iconClass: 'bx bx-search' },
-	'filelist': { label: 'Engine Files', url: './components/filelist/widget.ts', className: 'FileListWidget', iconClass: 'bx bx-folder-code' },
+	'filelist': { label: 'Engine Files', port: 'sidebarPanel', url: './components/filelist/widget.ts', className: 'FileListWidget', iconClass: 'bx bx-folder-code' },
 	'gamelist': { label: 'Game Files', url: './components/GameListWidget.ts', className: 'GameListWidget', iconClass: 'bx bx-handheld-alt' },
 	'assetlist': { label: 'Assets', url: './components/AssetListWidget.ts', className: 'AssetListWidget', iconClass: 'bx bx-treasure-chest' },
 	'database': { label: 'Local Database', url: './components/DatabaseWidget.ts', className: 'DatabaseWidget', iconClass: 'bx bx-database' },
@@ -84,44 +96,43 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 	if(!transform) throw new Error("Babel standalone runner not found on the window context.");
 
 	const dependenciesToFetch: string[] = [];
-
-	transform(rawCode, {
-		presets: ['env'],
+	const ast = parseBabel(rawCode, {
+		sourceType: 'module',
 		plugins: [
-			['transform-typescript', { isTSX: false }],
-			function dependencyScanner()
-			{
-				return {
-					visitor: {
-						CallExpression(babelPath)
-						{
-							if(
-								babelPath.node.callee.name === 'require' &&
-								babelPath.node.arguments.length === 1 &&
-								babelPath.node.arguments[0].type === 'StringLiteral'
-							)
-							{
-								const moduleName = babelPath.node.arguments[0].value;
-								if(moduleName === './tree.js' && route.url)
-								{
-									dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
-								}
-							}
-						},
-						ImportDeclaration(path: NodePath<tType.ImportDeclaration>)
-						{
-							const moduleName = path.node.source.value;
-							let targetProperty: string | null = null;
-
-							if(moduleName === 'ace-builds')
-							{
-								dependenciesToFetch.push('/ace/ace-noconflict.js');
-							}
-						}
-					}
-				};
-			}
+			'typescript' // Enables parsing of TS syntax like interfaces and type annotations
 		]
+	});
+
+	// 2. Traverse the AST using a custom visitor
+	traverse(ast, {
+
+		ImportDeclaration(babelPath)
+		{
+			const moduleName = babelPath.node.source.value;
+			console.log('Overloading: ' + moduleName);
+			if(moduleName === 'ace-builds')
+			{
+				dependenciesToFetch.push('/ace/ace-noconflict.js');
+			}
+		},
+		CallExpression(babelPath)
+		{
+			if(
+				babelPath.node.callee.name === 'require' &&
+				babelPath.node.arguments.length === 1 &&
+				babelPath.node.arguments[0].type === 'StringLiteral'
+			)
+			{
+				const moduleName = babelPath.node.arguments[0].value;
+				console.log('Overloading: ' + moduleName);
+
+				if(moduleName === './tree.js' && route.url)
+				{
+					dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
+				}
+			}
+		},
+
 	});
 
 
@@ -351,8 +362,16 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 	try
 	{
 		const widgetInstance = await loadAndInstantiate(route);
-		mainDock.addWidget(widgetInstance, { mode: 'tab-after' });
-		mainDock.activateWidget(widgetInstance);
+		if(route.port)
+		{
+			const sidePanel = window[route.port] as BoxPanel;
+			sidePanel.addWidget(widgetInstance);
+		} else
+		{
+			mainDock.addWidget(widgetInstance, { mode: 'tab-after' });
+			mainDock.activateWidget(widgetInstance);
+		}
+		window.resizeHandler();
 	} catch(err)
 	{
 		console.error(`Module initialization fault on pathway [${panelId}]:`, err);

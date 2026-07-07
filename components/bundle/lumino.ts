@@ -23,6 +23,8 @@ declare global
 		statusBar: StatusBarWidget;
 		envStatusNode: HTMLDivElement;
 		mainDock: DockPanel;
+		sidebarPanel: BoxPanel;
+		resizeHandler: () => void;
 	}
 }
 
@@ -57,6 +59,14 @@ function main(): void
 	// Initialize remaining menus safely passing down the clean tracking components
 	initializeMenus(commands, menuBar, mainDock, toolbar.node);
 
+
+	const sidebarPanel = new BoxPanel({ direction: 'top-to-bottom', spacing: 0 });
+	sidebarPanel.id = 'sidebar-panel';
+	sidebarPanel.node.style.width = '250px'; // Give the file list its explicit sidebar width
+	sidebarPanel.node.style.minWidth = '250px';
+	window.sidebarPanel = sidebarPanel;
+
+
 	const statusBar = new StatusBarWidget();
 	window.statusBar = statusBar;
 	const envStatusNode = statusBar.addStatusItem('env-state', 'Initializing Sync...', 'bx bx-sync bx-spin', 'left');
@@ -67,8 +77,10 @@ function main(): void
 	const workspaceBox = new BoxPanel({ direction: 'left-to-right', spacing: 0 });
 	workspaceBox.id = 'workspace-box';
 	BoxPanel.setStretch(toolbar, 0);
+	BoxPanel.setStretch(sidebarPanel, 0);
 	BoxPanel.setStretch(mainDock, 1);
 	workspaceBox.addWidget(toolbar);
+	workspaceBox.addWidget(sidebarPanel);
 	workspaceBox.addWidget(mainDock);
 
 	// Assemble Main Window layout
@@ -86,13 +98,15 @@ function main(): void
 	Widget.attach(windowRoot, document.body);
 	windowRoot.fit();
 
-	handleResponsiveLayout(windowRoot, workspaceBox, toolbar);
+	handleResponsiveLayout(windowRoot, workspaceBox, toolbar, sidebarPanel);
 
-	window.addEventListener('resize', () =>
+	const resizeHandler = () =>
 	{
-		handleResponsiveLayout(windowRoot, workspaceBox, toolbar);
+		handleResponsiveLayout(windowRoot, workspaceBox, toolbar, sidebarPanel);
 		windowRoot.update();
-	});
+	};
+	window.resizeHandler = resizeHandler;
+	window.addEventListener('resize', resizeHandler);
 
 	startServiceWorker();
 }
@@ -136,59 +150,61 @@ function startServiceWorker()
 
 }
 
-
 /**
  * Handles responsive layout adjustments based on current window size.
  */
-function handleResponsiveLayout(windowRoot: BoxPanel, workspaceBox: BoxPanel, toolbar: Widget): void
+function handleResponsiveLayout(
+	windowRoot: BoxPanel,
+	workspaceBox: BoxPanel,
+	toolbar: Widget,
+	sidebarPanel: BoxPanel
+): void
 {
 	const width = window.innerWidth;
+	const isMobile = width < 768;
+	const isWidescreen = width >= 1200;
+	const hasContent = sidebarPanel.widgets.length > 0;
 
-	// Threshold: Mobile / Small Tablet view (e.g., less than 768px wide)
-	if(width < 768)
+	if(isMobile)
 	{
-		// 1. Change workspace layout from horizontal to vertical stack
-		if(workspaceBox.direction !== 'top-to-bottom')
-		{
-			workspaceBox.direction = 'top-to-bottom';
-		}
-
-		// 2. Adjust manual sidebar behavior for small screens (collapse width or hide)
+		workspaceBox.direction = 'top-to-bottom';
+		console.warn('Mobile mode: hiding sidebar');
+		toolbar.node.style.display = 'none';
 		toolbar.node.style.minWidth = '0px';
-		toolbar.node.style.display = 'none'; // Completely hide sidebar on mobile
-
-		// 3. Optional: Hide the inline script selections to save header space
+		sidebarPanel.setHidden(true);           // Preferred over manual styles
+		sidebarPanel.node.style.minWidth = '0px';
 		const inlineToolbar = document.getElementById('script-inline-toolbar');
 		if(inlineToolbar)
 		{
 			inlineToolbar.style.display = 'none';
 		}
-	}
-	// Desktop View Restoration
-	else
+	} else
 	{
-		// 1. Restore standard side-by-side IDE layout
-		if(workspaceBox.direction !== 'left-to-right')
-		{
-			workspaceBox.direction = 'left-to-right';
-		}
+		workspaceBox.direction = 'left-to-right';
 
-		// 2. Bring back the sidebar
-		toolbar.node.style.minWidth = '50px';
 		toolbar.node.style.display = 'flex';
+		toolbar.node.style.minWidth = '50px';
 
-		// 3. Restore inline toolbar items
-		const inlineToolbar = document.getElementById('script-inline-toolbar');
-		if(inlineToolbar)
+		if(/*isWidescreen &&*/ hasContent)
 		{
-			inlineToolbar.style.display = 'flex';
+			sidebarPanel.setHidden(false);
+			console.warn('Normal mode: showing sidebar ' + sidebarPanel.widgets.length);
+			BoxPanel.setStretch(sidebarPanel, 0);
+			sidebarPanel.node.style.width = '250px';
+			sidebarPanel.node.style.minWidth = '250px';
+		} else
+		{
+			sidebarPanel.setHidden(true);
+			console.warn('Normal mode: hiding sidebar ' + sidebarPanel.widgets.length);
+			sidebarPanel.node.style.minWidth = '0px';
 		}
 	}
 
-	// CRITICAL STEP: Tell Lumino to force-recalculate all absolute child positions immediately
+	// Force Lumino refresh — order matters
+	sidebarPanel.fit();
+	workspaceBox.fit();
 	windowRoot.update();
 }
-
 
 
 const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {

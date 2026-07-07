@@ -242,10 +242,10 @@ function bindBlockTrackerToSession(session: Ace.EditSession)
 	if(!session || !session.selection) return;
 
 	// Remove any pre-existing tracker handle on this session to prevent duplicate fire leaks
-	session.selection.off("changeCursor", onBlockTrackerCursorChange);
+	//session.selection.off("changeCursor", onBlockTrackerCursorChange);
 
 	// Bind the execution frame cleanly
-	session.selection.on("changeCursor", onBlockTrackerCursorChange);
+	//session.selection.on("changeCursor", onBlockTrackerCursorChange);
 }
 
 
@@ -302,7 +302,7 @@ class AceEditorPool
 			container.style.width = '100%';
 			container.style.height = '100%';
 
-			const editor: Ace.Editor = ace.edit("editor");
+			const editor: Ace.Editor = ace.edit(container);
 			if((window as any).savedTheme)
 			{
 				editor.setTheme((window as any).savedTheme);
@@ -374,6 +374,7 @@ export class AceEditorWidget extends Widget
 	private _fileId: string;
 	private _initialContent: string;
 	private _editor: any | null = null;
+	private _defaultContent: string = '#include <stdio.h>\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\n");    return 0;\n}\n';
 
 	constructor(fileId?: string, initialContent?: string)
 	{
@@ -381,12 +382,15 @@ export class AceEditorWidget extends Widget
 		this.addClass('lm-AceEditorWidget');
 
 		this._fileId = fileId || AceEditorPool.getNextTempName();
-		this._initialContent = initialContent || '';
+		this._initialContent = initialContent || this._defaultContent;
 
 		// Ensure Lumino layout updates do not break text selection systems
 		this.node.style.overflow = 'hidden';
 		this.node.style.display = 'flex';
 		this.node.style.flexDirection = 'column';
+
+		this.title.label = this._fileId;
+		this.title.closable = true;
 	}
 
 	public get fileId(): string
@@ -469,15 +473,16 @@ export class AceEditorWidget extends Widget
 
 		// 2. Create the new custom Ace Lumino widget instance
 		const newTab = new AceEditorWidget(fileId, fileContent);
+		newTab._fileId = fileId;
+		newTab._initialContent = fileContent;
+
 		newTab.title.label = fileName;
 		newTab.title.closable = true;
 
 		// 3. Drop it directly into the active Dock tab layout stack
 		window.mainDock.addWidget(newTab);
 		window.mainDock.activateWidget(newTab);
+		window.mainDock.fit();
 	}
 }
 
-
-AceEditorWidget.openFileInNewTab('temp_starter.c', 'temp_starter.c',
-	'#include <stdio.h>\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\n");    return 0;\n}');
