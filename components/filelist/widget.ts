@@ -77,7 +77,7 @@ export class FileListWidget extends Widget
         <div class="search-box" style="padding: 6px 8px; background: #2d2d2d;">
           <input type="text" id="search" name="search" placeholder="Search many..." style="width: 100%; background: #1e1e1e; color: #fff; border: 1px solid #555; padding: 4px;" />
         </div>
-        <div id="${this.treeContainerId}" class="treejs-render-target" style="flex-grow: 1; overflow-y: auto; padding: 8px; background: #1e1e1e;"></div>
+        <div id="${this.treeContainerId}" class="treejs-render-target" style="flex-grow: 1; overflow: auto; padding: 8px; background: #1e1e1e;"></div>
       </div>
     `;
 	}

@@ -165,3 +165,32 @@ html {
 	min-width: 250px !important;
 	width: 250px !important;
 }
+
+.treejs .treejs-nodes {
+	overflow: visible;
+}
+
+.treejs>.treejs-nodes {
+	margin: 0;
+	padding: 0;
+}
+
+.treejs .treejs-node {
+	white-space: nowrap;
+}
+
+.treejs .treejs-node__open,
+.treejs .treejs-node__open>.treejs-nodes,
+.treejs .treejs-node__open>.treejs-nodes>.treejs-node {
+	overflow: visible;
+	max-width: none;
+}
+
+.treejs .treejs-node__open>.treejs-nodes>.treejs-node__close>.treejs-nodes {
+	overflow: hidden;
+}
+
+.treejs .treejs-switcher:hover:before,
+.treejs .treejs-switcher:before {
+	border-top-color: var(--ace-foreground);
+}
