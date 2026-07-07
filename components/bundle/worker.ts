@@ -5,11 +5,11 @@ import { getGitShaBrowser, getDefaultBranch, getBranchVersion } from "./github";
 import { IMPORT_SETTINGS } from "./github-settings";
 import { FS } from "./global";
 import
-	{
-		DB_SCHEME, DB_STORE_NAME, deleteOldDatabase
-		, FileRecord, FS_FILE, getDatabaseMetadata, needsInstall
-		, putRecord, setupDatabase
-	} from "./local";
+{
+	DB_SCHEME, DB_STORE_NAME, deleteOldDatabase
+	, FileRecord, FS_FILE, getDatabaseMetadata, needsInstall
+	, putRecord, setupDatabase
+} from "./local";
 import { SettingsManager } from "./settings";
 
 export class ServiceWorkerManager
@@ -35,9 +35,13 @@ export class ServiceWorkerManager
 			await this.verifyAndReconcileVersion(registration, serverVersion);
 		}
 
-		if(serverVersion && (!registration || !registration.active))
+		if(!registration || !registration.active)
 		{
 			await this.registerNewWorker();
+		}
+		else
+		{
+			console.warn('Skipping Service-Worker because: ' + serverVersion + ' reg: ' + registration + ' active: ' + registration?.active);
 		}
 	}
 
@@ -164,7 +168,7 @@ export class ServiceWorkerManager
 				}
 			};
 
-			worker.postMessage({ type: msgType }, [messageChannel.port2]);
+			worker.postMessage({ type: msgType, shutup: true }, [messageChannel.port2]);
 
 			const startTime = Date.now();
 			const pollInterval = setInterval(() =>

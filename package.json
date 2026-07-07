@@ -14,7 +14,6 @@
 		"set-google": "gcloud storage buckets update gs://quake.games --cors-file=cors-json-file.json"
 	},
 	"dependencies": {
-		"@babel/standalone": "^8.0.3",
 		"@lumino/commands": "^2.3.4",
 		"@lumino/messaging": "^2.0.5",
 		"@lumino/widgets": "^2.9.0",
@@ -23,7 +22,7 @@
 		"live-server": "^1.2.2"
 	},
 	"devDependencies": {
-		"@types/babel__standalone": "^7.1.9",
+		"@babel/standalone": "^8.0.3",
 		"@types/node": "^26.1.0",
 		"copy-webpack-plugin": "^14.0.0",
 		"css-loader": "^7.1.4",

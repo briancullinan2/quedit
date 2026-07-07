@@ -14,6 +14,14 @@ declare const api: any;
 declare const JSZip: any;
 declare const Tree: any;
 
+declare global
+{
+	interface Window
+	{
+		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
+	}
+}
+
 export async function getGitShaBrowser(content: string | Uint8Array | ArrayBuffer): Promise<string>
 {
 	const encoder = new TextEncoder();
@@ -305,6 +313,8 @@ export function convertFlatToNested(data: FlatFileNode[]): NestedTreeNode[]
 		return sortNodes(acc);
 	}, []);
 };
+
+window.convertFlatToNested = convertFlatToNested;
 
 export function sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[]
 {

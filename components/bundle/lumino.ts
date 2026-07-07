@@ -197,7 +197,12 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 			key: 'workspace_default',
 			default: 'editor',
 			description: 'Specifies the default active panel or system layout view presented to users upon launching the application interface.'
-		}
+		},
+		environmentVersion: {
+			key: 'environment_version',
+			default: new Date(0),
+			description: 'The last commit date for the environment repository set automatically.',
+		},
 	}
 };
 

@@ -4,7 +4,10 @@ import { CommandRegistry } from '@lumino/commands';
 
 import './menu.css';
 import { ScriptToolbar } from './menu-repos';
-import * as Babel from '@babel/standalone';
+import { PluginObj, NodePath, transform, types as tType } from '@babel/standalone';
+import { DB_STORE_NAME, FS_FILE, putRecord } from './local';
+import { Settings, SettingsManager } from './settings';
+import { getGitShaBrowser } from './github-tools';
 
 
 export interface TopBarComponents
@@ -48,20 +51,21 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 		throw new Error(`Route definition "${route.label}" is missing execution target pathways.`);
 	}
 
-	const response = await fetch(route.url);
+	const response = await fetch(route.url + '?t=' + Date.now());
 	const rawCode = await response.text();
 
-	if(!Babel) throw new Error("Babel standalone runner not found on the window context.");
+	if(!response.ok) throw new Error('Component not found: ' + route.url);
+	if(!transform) throw new Error("Babel standalone runner not found on the window context.");
 
-	const transpiled = Babel.transform(rawCode, {
+	const transpiled = transform(rawCode, {
 		presets: ['env'],
 		plugins: [
 			['transform-typescript', { isTSX: false }],
-			['transform-modules-commonjs', { loose: true }],
 
 			// A lightweight, custom plugin to intercept requirements and link them to our window
-			function ()
+			function (babel: { types: typeof tType, template: any; }): PluginObj
 			{
+				const { types: t, template } = babel;
 				return {
 					visitor: {
 						CallExpression(path)
@@ -83,6 +87,87 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 									path.replaceWithSourceString('window.Lumino.messaging');
 								}
 							}
+						},
+						ImportDeclaration(path: NodePath<tType.ImportDeclaration>)
+						{
+							const moduleName = path.node.source.value;
+							let targetProperty: string | null = null;
+
+							if(moduleName === '@lumino/widgets')
+							{
+								targetProperty = 'widgets';
+							} else if(moduleName === '@lumino/messaging')
+							{
+								targetProperty = 'messaging';
+							}
+
+							if(targetProperty)
+							{
+								const declarations: tType.VariableDeclaration[] = [];
+
+								// Manually construct window.Lumino.[targetProperty] AST node securely
+								const globalExpression = t.memberExpression(
+									t.memberExpression(t.identifier('window'), t.identifier('Lumino')),
+									t.identifier(targetProperty)
+								);
+
+								// Handle named imports: import { Widget, Panel } from '...'
+								const specifiers = path.node.specifiers.filter(
+									(spec): spec is tType.ImportSpecifier => t.isImportSpecifier(spec)
+								);
+
+								if(specifiers.length > 0)
+								{
+									const properties = specifiers.map(spec =>
+									{
+										const importedName = t.isIdentifier(spec.imported)
+											? spec.imported.name
+											: spec.imported.value;
+
+										return t.objectProperty(
+											t.identifier(importedName),
+											t.identifier(spec.local.name),
+											false,
+											importedName === spec.local.name
+										);
+									});
+
+									declarations.push(
+										t.variableDeclaration('const', [
+											t.variableDeclarator(
+												t.objectPattern(properties),
+												globalExpression
+											)
+										])
+									);
+								}
+
+								// Handle namespace/default imports: import * as widgets from '...'
+								const namespaceSpecifier = path.node.specifiers.find(
+									spec => t.isImportNamespaceSpecifier(spec) || t.isImportDefaultSpecifier(spec)
+								);
+
+								if(namespaceSpecifier)
+								{
+									declarations.push(
+										t.variableDeclaration('const', [
+											t.variableDeclarator(
+												t.identifier(namespaceSpecifier.local.name),
+												globalExpression
+											)
+										])
+									);
+								}
+
+								// Replace the native import declaration with our window-backed variable assignments
+								if(declarations.length > 0)
+								{
+									path.replaceWithMultiple(declarations);
+								} else
+								{
+									path.remove();
+								}
+							}
 						}
 					}
 				};
@@ -91,17 +176,26 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 		filename: route.url
 	});
 
-	const blob = new Blob([transpiled.code ?? ''], { type: 'application/javascript' });
-	const blobURL = URL.createObjectURL(blob);
+	const encoder = new TextEncoder();
+	const arrayBuffer = encoder.encode(transpiled.code ?? '').buffer;
 
-	try
-	{
-		const module = await import(/* webpackIgnore: true */ blobURL);
-		return new module[route.className](route.label);
-	} finally
-	{
-		URL.revokeObjectURL(blobURL);
-	}
+	// Direct the target URL from .ts to .js for the Service Worker's consumption
+	const targetUrl = route.url.replace(/\.ts$/, '.js').replace(/^\.\//, '/base/');
+	const editorDatabase = SettingsManager.get('github', 'environmentRepository');
+
+	// Commit the compiled asset to your service worker pipeline
+	await putRecord(DB_STORE_NAME, {
+		timestamp: new Date(),
+		mode: FS_FILE,
+		contents: arrayBuffer,
+		path: targetUrl,
+		parent: targetUrl.substring(0, targetUrl.lastIndexOf('/')),
+		sha: await getGitShaBrowser(arrayBuffer)
+	}, editorDatabase);
+
+	// Import directly from the pipeline URL rather than an ephemeral blob URL
+	const module = await import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
+	return new module[route.className](route.label);
 }
 
 export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): Promise<void>

@@ -17,6 +17,15 @@ declare const api: any;
 declare const JSZip: any;
 declare const Tree: any;
 
+declare global
+{
+	interface Window
+	{
+		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
+	}
+}
+
+
 // --- Overloaded Function Signatures for Request Layer ---
 export async function githubRequest(ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: false): Promise<any>;
 export async function githubRequest(ownerName: string, repoName: string, url: string, authorize: boolean, buffer?: true): Promise<ArrayBuffer>;
@@ -76,6 +85,9 @@ export async function githubRequest(ownerName: string, repoName: string, url: st
 		throw up;
 	}
 }
+
+
+window.githubRequest = githubRequest;
 
 export async function getDefaultBranch(ownerName: string, repo: string): Promise<string>
 {

@@ -26,7 +26,7 @@ export interface FileRecord
 	mode: any;
 	contents: Uint8Array | ArrayBuffer | any;
 	path: string;
-	sha: string;
+	sha?: string;
 	parent: string | null;
 }
 
