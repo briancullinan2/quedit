@@ -1,8 +1,6 @@
 // menu.ts
 import { Menu, MenuBar, DockPanel, Panel, Widget, BoxPanel } from '@lumino/widgets';
 import { CommandRegistry } from '@lumino/commands';
-
-import './menu.css';
 import { ScriptToolbar } from './menu-repos';
 import
 {

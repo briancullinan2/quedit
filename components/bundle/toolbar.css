@@ -1,0 +1,86 @@
+.toolbar .bx {
+	color: var(--ace-comment);
+	text-decoration: none;
+}
+
+
+.toolbar .bx:hover {
+	color: var(--ace-foreground);
+	text-decoration: none;
+}
+
+
+ul.toolbar {
+	display: inline-flex;
+	flex-direction: row;
+	max-width: 100%;
+	flex-wrap: wrap;
+	justify-content: flex-start;
+	align-items: center;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	white-space: nowrap;
+	user-select: none;
+	opacity: 1;
+	transition: display 0.3s allow-discrete, opacity 0.3s ease-in-out;
+	transition-delay: 0.3s;
+	flex-shrink: 0;
+}
+
+ul.toolbar>li {
+	flex-shrink: 1;
+	min-width: 0;
+	flex-basis: min-content;
+	flex-grow: 1;
+	width: 100%;
+	white-space: nowrap;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	white-space: nowrap;
+	user-select: none;
+}
+
+/* Left Sidebar Toolbar (VSCode Style) */
+#left-toolbar {
+	background: var(--ace-gutter-bg);
+	border-right: 1px solid var(--ace-bg);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding-top: 8px;
+	box-sizing: border-box;
+	z-index: 5;
+}
+
+#left-toolbar ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+}
+
+#left-toolbar li {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+}
+
+#left-toolbar a {
+	color: var(--ace-comment);
+	font-size: 24px;
+	padding: 10px;
+	display: block;
+	text-decoration: none;
+	transition: color 0.15s ease;
+}
+
+#left-toolbar a:hover,
+#left-toolbar a.active {
+	color: var(--ace-foreground);
+}

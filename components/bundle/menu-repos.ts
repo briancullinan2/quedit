@@ -43,8 +43,8 @@ export class ScriptToolbar extends Widget
 	private _buildInterface(): void
 	{
 		this.node.innerHTML = `
-            <button id="top-bar-btn-play" title="Play Script"><i class="bx bx-play"></i></button>
-            <button id="top-bar-btn-stop" title="Stop Script"><i class="bx bx-stop"></i></button>
+            <button id="top-bar-btn-play" title="Play Script" class="bx bx-play"></button>
+            <button id="top-bar-btn-stop" title="Stop Script" class="bx bx-stop"></button>
             <div class="top-bar-divider"></div>
             <label for="top-bar-sel-owner">Owner:</label>
             <select id="top-bar-sel-owner">

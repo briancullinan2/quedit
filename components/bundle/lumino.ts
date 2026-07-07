@@ -153,9 +153,18 @@ function startServiceWorker()
 
 }
 
-/**
- * Handles responsive layout adjustments based on current window size.
- */
+
+let prevWidgetCount = 0;
+
+interface LuminoLayoutNode
+{
+	type: 'tab-area' | 'split-area';
+	orientation?: 'horizontal' | 'vertical';
+	children?: LuminoLayoutNode[];
+	widgets?: any[];
+	sizes?: number[];
+}
+
 function handleResponsiveLayout(
 	windowRoot: BoxPanel,
 	workspaceBox: BoxPanel,
@@ -166,7 +175,9 @@ function handleResponsiveLayout(
 	const width = window.innerWidth;
 	const isMobile = width < 768;
 	const isWidescreen = width >= 1200;
-	const hasContent = mainDock.widgets.length > 0;
+	const currentWidgets = Array.from(mainDock.widgets());
+	const hasContent = currentWidgets.length > 0;
+	const inlineToolbar = document.getElementById('script-inline-toolbar');
 
 	if(isMobile)
 	{
@@ -174,7 +185,6 @@ function handleResponsiveLayout(
 		console.warn('Mobile mode: hiding sidebar');
 		toolbar.node.style.display = 'none';
 		toolbar.node.style.minWidth = '0px';
-		const inlineToolbar = document.getElementById('script-inline-toolbar');
 		if(inlineToolbar)
 		{
 			inlineToolbar.style.display = 'none';
@@ -185,15 +195,126 @@ function handleResponsiveLayout(
 
 		toolbar.node.style.display = 'flex';
 		toolbar.node.style.minWidth = '50px';
-
+		if(inlineToolbar)
+		{
+			inlineToolbar.style.display = 'flex';
+		}
 		if(/*isWidescreen &&*/ hasContent)
 		{
-			console.warn('Normal mode: showing sidebar ' + mainDock.widgets.length);
+			console.warn('Normal mode: showing sidebar ' + currentWidgets.length);
 		} else
 		{
-			console.warn('Normal mode: hiding sidebar ' + mainDock.widgets.length);
+			console.warn('Normal mode: hiding sidebar ' + currentWidgets.length);
 		}
 	}
+
+	// Process constraints if widget count increased
+	if(currentWidgets.length > prevWidgetCount)
+	{
+		const layout = mainDock.saveLayout() as unknown as { main: LuminoLayoutNode | null; };
+
+		if(layout && layout.main)
+		{
+			// Find target FileListWidgets IDs
+			const targetIds = new Set<string>();
+			currentWidgets.forEach(widget =>
+			{
+				if(widget.constructor.name === 'FileListWidget')
+				{
+					targetIds.add(widget.id);
+				}
+			});
+
+			if(targetIds.size > 0)
+			{
+				// Get the base bounding limits of the dock layout area
+				const totalWidth = mainDock.node.clientWidth || 800;
+				const totalHeight = mainDock.node.clientHeight || 600;
+
+				// Recursive checker for leaves
+				const containsTargetWidget = (node: LuminoLayoutNode, ids: Set<string>): boolean =>
+				{
+					if(node.type === 'tab-area' && node.widgets)
+					{
+						return node.widgets.some(wRef =>
+						{
+							const id = typeof wRef === 'string' ? wRef : wRef.id;
+							return ids.has(id);
+						});
+					}
+					if(node.children)
+					{
+						return node.children.some(child => containsTargetWidget(child, ids));
+					}
+					return false;
+				};
+
+				// Recursive function to adjust fractional sizes mapping to pixel requirements
+				const adjustLayoutSizes = (node: LuminoLayoutNode, availablePixelSpace: number): void =>
+				{
+					if(node.type === 'split-area' && node.children && node.sizes)
+					{
+						const orientation = node.orientation || 'horizontal';
+						let targetIndex = -1;
+
+						// Identify which child slot holds the targeted widget view
+						node.children.forEach((child, index) =>
+						{
+							if(containsTargetWidget(child, targetIds))
+							{
+								targetIndex = index;
+							}
+						});
+
+						if(targetIndex !== -1 && node.sizes.length > 0)
+						{
+							// Calculate fractional ratio equivalent to exactly 200px
+							const targetRatio = Math.min(200 / availablePixelSpace, 0.8);
+							const currentTargetRatio = node.sizes[targetIndex];
+							const remainingRatioBefore = 1 - currentTargetRatio;
+							const remainingRatioAfter = 1 - targetRatio;
+
+							// Scale the other siblings down/up proportionally to balance the 1.0 total
+							node.sizes = node.sizes.map((size, index) =>
+							{
+								if(index === targetIndex)
+								{
+									return targetRatio;
+								}
+								if(remainingRatioBefore > 0)
+								{
+									return (size / remainingRatioBefore) * remainingRatioAfter;
+								}
+								return remainingRatioAfter / (node.sizes!.length - 1);
+							});
+						}
+
+						// Bubble down allocations to sub-splits if they exist
+						node.children.forEach((child, index) =>
+						{
+							const childRatio = node.sizes ? node.sizes[index] : (1 / node.children!.length);
+							const childPixels = availablePixelSpace * childRatio;
+							adjustLayoutSizes(child, childPixels);
+						});
+					} else if(node.children)
+					{
+						node.children.forEach(child => adjustLayoutSizes(child, availablePixelSpace));
+					}
+				};
+
+				// Initialize pass starting with total available dock boundaries
+				const rootOrientation = layout.main.orientation || 'horizontal';
+				const initialSpace = rootOrientation === 'horizontal' ? totalWidth : totalHeight;
+
+				adjustLayoutSizes(layout.main, initialSpace);
+
+				// Reapply the updated layout scheme to force layout system mutation
+				mainDock.restoreLayout(layout as any);
+			}
+		}
+	}
+
+	prevWidgetCount = currentWidgets.length;
 
 	// Force Lumino refresh — order matters
 	workspaceBox.fit();

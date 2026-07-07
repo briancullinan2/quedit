@@ -1,6 +1,5 @@
 // src/StatusBarWidget.ts
 import { Widget, PanelLayout } from '@lumino/widgets';
-import './status.css';
 
 export class StatusBarWidget extends Widget
 {

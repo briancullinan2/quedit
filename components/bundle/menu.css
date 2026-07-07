@@ -2,7 +2,6 @@
 #top-menubar {
 	background: var(--ace-bg);
 	color: var(--ace-foreground);
-	font-size: 13px;
 	border-bottom: 1px solid var(--ace-gutter-bg);
 	z-index: 10;
 }
@@ -27,7 +26,9 @@
 
 .lm-Menu-item {
 	padding: 4px;
-	display: block !important;
+	display: flex !important;
+	white-space: nowrap;
+	align-items: center;
 }
 
 
@@ -68,16 +69,8 @@
 	gap: 8px;
 	padding-left: 12px;
 	color: var(--ace-foreground);
-	font-size: 12px;
 }
 
-#script-inline-toolbar button {
-	background: transparent;
-	border: none;
-	cursor: pointer;
-	font-size: 16px;
-	padding: 2px 4px;
-}
 
 #top-bar-btn-play {
 	color: var(--ace-green);
@@ -92,107 +85,3 @@
 	height: 16px;
 	margin: 0 4px;
 }
-
-#script-inline-toolbar select {
-	background: var(--ace-gutter-bg);
-	color: var(--ace-foreground);
-	border: 1px solid var(--ace-selection-bg);
-	padding: 2px 4px;
-	border-radius: 2px;
-}
-
-.toolbar .bx {
-	color: var(--ace-comment);
-	text-decoration: none;
-}
-
-
-.toolbar .bx:hover {
-	color: var(--ace-foreground);
-	text-decoration: none;
-}
-
-
-ul.toolbar input,
-ul.toolbar select,
-ul.toolbar select option,
-ul.toolbar button {
-	padding: 3px 5px;
-	margin: 0;
-	width: stretch;
-	line-height: var(--global-height);
-	box-sizing: border-box;
-	height: 30px;
-	font-size: 14px;
-	/* Prevents select from using system fonts */
-	vertical-align: middle;
-	background: var(--ace-gutter-bg);
-	border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
-	color: var(--ace-foreground);
-	font-family: inherit;
-	line-height: var(--global-height);
-}
-
-ul.toolbar input:hover,
-ul.toolbar select:hover,
-ul.toolbar select option:hover,
-ul.toolbar button:hover {
-	background: rgb(from var(--ace-selection-bg) r g b / 50%);
-	border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
-	cursor: pointer;
-}
-
-ul.toolbar {
-	display: inline-flex;
-	flex-direction: row;
-	max-width: 100%;
-	flex-wrap: wrap;
-	justify-content: flex-start;
-	align-items: center;
-	list-style: none;
-	margin: 0;
-	padding: 0;
-	white-space: nowrap;
-	user-select: none;
-	opacity: 1;
-	transition: display 0.3s allow-discrete, opacity 0.3s ease-in-out;
-	transition-delay: 0.3s;
-	min-width: 200px;
-	flex-shrink: 0;
-}
-
-ul.toolbar>li {
-	flex-shrink: 1;
-	min-width: 0;
-	flex-basis: min-content;
-	flex-grow: 1;
-	width: 100%;
-	white-space: nowrap;
-	list-style: none;
-	margin: 0;
-	padding: 0;
-	white-space: nowrap;
-	user-select: none;
-}
-
-.filelist-wrapper {
-	display: flex;
-	flex-direction: column;
-	flex-basis: 200px;
-	transition: max-width ease-in-out 0.5s, min-width ease-in-out 0.5s;
-	height: 100%;
-	width: 100%;
-}
-
-.filelist-wrapper>* {
-	flex-grow: 0;
-	flex-basis: min-content;
-}
-
-.treejs-render-target {
-	max-height: 100%;
-	max-width: 100%;
-	overflow: auto;
-	flex-grow: 1;
-}
-

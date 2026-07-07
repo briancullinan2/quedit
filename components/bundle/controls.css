@@ -1,0 +1,57 @@
+#script-inline-toolbar button,
+#script-inline-toolbar select,
+#script-inline-toolbar select option,
+ul.toolbar input,
+ul.toolbar select,
+ul.toolbar select option,
+ul.toolbar button,
+.search-box input {
+	margin: 0;
+	width: stretch;
+	box-sizing: border-box;
+	height: 30px;
+	font-size: 14px;
+	/* Prevents select from using system fonts */
+	vertical-align: middle;
+	background: var(--ace-gutter-bg);
+	border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+	color: var(--ace-foreground);
+	font-family: inherit;
+	cursor: pointer;
+}
+
+#script-inline-toolbar button:hover,
+#script-inline-toolbar select:hover,
+#script-inline-toolbar select option:hover,
+ul.toolbar input:hover,
+ul.toolbar select:hover,
+ul.toolbar select option:hover,
+ul.toolbar button:hover,
+.search-box input:hover {
+	background: rgb(from var(--ace-selection-bg) r g b / 50%);
+	border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+	cursor: pointer;
+}
+
+
+
+#script-inline-toolbar a.bx,
+#script-inline-toolbar button {
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	font-size: 16px;
+	text-decoration: none;
+	font-size: 24px;
+	color: var(--ace-foreground);
+	border: 2px solid transparent;
+	padding: 0px;
+	height: 30px;
+	width: 30px;
+}
+
+#script-inline-toolbar button:hover,
+#script-inline-toolbar a:hover {
+	background: rgb(from var(--ace-selection-bg) r g b / 50%);
+	border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
+}
