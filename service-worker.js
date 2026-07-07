@@ -434,7 +434,7 @@ let needsRefresh = false;
 let swInitializationPromise = null;
 
 async function checkStatus() {
-    // 1. Core Lifecycle Lock: Ensure the asynchronous database lookup passes 
+    // 1. Core Lifecycle Lock: Ensure the asynchronous database lookup passes
     // COMPLETELY exactly once before any downstream logic or fetch queries execute
     if (!swInitializationPromise) {
         swInitializationPromise = (async () => {
@@ -661,7 +661,7 @@ const uniqueAssets = [
     '/components/theme/boxicons.woff',
     '/components/theme/boxicons.woff2',
     '/components/map-editor/tern/browser.json',
-    '/components/map-editor/tern/emcascript.json',
+    '/components/map-editor/tern/ecmascript.json',
     '/components/map-editor/tern/threejs.json',
 
     ...new Set([

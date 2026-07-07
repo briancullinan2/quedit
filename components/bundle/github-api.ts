@@ -95,8 +95,18 @@ export async function getBranchVersion(ownerName: string, repo: string, branch?:
 	return new Date(dateString);
 }
 
-export async function getBranches(repoOwner: string, repoName: string): Promise<GitHubBranch[]>
+export async function getBranches(repoOwner: string | undefined, repoName: string | undefined): Promise<GitHubBranch[]>
 {
+	if(repoOwner === undefined)
+	{
+		return [];
+	}
+	if(repoName === undefined)
+	{
+		return [];
+	}
+
+
 	try
 	{
 		const branches = await githubRequest(repoOwner, repoName, 'branches');
@@ -183,7 +193,7 @@ export async function loadGitHubTree(repoOwner: string, repoName: string, branch
 export async function loadGitHubTreeNew(repoOwner: string, repoName: string, branch?: string, initialPath = ''): Promise<any>
 {
 	const database = `${repoOwner}/${repoName}`;
-	const branchName = branch || 'main';
+	const branchName = branch ?? 'main';
 
 	const treeQuery = `
 	query GetFolderEntries($owner: String!, $name: String!, $expression: String!) {
@@ -242,7 +252,7 @@ export async function loadGitHubTreeNew(repoOwner: string, repoName: string, bra
 					sha: entry.oid,
 					type: isFile ? 'file' : 'dir',
 					mode: isFile ? FS_FILE : FS_DIR,
-					size: entry.object?.byteSize || 0,
+					size: entry.object?.byteSize ?? 0,
 					timestamp: null,
 					parent: entry.path.includes('/') ? entry.path.substring(0, entry.path.lastIndexOf('/')) : ''
 				};
@@ -404,7 +414,7 @@ export async function searchGitHubCode(query: string, activeRepositories: string
 		if(!response.ok) return [];
 		const data = await response.json();
 
-		return (data.items || []).map((item: any) => ({
+		return (data.items ?? []).map((item: any) => ({
 			path: item.path,
 			sha: item.sha,
 			repoSource: primaryRepo,

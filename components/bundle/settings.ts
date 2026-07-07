@@ -1,4 +1,4 @@
-import { getGitShaBrowser } from "../filelist/github";
+import { getGitShaBrowser } from "./github";
 
 export interface SettingConfig
 {
@@ -22,6 +22,7 @@ declare global
 	interface Window
 	{
 		SettingsManager?: Settings;
+		engineRepository: string | null;
 	}
 }
 
@@ -260,7 +261,7 @@ export class Settings
 		//const database = `${owner.value}/${repository.value}`;
 		const filePath = `settings${++this.tempCount}.json`;
 
-		if((window as any).engineRepo?.startsWith('Quake3e'))
+		if(window.engineRepository?.startsWith('Quake3e'))
 		{
 			console.error('Assertion owner set to Quake3e instead of briancullinan');
 			debugger;

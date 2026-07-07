@@ -1,9 +1,8 @@
 import { getBranches } from "./github-api";
+import { ScriptToolbar } from "./menu-repos";
 import { SettingConfig } from "./settings";
 
 // --- Environmental Declarations ---
-declare const owner: HTMLSelectElement;
-declare const repository: HTMLSelectElement;
 declare const api: any;
 
 export function addRepoIfNotExists(newRepo: string): void
@@ -22,8 +21,8 @@ export function addRepoIfNotExists(newRepo: string): void
 		option.value = newRepo;
 		option.textContent = newRepo;
 
-		repository.appendChild(option);
-		localStorage.setItem('repositories', Array.from(repository.children).map(c => (c as HTMLOptionElement).value).join(';'));
+		ScriptToolbar.repository?.appendChild(option);
+		localStorage.setItem('repositories', Array.from(ScriptToolbar.repository?.children ?? []).map(c => (c as HTMLOptionElement).value).join(';'));
 	}
 }
 
@@ -44,8 +43,8 @@ export function addOwnerIfNotExists(newOwner: string): void
 		option.textContent = newOwner;
 		option.selected = true;
 
-		owner.appendChild(option);
-		localStorage.setItem('owners', Array.from(owner.children).map(c => (c as HTMLOptionElement).value).join(';'));
+		ScriptToolbar.owner?.appendChild(option);
+		localStorage.setItem('owners', Array.from(ScriptToolbar.owner?.children ?? []).map(c => (c as HTMLOptionElement).value).join(';'));
 	}
 }
 
@@ -56,8 +55,8 @@ export function parseRepository(newRepo: string): [string | undefined, string | 
 		return [undefined, undefined];
 	}
 	const parts = newRepo.split('/');
-	const ownerName = parts.length === 2 ? parts[0] : owner.value;
-	const repoName = parts.length === 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length === 2 ? parts[0] : ScriptToolbar.owner?.value;
+	const repoName = parts.length === 2 ? parts[1] : parts[0] || ScriptToolbar.repository?.value;
 
 	return [ownerName, repoName];
 }
@@ -91,10 +90,16 @@ export async function setRepository(newRepo: string): Promise<void>
 
 	if(!ownerName || ownerName.trim() === '' || !repoName || repoName.trim() === '') return;
 
-	owner.value = ownerName;
-	repository.value = repoName;
+	if(ScriptToolbar.owner)
+	{
+		ScriptToolbar.owner.value = ownerName;
+	}
+	if(ScriptToolbar.repository)
+	{
+		ScriptToolbar.repository.value = repoName;
+	}
 
-	const branches = await getBranches(owner.value, repository.value);
+	const branches = await getBranches(ScriptToolbar.owner?.value, ScriptToolbar.repository?.value);
 	updateSelectOptions('branch', branches);
 }
 
@@ -224,8 +229,8 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 			description: 'The fallback or preferred primary repository string formatted as "owner/repo" used when loading the workspace workspace initial state.',
 			get: (storage: string | null, defaultRepo: string): string =>
 			{
-				return owner.value && repository.value
-					? `${owner.value}/${repository.value}`
+				return ScriptToolbar.owner?.value && ScriptToolbar.repository?.value
+					? `${ScriptToolbar.owner.value}/${ScriptToolbar.repository.value}`
 					: (storage || defaultRepo);
 			},
 			set: setRepository

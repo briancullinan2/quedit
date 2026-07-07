@@ -9,11 +9,29 @@ import { SettingConfig } from './settings';
 
 import '@lumino/widgets/style/index.css';
 
-// 1. Expose Lumino globally for your future dynamic ES6 modules
-(window as any).Lumino = {
+
+
+declare global
+{
+	interface Window
+	{
+		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
+		Lumino?: {
+			widgets: any;  // Replace 'any' with the actual type of widgets if available
+			messaging: any; // Replace 'any' with the actual type of messaging if available
+		};
+		statusBar: StatusBarWidget;
+		envStatusNode: HTMLDivElement;
+		mainDock: DockPanel;
+	}
+}
+
+window.Lumino = {
 	widgets,
 	messaging
 };
+
+
 
 console.log("Lumino Core injected into global window space.");
 
@@ -26,6 +44,7 @@ function main(): void
 	// Create the central DockPanel target area
 	const mainDock = new DockPanel();
 	mainDock.id = 'main-workspace';
+	window.mainDock = mainDock;
 
 	// Generate the top application header structures using our unified layout export
 	const { headerRow, menuBar } = createTopBar(commands);
@@ -39,10 +58,10 @@ function main(): void
 	initializeMenus(commands, menuBar, mainDock, toolbar.node);
 
 	const statusBar = new StatusBarWidget();
-	(window as any).appStatusBar = statusBar;
+	window.statusBar = statusBar;
 	const envStatusNode = statusBar.addStatusItem('env-state', 'Initializing Sync...', 'bx bx-sync bx-spin', 'left');
 	statusBar.addStatusItem('git-branch', 'main', 'bx bx-git-branch', 'right');
-	(window as any).envStatusNode = envStatusNode;
+	window.envStatusNode = envStatusNode;
 
 	// Construct the global parent layout anchor structure
 	const workspaceBox = new BoxPanel({ direction: 'left-to-right', spacing: 0 });
@@ -67,8 +86,11 @@ function main(): void
 	Widget.attach(windowRoot, document.body);
 	windowRoot.fit();
 
+	handleResponsiveLayout(windowRoot, workspaceBox, toolbar);
+
 	window.addEventListener('resize', () =>
 	{
+		handleResponsiveLayout(windowRoot, workspaceBox, toolbar);
 		windowRoot.update();
 	});
 
@@ -78,15 +100,13 @@ function main(): void
 function startServiceWorker()
 {
 	const swManager = new ServiceWorkerManager();
-	const envStatusNode = (window as any).envStatusNode as HTMLDivElement;
-	const statusBar = (window as any).statusBar as StatusBarWidget;
 
 	swManager.initialize()
 		.then(() =>
 		{
 			// Update status to 'Worker Ready' and swap spin icon to a solid verified check shield
-			statusBar.updateStatusItem('env-state', 'Worker Ready');
-			const iconNode = envStatusNode.querySelector('i');
+			window.statusBar.updateStatusItem('env-state', 'Worker Ready');
+			const iconNode = window.envStatusNode.querySelector('i');
 			if(iconNode)
 			{
 				iconNode.className = 'bx bx-check-shield';
@@ -95,7 +115,7 @@ function startServiceWorker()
 			// 3. Clear the status notification text after exactly 5 seconds (5000ms)
 			setTimeout(() =>
 			{
-				statusBar.updateStatusItem('env-state', '');
+				window.statusBar.updateStatusItem('env-state', '');
 				if(iconNode)
 				{
 					iconNode.className = ''; // Remove the icon asset footprint too
@@ -105,8 +125,8 @@ function startServiceWorker()
 		.catch((err) =>
 		{
 			console.error("Critical worker boot fault:", err);
-			statusBar.updateStatusItem('env-state', 'Sync Error');
-			const iconNode = envStatusNode.querySelector('i');
+			window.statusBar.updateStatusItem('env-state', 'Sync Error');
+			const iconNode = window.envStatusNode.querySelector('i');
 			if(iconNode)
 			{
 				iconNode.className = 'bx bx-error-circle';
@@ -116,12 +136,57 @@ function startServiceWorker()
 
 }
 
-declare global
+
+/**
+ * Handles responsive layout adjustments based on current window size.
+ */
+function handleResponsiveLayout(windowRoot: BoxPanel, workspaceBox: BoxPanel, toolbar: Widget): void
 {
-	interface Window
+	const width = window.innerWidth;
+
+	// Threshold: Mobile / Small Tablet view (e.g., less than 768px wide)
+	if(width < 768)
 	{
-		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
+		// 1. Change workspace layout from horizontal to vertical stack
+		if(workspaceBox.direction !== 'top-to-bottom')
+		{
+			workspaceBox.direction = 'top-to-bottom';
+		}
+
+		// 2. Adjust manual sidebar behavior for small screens (collapse width or hide)
+		toolbar.node.style.minWidth = '0px';
+		toolbar.node.style.display = 'none'; // Completely hide sidebar on mobile
+
+		// 3. Optional: Hide the inline script selections to save header space
+		const inlineToolbar = document.getElementById('script-inline-toolbar');
+		if(inlineToolbar)
+		{
+			inlineToolbar.style.display = 'none';
+		}
 	}
+	// Desktop View Restoration
+	else
+	{
+		// 1. Restore standard side-by-side IDE layout
+		if(workspaceBox.direction !== 'left-to-right')
+		{
+			workspaceBox.direction = 'left-to-right';
+		}
+
+		// 2. Bring back the sidebar
+		toolbar.node.style.minWidth = '50px';
+		toolbar.node.style.display = 'flex';
+
+		// 3. Restore inline toolbar items
+		const inlineToolbar = document.getElementById('script-inline-toolbar');
+		if(inlineToolbar)
+		{
+			inlineToolbar.style.display = 'flex';
+		}
+	}
+
+	// CRITICAL STEP: Tell Lumino to force-recalculate all absolute child positions immediately
+	windowRoot.update();
 }
 
 

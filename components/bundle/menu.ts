@@ -3,6 +3,9 @@ import { Menu, MenuBar, DockPanel, Panel, Widget } from '@lumino/widgets';
 import { CommandRegistry } from '@lumino/commands';
 
 import './menu.css';
+import { ScriptToolbar } from './menu-repos';
+import * as Babel from '@babel/standalone';
+
 
 export interface TopBarComponents
 {
@@ -48,7 +51,6 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 	const response = await fetch(route.url);
 	const rawCode = await response.text();
 
-	const Babel = (window as any).Babel;
 	if(!Babel) throw new Error("Babel standalone runner not found on the window context.");
 
 	const transpiled = Babel.transform(rawCode, {
@@ -89,7 +91,7 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 		filename: route.url
 	});
 
-	const blob = new Blob([transpiled.code], { type: 'application/javascript' });
+	const blob = new Blob([transpiled.code ?? ''], { type: 'application/javascript' });
 	const blobURL = URL.createObjectURL(blob);
 
 	try
@@ -222,8 +224,8 @@ export function registerAllCommands(commands: CommandRegistry): void
 			iconClass: 'bx bx-play',
 			execute: () =>
 			{
-				const ownerSelect = document.getElementById('top-bar-sel-owner') as HTMLSelectElement | null;
-				const repoSelect = document.getElementById('top-bar-sel-repo') as HTMLSelectElement | null;
+				const ownerSelect = ScriptToolbar.owner;
+				const repoSelect = ScriptToolbar.repository;
 				console.log(`Starting script execution for targets: ${ownerSelect?.value}/${repoSelect?.value}`);
 			}
 		});
@@ -240,43 +242,6 @@ export function registerAllCommands(commands: CommandRegistry): void
 			}
 		});
 	}
-}
-
-/**
- * Builds the inline script controller widget containing play/stop controls and selectors.
- */
-export function createScriptToolbar(commands: CommandRegistry): Widget
-{
-	const scriptToolbar = new Widget();
-	scriptToolbar.id = 'script-inline-toolbar';
-
-	scriptToolbar.node.innerHTML = `
-        <button id="top-bar-btn-play" title="Play Script"><i class="bx bx-play"></i></button>
-        <button id="top-bar-btn-stop" title="Stop Script"><i class="bx bx-stop"></i></button>
-        <div class="top-bar-divider"></div>
-        <label for="top-bar-sel-owner">Owner:</label>
-        <select id="top-bar-sel-owner">
-            <option value="org-1">Organization One</option>
-            <option value="org-2">Organization Two</option>
-        </select>
-        <label for="top-bar-sel-repo">Repo:</label>
-        <select id="top-bar-sel-repo">
-            <option value="repo-a">Repository A</option>
-            <option value="repo-b">Repository B</option>
-        </select>
-    `;
-
-	scriptToolbar.node.querySelector('#top-bar-btn-play')?.addEventListener('click', () =>
-	{
-		commands.execute('script-play');
-	});
-
-	scriptToolbar.node.querySelector('#top-bar-btn-stop')?.addEventListener('click', () =>
-	{
-		commands.execute('script-stop');
-	});
-
-	return scriptToolbar;
 }
 
 /**
@@ -298,7 +263,7 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 	menuBar.addMenu(fileMenu);
 
 	// 4. Build the inline toolbar segment
-	const scriptToolbar = createScriptToolbar(commands);
+	const scriptToolbar = ScriptToolbar.getInstance().initialize(commands);
 
 	// 5. Use a standard Widget container with CSS styling instead of a rigid BoxPanel.
 	// This stops Lumino from hard-coding absolute 0px widths and overlapping elements.
