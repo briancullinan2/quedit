@@ -184,13 +184,15 @@ html {
 .treejs .treejs-node__open>.treejs-nodes>.treejs-node {
 	overflow: visible;
 	max-width: none;
+	min-width: min-content;
 }
 
 .treejs .treejs-node__open>.treejs-nodes>.treejs-node__close>.treejs-nodes {
 	overflow: hidden;
+	width: 0;
 }
 
 .treejs .treejs-switcher:hover:before,
 .treejs .treejs-switcher:before {
-	border-top-color: var(--ace-foreground);
+	border-top-color: var(--ace-foreground) !important;
 }

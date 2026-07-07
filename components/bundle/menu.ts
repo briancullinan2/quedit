@@ -38,7 +38,6 @@ interface ComponentRoute
 {
 	label: string;
 	url?: string;
-	port?: string;
 	className?: string;
 	iconClass: string; // The specific Boxicons layout string tokens
 }
@@ -51,7 +50,7 @@ const MODULE_REGISTRY: Record<string, ComponentRoute> = {
 	'nunu': { label: 'nunuStudio', url: './components/NunuStudioWidget.ts', className: 'NunuStudioWidget', iconClass: 'bx bx-vector-triangle' },
 	'audio-editor': { label: 'AudioMass', url: './components/AudioEditorWidget.ts', className: 'AudioEditorWidget', iconClass: 'bx bx-sine-wave' },
 	'searchlist': { label: 'Search Files', url: './components/SearchWidget.ts', className: 'SearchWidget', iconClass: 'bx bx-search' },
-	'filelist': { label: 'Engine Files', port: 'sidebarPanel', url: './components/filelist/widget.ts', className: 'FileListWidget', iconClass: 'bx bx-folder-code' },
+	'filelist': { label: 'Engine Files', url: './components/filelist/widget.ts', className: 'FileListWidget', iconClass: 'bx bx-folder-code' },
 	'gamelist': { label: 'Game Files', url: './components/GameListWidget.ts', className: 'GameListWidget', iconClass: 'bx bx-handheld-alt' },
 	'assetlist': { label: 'Assets', url: './components/AssetListWidget.ts', className: 'AssetListWidget', iconClass: 'bx bx-treasure-chest' },
 	'database': { label: 'Local Database', url: './components/DatabaseWidget.ts', className: 'DatabaseWidget', iconClass: 'bx bx-database' },
@@ -362,13 +361,15 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 	try
 	{
 		const widgetInstance = await loadAndInstantiate(route);
+		/*
 		if(route.port)
 		{
 			const sidePanel = window[route.port] as BoxPanel;
 			sidePanel.addWidget(widgetInstance);
 		} else
+		*/
 		{
-			mainDock.addWidget(widgetInstance, { mode: 'tab-after' });
+			mainDock.addWidget(widgetInstance, { mode: 'split-right' });
 			mainDock.activateWidget(widgetInstance);
 		}
 		window.resizeHandler();

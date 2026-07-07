@@ -23,7 +23,7 @@ declare global
 		statusBar: StatusBarWidget;
 		envStatusNode: HTMLDivElement;
 		mainDock: DockPanel;
-		sidebarPanel: BoxPanel;
+		//sidebarPanel: BoxPanel;
 		resizeHandler: () => void;
 	}
 }
@@ -44,7 +44,9 @@ function main(): void
 	const commands = new CommandRegistry();
 
 	// Create the central DockPanel target area
-	const mainDock = new DockPanel();
+	const mainDock = new DockPanel({
+		mode: 'multiple-document'
+	});
 	mainDock.id = 'main-workspace';
 	window.mainDock = mainDock;
 
@@ -59,12 +61,13 @@ function main(): void
 	// Initialize remaining menus safely passing down the clean tracking components
 	initializeMenus(commands, menuBar, mainDock, toolbar.node);
 
-
+	/*
 	const sidebarPanel = new BoxPanel({ direction: 'top-to-bottom', spacing: 0 });
 	sidebarPanel.id = 'sidebar-panel';
 	sidebarPanel.node.style.width = '250px'; // Give the file list its explicit sidebar width
 	sidebarPanel.node.style.minWidth = '250px';
 	window.sidebarPanel = sidebarPanel;
+	*/
 
 
 	const statusBar = new StatusBarWidget();
@@ -77,10 +80,10 @@ function main(): void
 	const workspaceBox = new BoxPanel({ direction: 'left-to-right', spacing: 0 });
 	workspaceBox.id = 'workspace-box';
 	BoxPanel.setStretch(toolbar, 0);
-	BoxPanel.setStretch(sidebarPanel, 0);
+	//BoxPanel.setStretch(sidebarPanel, 0);
 	BoxPanel.setStretch(mainDock, 1);
 	workspaceBox.addWidget(toolbar);
-	workspaceBox.addWidget(sidebarPanel);
+	//workspaceBox.addWidget(sidebarPanel);
 	workspaceBox.addWidget(mainDock);
 
 	// Assemble Main Window layout
@@ -98,11 +101,11 @@ function main(): void
 	Widget.attach(windowRoot, document.body);
 	windowRoot.fit();
 
-	handleResponsiveLayout(windowRoot, workspaceBox, toolbar, sidebarPanel);
+	handleResponsiveLayout(windowRoot, workspaceBox, toolbar, mainDock);
 
 	const resizeHandler = () =>
 	{
-		handleResponsiveLayout(windowRoot, workspaceBox, toolbar, sidebarPanel);
+		handleResponsiveLayout(windowRoot, workspaceBox, toolbar, mainDock);
 		windowRoot.update();
 	};
 	window.resizeHandler = resizeHandler;
@@ -157,13 +160,13 @@ function handleResponsiveLayout(
 	windowRoot: BoxPanel,
 	workspaceBox: BoxPanel,
 	toolbar: Widget,
-	sidebarPanel: BoxPanel
+	mainDock: DockPanel
 ): void
 {
 	const width = window.innerWidth;
 	const isMobile = width < 768;
 	const isWidescreen = width >= 1200;
-	const hasContent = sidebarPanel.widgets.length > 0;
+	const hasContent = mainDock.widgets.length > 0;
 
 	if(isMobile)
 	{
@@ -171,8 +174,6 @@ function handleResponsiveLayout(
 		console.warn('Mobile mode: hiding sidebar');
 		toolbar.node.style.display = 'none';
 		toolbar.node.style.minWidth = '0px';
-		sidebarPanel.setHidden(true);           // Preferred over manual styles
-		sidebarPanel.node.style.minWidth = '0px';
 		const inlineToolbar = document.getElementById('script-inline-toolbar');
 		if(inlineToolbar)
 		{
@@ -187,21 +188,14 @@ function handleResponsiveLayout(
 
 		if(/*isWidescreen &&*/ hasContent)
 		{
-			sidebarPanel.setHidden(false);
-			console.warn('Normal mode: showing sidebar ' + sidebarPanel.widgets.length);
-			BoxPanel.setStretch(sidebarPanel, 0);
-			sidebarPanel.node.style.width = '250px';
-			sidebarPanel.node.style.minWidth = '250px';
+			console.warn('Normal mode: showing sidebar ' + mainDock.widgets.length);
 		} else
 		{
-			sidebarPanel.setHidden(true);
-			console.warn('Normal mode: hiding sidebar ' + sidebarPanel.widgets.length);
-			sidebarPanel.node.style.minWidth = '0px';
+			console.warn('Normal mode: hiding sidebar ' + mainDock.widgets.length);
 		}
 	}
 
 	// Force Lumino refresh — order matters
-	sidebarPanel.fit();
 	workspaceBox.fit();
 	windowRoot.update();
 }

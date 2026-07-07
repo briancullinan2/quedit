@@ -44,21 +44,21 @@ export class FileListWidget extends Widget
 	private renderLayout(): void
 	{
 		this.node.innerHTML = `
-      <div class="filelist-wrapper" style="display: flex; flex-direction: column; height: 100%; width: 100%;">
-        <ul class="toolbar" style="display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 8px; margin: 0; background: #252526;">
+      <div class="filelist-wrapper">
+        <ul class="toolbar">
           <li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
           <li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
           <li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
           <li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
           <li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
           <li class="setting" data-placeholder="Owner">
-            <select name="owner" id="owner" style="min-width: 80px; background: #3c3c3c; color: #fff; border: 1px solid #555;">
+            <select name="owner" id="owner">
               <option value="briancullinan2">briancullinan2</option>
               <option value="ec-">ec-</option>
             </select>
           </li>
           <li class="setting" data-placeholder="Repository">
-            <select name="repository" id="repository" style="min-width: 80px; background: #3c3c3c; color: #fff; border: 1px solid #555;">
+            <select name="repository" id="repository">
               <option value="Quake3e">Quake3e</option>
               <option value="baseq3a">baseq3a</option>
               <option value="q3lcc">q3lcc</option>
@@ -67,17 +67,17 @@ export class FileListWidget extends Widget
             </select>
           </li>
           <li class="setting" data-placeholder="Branch">
-            <select name="branch" id="branch" style="min-width: 80px; background: #3c3c3c; color: #fff; border: 1px solid #555;">
+            <select name="branch" id="branch">
               <option value="main">main</option>
               <option value="wasm-support">wasm-support</option>
               <option value="recent_updates">recent_updates</option>
             </select>
           </li>
         </ul>
-        <div class="search-box" style="padding: 6px 8px; background: #2d2d2d;">
-          <input type="text" id="search" name="search" placeholder="Search many..." style="width: 100%; background: #1e1e1e; color: #fff; border: 1px solid #555; padding: 4px;" />
+        <div class="search-box">
+          <input type="text" id="search" name="search" placeholder="Search many..." />
         </div>
-        <div id="${this.treeContainerId}" class="treejs-render-target" style="flex-grow: 1; overflow: auto; padding: 8px; background: #1e1e1e;"></div>
+        <div id="${this.treeContainerId}" class="treejs-render-target"></div>
       </div>
     `;
 	}
