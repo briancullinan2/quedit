@@ -19,6 +19,7 @@
 		"@lumino/widgets": "^2.9.0",
 		"@widgetjs/tree": "^1.8.3",
 		"@xterm/xterm": "^6.0.0",
+		"ace-builds": "^1.44.0",
 		"live-server": "^1.2.2"
 	},
 	"devDependencies": {

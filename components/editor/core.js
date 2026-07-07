@@ -37,13 +37,3 @@ function onBlockTrackerCursorChange() {
 
     }, 150);
 }
-
-function bindBlockTrackerToSession(session) {
-    if (!session || !session.selection) return;
-
-    // Remove any pre-existing tracker handle on this session to prevent duplicate fire leaks
-    session.selection.off("changeCursor", onBlockTrackerCursorChange);
-
-    // Bind the execution frame cleanly
-    session.selection.on("changeCursor", onBlockTrackerCursorChange);
-}

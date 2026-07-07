@@ -34,7 +34,7 @@ interface ComponentRoute
 // 1. Unified metadata tree tracking every panel type and icon token
 const MODULE_REGISTRY: Record<string, ComponentRoute> = {
 	'collapse': { label: 'Collapse', iconClass: 'bx bx-arrow-in-left-square-half' },
-	'editor': { label: 'Code Editor', url: './components/AceEditorWidget.ts', className: 'AceEditorWidget', iconClass: 'bx bx-code' },
+	'editor': { label: 'Code Editor', url: './components/editor/widget.ts', className: 'AceEditorWidget', iconClass: 'bx bx-code' },
 	'paint': { label: 'miniPaint', url: './components/PaintWidget.ts', className: 'PaintWidget', iconClass: 'bx bx-palette' },
 	'nunu': { label: 'nunuStudio', url: './components/NunuStudioWidget.ts', className: 'NunuStudioWidget', iconClass: 'bx bx-vector-triangle' },
 	'audio-editor': { label: 'AudioMass', url: './components/AudioEditorWidget.ts', className: 'AudioEditorWidget', iconClass: 'bx bx-sine-wave' },
@@ -104,8 +104,18 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 								const moduleName = babelPath.node.arguments[0].value;
 								if(moduleName === './tree.js' && route.url)
 								{
-									dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName) + '?t=' + Date.now());
+									dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
 								}
+							}
+						},
+						ImportDeclaration(path: NodePath<tType.ImportDeclaration>)
+						{
+							const moduleName = path.node.source.value;
+							let targetProperty: string | null = null;
+
+							if(moduleName === 'ace-builds')
+							{
+								dependenciesToFetch.push('/ace/ace-noconflict.js');
 							}
 						}
 					}
@@ -122,7 +132,16 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 		{
 			if(url.includes('.mjs'))
 			{
-				return import(url);
+				const existingPromise = registry.get(url);
+				if(existingPromise)
+				{
+					return existingPromise;
+				}
+
+				var scriptPromise = import(url + '?t=' + Date.now());
+
+				registry.set(url + '?t=' + Date.now(), scriptPromise);
+				return scriptPromise;
 			} else
 			{
 				return loadScript(url);
@@ -176,6 +195,9 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 							} else if(moduleName === '@lumino/messaging')
 							{
 								targetProperty = 'messaging';
+							} else if(moduleName === 'ace-builds')
+							{
+								targetProperty = 'ace';
 							}
 
 							if(targetProperty)
@@ -270,8 +292,16 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 		sha: await getGitShaBrowser(arrayBuffer)
 	}, editorDatabase);
 
+	const existingPromise = registry.get(targetUrl);
+	if(existingPromise)
+	{
+		return existingPromise;
+	}
+
 	// Import directly from the pipeline URL rather than an ephemeral blob URL
-	const module = await import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
+	const modulePromise = import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
+	registry.set(targetUrl + '?t=' + Date.now(), modulePromise);
+	const module = await modulePromise;
 	return new module[route.className](route.label);
 }
 
@@ -295,7 +325,7 @@ export async function loadScript(src: string): Promise<any>
 	const scriptPromise = new Promise<void>((resolve, reject) =>
 	{
 		const script: HTMLScriptElement = document.createElement('script');
-		script.src = src;
+		script.src = src + '?t=' + Date.now();
 		script.type = 'text/javascript';
 		script.async = false; // Preserves literal script tree order
 

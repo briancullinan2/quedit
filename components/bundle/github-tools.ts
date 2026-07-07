@@ -19,6 +19,7 @@ declare global
 	interface Window
 	{
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
+		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
 	}
 }
 
@@ -51,6 +52,10 @@ export async function getGitShaBrowser(content: string | Uint8Array | ArrayBuffe
 		.map(b => b.toString(16).padStart(2, '0'))
 		.join('');
 }
+
+
+window.getGitShaBrowser = getGitShaBrowser;
+
 
 export async function cacheFile(repoOwner: string, repoName: string, filePath: string, sha: string, forceReload = false): Promise<any>
 {
