@@ -119,11 +119,15 @@ interface GitHubBranchLike
 }
 
 export function updateSelectOptions(
-	elementId: string | Element,
+	elementId: string | Element | undefined | null,
 	items: Record<string, string> | Array<string | GitHubBranchLike>,
 	selectedValue: string = 'main'
 ): void
 {
+	if(!elementId)
+	{
+		return;
+	}
 	const selector = elementId instanceof Element
 		? (elementId as HTMLSelectElement)
 		: (document.getElementById(elementId) as HTMLSelectElement | null);
@@ -203,29 +207,29 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 		ownersList: {
 			key: 'owners',
 			default: ['briancullinan2', 'ec-'],
-			elementId: 'owner',
+			elementId: ScriptToolbar.owner?.id,
 			type: 'csv', // Semicolon separated array mapping
 			description: 'A list of authorized GitHub organization names or usernames hosting the source code and forks relevant to this project environment.',
 			set: (val: string[]): void =>
 			{
-				updateSelectOptions('owner', val);
+				updateSelectOptions(ScriptToolbar.owner, val);
 			}
 		},
 		repositoriesList: {
 			key: 'repositories',
 			default: ['Quake3e', 'baseq3a'],
-			elementId: 'repository',
+			elementId: ScriptToolbar.repository?.id,
 			type: 'csv',
 			description: 'Comma/semicolon-separated list of target GitHub repository names available for compilation selection.',
 			set: (val: string[]): void =>
 			{
-				updateSelectOptions('repository', val);
+				updateSelectOptions(ScriptToolbar.repository, val);
 			}
 		},
 		defaultRepository: {
 			key: 'default_repository',
 			default: 'briancullinan2/Quake3e',
-			elementId: 'repository',
+			elementId: ScriptToolbar.repository?.id,
 			description: 'The fallback or preferred primary repository string formatted as "owner/repo" used when loading the workspace workspace initial state.',
 			get: (storage: string | null, defaultRepo: string): string =>
 			{

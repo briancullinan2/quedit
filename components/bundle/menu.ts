@@ -28,6 +28,7 @@ declare global
 	interface Window
 	{
 		resizeHandler: () => void;
+		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
 	}
 }
 
@@ -102,7 +103,6 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 
 	// 2. Traverse the AST using a custom visitor
 	traverse(ast, {
-
 		ImportDeclaration(babelPath)
 		{
 			const moduleName = babelPath.node.source.value;
@@ -110,6 +110,9 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 			if(moduleName === 'ace-builds')
 			{
 				dependenciesToFetch.push('/ace/ace-noconflict.js');
+			} else if(moduleName === './tree.js' && route.url)
+			{
+				dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
 			}
 		},
 		CallExpression(babelPath)
@@ -195,30 +198,42 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 						ImportDeclaration(path: NodePath<tType.ImportDeclaration>)
 						{
 							const moduleName = path.node.source.value;
-							let targetProperty: string | null = null;
+							let globalExpression: tType.Expression | null = null;
 
+							console.warn('replacing: ' + moduleName);
+
+							// Resolve the clean global base path node safely based on matching string declarations
 							if(moduleName === '@lumino/widgets')
 							{
-								targetProperty = 'widgets';
+								globalExpression = t.memberExpression(
+									t.memberExpression(t.identifier('window'), t.identifier('Lumino')),
+									t.identifier('widgets')
+								);
 							} else if(moduleName === '@lumino/messaging')
 							{
-								targetProperty = 'messaging';
+								globalExpression = t.memberExpression(
+									t.memberExpression(t.identifier('window'), t.identifier('Lumino')),
+									t.identifier('messaging')
+								);
 							} else if(moduleName === 'ace-builds')
 							{
-								targetProperty = 'ace';
+								globalExpression = t.memberExpression(
+									t.memberExpression(t.identifier('window'), t.identifier('Lumino')),
+									t.identifier('ace')
+								);
+							} else if(moduleName === './tree.js')
+							{
+								globalExpression = t.memberExpression(
+									t.identifier('window'),
+									t.identifier('Tree')
+								);
 							}
 
-							if(targetProperty)
+							if(globalExpression)
 							{
 								const declarations: tType.VariableDeclaration[] = [];
 
-								// Manually construct window.Lumino.[targetProperty] AST node securely
-								const globalExpression = t.memberExpression(
-									t.memberExpression(t.identifier('window'), t.identifier('Lumino')),
-									t.identifier(targetProperty)
-								);
-
-								// Handle named imports: import { Widget, Panel } from '...'
+								// Handle named imports safely: import { Widget, Panel } from '...'
 								const specifiers = path.node.specifiers.filter(
 									(spec): spec is tType.ImportSpecifier => t.isImportSpecifier(spec)
 								);
@@ -243,30 +258,30 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 										t.variableDeclaration('const', [
 											t.variableDeclarator(
 												t.objectPattern(properties),
-												globalExpression
+												globalExpression!
 											)
 										])
 									);
 								}
 
-								// Handle namespace/default imports: import * as widgets from '...'
-								const namespaceSpecifier = path.node.specifiers.find(
+								// Handle namespace/default imports smoothly: import * as widgets from '...' or import Tree from '...'
+								const namespaceOrDefaultSpecifier = path.node.specifiers.find(
 									spec => t.isImportNamespaceSpecifier(spec) || t.isImportDefaultSpecifier(spec)
 								);
 
-								if(namespaceSpecifier)
+								if(namespaceOrDefaultSpecifier)
 								{
 									declarations.push(
 										t.variableDeclaration('const', [
 											t.variableDeclarator(
-												t.identifier(namespaceSpecifier.local.name),
-												globalExpression
+												t.identifier(namespaceOrDefaultSpecifier.local.name),
+												globalExpression!
 											)
 										])
 									);
 								}
 
-								// Replace the native import declaration with our window-backed variable assignments
+								// Replace or drop the nodes cleanly to maintain content security standards
 								if(declarations.length > 0)
 								{
 									path.replaceWithMultiple(declarations);
@@ -376,6 +391,9 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 		console.error(`Module initialization fault on pathway [${panelId}]:`, err);
 	}
 }
+
+
+window.triggerPanelRoute = triggerPanelRoute;
 
 /**
  * System Context Initialization

@@ -1,4 +1,9 @@
 import { getGitShaBrowser } from "./github";
+import { filesRepo } from "./github-types";
+import { FS_FILE } from "./local";
+import { ScriptToolbar } from "./menu-repos";
+import type { AceEditorWidget } from "../editor/widget";
+import { DockPanel } from "@lumino/widgets";
 
 export interface SettingConfig
 {
@@ -21,8 +26,12 @@ declare global
 {
 	interface Window
 	{
+		mainDock: DockPanel;
 		SettingsManager?: Settings;
 		engineRepository: string | null;
+		AceEditorWidget: typeof AceEditorWidget;
+		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
+
 	}
 }
 
@@ -258,7 +267,7 @@ export class Settings
 	 */
 	public async settings(): Promise<void>
 	{
-		//const database = `${owner.value}/${repository.value}`;
+		const database = `${ScriptToolbar.owner?.value}/${ScriptToolbar.repository?.value}`;
 		const filePath = `settings${++this.tempCount}.json`;
 
 		if(window.engineRepository?.startsWith('Quake3e'))
@@ -271,10 +280,9 @@ export class Settings
 		const settingsString = JSON.stringify(this.previousSettings, null, 4);
 		const newSha = await getGitShaBrowser(settingsString);
 
-		/*
-		if(files[database])
+		if(filesRepo[database])
 		{
-			files[database][filePath] = {
+			filesRepo[database][filePath] = {
 				timestamp: new Date(),
 				mode: FS_FILE,
 				contents: new TextEncoder().encode(settingsString),
@@ -284,13 +292,12 @@ export class Settings
 			};
 		}
 
-		const session = getOrCreateAceSession(filePath, settingsString);
-		aceEditor.setSession(session);
+		if(typeof window.AceEditorWidget === 'undefined')
+		{
+			await window.triggerPanelRoute('editor', window.mainDock);
+		}
 
-		hideOpenPanels();
-		editorContainer.classList.add('not-hidden');
-		editorContainer.classList.remove('hidden');
-		*/
+		window.AceEditorWidget.openFileInNewTab(filePath, 'settings.json', settingsString);
 	}
 
 	/**

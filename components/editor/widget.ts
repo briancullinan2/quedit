@@ -1,11 +1,14 @@
 import { DockPanel, Widget } from '@lumino/widgets';
 import { Message } from '@lumino/messaging';
 import type { Ace } from 'ace-builds';
+import { SettingConfig } from '../bundle/settings';
 
 interface ISessionCache
 {
 	[fileId: string]: any;
 }
+
+
 
 declare global
 {
@@ -13,15 +16,21 @@ declare global
 		edit(el: string | HTMLElement, options?: any): any;
 		createEditSession(text: string | Ace.Document, mode?: any): any;
 		Range: new (startRow: number, startColumn: number, endRow: number, endColumn: number) => Ace.Range;
-		config: any;
-		require(moduleName: string): any;
+		config: {
+			loadModule: (module: [string, string], callback: () => void) => void;
+		};
+		require: (modules: string[], callback: (moduleExports: any) => void) => void;
 	};
 
 	interface Window
 	{
+		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
 		ace: typeof ace;
 		mainDock: DockPanel;
 		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
+		compilerDiagnostics?: any;
+		diagnosticsBridge: any;
+		AceEditorWidget: typeof AceEditorWidget;
 	}
 }
 
@@ -255,7 +264,7 @@ function bindBlockTrackerToSession(session: Ace.EditSession)
  */
 class AceEditorPool
 {
-	private static instances: Array<{ editor: any; inUse: boolean; }> = [];
+	static instances: Array<{ editor: Ace.Editor; inUse: boolean; }> = [];
 	public static sessionCache: ISessionCache = {};
 	private static tempCount = 1;
 
@@ -273,11 +282,12 @@ class AceEditorPool
 		{
 			window.getGitShaBrowser(content).then((sha: string) =>
 			{
-				(window as any).initialTextSha = (window as any).currentOpenFileId = sha;
+				this.sessionCache[sha] = session;
 			});
 		}
 
 		const mode = getModeByFilename(fileId);
+		console.warn('Setting ace9 language highlighter: ' + mode + ' from ' + fileId);
 		session.setMode(mode);
 
 		bindBlockTrackerToSession(session);
@@ -364,6 +374,18 @@ class AceEditorPool
 	{
 		return 'temp' + (++this.tempCount) + '.c';
 	}
+
+
+	public static get keybinding(): HTMLSelectElement | null
+	{
+		return document.querySelector('top-bar-sel-keybinding');
+	}
+
+	public static get theme(): HTMLSelectElement | null
+	{
+		return document.querySelector('top-bar-sel-theme');
+	}
+
 }
 
 /**
@@ -374,14 +396,14 @@ export class AceEditorWidget extends Widget
 	private _fileId: string;
 	private _initialContent: string;
 	private _editor: any | null = null;
-	private _defaultContent: string = '#include <stdio.h>\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\n");    return 0;\n}\n';
+	private _defaultContent: string = '#include <stdio.h>\n\n// this is a comment\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\\n");\n    return 0;\n}\n';
 
 	constructor(fileId?: string, initialContent?: string)
 	{
 		super();
 		this.addClass('lm-AceEditorWidget');
 
-		this._fileId = fileId || AceEditorPool.getNextTempName();
+		this._fileId = AceEditorPool.getNextTempName();
 		this._initialContent = initialContent || this._defaultContent;
 
 		// Ensure Lumino layout updates do not break text selection systems
@@ -389,8 +411,9 @@ export class AceEditorWidget extends Widget
 		this.node.style.display = 'flex';
 		this.node.style.flexDirection = 'column';
 
-		this.title.label = this._fileId;
+		this.title.label = fileId || this._fileId;
 		this.title.closable = true;
+
 	}
 
 	public get fileId(): string
@@ -418,6 +441,8 @@ export class AceEditorWidget extends Widget
 		// Synchronize and render bounds accurately
 		this._editor.resize();
 		this._editor.renderer.updateFull();
+
+		tryLoadingTerminalEditorBridge(this._editor);
 	}
 
 	/**
@@ -486,3 +511,113 @@ export class AceEditorWidget extends Widget
 	}
 }
 
+window.AceEditorWidget = AceEditorWidget;
+
+const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
+	editor: {
+		savedTheme: {
+			key: 'theme',
+			default: 'ace/theme/monokai',
+			elementId: 'theme',
+			description: 'The visual theme layout package used to style the interactive Ace code editor window background and syntax colors.',
+			set: (val) =>
+			{
+				for(let instance of AceEditorPool.instances)
+				{
+					instance.editor.setTheme(val);
+				}
+				if(AceEditorPool.theme)
+				{
+					AceEditorPool.theme.value = val;
+				}
+			}
+		},
+		savedKeyBinding: {
+			key: 'keybinding',
+			default: 'ace/keybinding/vim',
+			elementId: 'keybinding',
+			description: 'Defines the keyboard mapping protocol (e.g., standard, Vim, or Emacs configurations) utilized inside the script editor workspace.',
+			set: (val) =>
+			{
+				for(let instance of AceEditorPool.instances)
+				{
+					if(!val || val === 'null')
+					{
+						instance.editor.setKeyboardHandler(val);
+					} else
+					{
+						instance.editor.setKeyboardHandler(val);
+					}
+				}
+
+				if(AceEditorPool.keybinding)
+				{
+					if(!val || val === 'null')
+					{
+						AceEditorPool.keybinding.value = '';
+					}
+					else
+					{
+						AceEditorPool.keybinding.value = val;
+					}
+				}
+			}
+		}
+	},
+};
+
+
+if(!window.IMPORT_SETTINGS)
+{
+	window.IMPORT_SETTINGS = {};
+}
+
+for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
+{
+	window.IMPORT_SETTINGS[moduleKey] = {
+		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+		...configs
+	};
+}
+
+// 4. Export the unified reference for standard module compilation tracking
+export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
+
+// Define declarations for Ace and missing global window bindings
+
+
+function tryLoadingTerminalEditorBridge(aceEditor: Ace.Editor | null): void
+{
+	if(!aceEditor || window.compilerDiagnostics /* already setup */)
+	{
+		return;
+	}
+
+	// Force Ace to locate, download, and compile the extension module asynchronously
+	ace.config.loadModule(["ext", "compiler_diagnostics"], function ()
+	{
+		ace.require(["ace/ext/compiler_diagnostics"], function (moduleExports: any)
+		{
+			if(!moduleExports)
+			{
+				console.error("[Ace Lazy] Failed to initialize compiler_diagnostics extension.");
+				return;
+			}
+
+			window.compilerDiagnostics = moduleExports;
+			window.diagnosticsBridge = moduleExports.getBridge(aceEditor?.getSession());
+
+			if(window.diagnosticsBridge)
+			{
+				// TODO: the bridge takes errors from parsing and displays little squigglies and gutter exclaimnations
+				//   this on the other hand, takes error from actually compiling with clang and adds them to the bridge
+				//window.diagnosticsBridge.collectedLogLines = terminalLog.map(log =>
+				//	typeof log === 'object' && log !== null ? (log.text || '') : log
+				//);
+				window.diagnosticsBridge.triggerBridgeRefresh();
+			}
+
+			console.log("[Ace Lazy] Compiler diagnostics overlay successfully linked.");
+		});
+	});
+}

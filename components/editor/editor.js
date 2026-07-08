@@ -5,102 +5,11 @@ let tempCount = 1;
 
 const sessionCache = {};
 
-function getOrCreateAceSession(fileId, content) {
-    if (sessionCache[fileId]) {
-        return sessionCache[fileId];
-    }
-
-    const session = ace.createEditSession(content);
-
-    // Bind the workspace file identifier permanently
-    session.workspaceFileId = fileId;
-    getGitShaBrowser(content).then(sha => {
-        window.initialTextSha = window.currentOpenFileId = sha
-    })
-
-    const mode = getModeByFilename(fileId);
-    session.setMode(mode);
-
-    bindBlockTrackerToSession(session);
-
-    if (fileId.endsWith('.c') || fileId.endsWith('.h')) {
-        session.setTabSize(4);
-    }
-
-    sessionCache[fileId] = session;
-    return session;
-}
-
-function currentSession() {
-    return Object.keys(sessionCache).find(k => sessionCache[k] === aceEditor.getSession())
-}
-
-
-ace.config.set('basePath', './ace')
-const editorContainer = document.getElementById('editor')
-const initialCode = document.getElementById('editor').textContent
-const aceEditor = window.aceEditor = ace.edit("editor");
-aceEditor.setTheme(window.savedTheme);
-aceEditor.renderer.setShowGutter(true);
-aceEditor.renderer.$gutterLayer.setShowLineNumbers(true)
-aceEditor.renderer.$loop.schedule(aceEditor.renderer.CHANGE_GUTTER);
-aceEditor.setOptions({
-    // Core cursor placement optimizations
-    scrollPastEnd: 0.9,       // Keeps cursor centered when adding new code at EOF
-    showPrintMargin: true,
-    navigateWithinSoftTabs: true,
-    printMarginColumn: 80,
-    foldStyle: 'markbegin',
-    showFoldWidgets: true,
-    fadeFoldWidgets: false,
-    //animatedScroll: true,
-    //autoScrollEditorIntoView: false,
-})
-const session = getOrCreateAceSession('temp' + (++tempCount) + '.c', initialCode);
-aceEditor.setSession(session);
-
 updateMaxLines()
 
 let currentBlockMarkerId = null;
 let lastRenderedBoundsKey = ""; // State tracking anchor to prevent redundant paint steps
 
-
-
-function handleWorkerBlockHighlight(session, responseData) {
-    if (!responseData) return;
-
-    const { startLine, endLine } = responseData;
-    if (!startLine || !endLine) return;
-
-    // Create an atomic validation key representational snapshot
-    const boundsKey = `${startLine}:${endLine}`;
-
-    // TARGET EFFICIENCY GATE: If the active stream hasn't shifted structural boundaries,
-    // bail out instantly. This saves thousands of microsecond paint operations while typing.
-    if (boundsKey === lastRenderedBoundsKey) {
-        return;
-    }
-    lastRenderedBoundsKey = boundsKey;
-
-    const aceRange = ace.require("ace/range").Range;
-
-    // Clear the old background marker layout overlay cleanly
-    if (currentBlockMarkerId !== null) {
-        session.removeMarker(currentBlockMarkerId);
-        currentBlockMarkerId = null;
-    }
-
-    // Convert values back to Ace's internal 0-indexed column system
-    // Selects lines cleanly from the first character column to max line length boundary bounds
-    const highlightRange = new aceRange(startLine - 1, 0, endLine - 1, Number.MAX_SAFE_INTEGER);
-
-    // Inject background marker layer (class name targets your theme high-contrast CSS style sheet)
-    currentBlockMarkerId = session.addMarker(
-        highlightRange,
-        "ace_active_block_scope_highlight",
-        "fullLine"
-    );
-}
 
 
 
@@ -147,10 +56,10 @@ ace.config.loadModule("ace/keybinding/vim", function(m) {
 ace.config.loadModule("ace/keyboard/vim", function(m) {
     let VimApi = m.CodeMirror.Vim;
     // Some versions of Ace require this manual attachment:
-    
+
     // This tells Ace to pipe ":commands" and "INSERT/NORMAL" modes to your div
     aceEditor.setOption("showPrintMargin", false); // Optional cleanup
-    
+
     // If using the official status bar extension:
     // let StatusBar = ace.require("ace/ext/statusbar").StatusBar;
     // let aceStatusBar = new StatusBar(editor, statusBar);
@@ -255,7 +164,7 @@ function updateAceStatus(data) {
         : '';
 
     // 4. FORMAT ERROR BANNER TEXT
-    // If a compiler error is present on this line, append a bold visual flag 
+    // If a compiler error is present on this line, append a bold visual flag
     // to instantly warn the user inside the status layer.
     const errorInfo = data.compilerError
         ? ` ⚠️  ${data.compilerError.replace(/\n/g, ' | ')}, `
@@ -275,7 +184,7 @@ function updateAceStatus(data) {
         const diagnosticsModule = ace.require("ace/ext/compiler_diagnostics");
         if (diagnosticsModule) {
             const bridge = diagnosticsModule.getBridge();
-            
+
             // Confirm this specific DOM node belongs to our active tracking channel
             if (bridge.activeEditor === aceContainer.env.editor) {
                 // Read or mutate the raw state context variables straight from your script
@@ -339,9 +248,9 @@ function forceEditorFoldByLine(targetStartLine) {
 
 /**
  * Ingests computed worker fold scopes and applies them straight onto the Ace Gutter
- * @param {Ace.EditSession} aceSession 
- * @param {string} sourceText 
- * @param {string} languageKey 
+ * @param {Ace.EditSession} aceSession
+ * @param {string} sourceText
+ * @param {string} languageKey
  */
 async function syncCodeCollapsing(aceSession, sourceText, languageKey) {
     try {

@@ -1,8 +1,7 @@
 // components/FileListWidget.ts
 import { Widget, DockPanel } from '@lumino/widgets';
 import { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
-const Tree = require('./tree.js') as any;
-
+import Tree from './tree.js';
 
 declare global
 {

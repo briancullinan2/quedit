@@ -149,34 +149,6 @@ function onLoadEditor() {
 }
 
 
-function tryLoadingTerminalEditorBridge() {
-
-    if (!window.aceEditor || window.compilerDiagnostics /* already setup */) {
-        return
-    }
-
-    // Force Ace to locate, download, and compile the extension module asynchronously
-    ace.config.loadModule(["ext", "compiler_diagnostics"], function () {
-        ace.require(["ace/ext/compiler_diagnostics"], function (moduleExports) {
-            if (!moduleExports) {
-                console.error("[Ace Lazy] Failed to initialize compiler_diagnostics extension.");
-                return;
-            }
-
-            // 1. Map the loaded module exports to your global tracking variable alias
-            window.compilerDiagnostics = moduleExports;
-
-            // 2. Attach the active editor instance to kick off mouse interceptors
-            //setEditor(window.aceEditor);
-
-            // 3. Populate the background bridge arrays from your master terminal logs cache
-            window.diagnosticsBridge = moduleExports.getBridge(window.aceEditor?.getSession());
-            diagnosticsBridge.collectedLogLines = terminalLog.map(log => log.text || log);
-            diagnosticsBridge.triggerBridgeRefresh()
-            console.log("[Ace Lazy] Compiler diagnostics overlay successfully linked.");
-        });
-    });
-}
 
 
 function hasChangedEditor() {
@@ -220,7 +192,7 @@ function onLoadToji() {
 }
 
 function onLoadPaint() {
-    // TRICK WEBPACK MINI_PAINT: Intercept and force-resolve their internal Deferred initialization ready flag 
+    // TRICK WEBPACK MINI_PAINT: Intercept and force-resolve their internal Deferred initialization ready flag
     // If miniPaint mapped its entry wrapper 'k' onto window scope:
     if (!window.GUI && typeof window.loadPaint === 'function') {
         window.loadPaint()
@@ -264,7 +236,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         //const currentTheme = IMPORT_SETTINGS.editor.savedTheme.get
         //    ? IMPORT_SETTINGS.editor.theme.get()
-        //    : (document.getElementById(IMPORT_SETTINGS.editor.savedTheme.elementId)?.value 
+        //    : (document.getElementById(IMPORT_SETTINGS.editor.savedTheme.elementId)?.value
         //    || IMPORT_SETTINGS.editor.savedTheme.default);
 
         // 3. Mount workspace split layout panel preference
