@@ -7,6 +7,8 @@ textarea {
 }
 
 
+.toolbar a.bx,
+.toolbar button.bx,
 #app-top-header-row button.bx,
 #app-top-header-row select,
 #app-top-header-row select option,
@@ -30,6 +32,8 @@ ul.toolbar button,
 	cursor: pointer;
 }
 
+.toolbar a.bx:hover,
+.toolbar button.bx:hover,
 #app-top-header-row button.bx:hover,
 #app-top-header-row select:hover,
 #app-top-header-row select option:hover,
@@ -46,6 +50,8 @@ ul.toolbar button:hover,
 
 
 
+.toolbar a.bx,
+.toolbar button.bx,
 #app-top-header-row a.bx,
 #app-top-header-row button.bx {
 	background: transparent;
@@ -61,6 +67,8 @@ ul.toolbar button:hover,
 	width: 30px;
 }
 
+.toolbar a.bx:hover,
+.toolbar button.bx:hover,
 #app-top-header-row button:hover,
 #app-top-header-row a:hover {
 	background: rgb(from var(--ace-selection-bg) r g b / 50%);

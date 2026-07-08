@@ -27,6 +27,15 @@ ul.toolbar {
 	transition: display 0.3s allow-discrete, opacity 0.3s ease-in-out;
 	transition-delay: 0.3s;
 	flex-shrink: 0;
+	gap: 8px;
+}
+
+ul.toolbar {
+	flex-wrap: wrap;
+}
+
+.search-box {
+	padding-top: 8px;
 }
 
 #app-top-header-row li,
@@ -39,7 +48,7 @@ ul.toolbar>li {
 	white-space: nowrap;
 	list-style: none;
 	margin: 0;
-	padding: 0 10px;
+	padding: 0;
 	white-space: nowrap;
 	user-select: none;
 }

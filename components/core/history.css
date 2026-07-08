@@ -5,7 +5,7 @@
 }
 
 /* Updated selector from .dropdown-menu to target the HTML element layout */
-#app-top-header-row .history-menu-dropdown {
+.history-menu-dropdown {
 	display: none;
 	/* Controlled cleanly by the .show class toggle */
 	position: absolute;
@@ -26,8 +26,12 @@
 }
 
 /* Class variant for displaying the dropdown dynamically */
-#app-top-header-row .history-menu-dropdown.show {
+.history-menu-dropdown.show {
 	display: block;
+}
+
+.history-menu-dropdown li {
+	white-space: normal;
 }
 
 .history-item {

@@ -19,36 +19,6 @@ aceEditor.on("changeSession", function (e) {
 });
 
 
-// Keep track of the active gutter line row to prevent erratic multi-firing updates
-aceEditor.on('change', (delta) => {
-    // 1. Get the real-time position from the editor instance
-    const pos = aceEditor.getCursorPosition();
-
-    // 2. Format a human-readable action description based on the event delta
-    let changeType = "Code modified";
-    if (delta.action === "insert") {
-        changeType = delta.lines.length > 1 ? "Lines added" : "Inserted text";
-    } else if (delta.action === "remove") {
-        changeType = delta.lines.length > 1 ? "Lines deleted" : "Removed text";
-    }
-
-    const fileName = currentSession()
-    // 3. Match the structural payload requirements for extractAceMetadata
-    const actionPayload = {
-        action_id: "ace_edit_action",
-        action_description: changeType,
-        fileName: fileName,                  // Assumes 'fileName' is accessible in your scope
-        filePath: fileName,                  // Keeps it compatible with file path extraction splitting
-        row: pos.row,                        // Pass raw index; extractAceMetadata adds +1 for display
-        column: pos.column,
-        delta: delta
-    };
-
-    appendHistoryItem(actionPayload, 'editor');
-
-    debounceFileChange(aceEditor);
-});
-
 let lastTrackedRow = -1;
 let lastTrackedColumn = -1;
 let aceMoveDebounceTimer = null;

@@ -2,6 +2,7 @@
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+const webpack = require('webpack');
 
 module.exports = {
 	mode: 'production',
@@ -25,6 +26,19 @@ module.exports = {
 	module: {
 		rules: [
 			{
+				// require.resolve returns the exact absolute path to the node_modules entrypoint
+				test: require.resolve('diff'),
+				use: [
+					{
+						loader: 'expose-loader',
+						options: {
+							// This registers it directly on window.diff and globalThis.diff
+							exposes: ['diff'],
+						},
+					},
+				],
+			},
+			{
 				test: /\.ts$/,
 				use: 'ts-loader',
 				exclude: /node_modules/,
@@ -36,6 +50,9 @@ module.exports = {
 		],
 	},
 	plugins: [
+		new webpack.ProvidePlugin({
+			diff: 'diff',
+		}),
 		new CopyWebpackPlugin({
 			patterns: [
 				{

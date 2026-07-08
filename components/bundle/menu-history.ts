@@ -179,7 +179,7 @@ export class HistoryToolbar extends Widget
 
 		if(this._dropdownMenu.children.length === 1 && this._dropdownMenu.children[0].getAttribute('value') === '')
 		{
-			this._dropdownMenu.children[0].remove();
+			this._dropdownMenu.children[0].innerHTML = 'Beginning of time.';
 		}
 
 		let meta = { icon: "⚡", title: "Action Captured", desc: "System update logged." };
@@ -280,18 +280,25 @@ export class HistoryToolbar extends Widget
 				</div>
 				<i class="bx bx-chevron-down toggle-arrow"></i>
 			</button>
-            <ul id="historyMenu" class="history-menu-dropdown">
-                <li value="" class="empty-history-notice">No current items</li>
-            </ul>
         `;
+		this._dropdownMenu = document.createElement('ul') as HTMLUListElement;
+		this._dropdownMenu.id = 'historyMenu';
+		this._dropdownMenu.classList.add('history-menu-dropdown');
+		this._dropdownMenu.innerHTML = '<li value="" class="empty-history-notice history-item">No current items</li>';
+		document.body.appendChild(this._dropdownMenu);
 
 		const trigger = this.node.querySelector('#fileHistory');
-		this._dropdownMenu = this.node.querySelector('#historyMenu') as HTMLUListElement;
 
 		trigger?.addEventListener('click', (e) =>
 		{
 			e.stopPropagation();
 			const isVisible = this._dropdownMenu?.classList.contains('show');
+			const rect = this.node.getBoundingClientRect();
+			if(this._dropdownMenu)
+			{
+				this._dropdownMenu.style.top = (rect.y + rect.height) + 'px';
+				this._dropdownMenu.style.left = rect.x + 'px';
+			}
 			this._toggleMenu(!isVisible);
 		});
 

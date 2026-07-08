@@ -1,20 +1,31 @@
 import { DockPanel, Widget } from '@lumino/widgets';
 import { Message } from '@lumino/messaging';
 import type { Ace } from 'ace-builds';
-import { SettingConfig } from '../bundle/settings';
+import type { SettingConfig } from '../bundle/settings';
+import type { HistoryToolbar } from '../bundle/menu-history';
 
 interface ISessionCache
 {
 	[fileId: string]: any;
 }
 
+declare module "ace-builds" {
+	interface Editor
+	{
+		getSession(): AceSession;
+	}
+}
 
+interface AceSession extends Ace.EditSession
+{
+	workspaceFileId?: string;
+}
 
 declare global
 {
 	const ace: typeof Ace & {
 		edit(el: string | HTMLElement, options?: any): any;
-		createEditSession(text: string | Ace.Document, mode?: any): any;
+		createEditSession(text: string | Ace.Document, mode?: any): AceSession;
 		Range: new (startRow: number, startColumn: number, endRow: number, endColumn: number) => Ace.Range;
 		config: {
 			loadModule: (module: [string, string], callback: () => void) => void;
@@ -31,6 +42,7 @@ declare global
 		compilerDiagnostics?: any;
 		diagnosticsBridge: any;
 		AceEditorWidget: typeof AceEditorWidget;
+		historyToolbar: HistoryToolbar;
 	}
 }
 
@@ -301,7 +313,7 @@ class AceEditorPool
 		return session;
 	}
 
-	public static acquireEditor(): any
+	public static acquireEditor(): Ace.Editor
 	{
 		// Find an editor instance that is not currently bound to an active DOM layout
 		let item = this.instances.find(inst => !inst.inUse);
@@ -346,6 +358,7 @@ class AceEditorPool
 					}
 				}
 			});
+			editor.on('change', AceEditorPool.recordChanges.bind(editor, editor));
 
 			item = { editor, inUse: true };
 			this.instances.push(item);
@@ -354,6 +367,38 @@ class AceEditorPool
 			item.inUse = true;
 		}
 		return item.editor;
+	}
+
+
+	static recordChanges(editor: Ace.Editor, delta: Ace.Delta)
+	{
+		// 1. Get the real-time position from the editor instance
+		const pos = editor.getCursorPosition();
+
+		// 2. Format a human-readable action description based on the event delta
+		let changeType = "Code Modified";
+		if(delta.action === "insert")
+		{
+			changeType = delta.lines.length > 1 ? "Lines added" : "Inserted text";
+		} else if(delta.action === "remove")
+		{
+			changeType = delta.lines.length > 1 ? "Lines deleted" : "Removed text";
+		}
+
+		const fileName = editor.getSession().workspaceFileId;
+
+		// 3. Match the structural payload requirements for extractAceMetadata
+		const actionPayload = {
+			action_id: "ace_edit_action",
+			action_description: changeType,
+			fileName: fileName,                  // Assumes 'fileName' is accessible in your scope
+			filePath: fileName,                  // Keeps it compatible with file path extraction splitting
+			row: pos?.row,                        // Pass raw index; extractAceMetadata adds +1 for display
+			column: pos?.column,
+			delta: delta
+		};
+
+		window.historyToolbar.appendHistoryItem(actionPayload, 'editor');
 	}
 
 	public static releaseEditor(editor: any): void
@@ -395,7 +440,7 @@ export class AceEditorWidget extends Widget
 {
 	private _fileId: string;
 	private _initialContent: string;
-	private _editor: any | null = null;
+	private _editor: Ace.Editor | null = null;
 	private _defaultContent: string = '#include <stdio.h>\n\n// this is a comment\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\\n");\n    return 0;\n}\n';
 
 	constructor(fileId?: string, initialContent?: string)
@@ -432,7 +477,7 @@ export class AceEditorWidget extends Widget
 		this._editor = AceEditorPool.acquireEditor();
 
 		// Wire up structural DOM attachments cleanly
-		this.node.appendChild(this._editor.container);
+		this.node.appendChild(this._editor?.container);
 
 		// Fetch original or structural cache descriptors targeting tracking layers
 		const session = AceEditorPool.getOrCreateAceSession(this._fileId, this._initialContent);

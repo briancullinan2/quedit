@@ -33,6 +33,7 @@ export class FileListWidget extends Widget
 		this.id = 'filelist-panel';
 		this.title.label = titleStr;
 		this.title.closable = true;
+		this.node.style.minWidth = '200px';
 		this.addClass('ide-file-tree-widget');
 
 		this.treeContainerId = `tree-${Date.now()}`;
