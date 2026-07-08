@@ -917,7 +917,9 @@ self.addEventListener('fetch', event =>
 			const files = await getRecord(DB_STORE_NAME, localName, selected);
 			if(files && files.contents)
 			{
-				const newHeaders = await getHeaders(undefined, files.contents);
+				const newHeaders = assetUrl === 'index.html'
+					? await getHeaders()
+					: await getHeaders(undefined, files.contents);
 				newHeaders.set('Content-Type', contentType);
 				return new Response(files.contents, {
 					status: 200,

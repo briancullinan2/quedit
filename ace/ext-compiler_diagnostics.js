@@ -137,11 +137,30 @@ function bridgeLog(session, message)
 			session.collectedLogLines.push(cleanLine);
 		}
 	}
-	triggerBridgeRefresh();
+	triggerBridgeRefresh(session);
 }
 
 function triggerBridgeRefresh(session)
 {
+	if(session)
+	{
+		if(!session.collectedLogLines)
+		{
+			session.collectedLogLines = [];
+		}
+		if(!session.fileAnnotationsMap)
+		{
+			session.fileAnnotationsMap = { "system": [] };
+		}
+		if(!session.workerAnnotations)
+		{
+			session.workerAnnotations = [];
+		}
+		if(!session.bridgeInstance)
+		{
+			session.bridgeInstance = this;
+		}
+	}
 	let _self = this;
 	if(this.timer) clearTimeout(this.timer);
 	this.timer = setTimeout(function ()
@@ -221,22 +240,15 @@ function bridgeFindShaderByAssetDependency(assetPath)
 // 4. CORE CONSTRUCTOR & PROTOTYPE ASSIGNMENT ROUTINE
 // =====================================================================
 
-function DiagnosticsBridge(session)
+function DiagnosticsBridge()
 {
 	this.timer = null;
 	this.delay = 250;
-	initBridgeSession(session);
+	initBridgeSession(this);
 }
 
-function initBridgeSession(bridgeInstance, session)
+function initBridgeSession(bridgeInstance)
 {
-	if(session)
-	{
-		session.collectedLogLines = [];
-		session.fileAnnotationsMap = { "system": [] };
-		session.workerAnnotations = [];
-		session.bridgeInstance = bridgeInstance;
-	}
 	return {
 		log: function (msg) { bridgeInstance.log(msg); },
 		clear: function ()
@@ -246,7 +258,7 @@ function initBridgeSession(bridgeInstance, session)
 		getBridge: function ()
 		{
 			return ({
-				triggerBridgeRefresh: triggerBridgeRefresh.bind(bridgeInstance, session),
+				triggerBridgeRefresh: triggerBridgeRefresh.bind(bridgeInstance),
 				refreshActiveEditorView: refreshActiveEditorView
 			});
 		}
@@ -278,7 +290,7 @@ ace.define("ace/ext/compiler_diagnostics", [
 	// Export module instances
 	let bridgeInstance = new DiagnosticsBridge();
 
-	Object.assign(exports, initBridgeSession(bridgeInstance, session));
+	Object.assign(exports, initBridgeSession(bridgeInstance));
 });
 
 

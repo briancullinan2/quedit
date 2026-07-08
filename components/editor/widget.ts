@@ -614,7 +614,7 @@ function tryLoadingTerminalEditorBridge(aceEditor: Ace.Editor | null): void
 				//window.diagnosticsBridge.collectedLogLines = terminalLog.map(log =>
 				//	typeof log === 'object' && log !== null ? (log.text || '') : log
 				//);
-				window.diagnosticsBridge.triggerBridgeRefresh();
+				window.diagnosticsBridge.triggerBridgeRefresh(aceEditor.getSession());
 			}
 
 			console.log("[Ace Lazy] Compiler diagnostics overlay successfully linked.");
