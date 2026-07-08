@@ -1,5 +1,5 @@
 import { getBranches } from "./github-api";
-import { ScriptToolbar } from "./menu-repos";
+import { RepositoryToolbar } from "./menu-repos";
 import { SettingConfig } from "./settings";
 
 // --- Environmental Declarations ---
@@ -21,8 +21,8 @@ export function addRepoIfNotExists(newRepo: string): void
 		option.value = newRepo;
 		option.textContent = newRepo;
 
-		ScriptToolbar.repository?.appendChild(option);
-		localStorage.setItem('repositories', Array.from(ScriptToolbar.repository?.children ?? []).map(c => (c as HTMLOptionElement).value).join(';'));
+		RepositoryToolbar.repository?.appendChild(option);
+		localStorage.setItem('repositories', Array.from(RepositoryToolbar.repository?.children ?? []).map(c => (c as HTMLOptionElement).value).join(';'));
 	}
 }
 
@@ -43,8 +43,8 @@ export function addOwnerIfNotExists(newOwner: string): void
 		option.textContent = newOwner;
 		option.selected = true;
 
-		ScriptToolbar.owner?.appendChild(option);
-		localStorage.setItem('owners', Array.from(ScriptToolbar.owner?.children ?? []).map(c => (c as HTMLOptionElement).value).join(';'));
+		RepositoryToolbar.owner?.appendChild(option);
+		localStorage.setItem('owners', Array.from(RepositoryToolbar.owner?.children ?? []).map(c => (c as HTMLOptionElement).value).join(';'));
 	}
 }
 
@@ -55,8 +55,8 @@ export function parseRepository(newRepo: string): [string | undefined, string | 
 		return [undefined, undefined];
 	}
 	const parts = newRepo.split('/');
-	const ownerName = parts.length === 2 ? parts[0] : ScriptToolbar.owner?.value;
-	const repoName = parts.length === 2 ? parts[1] : parts[0] || ScriptToolbar.repository?.value;
+	const ownerName = parts.length === 2 ? parts[0] : RepositoryToolbar.owner?.value;
+	const repoName = parts.length === 2 ? parts[1] : parts[0] || RepositoryToolbar.repository?.value;
 
 	return [ownerName, repoName];
 }
@@ -90,16 +90,16 @@ export async function setRepository(newRepo: string): Promise<void>
 
 	if(!ownerName || ownerName.trim() === '' || !repoName || repoName.trim() === '') return;
 
-	if(ScriptToolbar.owner)
+	if(RepositoryToolbar.owner)
 	{
-		ScriptToolbar.owner.value = ownerName;
+		RepositoryToolbar.owner.value = ownerName;
 	}
-	if(ScriptToolbar.repository)
+	if(RepositoryToolbar.repository)
 	{
-		ScriptToolbar.repository.value = repoName;
+		RepositoryToolbar.repository.value = repoName;
 	}
 
-	const branches = await getBranches(ScriptToolbar.owner?.value, ScriptToolbar.repository?.value);
+	const branches = await getBranches(RepositoryToolbar.owner?.value, RepositoryToolbar.repository?.value);
 	updateSelectOptions('branch', branches);
 }
 
@@ -207,34 +207,34 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 		ownersList: {
 			key: 'owners',
 			default: ['briancullinan2', 'ec-'],
-			elementId: ScriptToolbar.owner?.id,
+			elementId: RepositoryToolbar.owner?.id,
 			type: 'csv', // Semicolon separated array mapping
 			description: 'A list of authorized GitHub organization names or usernames hosting the source code and forks relevant to this project environment.',
 			set: (val: string[]): void =>
 			{
-				updateSelectOptions(ScriptToolbar.owner, val);
+				updateSelectOptions(RepositoryToolbar.owner, val);
 			}
 		},
 		repositoriesList: {
 			key: 'repositories',
 			default: ['Quake3e', 'baseq3a'],
-			elementId: ScriptToolbar.repository?.id,
+			elementId: RepositoryToolbar.repository?.id,
 			type: 'csv',
 			description: 'Comma/semicolon-separated list of target GitHub repository names available for compilation selection.',
 			set: (val: string[]): void =>
 			{
-				updateSelectOptions(ScriptToolbar.repository, val);
+				updateSelectOptions(RepositoryToolbar.repository, val);
 			}
 		},
 		defaultRepository: {
 			key: 'default_repository',
 			default: 'briancullinan2/Quake3e',
-			elementId: ScriptToolbar.repository?.id,
+			elementId: RepositoryToolbar.repository?.id,
 			description: 'The fallback or preferred primary repository string formatted as "owner/repo" used when loading the workspace workspace initial state.',
 			get: (storage: string | null, defaultRepo: string): string =>
 			{
-				return ScriptToolbar.owner?.value && ScriptToolbar.repository?.value
-					? `${ScriptToolbar.owner.value}/${ScriptToolbar.repository.value}`
+				return RepositoryToolbar.owner?.value && RepositoryToolbar.repository?.value
+					? `${RepositoryToolbar.owner.value}/${RepositoryToolbar.repository.value}`
 					: (storage || defaultRepo);
 			},
 			set: setRepository

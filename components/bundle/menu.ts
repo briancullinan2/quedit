@@ -1,7 +1,7 @@
 // menu.ts
 import { Menu, MenuBar, DockPanel, Panel, Widget, BoxPanel } from '@lumino/widgets';
 import { CommandRegistry } from '@lumino/commands';
-import { ScriptToolbar } from './menu-repos';
+import { RepositoryToolbar } from './menu-repos';
 import
 {
 	transformFromAstSync, PluginObj, NodePath, transform
@@ -12,6 +12,11 @@ import { DB_STORE_NAME, FS_FILE, putRecord } from './local';
 import { Settings, SettingsManager } from './settings';
 import { getGitShaBrowser } from './github-tools';
 import { path } from './global';
+import { ScriptToolbar } from './menu-script';
+import { ApplicationToolbar } from './menu-app';
+import { FileToolbar } from './menu-file';
+import { SettingsToolbar } from './menu-settings';
+import { EngineToolbar } from './menu-engine';
 
 const parseBabel = packages.parser.parse;
 const traverse = packages.traverse.default;
@@ -495,32 +500,6 @@ export function registerAllCommands(commands: CommandRegistry): void
 		});
 	}
 
-	// Script Lifecycle Commands
-	if(!commands.hasCommand('script-play'))
-	{
-		commands.addCommand('script-play', {
-			label: 'Play Script',
-			iconClass: 'bx bx-play',
-			execute: () =>
-			{
-				const ownerSelect = ScriptToolbar.owner;
-				const repoSelect = ScriptToolbar.repository;
-				console.log(`Starting script execution for targets: ${ownerSelect?.value}/${repoSelect?.value}`);
-			}
-		});
-	}
-
-	if(!commands.hasCommand('script-stop'))
-	{
-		commands.addCommand('script-stop', {
-			label: 'Stop Script',
-			iconClass: 'bx bx-stop',
-			execute: () =>
-			{
-				console.log('Halting script execution.');
-			}
-		});
-	}
 }
 
 /**
@@ -541,16 +520,25 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 	menuBar.id = 'top-menubar';
 	menuBar.addMenu(fileMenu);
 
-	// 4. Build the inline toolbar segment
-	const scriptToolbar = ScriptToolbar.getInstance().initialize(commands);
-
-	// 5. Use a standard Widget container with CSS styling instead of a rigid BoxPanel.
-	// This stops Lumino from hard-coding absolute 0px widths and overlapping elements.
 	const headerRow = new Panel();
 	headerRow.id = 'app-top-header-row';
 	headerRow.node.style.minHeight = '30px';
+
+	// 4. Build the inline toolbar segment
+	const repoToolbar = RepositoryToolbar.getInstance().initialize(commands);
+	const scriptToolbar = ScriptToolbar.getInstance().initialize(commands);
+	const appToolbar = ApplicationToolbar.getInstance().initialize(commands);
+	const fileToolbar = FileToolbar.getInstance().initialize(commands);
+	const settingsToolbar = SettingsToolbar.getInstance().initialize(commands);
+	const engineToolbar = EngineToolbar.getInstance().initialize(commands);
+
 	headerRow.addWidget(menuBar);
+	headerRow.addWidget(repoToolbar);
 	headerRow.addWidget(scriptToolbar);
+	headerRow.addWidget(appToolbar);
+	headerRow.addWidget(fileToolbar);
+	headerRow.addWidget(settingsToolbar);
+	headerRow.addWidget(engineToolbar);
 
 	return { headerRow, menuBar };
 }

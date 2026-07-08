@@ -23,6 +23,7 @@ declare global
 		statusBar: StatusBarWidget;
 		envStatusNode: HTMLDivElement;
 		mainDock: DockPanel;
+		commandRegistry: CommandRegistry;
 		//sidebarPanel: BoxPanel;
 		resizeHandler: () => void;
 	}
@@ -42,6 +43,9 @@ function main(): void
 {
 	// Initialize the Command Registry
 	const commands = new CommandRegistry();
+	// TODO: interesting, i actually meant to do this in the previous version
+	//   and now Gemini and Lumino combined forced me to set it up anyways.
+	window.commandRegistry = commands;
 
 	// Create the central DockPanel target area
 	const mainDock = new DockPanel({

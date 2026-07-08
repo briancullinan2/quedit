@@ -2,7 +2,7 @@
 import { Widget, DockPanel } from '@lumino/widgets';
 import type { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
 import type { GitHubFileEntry } from '../bundle/github-types.js';
-import type { ScriptToolbar } from '../bundle/menu-repos.js';
+import type { RepositoryToolbar } from '../bundle/menu-repos.js';
 import type { Settings } from '../bundle/settings.js';
 import Tree from './tree.js';
 
@@ -17,7 +17,7 @@ declare global
 		mainDock: DockPanel;
 		trees: Record<string, any>;
 		filesRepo: Record<string, GitHubFileEntry>;
-		ScriptToolbar: typeof ScriptToolbar;
+		RepositoryToolbar: typeof RepositoryToolbar;
 		SettingsManager: Settings;
 	}
 }
@@ -154,7 +154,7 @@ function treeHandler(selector: string, e: Event): void
 
 		const filePath = tree.nodesById[fileId].path;
 
-		let selected = window.ScriptToolbar.owner?.value + '/' + window.ScriptToolbar.repository?.value;
+		let selected = window.RepositoryToolbar.owner?.value + '/' + window.RepositoryToolbar.repository?.value;
 		let nodeDB: string | null;
 
 		if(nodeDB = node.getAttribute('data-database'))
@@ -191,8 +191,8 @@ function treeHandler(selector: string, e: Event): void
 		}
 
 		const parts = selected.split('/');
-		const newRepo = parts.length === 2 ? parts[1] : parts[0] || window.ScriptToolbar.repository?.value;
-		const newOwner = parts.length === 2 ? parts[0] : window.ScriptToolbar.owner?.value;
+		const newRepo = parts.length === 2 ? parts[1] : parts[0] || window.RepositoryToolbar.repository?.value;
+		const newOwner = parts.length === 2 ? parts[0] : window.RepositoryToolbar.owner?.value;
 
 		console.warn('TODO: openFile: ' + filePath);
 		//openFile(newOwner, newRepo, filePath, tree.nodesById[fileId].sha);

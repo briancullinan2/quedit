@@ -1,7 +1,7 @@
 import { getGitShaBrowser } from "./github";
 import { filesRepo } from "./github-types";
 import { FS_FILE } from "./local";
-import { ScriptToolbar } from "./menu-repos";
+import { RepositoryToolbar } from "./menu-repos";
 import type { AceEditorWidget } from "../editor/widget";
 import { DockPanel } from "@lumino/widgets";
 
@@ -267,7 +267,7 @@ export class Settings
 	 */
 	public async settings(): Promise<void>
 	{
-		const database = `${ScriptToolbar.owner?.value}/${ScriptToolbar.repository?.value}`;
+		const database = `${RepositoryToolbar.owner?.value}/${RepositoryToolbar.repository?.value}`;
 		const filePath = `settings${++this.tempCount}.json`;
 
 		if(window.engineRepository?.startsWith('Quake3e'))

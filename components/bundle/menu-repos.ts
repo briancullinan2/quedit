@@ -6,36 +6,36 @@ declare global
 {
 	interface Window
 	{
-		scriptToolbar: ScriptToolbar;
-		ScriptToolbar: typeof ScriptToolbar;
+		repoToolbar: RepositoryToolbar;
+		RepositoryToolbar: typeof RepositoryToolbar;
 	}
 }
 
 
 
-export class ScriptToolbar extends Widget
+export class RepositoryToolbar extends Widget
 {
-	private static _instance: ScriptToolbar | null = null;
+	private static _instance: RepositoryToolbar | null = null;
 	private _commands: CommandRegistry | null = null;
 
 	private constructor()
 	{
 		super();
-		this.id = 'script-inline-toolbar';
+		this.id = 'repository-inline-toolbar';
 		this._buildInterface();
 	}
 
-	public static getInstance(): ScriptToolbar
+	public static getInstance(): RepositoryToolbar
 	{
-		if(!ScriptToolbar._instance)
+		if(!RepositoryToolbar._instance)
 		{
-			ScriptToolbar._instance = new ScriptToolbar();
-			window.scriptToolbar = ScriptToolbar._instance;
+			RepositoryToolbar._instance = new RepositoryToolbar();
+			window.repoToolbar = RepositoryToolbar._instance;
 		}
-		return ScriptToolbar._instance;
+		return RepositoryToolbar._instance;
 	}
 
-	public initialize(commands: CommandRegistry): ScriptToolbar
+	public initialize(commands: CommandRegistry): RepositoryToolbar
 	{
 		this._commands = commands;
 		return this;
@@ -44,9 +44,6 @@ export class ScriptToolbar extends Widget
 	private _buildInterface(): void
 	{
 		this.node.innerHTML = `
-            <button id="top-bar-btn-play" title="Play Script" class="bx bx-play"></button>
-            <button id="top-bar-btn-stop" title="Stop Script" class="bx bx-stop"></button>
-            <div class="top-bar-divider"></div>
             <label for="top-bar-sel-owner">Owner:</label>
             <select id="top-bar-sel-owner">
                 <option value="org-1">Organization One</option>
@@ -59,32 +56,32 @@ export class ScriptToolbar extends Widget
             </select>
         `;
 
-		this.node.querySelector('#top-bar-btn-play')?.addEventListener('click', () =>
+		this.node.querySelector('#top-bar-sel-owner')?.addEventListener('click', () =>
 		{
 			if(this._commands)
 			{
-				this._commands.execute('script-play');
+				this._commands.execute('change-owner');
 			}
 		});
 
-		this.node.querySelector('#top-bar-btn-stop')?.addEventListener('click', () =>
+		this.node.querySelector('#top-bar-sel-repo')?.addEventListener('click', () =>
 		{
 			if(this._commands)
 			{
-				this._commands.execute('script-stop');
+				this._commands.execute('change-repo');
 			}
 		});
 	}
 
 	public static get owner(): HTMLSelectElement | null
 	{
-		return ScriptToolbar.getInstance().node.querySelector('top-bar-sel-owner');
+		return RepositoryToolbar.getInstance().node.querySelector('#top-bar-sel-owner');
 	}
 
 	public static get repository(): HTMLSelectElement | null
 	{
-		return ScriptToolbar.getInstance().node.querySelector('top-bar-sel-repo');
+		return RepositoryToolbar.getInstance().node.querySelector('#top-bar-sel-repo');
 	}
 }
 
-window.ScriptToolbar = ScriptToolbar;
+window.RepositoryToolbar = RepositoryToolbar;

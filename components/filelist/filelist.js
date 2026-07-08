@@ -73,7 +73,7 @@ async function expandDatabaseTree(target, folderId) {
             // Get the portion after the folder name
             const relativePath = path.substring(baseDir.length + 1);
 
-            // It's an immediate child if there are no more slashes 
+            // It's an immediate child if there are no more slashes
             // (or it's a directory ending in a single slash)
             const slashIndex = relativePath.indexOf('/');
             return slashIndex === -1 || slashIndex === relativePath.length - 1;
@@ -227,7 +227,7 @@ function loadTree(database, cursor) {
     if (!cursor) {
         return resolve()
     }
-    // already exists on filesystem, 
+    // already exists on filesystem,
     //   it must have come with page
     if (files[database][cursor.path]
         && files[database][cursor.path].timestamp
@@ -246,370 +246,6 @@ function loadTree(database, cursor) {
     }
 }
 
-
-
-const NavHistory = {
-    stack: [],
-    index: -1,
-    isNavigating: false,
-
-    // Call this whenever a file is opened or a "jump" happens
-    push(fileId, row, column) {
-        if (this.isNavigating) return;
-
-        // If we were in the middle of the stack and did a new action, 
-        // truncate the "forward" history (standard browser behavior)
-        if (this.index < this.stack.length - 1) {
-            this.stack = this.stack.slice(0, this.index + 1);
-        }
-
-        this.stack.push({ fileId, row, column });
-        this.index = this.stack.length - 1;
-    },
-
-    back() {
-        if (this.index > 0) {
-            this.isNavigating = true;
-            this.index--;
-            this.apply();
-            this.isNavigating = false;
-        }
-    },
-
-    forward() {
-        if (this.index < this.stack.length - 1) {
-            this.isNavigating = true;
-            this.index++;
-            this.apply();
-            this.isNavigating = false;
-        }
-    },
-
-    apply() {
-        const point = this.stack[this.index];
-        let database = owner.value + '/' + repository.value
-        const filePath = trees[database].nodesById[point.fileId].path
-        window.currentOpenFileId = point.fileId; debugger
-        trees[database].values = [point.fileId];
-        debugger
-        openFile(owner.value, repository.value, filePath, trees[database].nodesById[point.fileId].sha, false);
-
-        aceEditor.gotoLine(point.row + 1, point.column);
-    }
-};
-
-
-function recordFileHistory(filePath, sha, lineNumber = null) {
-    // 1. Extract the raw filename from the path string (e.g., "docs/demoq3/ares.cfg" -> "ares.cfg")
-    const fileNameMatch = filePath.match(/[^/\\#]+$/);
-    const fileName = fileNameMatch ? fileNameMatch[0] : filePath;
-
-    // 2. Resolve the final targeted row coordinates safely
-    let targetLine = lineNumber;
-    if (lineNumber === null && typeof aceEditor !== 'undefined') {
-        targetLine = aceEditor.getCursorPosition().row + 1;
-    }
-
-    // 3. Build a slick, descriptive title string based on whether we have a target line
-    const dynamicTitle = targetLine
-        ? `${fileName} : ${targetLine} · Q3IDE`
-        : `${fileName} · Q3IDE`;
-
-    // 4. Force the active browser tab title to refresh explicitly
-    document.title = dynamicTitle;
-
-    if (typeof aceEditor !== 'undefined') {
-        const pos = aceEditor.getCursorPosition();
-        const finalLineNumber = targetLine !== null ? targetLine : (pos.row + 1);
-
-        appendHistoryItem({
-            filePath: filePath,
-            sha: sha,
-            row: pos.row,
-            column: pos.column,
-            lineNumber: finalLineNumber
-        }, "file");
-
-        NavHistory.push(sha, pos.row, pos.column);
-
-        const hashRoute = `#${filePath}:${finalLineNumber}`;
-        // Pass our newly formatted dynamicTitle directly into the history frame state context
-        history.pushState({ location: window.location.toString(), title: dynamicTitle }, dynamicTitle, hashRoute);
-    } else {
-        const fallbackHash = '#' + filePath + (lineNumber ? ':' + lineNumber : '');
-        history.pushState({ location: window.location.toString(), title: dynamicTitle }, dynamicTitle, fallbackHash);
-    }
-}
-
-
-
-function extractNunuMetadata(actionObj) {
-    // Default fallback configurations
-    let icon = "🧊";
-    let title = actionObj.action_description || "3D Object Change";
-    let desc = "Engine modification recorded.";
-
-    const actions = actionObj.actions || [];
-
-    if (actions.length > 0) {
-        // --- CASE 1: Spatial/Attribute Move Transform Data ---
-        // (Identified by sub-actions containing "attribute", "newValue", "oldValue")
-        if (actions[0].attribute !== undefined) {
-            icon = "🚀";
-
-            // Collect all transformed properties (e.g., ["x", "y", "z"])
-            const targetAttributes = actions.map(a => a.attribute);
-            const objectType = actions[0].object?.type || "Object3D";
-
-            // Safely grab structural position arrays from the first modification descriptor
-            const currentPos = actions[0].object || { x: 0, y: 0, z: 0 };
-
-            if (targetAttributes.includes('x') && targetAttributes.includes('y') && targetAttributes.includes('z')) {
-                title = `Translate ${objectType}`;
-                desc = `Moved to Position: [${currentPos.x}, ${currentPos.y}, ${currentPos.z}]`;
-            } else {
-                // Individual fallback parameter modifications
-                title = `Modify ${objectType}`;
-                desc = actions.map(a => `${a.attribute}: ${a.oldValue} ➡️ ${a.newValue}`).join(' | ');
-            }
-        }
-
-        // --- CASE 2: Complex Mesh / Object Insertion Elements ---
-        // (Identified by multi-type structures containing geometry/resource keys)
-        else {
-            // Locate the core mesh/object descriptor block (typically the one with a target 'type')
-            const meshNode = actions.find(a => a.type !== undefined) || actions[0];
-            const geometryNode = actions.find(a => a.category === "geometries" || a.resource !== undefined);
-
-            icon = "➕";
-
-            const entityName = meshNode.name ? `"${meshNode.name}"` : "Entity";
-            const entityType = meshNode.type || "Object3D";
-            title = `Insert ${entityType}: ${entityName}`;
-
-            if (meshNode.position) {
-                const p = meshNode.position;
-                desc = `Placed at [${p.x}, ${p.y}, ${p.z}]`;
-            } else if (geometryNode?.resource?.type) {
-                desc = `Geometry structure: ${geometryNode.resource.type}`;
-            } else {
-                desc = `UUID: ${meshNode.uuid ? meshNode.uuid.slice(0, 8) : 'N/A'}`;
-            }
-        }
-    }
-
-    return { icon, title, desc };
-}
-
-
-
-
-function extractAceMetadata(actionObj) {
-    const fileName = actionObj.filePath ? actionObj.filePath.split('/').pop() : (actionObj.fileName || "Unknown File");
-    const displayPath = actionObj.filePath || fileName;
-    const row = actionObj.row !== undefined ? actionObj.row : 0;
-    const column = actionObj.column !== undefined ? actionObj.column : 0;
-
-    // Default configuration for core file actions
-    let icon = "📄";
-    let title = fileName;
-    let desc = `Line ${row + 1}, Col ${column} — ${displayPath}`;
-
-    // 1. Capture Active Text/Code Modifications
-    if (actionObj.action_id === "ace_edit_action" || actionObj.delta) {
-        icon = "📝";
-
-        // Use the descriptive string generated by the listener if available
-        title = actionObj.action_description || "Code Modified";
-
-        const delta = actionObj.delta;
-        if (delta) {
-            const lineCount = delta.lines?.length || 1;
-            const contextText = lineCount > 1 ? `${lineCount} lines` : `col ${column}`;
-            desc = `${fileName} — ${delta.action === "remove" ? "Removed" : "Inserted"} at line ${row + 1} (${contextText})`;
-        } else {
-            desc = `Line ${row + 1}, Col ${column} — ${fileName}`;
-        }
-    }
-    // 2. Capture Pure File State Changes / Navigation Events
-    else if (actionObj.action_id === "file_action") {
-        icon = "📄";
-        title = fileName;
-        desc = `Line ${row + 1}, Col ${column} — ${displayPath}`;
-    }
-
-    return { icon, title, desc };
-}
-
-
-
-function extractPaintMetadata(actionObj) {
-    const subAction = actionObj.actions_to_do?.[0];
-    const settings = subAction?.settings;
-    const refLayer = subAction?.reference_layer;
-
-    let icon = "🎨";
-    let title = actionObj.action_description || "Graphics Modification";
-    let desc = `UUID: ${actionObj.uuid ? actionObj.uuid.slice(0, 8) : 'N/A'}`;
-
-    // 1. Capture Top Level Brush Creations
-    if (actionObj.action_id === "new_brush_layer") {
-        icon = "🖌️";
-        title = "New Brush Layer";
-        if (settings?.params) {
-            desc = `Size: ${settings.params.size}px | Color: ${settings.color || 'none'}`;
-        }
-    }
-    // 2. Capture Active Brush Vector Modifications/Strokes
-    else if (actionObj.action_id === "update_brush_layer") {
-        icon = "✍️";
-        title = refLayer?.name || "Update Brush Layer";
-
-        // Count coordinate arrays dynamically to give a useful description
-        const strokeCount = settings?.data?.length || refLayer?.data?.length || 0;
-        const dimensions = refLayer ? ` (${Math.round(refLayer.width)}x${Math.round(refLayer.height)}px)` : "";
-
-        desc = `Modified ${strokeCount} vector paths${dimensions}`;
-    }
-    // 3. Capture General Core Layer Updates
-    else if (subAction?.action_id === "update_layer") {
-        icon = "🔄";
-
-        // Fall back gracefully to reference_layer values if settings properties are empty
-        const layerName = settings?.name || refLayer?.name || "Layer";
-        const layerType = settings?.type || refLayer?.type || "Unknown";
-        const layerOrder = settings?.order !== undefined ? settings.order : (refLayer?.order !== undefined ? refLayer.order : "N/A");
-
-        title = `Update Layer: ${layerName}`;
-        desc = `Type: ${layerType} | Order position: ${layerOrder}`;
-    }
-
-    return { icon, title, desc };
-}
-
-
-
-
-
-function extractAudioMetadata(actionObj) {
-    const trackName = actionObj.trackName || actionObj.fileName || "Untitled Audio";
-    const operation = actionObj.operation || "Audio Edit"; // e.g., 'Cut', 'Gain', 'Normalize', 'Fade In'
-
-    // Default fallback configurations
-    let icon = "🎵";
-    let title = `${operation}: ${trackName}`;
-    let desc = "Audio track modified.";
-
-    // Format timestamps cleanly if byte regions or track selections exist
-    if (actionObj.startRegion !== undefined && actionObj.endRegion !== undefined) {
-        const start = Number(actionObj.startRegion).toFixed(2);
-        const end = Number(actionObj.endRegion).toFixed(2);
-        desc = `Region: ${start}s to ${end}s (${(end - start).toFixed(2)}s selection)`;
-    } else if (actionObj.duration) {
-        desc = `Total track length: ${Number(actionObj.duration).toFixed(2)}s`;
-    } else if (actionObj.action_description) {
-        desc = actionObj.action_description;
-    }
-
-    // Contextual icon assignment based on common DAW / AudioMass processes
-    const opLower = operation.toLowerCase();
-    if (opLower.includes('cut') || opLower.includes('crop') || opLower.includes('trim')) {
-        icon = "✂️";
-    } else if (opLower.includes('volume') || opLower.includes('gain') || opLower.includes('fade')) {
-        icon = "🔊";
-    } else if (opLower.includes('effect') || opLower.includes('delay') || opLower.includes('reverb')) {
-        icon = "🎛️";
-    } else if (opLower.includes('reverse') || opLower.includes('invert')) {
-        icon = "⏪";
-    }
-
-    return { icon, title, desc };
-}
-
-
-
-const fileHistory = document.getElementById('fileHistory');
-const historyMenu = document.getElementById('historyMenu');
-historyMenu.innerHTML = ''
-function appendHistoryItem(actionData, type = "paint") {
-    if (!historyMenu) return;
-
-    if (historyMenu.children.length === 1 && historyMenu.children[0].getAttribute('value') === '') {
-        historyMenu.children[0].remove();
-    }
-
-    // 1. Resolve raw details based on incoming type string
-    let meta = { icon: "⚡", title: "Action Captured", desc: "System update logged." };
-
-    if (type === 'editor') {
-        meta = extractAceMetadata(actionData);
-    } else if (type === 'nunu') {
-        meta = extractNunuMetadata(actionData);
-    } else if (type === 'audio') {
-        meta = extractAudioMetadata(actionData);
-    } else if (type === "paint") {
-        meta = extractPaintMetadata(actionData);
-    } else if (type === "file") {
-        meta = {
-            icon: "📄",
-            title: actionData.filePath.split('/').pop(),
-            desc: `Line ${actionData.row + 1}, Col ${actionData.column} — ${actionData.filePath}`
-        };
-    }
-
-    // --- NEW: Generate standard 12-hour timestamp format (e.g., "10:42 AM") ---
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    });
-
-    // 2. Create the list node item atomically
-    const li = document.createElement('li');
-    li.className = "history-item undo";
-    li.userData = actionData;
-
-    // --- NEW: Set data attributes for easy state recovery later ---
-    li.setAttribute('data-icon', meta.icon);
-    li.setAttribute('data-title', meta.title);
-    li.setAttribute('data-time', timeString);
-
-    // 3. Inject the template payload strings
-    li.innerHTML = `
-        <div class="item-header">
-            <span class="action-icon">${meta.icon}</span>
-            <strong>${meta.title}</strong>
-        </div>
-        <p class="item-desc">${meta.desc} <span class="item-time-stamp">(${timeString})</span></p>
-    `;
-
-    // 4. Prepend it to the top of the history list stack
-    if (historyMenu.children.length > 0) {
-        historyMenu.insertBefore(li, historyMenu.children[0]);
-    } else {
-        historyMenu.appendChild(li);
-    }
-
-    // --- NEW: Automate visual synchronization to the active trigger button ---
-    updateTriggerButtonValue(meta.icon, meta.title, timeString);
-}
-
-
-
-function updateTriggerButtonValue(icon, title, timeStr) {
-    const trigger = document.getElementById('fileHistory');
-    if (!trigger) return;
-
-    const valueContainer = trigger.querySelector('.selected-value');
-    if (valueContainer) {
-        // Keeps your look clean: Render custom emoji icon alongside the title string and timestamp
-        valueContainer.innerHTML = `
-            <span class="trigger-icon-wrapper">${icon}</span>
-            <span>${title} (${timeStr})</span>
-        `;
-    }
-}
 
 
 
@@ -889,7 +525,7 @@ async function expandGithubTree(target, folderId) {
         if (githubTreeLoading) return;
         githubTreeLoading = true;
 
-        // Ensure remote baseline structure is populated locally 
+        // Ensure remote baseline structure is populated locally
         if (!files[database]) {
             let branch = await getDefaultBranch(parts[0], parts[1]);
             await loadGitHubTree(parts[0], parts[1], branch);
@@ -958,7 +594,7 @@ function buildGithubTreeFromStaging(target, folderId, stagingDetails) {
 
     // --- MODE A: REPOSITORY ROOT LEVEL EXPANSION (parts.length === 2) ---
     if (parts.length === 2) {
-        // We compile the three fixed parent nodes, seeding their children lists immediately 
+        // We compile the three fixed parent nodes, seeding their children lists immediately
         // by passing down deeper virtual folder IDs to our own parsing logic.
         const modifiedChildren = compileStagingLevelChildren(`${folderId}/Modified`, '', stagingDetails.modified || []);
         const addedChildren = compileStagingLevelChildren(`${folderId}/Added`, '', stagingDetails.added || []);
@@ -1011,7 +647,7 @@ function buildGithubTreeFromStaging(target, folderId, stagingDetails) {
         matchingPaths = stagingDetails.added || [];
     }
 
-    // Process deep folder layouts dynamically 
+    // Process deep folder layouts dynamically
     const dynamicChildren = compileStagingLevelChildren(folderId, baseDir, matchingPaths);
     loadedGithubTreeNodes[folderId].children = trees['#github'].nodesById[folderId].children = dynamicChildren;
 

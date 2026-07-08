@@ -81,7 +81,7 @@
 }
 
 .top-bar-divider {
-	border-left: 1px solid var(--ace-gutter-bg);
+	border-left: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
 	height: 16px;
 	margin: 0 4px;
 }
