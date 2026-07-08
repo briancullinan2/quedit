@@ -41,6 +41,40 @@ export class RepositoryToolbar extends Widget
 		return this;
 	}
 
+	private _registerCommands()
+	{
+		if(!this._commands)
+		{
+			return;
+		}
+		if(!this._commands.hasCommand('change-repo'))
+		{
+			this._commands.addCommand('change-repo', {
+				label: 'Change Repository',
+				iconClass: 'bx bx-database',
+				execute: () =>
+				{
+					const ownerSelect = RepositoryToolbar.owner;
+					const repoSelect = RepositoryToolbar.repository;
+					console.log(`Changing repository targets: ${ownerSelect?.value}/${repoSelect?.value}`);
+				}
+			});
+		}
+
+		if(!this._commands.hasCommand('change-owner'))
+		{
+			this._commands.addCommand('change-owner', {
+				label: 'Change Owner',
+				iconClass: 'bx bx-cloud',
+				execute: () =>
+				{
+					const ownerSelect = RepositoryToolbar.owner;
+					const repoSelect = RepositoryToolbar.repository;
+					console.log(`Changing owner targets: ${ownerSelect?.value}/${repoSelect?.value}`);
+				}
+			});
+		}
+	}
 	private _buildInterface(): void
 	{
 		this.node.innerHTML = `
@@ -56,7 +90,7 @@ export class RepositoryToolbar extends Widget
             </select>
         `;
 
-		this.node.querySelector('#top-bar-sel-owner')?.addEventListener('click', () =>
+		this.node.querySelector('#top-bar-sel-owner')?.addEventListener('change', () =>
 		{
 			if(this._commands)
 			{
@@ -64,7 +98,7 @@ export class RepositoryToolbar extends Widget
 			}
 		});
 
-		this.node.querySelector('#top-bar-sel-repo')?.addEventListener('click', () =>
+		this.node.querySelector('#top-bar-sel-repo')?.addEventListener('change', () =>
 		{
 			if(this._commands)
 			{

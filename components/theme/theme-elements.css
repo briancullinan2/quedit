@@ -768,49 +768,6 @@ body .terminal-file-underline {
 
 
 
-#toolbar input[type="checkbox"] {
-	background-color: var(--ace-gutter-bg);
-	border-color: var(--ace-blue);
-	height: calc(var(--global-height) + 4px);
-	transition: box-shadow ease-in-out 0.3s;
-}
-
-
-#toolbar input[type="checkbox"]::before {
-	background-color: var(--ace-bg);
-	box-shadow: -1px -2px 5px inset rgb(from var(--ace-gutter-bg) r g b / 50%);
-	width: calc(var(--global-height) - 4px);
-	height: calc(var(--global-height) - 4px);
-
-}
-
-
-#toolbar input[type="checkbox"]::after {
-	color: var(--ace-foreground);
-}
-
-#toolbar input[type="checkbox"]:checked::after {
-	color: var(--ace-bg);
-}
-
-#toolbar input[type="checkbox"]:checked:focus,
-#toolbar input[type="checkbox"]:checked {
-	background-color: var(--ace-blue);
-	/* iOS Green */
-	border-color: rgb(from var(--ace-blue) r g b / 50%);
-	box-shadow: 1px 2px 3px rgb(from var(--ace-foreground) r g b / 50%);
-}
-
-#toolbar input[type="checkbox"]:checked::before {
-	transform: translateX(26px);
-	transform: translateX(calc(60px - var(--global-height) - 4px));
-}
-
-#toolbar input[type="checkbox"]:focus-visible {
-	box-shadow: 0 0 0 2px rgb(from var(--ace-green) r g b / 50%);
-}
-
-
 @keyframes universalLineFlash {
 	0% {
 		background-color: var(--ace-gutter-bg);

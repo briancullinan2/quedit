@@ -23,7 +23,7 @@ const traverse = packages.traverse.default;
 
 export interface TopBarComponents
 {
-	headerRow: Widget;
+	headerRow: Panel;
 	menuBar: MenuBar;
 }
 

@@ -317,10 +317,8 @@ export class SettingsToolbar extends Widget
 			{
 				return `
                 <li class="setting" placeholder="${control.placeholder}">
-                    <div style="display: flex; align-items: center;">
-                        <span>${control.labelText || ''}</span>
-                        <input type="checkbox" name="${control.name}" id="${control.id}" ${control.checked ? 'checked="checked"' : ''} />
-                    </div>
+					<span>${control.labelText || ''}</span>
+					<input type="checkbox" name="${control.name}" id="${control.id}" ${control.checked ? 'checked="checked"' : ''} />
                 </li>`;
 			}
 		}).join('');
