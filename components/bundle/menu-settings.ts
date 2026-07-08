@@ -28,11 +28,11 @@ type ControlConfig = {
 const SETTINGS_CONTROLS: ControlConfig[] = [
 	{
 		id: 'keybinding',
-		placeholder: 'Key binding',
+		placeholder: 'Key Binding',
 		type: 'select',
 		name: 'keybinding',
 		options: [
-			{ value: '', label: 'Key binding' },
+			{ value: '', label: 'Key Binding' },
 			{ value: 'null', label: 'Ace' },
 			{ value: 'ace/keybinding/combined', label: 'Combined', selected: true },
 			{ value: 'ace/keybinding/vim', label: 'Vim' },
@@ -43,11 +43,11 @@ const SETTINGS_CONTROLS: ControlConfig[] = [
 	},
 	{
 		id: 'configuration',
-		placeholder: 'Build configuration',
+		placeholder: 'Build Configuration',
 		type: 'select',
 		name: 'configuration',
 		options: [
-			{ value: '', label: 'Build configuration' },
+			{ value: '', label: 'Build Configuration' },
 			{ value: 'debug', label: 'Debug' },
 			{ value: 'release', label: 'Release' },
 			{ value: 'pre', label: 'Preprocess' },
@@ -63,10 +63,10 @@ const SETTINGS_CONTROLS: ControlConfig[] = [
 	},
 	{
 		id: 'reload',
-		placeholder: 'Automatically reload',
+		placeholder: 'Automatically Reload',
 		type: 'checkbox',
 		name: 'reload',
-		labelText: 'Hot reload: &nbsp; ',
+		labelText: 'Hot Reload:&nbsp;',
 		checked: true
 	},
 	{
@@ -80,11 +80,11 @@ const SETTINGS_CONTROLS: ControlConfig[] = [
 	},
 	{
 		id: 'theme',
-		placeholder: 'Current theme',
+		placeholder: 'Current Theme',
 		type: 'select',
 		name: 'theme',
 		options: [
-			{ value: '', label: 'Current theme' },
+			{ value: '', label: 'Current Theme' },
 			{
 				label: "The Coders' Heritage",
 				options: [
@@ -288,9 +288,9 @@ export class SettingsToolbar extends Widget
 
 	private _buildInterface(): void
 	{
-		this.node.innerHTML = SETTINGS_CONTROLS.map(control =>
+		this.node.innerHTML = '<ul>' +  SETTINGS_CONTROLS.map(control =>
 		{
-			const disabledAttr = (control.options?.[0] as SelectOption)?.value === '' || control.options?.length === 1 ? 'disabled' : '';
+			//const disabledAttr = (control.options?.[0] as SelectOption)?.value === '' || control.options?.length === 1 ? 'disabled' : '';
 
 			if(control.type === 'select')
 			{
@@ -308,20 +308,20 @@ export class SettingsToolbar extends Widget
 				}).join('');
 
 				return `
-                <li class="setting" placeholder="${control.placeholder}">
-                    <select required ${disabledAttr} name="${control.name}" id="${control.id}">
+                <li id="${control.name}-container" class="setting" placeholder="${control.placeholder}">
+                    <select required name="${control.name}" id="${control.id}">
                         ${innerContent}
                     </select>
                 </li>`;
 			} else
 			{
 				return `
-                <li class="setting" placeholder="${control.placeholder}">
+                <li id="${control.name}-container" class="setting" placeholder="${control.placeholder}">
 					<span>${control.labelText || ''}</span>
 					<input type="checkbox" name="${control.name}" id="${control.id}" ${control.checked ? 'checked="checked"' : ''} />
                 </li>`;
 			}
-		}).join('');
+		}).join('') + '</ul>';
 	}
 }
 

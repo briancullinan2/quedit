@@ -15,7 +15,7 @@ ul.toolbar {
 	display: inline-flex;
 	flex-direction: row;
 	max-width: 100%;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	justify-content: flex-start;
 	align-items: center;
 	list-style: none;
@@ -35,7 +35,7 @@ ul.toolbar>li {
 	min-width: 0;
 	flex-basis: min-content;
 	flex-grow: 1;
-	width: 100%;
+	max-width: 100%;
 	white-space: nowrap;
 	list-style: none;
 	margin: 0;
@@ -104,8 +104,13 @@ ul.toolbar>li {
 	flex-direction: row;
 	align-items: center;
 	gap: 8px;
-	padding-left: 12px;
+	padding: 0;
 	color: var(--ace-foreground);
+	max-width: 100%;
+}
+
+#app-top-header-row>*>* {
+	flex-basis: min-content;
 }
 
 

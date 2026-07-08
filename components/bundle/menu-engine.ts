@@ -113,17 +113,15 @@ export class EngineToolbar extends Widget
 	private _buildInterface(): void
 	{
 		this.node.innerHTML = `
-            <li class="engine">
-                <ul>
-                    ${ENGINE_CONTROLS.map(control => `
-                        <li placeholder="${control.placeholder}">
-                            <select required name="${control.name}" id="${control.id}">
-                                <option value="" selected disabled>${control.placeholder}</option>
-                            </select>
-                        </li>
-                    `).join('')}
-                </ul>
-            </li>
+			<ul class="engine">
+				${ENGINE_CONTROLS.map(control => `
+					<li placeholder="${control.placeholder}">
+						<select required name="${control.name}" id="${control.id}">
+							<option value="" selected disabled>${control.placeholder}</option>
+						</select>
+					</li>
+				`).join('')}
+			</ul>
         `;
 	}
 }

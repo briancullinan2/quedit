@@ -92,6 +92,7 @@ export class ResponsiveManager
 
 		// Update headerRow constraints if your layouts restrict it
 		headerRow.node.style.minHeight = `${currentNeededHeight + 10}px`;
+		headerRow.update();
 	}
 
 	/**
@@ -212,10 +213,29 @@ export class ResponsiveManager
 	 */
 	private _calculateProportionalSizes(sizes: number[], targetIndex: number, availableSpace: number): number[]
 	{
+		// Sanity check: If zero or negative space is available (hidden/collapsed view), abort mutation
+		if(availableSpace <= 0 || isNaN(availableSpace) || !isFinite(availableSpace))
+		{
+			return sizes;
+		}
+
 		const targetRatio = Math.min(200 / availableSpace, 0.8);
+
+		// Safety check: prevent an impossible ratio break
+		if(targetRatio >= 1 || targetRatio <= 0)
+		{
+			return sizes;
+		}
+
 		const currentTargetRatio = sizes[targetIndex];
 		const remainingRatioBefore = 1 - currentTargetRatio;
 		const remainingRatioAfter = 1 - targetRatio;
+
+		// Guard against negative ratio remaining space bounds
+		if(remainingRatioAfter <= 0 || remainingRatioBefore <= 0)
+		{
+			return sizes;
+		}
 
 		return sizes.map((size, index) =>
 		{

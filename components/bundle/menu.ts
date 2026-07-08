@@ -17,6 +17,7 @@ import { ApplicationToolbar } from './menu-app';
 import { FileToolbar } from './menu-file';
 import { SettingsToolbar } from './menu-settings';
 import { EngineToolbar } from './menu-engine';
+import { HistoryToolbar } from './menu-history';
 
 const parseBabel = packages.parser.parse;
 const traverse = packages.traverse.default;
@@ -516,7 +517,11 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 	fileMenu.addItem({ command: 'file-exit' });
 
 	// 3. Assemble the base MenuBar
-	const menuBar = new MenuBar();
+	const menuBar = new MenuBar({
+		overflowMenuOptions: {
+			isVisible: false
+		}
+	});
 	menuBar.id = 'top-menubar';
 	menuBar.addMenu(fileMenu);
 
@@ -529,6 +534,7 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 	const scriptToolbar = ScriptToolbar.getInstance().initialize(commands);
 	const appToolbar = ApplicationToolbar.getInstance().initialize(commands);
 	const fileToolbar = FileToolbar.getInstance().initialize(commands);
+	const historyToolbar = HistoryToolbar.getInstance().initialize(commands);
 	const settingsToolbar = SettingsToolbar.getInstance().initialize(commands);
 	const engineToolbar = EngineToolbar.getInstance().initialize(commands);
 
@@ -537,6 +543,7 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 	headerRow.addWidget(scriptToolbar);
 	headerRow.addWidget(appToolbar);
 	headerRow.addWidget(fileToolbar);
+	headerRow.addWidget(historyToolbar);
 	headerRow.addWidget(settingsToolbar);
 	headerRow.addWidget(engineToolbar);
 

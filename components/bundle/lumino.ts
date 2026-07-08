@@ -106,13 +106,11 @@ function main(): void
 	Widget.attach(windowRoot, document.body);
 	windowRoot.fit();
 
-	ResponsiveManager.getInstance().handleResize(windowRoot, workspaceBox, headerRow, menuBar, toolbar, mainDock);
-
 	const resizeHandler = () =>
 	{
 		ResponsiveManager.getInstance().handleResize(windowRoot, workspaceBox, headerRow, menuBar, toolbar, mainDock);
-		windowRoot.update();
 	};
+	setTimeout(resizeHandler, 100);
 	window.resizeHandler = resizeHandler;
 	window.addEventListener('resize', resizeHandler);
 

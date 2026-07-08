@@ -2,11 +2,10 @@
 #history-inline-toolbar {
 	position: relative;
 	display: inline-block;
-	font-family: sans-serif;
 }
 
 /* Updated selector from .dropdown-menu to target the HTML element layout */
-.history-menu-dropdown {
+#app-top-header-row .history-menu-dropdown {
 	display: none;
 	/* Controlled cleanly by the .show class toggle */
 	position: absolute;
@@ -27,7 +26,7 @@
 }
 
 /* Class variant for displaying the dropdown dynamically */
-.history-menu-dropdown.show {
+#app-top-header-row .history-menu-dropdown.show {
 	display: block;
 }
 
@@ -73,6 +72,7 @@
 	max-width: 100%;
 	margin-right: 0;
 	padding-right: 0;
+	height: 30px;
 }
 
 #history-inline-toolbar button.select-box-trigger .toggle-arrow {

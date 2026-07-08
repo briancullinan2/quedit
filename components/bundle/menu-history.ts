@@ -271,19 +271,17 @@ export class HistoryToolbar extends Widget
 	{
 		// Container wrapper elements configured to isolate absolute rendering stacks
 		this.node.style.position = 'relative';
-
+		this.node.setAttribute('placeholder', 'Current Filename');
 		this.node.innerHTML = `
-            <li popovertarget="global-tooltip" placeholder="Current filename" style="list-style: none;">
-                <button name="fileHistory" class="select-box-trigger" aria-haspopup="listbox" id="fileHistory">
-                    <div class="selected-value">
-                        <i class="bx bx-undo"></i>
-                        <span>No History Recorded</span>
-                    </div>
-                    <i class="bx bx-chevron-down toggle-arrow"></i>
-                </button>
-            </li>
-            <ul id="historyMenu" class="history-menu-dropdown" style="display: none; position: absolute; left: 0; top: 100%; z-index: 10000; max-height: 300px; overflow-y: auto;">
-                <li value="" class="empty-history-notice" style="padding: 8px;">No current items</li>
+			<button name="fileHistory" class="select-box-trigger" aria-haspopup="listbox" id="fileHistory">
+				<div class="selected-value">
+					<i class="bx bx-undo"></i>
+					<span>No History Recorded</span>
+				</div>
+				<i class="bx bx-chevron-down toggle-arrow"></i>
+			</button>
+            <ul id="historyMenu" class="history-menu-dropdown">
+                <li value="" class="empty-history-notice">No current items</li>
             </ul>
         `;
 
@@ -293,7 +291,7 @@ export class HistoryToolbar extends Widget
 		trigger?.addEventListener('click', (e) =>
 		{
 			e.stopPropagation();
-			const isVisible = this._dropdownMenu?.style.display !== 'none';
+			const isVisible = this._dropdownMenu?.classList.contains('show');
 			this._toggleMenu(!isVisible);
 		});
 
