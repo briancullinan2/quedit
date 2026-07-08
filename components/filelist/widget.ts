@@ -1,6 +1,9 @@
 // components/FileListWidget.ts
 import { Widget, DockPanel } from '@lumino/widgets';
-import { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
+import type { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
+import type { GitHubFileEntry } from '../bundle/github-types.js';
+import type { ScriptToolbar } from '../bundle/menu-repos.js';
+import type { Settings } from '../bundle/settings.js';
 import Tree from './tree.js';
 
 declare global
@@ -10,7 +13,12 @@ declare global
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
 		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
+		loadFileTree: (repoOwner: string, repoName: string, branch: string, selector: string) => Promise<void>;
 		mainDock: DockPanel;
+		trees: Record<string, any>;
+		filesRepo: Record<string, GitHubFileEntry>;
+		ScriptToolbar: typeof ScriptToolbar;
+		SettingsManager: Settings;
 	}
 }
 
@@ -18,8 +26,6 @@ declare global
 export class FileListWidget extends Widget
 {
 	private treeContainerId: string;
-	private treeInstance: any = null;
-	private filesCache: Record<string, any> = {};
 
 	constructor(titleStr: string)
 	{
@@ -86,21 +92,7 @@ export class FileListWidget extends Widget
 		// Handle select mutations
 		this.node.querySelector('#repository')?.addEventListener('change', () => this.onRepositoryChanged());
 		this.node.querySelector('#branch')?.addEventListener('change', () => this.onRepositoryChanged());
-
-		// Intercept row item selection inside the tree element
-		this.node.querySelector(`#${this.treeContainerId}`)?.addEventListener('click', (e: Event) =>
-		{
-			const target = e.target as HTMLElement;
-			const fileRow = target.closest('.treejs-node-label'); // Adjust class token to match your Tree.js output rows
-			if(fileRow)
-			{
-				const filePath = fileRow.getAttribute('data-path') || fileRow.textContent?.trim();
-				if(filePath && filePath.includes('.'))
-				{
-					this.dispatchFileActivation(filePath);
-				}
-			}
-		});
+		this.node.querySelector(`#${this.treeContainerId}`)?.addEventListener('click', treeHandler.bind(this, '#' + this.treeContainerId));
 	}
 
 	private async initializeFiletrees(): Promise<void>
@@ -123,70 +115,86 @@ export class FileListWidget extends Widget
 
 		const targetTreeElement = document.getElementById(this.treeContainerId);
 		if(!targetTreeElement) return;
+		targetTreeElement.innerHTML = '';
 
-		// Fetch and construct your flat file nodes array
-		const treeData = await this.loadGitHubTree(owner, repo, branch);
-		if(!treeData) return;
-
-		// Build or update the structural TreeJS component
-		targetTreeElement.innerHTML = ''; // Clear container bounds
-		this.treeInstance = new Tree('#' + this.treeContainerId, {
-			data: window.convertFlatToNested(Object.values(treeData)),
-			autoOpen: false,
-			closeDepth: 2,
-		});
-	}
-
-	private async loadGitHubTree(owner: string, repo: string, branch: string): Promise<any>
-	{
-		const dbKey = `${owner}/${repo}`;
-		try
-		{
-			// Assuming your global context utilities are loaded on the window space
-			const treeData = await window.githubRequest(owner, repo, `git/trees/${branch}?recursive=1`);
-			const commitData = await window.githubRequest(owner, repo, `commits/${branch}`);
-			const buildDate = new Date(commitData.commit.author.date);
-
-			this.filesCache[dbKey] = treeData.tree.reduce((obj: any, asset: any) =>
-			{
-				asset.timestamp = buildDate;
-				obj[asset.path] = asset;
-				return obj;
-			}, {});
-
-			return this.filesCache[dbKey];
-		} catch(err)
-		{
-			console.error('Failed to fetch structural data stream from GitHub source:', err);
-			return null;
-		}
-	}
-
-	/**
-	 * Router Dispatcher
-	 * Automatically targets correct panel configurations depending on asset file extension types
-	 */
-	private dispatchFileActivation(filePath: string): void
-	{
-		const ext = filePath.split('.').pop()?.toLowerCase();
-		let targetRoute = 'editor'; // Fallback text file baseline handler
-
-		if(['png', 'jpg', 'jpeg', 'bmp', 'gif', 'tga'].includes(ext ?? ''))
-		{
-			targetRoute = 'paint';
-		} else if(['wav', 'mp3', 'ogg', 'mid'].includes(ext ?? ''))
-		{
-			targetRoute = 'audio-editor';
-		}
-
-		console.log(`Routing layout asset focus [${filePath}] down pathway: [${targetRoute}]`);
-
-		window.triggerPanelRoute(targetRoute, window.mainDock);
+		await window.loadFileTree(owner, repo, branch, '#' + this.treeContainerId);
 	}
 
 	protected onResize(msg: Widget.ResizeMessage): void
 	{
 		// Keeps internal lists and heights optimized inside Lumino constraints
 		if(msg.height < 0 || msg.width < 0) return;
+	}
+}
+
+
+
+
+function treeHandler(selector: string, e: Event): void
+{
+	const target = e.target as HTMLElement | null;
+	if(!target) return;
+
+	const node = target.closest('.treejs-node') as HTMLElement | null;
+	if(!node) return;
+
+	const fileId = node.getAttribute('data-id');
+	if(!fileId) return;
+
+	// Fixed bug: changed .endsWith['...'] to .endsWith('...')
+	if(fileId.endsWith('[Recursive]'))
+	{
+		return;
+	}
+
+	if(node.classList.contains('treejs-placeholder'))
+	{
+		const tree = window.trees[selector];
+		if(!tree || !tree.nodesById[fileId]) return;
+
+		const filePath = tree.nodesById[fileId].path;
+
+		let selected = window.ScriptToolbar.owner?.value + '/' + window.ScriptToolbar.repository?.value;
+		let nodeDB: string | null;
+
+		if(nodeDB = node.getAttribute('data-database'))
+		{
+			selected = nodeDB;
+		}
+		if(node.closest('#filelist'))
+		{
+			selected = window.SettingsManager.get('github', 'engineRepository');
+		}
+		if(node.closest('#gamelist'))
+		{
+			selected = window.SettingsManager.get('github', 'gameRepository');
+		}
+		if(node.closest('#assetRepo'))
+		{
+			selected = window.SettingsManager.get('github', 'assetRepository');
+		}
+		if(node.closest('#database'))
+		{
+			const parent = node.closest('#database > div > ul > li[data-id]') as HTMLElement | null;
+			if(parent && (nodeDB = parent.getAttribute('data-id')))
+			{
+				selected = nodeDB;
+			}
+		}
+		if(node.closest('#github'))
+		{
+			const parent = node.closest('#github > div > ul > li[data-id]') as HTMLElement | null;
+			if(parent && (nodeDB = parent.getAttribute('data-id')))
+			{
+				selected = nodeDB;
+			}
+		}
+
+		const parts = selected.split('/');
+		const newRepo = parts.length === 2 ? parts[1] : parts[0] || window.ScriptToolbar.repository?.value;
+		const newOwner = parts.length === 2 ? parts[0] : window.ScriptToolbar.owner?.value;
+
+		console.warn('TODO: openFile: ' + filePath);
+		//openFile(newOwner, newRepo, filePath, tree.nodesById[fileId].sha);
 	}
 }

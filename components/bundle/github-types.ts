@@ -1,10 +1,5 @@
 import { FileRecord } from "./local";
 
-// --- External Environmental Declarations ---
-declare const api: any;
-declare const JSZip: any;
-declare const Tree: any;
-
 export interface GitHubFileEntry extends FileRecord
 {
 	type: 'file' | 'dir';
@@ -84,3 +79,15 @@ export const mapFiles: Record<string, string> = {
 export const trees: Record<string, any> = {};
 export const filesRepo: Record<string, GitHubFileEntry> = {};
 
+
+declare global
+{
+	interface Window
+	{
+		trees: Record<string, any>;
+		filesRepo: Record<string, GitHubFileEntry>;
+	}
+}
+
+window.trees = trees;
+window.filesRepo = filesRepo;

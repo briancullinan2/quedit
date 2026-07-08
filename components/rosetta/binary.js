@@ -140,7 +140,7 @@ const AssetInspector = {
 
     isActuallyAudio: (bytes, path) => {
         const binType = detectBinaryType(bytes);
-        if (binType !== 'unknown') return ['wav', 'mp3', 'ogg', 'flac'].includes(binType);
+        if (binType !== 'unknown') return ['wav', 'mp3', 'ogg', 'flac', 'mid'].includes(binType);
         return /\.(wav|mp3|ogg|flac)$/i.test(path);
     },
 
@@ -172,7 +172,7 @@ const AssetInspector = {
 
 /**
  * Detects the real underlying binary format from an ArrayBuffer or Uint8Array
- * @param {ArrayBuffer|Uint8Array} sourceBuffer 
+ * @param {ArrayBuffer|Uint8Array} sourceBuffer
  * @returns {string} The detected format key, or 'unknown'
  */
 function detectBinaryType(sourceBuffer) {
@@ -521,7 +521,7 @@ function getQVMHeader(sampleBytes, content, filePath) {
 
 
     // 1. Read QVM Header Magic Number (0x12721444 or 'qvm\x12')
-    // Standard QVM headers start with Magic (4 bytes), Instruction Count (4 bytes), 
+    // Standard QVM headers start with Magic (4 bytes), Instruction Count (4 bytes),
     // Code Offset/Length (4), Data Offset/Length (4), Lit Offset/Length (4), BSS Length (4)
     const isQVM = sampleBytes[0] === 0x44 && sampleBytes[1] === 0x14 && sampleBytes[2] === 0x72 && sampleBytes[3] === 0x12;
 
@@ -692,7 +692,7 @@ function disassembleWasmRow(bytes, globalOffset) {
 /**
  * Consolidated WebAssembly Binary Analysis & Side-by-Side Disassembly Suite
  * Parses module headers internally and generates an adjustable multi-byte row matrix view.
- * 
+ *
  * @param {Uint8Array} sampleBytes - Raw application binary array buffer workspace
  * @param {number} rowWidth - Display column byte grouping threshold (typically 8 or 16)
  * @param {number|null} viewportStart - Optional custom byte offset to target; defaults to Code Start
@@ -921,7 +921,7 @@ function renderWasmDisassemblySuite(sampleBytes, rowWidth = 16, viewportStart = 
 /**
  * Advanced QVM Binary Analysis & Disassembly Stream Suite
  * Parses Quake VM headers and produces an adjustable multi-byte side-by-side view.
- * 
+ *
  * @param {Uint8Array} sampleBytes - Raw application binary array buffer workspace
  * @param {number} rowWidth - Display column byte grouping threshold (typically 8 or 16)
  * @param {Object} options - Configuration parameters for windowing and overrides
@@ -1208,7 +1208,7 @@ function renderQvmDisassemblySuite(sampleBytes, rowWidth = 16, options = {}) {
 
 /**
  * Advanced Stream-Safe WebAssembly Disassembler & Hex Matrix
- * 
+ *
  * @param {Uint8Array} sampleBytes - The active chunk of bytes loaded into memory
  * @param {number} rowWidth - Display width layout grid columns (8 or 16)
  * @param {Object} options - Configuration adjustments for windowing and overrides
@@ -1323,10 +1323,10 @@ function renderWasmDisassemblyPrintout(sampleBytes, rowWidth = 16, options = {})
 
 
 /**
- * Extracts comprehensive WebAssembly structural execution metrics and 
+ * Extracts comprehensive WebAssembly structural execution metrics and
  * instantiation maps to output a high-density runtime telemetry header block.
  * Optimized for production/final compiled executables.
- * 
+ *
  * @param {Uint8Array} sampleBytes - Raw application binary array buffer workspace.
  * @param {string|Uint8Array} content - The file context stream data wrapper.
  * @param {string} filePath - Path identifier of the active workspace file.
@@ -1700,7 +1700,7 @@ function renderWasmDisassembly(sampleBytes, rowWidth = 16, viewportStart = null,
     let isRelocatableObject = false;
 
     // =========================================================================
-    // STEP 1: SINGLE RESILIENT STRUCTURAL SCAN PASS 
+    // STEP 1: SINGLE RESILIENT STRUCTURAL SCAN PASS
     // =========================================================================
     let ptr = 8;
     const totalBytes = sampleBytes.length;
@@ -1874,7 +1874,7 @@ function renderWasmDisassembly(sampleBytes, rowWidth = 16, viewportStart = null,
 /**
  * Advanced Q3 MD3 Model Binary Analysis & Disassembly Suite
  * Parses Quake 3 engine mesh files and produces a comprehensive structural blueprint dump.
- * 
+ *
  * @param {Uint8Array|ArrayBuffer} sampleBytes - Raw model binary array buffer workspace
  * @param {string} filePath - Input path or label identifier for telemetry reporting
  * @returns {string} High-density diagnostic blueprint report
@@ -2053,7 +2053,7 @@ function renderMd3DisassemblySuite(sampleBytes, filePath = "model.md3") {
 /**
  * Advanced Q3 BSP Map Binary Analysis & Disassembly Suite
  * Parses Quake 3 engine compiled map files and dumps structural lumps topology data.
- * 
+ *
  * @param {Uint8Array|ArrayBuffer} sampleBytes - Raw BSP binary array buffer workspace
  * @param {string} filePath - Input path or label identifier for telemetry reporting
  * @returns {string} High-density diagnostic map blueprint report
@@ -2224,7 +2224,7 @@ function renderBspDisassemblySuite(sampleBytes, filePath = "map.bsp") {
             const y = readF4(vertCursor + 4);
             const z = readF4(vertCursor + 8);
 
-            // UV Material Texture coordinates mapping 
+            // UV Material Texture coordinates mapping
             const u = readF4(vertCursor + 12);
             const t = readF4(vertCursor + 16);
 
@@ -2265,9 +2265,9 @@ function renderBspDisassemblySuite(sampleBytes, filePath = "map.bsp") {
 
 /**
  * Advanced Q3 AAS Bot Navigation Binary Analysis & Disassembly Suite
- * Parses Quake 3 engine compiled Area Awareness System (.aas) files and dumps 
+ * Parses Quake 3 engine compiled Area Awareness System (.aas) files and dumps
  * structural AI routing topology data.
- * 
+ *
  * @param {Uint8Array|ArrayBuffer} sampleBytes - Raw AAS binary array buffer workspace
  * @param {string} filePath - Input path or label identifier for telemetry reporting
  * @returns {string} High-density diagnostic navigation blueprint report
@@ -2749,11 +2749,11 @@ const HUFFMAN_DECODER_TABLE =
 
 /**
  * Standalone Q3 Demo (.dm3) Network Telemetry Logger - Protocol 43 (Uncompressed)
- * 
- * Parses early-era Quake 3 demo files using standard byte-alignment, 
+ *
+ * Parses early-era Quake 3 demo files using standard byte-alignment,
  * bypassing the need for Huffman bitstream decompression. Hardened against negative
  * jumps and desync crashing.
- * 
+ *
  * @param {Uint8Array} bytes - Raw DM3 binary
  * @returns {string} Plain text diagnostic console log
  */
@@ -2954,10 +2954,10 @@ function parseDM3Telemetry(bytes) {
 
 /**
  * Standalone Q3 Font DAT Parser
- * 
+ *
  * Parses Quake 3 / ioquake3 generated font dat files (e.g., fontImage_12.dat)
  * Extracts all 256 glyph boundaries, texture coordinates, and scaling data.
- * 
+ *
  * @param {Uint8Array} bytes - Raw DAT binary
  * @returns {string} Plain text diagnostic console log
  */
@@ -2991,7 +2991,7 @@ function parseQ3FontDat(bytes) {
         for (let i = 0; i < length; i++) {
             if (offset >= bytes.length) break;
             const charCode = view.getUint8(offset++);
-            // Stop appending on null terminator, but we must advance the offset 
+            // Stop appending on null terminator, but we must advance the offset
             // by the full 'length' to maintain structure alignment
             if (charCode !== 0 && str.length === i) {
                 str += String.fromCharCode(charCode);

@@ -20,13 +20,14 @@
 }
 
 
-.treejs .treejs-nodes {
-	overflow: visible;
-}
-
 .treejs>.treejs-nodes {
 	margin: 0;
 	padding: 0;
+}
+
+.treejs>.treejs-nodes,
+.treejs>.treejs-nodes>.treejs-node {
+	overflow: visible !important;
 }
 
 .treejs .treejs-node {

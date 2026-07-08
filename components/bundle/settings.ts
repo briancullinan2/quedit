@@ -27,7 +27,7 @@ declare global
 	interface Window
 	{
 		mainDock: DockPanel;
-		SettingsManager?: Settings;
+		SettingsManager: Settings;
 		engineRepository: string | null;
 		AceEditorWidget: typeof AceEditorWidget;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;

@@ -392,36 +392,6 @@ async function hydrateFileMTimes(owner, repo, branch, filePaths, targetCache)
 }
 
 
-const github = {};
-const trees = {};
-const files = {};
-
-async function loadFileTree(repoOwner, repoName, branch, selector)
-{
-
-	try
-	{
-		let database = repoOwner + '/' + repoName;
-
-		files[selector] = await loadGitHubTree(repoOwner, repoName, branch);
-
-		if(!files[selector]) return;
-		// Initialize Tree.js with the transformed data
-		// Note: Use 'data' property instead of 'url' to provide the object directly
-		trees[selector] = trees[database] = new Tree(selector, {
-			data: convertFlatToNested(Object.values(files[selector])),
-			autoOpen: false,
-			closeDepth: 2,
-		});
-
-		//downloadRepoZip(repoOwner, repoName, branch)
-
-	} catch(error)
-	{
-		console.error('Failed to load file list tree:', error);
-	}
-}
-
 async function getGitSha256Browser(content)
 {
     const encoder = new TextEncoder();
@@ -877,9 +847,6 @@ async function searchGitHubCode(query, activeRepositories, token)
 	const exportsObject = {
 		defaultBranches,
 		mapFiles,
-		github,
-		trees,
-		files,
 		githubRequest,
 		getDefaultBranch,
 		getBranchVersion,
@@ -888,7 +855,6 @@ async function searchGitHubCode(query, activeRepositories, token)
 		loadGitHubTree,
 		loadGitHubTreeNew,
 		hydrateFileMTimes,
-		loadFileTree,
 		getGitShaBrowser,
 		cacheFile,
 		cacheFileInternal,

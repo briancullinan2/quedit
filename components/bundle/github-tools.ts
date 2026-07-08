@@ -20,6 +20,7 @@ declare global
 	{
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
 		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
+		loadFileTree: (repoOwner: string, repoName: string, branch: string, selector: string) => Promise<void>;
 	}
 }
 
@@ -219,6 +220,7 @@ export async function loadFileTree(repoOwner: string, repoName: string, branch: 
 	}
 }
 
+window.loadFileTree = loadFileTree;
 
 export async function getAuthenticatedUser(): Promise<any>
 {

@@ -22,6 +22,7 @@ declare global
 	interface Window
 	{
 		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
+		loadGitHubTree: (repoOwner: string, repoName: string, branch: string) => Promise<any>;
 	}
 }
 
@@ -201,6 +202,10 @@ export async function loadGitHubTree(repoOwner: string, repoName: string, branch
 		console.error('Failed to load GitHub tree:', error);
 	}
 }
+
+
+window.loadGitHubTree = loadGitHubTree;
+
 
 export async function loadGitHubTreeNew(repoOwner: string, repoName: string, branch?: string, initialPath = ''): Promise<any>
 {

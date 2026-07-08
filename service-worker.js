@@ -85,7 +85,7 @@ async function initializeCoreScripts()
 			console.log(`✅ [SW-TRACE] Imported natively: ${script}`);
 		} catch(netError)
 		{
-			console.warn(`⚠️ [SW-WARN] Native import failed for ${script}. Swapping to VFS fallback engine...`, netError);
+			console.error(`⚠️ [SW-WARN] Native import failed for ${script}. Swapping to VFS fallback engine...`, netError);
 			try
 			{
 				// Network failed (offline), extract out of IndexedDB VFS instead

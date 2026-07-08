@@ -2,12 +2,11 @@
 import { SettingsManager } from "../bundle/settings";
 import { githubRequest, getDefaultBranch, getBranchVersion } from "./github-api";
 import { getGitShaBrowser } from "./github-tools";
+import { filesRepo, trees } from "./github-types";
 import { config, dirs, FS, path } from "./global";
 import { DB_STORE_NAME, FS_FILE, putRecord } from "./local";
 
-declare const api: any;
 declare const JSZip: any;
-declare const Tree: any;
 
 export async function downloadRepoZip(ownerName: string, repo: string, branch = 'master', database: string | null = null): Promise<void>
 {
@@ -95,5 +94,7 @@ export
 {
 	getGitShaBrowser,
 	getDefaultBranch,
-	getBranchVersion
+	getBranchVersion,
+	trees,
+	filesRepo,
 };

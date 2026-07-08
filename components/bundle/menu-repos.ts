@@ -6,7 +6,8 @@ declare global
 {
 	interface Window
 	{
-		scriptToolbar?: ScriptToolbar;
+		scriptToolbar: ScriptToolbar;
+		ScriptToolbar: typeof ScriptToolbar;
 	}
 }
 
@@ -85,3 +86,5 @@ export class ScriptToolbar extends Widget
 		return ScriptToolbar.getInstance().node.querySelector('top-bar-sel-repo');
 	}
 }
+
+window.ScriptToolbar = ScriptToolbar;

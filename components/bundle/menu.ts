@@ -381,10 +381,14 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 			sidePanel.addWidget(widgetInstance);
 		} else
 		*/
+		if(widgetInstance.constructor.name === 'FileListWidget')
+		{
+			mainDock.addWidget(widgetInstance, { mode: 'split-left' });
+		} else
 		{
 			mainDock.addWidget(widgetInstance, { mode: 'split-right' });
-			mainDock.activateWidget(widgetInstance);
 		}
+		mainDock.activateWidget(widgetInstance);
 		window.resizeHandler();
 	} catch(err)
 	{
