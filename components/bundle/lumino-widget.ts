@@ -63,6 +63,9 @@ export class LayoutAdjuster
 		trackWidgetInteraction(newWidget);
 
 		const HTMLElement = newWidget.node as HTMLElement;
+		// Safely apply metadata to DOM dataset for responsive query selection later
+		HTMLElement.dataset.projectId = projectId;
+		HTMLElement.dataset.type = type;
 
 		// --- BRANCH 1: TERMINAL LAYOUT ---
 		if(type === 'terminal')
@@ -98,8 +101,6 @@ export class LayoutAdjuster
 		// --- BRANCH 3: THE CORE EDITOR / PROJECT TAB RANKING SYSTEM ---
 		if(type === 'editor')
 		{
-			// Safely apply metadata to DOM dataset for responsive query selection later
-			HTMLElement.dataset.projectId = projectId;
 
 			const isWidescreen = window.innerWidth >= 1200;
 			if(isWidescreen)
@@ -115,7 +116,8 @@ export class LayoutAdjuster
 			if(bestRef)
 			{
 				const refHTMLElement = bestRef.node as HTMLElement;
-				const shouldSplit = isWidescreen && (refHTMLElement.dataset.projectId !== projectId);
+				const shouldSplit = (isWidescreen && refHTMLElement.dataset.projectId !== projectId)
+					|| refHTMLElement.dataset.type === 'outline';
 				console.log('Opening tab ' + (shouldSplit ? 'split-right' : 'tab-after') + ' ' + bestRef.constructor.name);
 				dockPanel.addWidget(newWidget, {
 					mode: shouldSplit ? 'split-right' : 'tab-after',
