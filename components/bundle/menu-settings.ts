@@ -1,5 +1,6 @@
 import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
+import { SettingsManager } from "./settings";
 
 declare global
 {
@@ -236,7 +237,7 @@ export class SettingsToolbar extends Widget
 			},
 			'reload': {
 				label: 'Toggle Hot Reload',
-				action: (checked) => console.log(`Hot reload toggled: ${checked}`)
+				action: (value) => SettingsManager.applyValue('build', 'hotReload', value)
 			},
 			'wasi': {
 				label: 'Change WASI SDK',
@@ -244,7 +245,11 @@ export class SettingsToolbar extends Widget
 			},
 			'theme': {
 				label: 'Change Editor Theme',
-				action: (value) => console.log(`Theme updated: ${value}`)
+				action: (value) =>
+				{
+					SettingsManager.applyValue('core', 'savedTheme', value);
+					SettingsManager.applyValue('editor', 'savedTheme', value);
+				}
 			}
 		};
 	}
@@ -288,7 +293,7 @@ export class SettingsToolbar extends Widget
 
 	private _buildInterface(): void
 	{
-		this.node.innerHTML = '<ul>' +  SETTINGS_CONTROLS.map(control =>
+		this.node.innerHTML = '<ul>' + SETTINGS_CONTROLS.map(control =>
 		{
 			//const disabledAttr = (control.options?.[0] as SelectOption)?.value === '' || control.options?.length === 1 ? 'disabled' : '';
 

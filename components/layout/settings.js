@@ -1,7 +1,5 @@
 const IMPORT_SETTINGS = {
 
-
-
     build: {
         currentConfig: {
             key: 'configuration',

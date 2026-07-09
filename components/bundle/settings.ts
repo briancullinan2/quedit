@@ -4,12 +4,13 @@ import { FS_FILE } from "./local";
 import { RepositoryToolbar } from "./menu-repos";
 import type { AceEditorWidget } from "../editor/widget";
 import { DockPanel } from "@lumino/widgets";
+import { IMPORT_SETTINGS } from "./coalesced-settings";
 
 export interface SettingConfig
 {
 	key: string;
 	type?: 'boolean' | 'csv' | 'json' | 'array' | string;
-	default: any;
+	default?: any;
 	windowName?: string;
 	description?: string;
 	elementId?: string;
@@ -19,8 +20,7 @@ export interface SettingConfig
 	get?(storedValue: string | null, defaultValue: any, config: SettingConfig): any;
 }
 
-// Environmental Declarations
-declare let IMPORT_SETTINGS: Record<string, Record<string, SettingConfig>>;
+
 
 declare global
 {
@@ -31,7 +31,7 @@ declare global
 		engineRepository: string | null;
 		AceEditorWidget: typeof AceEditorWidget;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
-
+		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
 	}
 }
 
@@ -103,43 +103,73 @@ export class Settings
 		}
 	}
 
-	/**
-	 * 2. Applies the translated state to elements or core configurations
-	 */
-	public applyValue(config: SettingConfig, value: any): void
+	public applyValue(moduleKey: string, settingKey: string | Element, value: any): void;
+	public applyValue(config: SettingConfig, value: any): void;
+	public applyValue(first: string | SettingConfig, second: any, third?: any): void
 	{
-		config.currentValue = value;
-		if(config.windowName)
+		let targetConfig: SettingConfig | undefined;
+		let finalValue: any;
+
+		// Type guard step: Determine if we received a module key string or a raw config block
+		if(typeof first === 'string')
 		{
-			(window as any)[config.windowName] = value;
+			const moduleKey = first;
+			const settingKey = second as string; // or element lookup mapping
+			finalValue = third;
+
+			targetConfig = IMPORT_SETTINGS[moduleKey]?.[settingKey];
+		}
+		else
+		{
+			// First parameter is an object matching the SettingConfig schema
+			targetConfig = first;
+			finalValue = second;
 		}
 
-		if(typeof config.set === 'function')
+		// Safety fallback block if lookups fail
+		if(!targetConfig)
 		{
-			config.set(value);
-		} else if(config.elementId)
+			console.warn("SettingsManager: target configuration block could not be resolved.");
+			return;
+		}
+
+		// Apply mutations
+		targetConfig.currentValue = finalValue;
+
+		if(targetConfig.windowName)
 		{
-			const el = document.getElementById(config.elementId) as HTMLInputElement | HTMLSelectElement | null;
+			(window as any)[targetConfig.windowName] = finalValue;
+		}
+
+		if(typeof targetConfig.set === 'function')
+		{
+			targetConfig.set(finalValue);
+		}
+		else if(targetConfig.elementId)
+		{
+			const el = document.getElementById(targetConfig.elementId) as HTMLInputElement | HTMLSelectElement | null;
 			if(el)
 			{
-				if(config.type === 'boolean' || (el as HTMLInputElement).type === 'checkbox')
+				if(targetConfig.type === 'boolean' || (el as HTMLInputElement).type === 'checkbox')
 				{
-					(el as HTMLInputElement).checked = !!value;
+					(el as HTMLInputElement).checked = !!finalValue;
 				} else if(el.tagName.toUpperCase() === 'SELECT')
 				{
-					if(el.querySelector(`[value*="${value}"]`))
+					if(el.querySelector(`[value*="${finalValue}"]`))
 					{
-						el.value = value;
+						el.value = finalValue;
 					} else
 					{
-						el.value = config.default;
+						el.value = targetConfig.default;
 					}
 				} else
 				{
-					el.value = value;
+					el.value = finalValue;
 				}
 			}
 		}
+
+		this.storeValue(targetConfig, finalValue);
 	}
 
 	/**
@@ -300,6 +330,27 @@ export class Settings
 		window.AceEditorWidget.openFileInNewTab(filePath, 'settings.json', settingsString);
 	}
 
+
+	private storeValue(config: SettingConfig, value: any)
+	{
+		if(config.type === 'array')
+		{
+			localStorage.setItem(config.key, JSON.stringify(value));
+		} else if(config.type === 'csv')
+		{
+			if(typeof value === 'string') localStorage.setItem(config.key, value);
+			else if(Array.isArray(value)) localStorage.setItem(config.key, value.join(';'));
+			else localStorage.setItem(config.key, value.toString());
+		} else if(config.type === 'json' || Array.isArray(value))
+		{
+			if(!Array.isArray(value)) localStorage.setItem(config.key, JSON.stringify([value]));
+			else localStorage.setItem(config.key, JSON.stringify(value));
+		} else
+		{
+			localStorage.setItem(config.key, value);
+		}
+	}
+
 	/**
 	 * 6. Processes incoming editor session content directly down to layout targets
 	 */
@@ -317,22 +368,7 @@ export class Settings
 					{
 						const value = freshSettings[config.key];
 
-						if(config.type === 'array')
-						{
-							localStorage.setItem(config.key, JSON.stringify(value));
-						} else if(config.type === 'csv')
-						{
-							if(typeof value === 'string') localStorage.setItem(config.key, value);
-							else if(Array.isArray(value)) localStorage.setItem(config.key, value.join(';'));
-							else localStorage.setItem(config.key, value.toString());
-						} else if(config.type === 'json' || Array.isArray(value))
-						{
-							if(!Array.isArray(value)) localStorage.setItem(config.key, JSON.stringify([value]));
-							else localStorage.setItem(config.key, JSON.stringify(value));
-						} else
-						{
-							localStorage.setItem(config.key, value);
-						}
+						this.storeValue(config, value);
 
 						if(this.previousSettings && value !== this.previousSettings[config.key]?.currentValue)
 						{

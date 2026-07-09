@@ -157,6 +157,25 @@ function startServiceWorker()
 }
 
 
+function setTheme(theme: string)
+{
+	const themeName = theme.split('/').pop(); // Gets 'monokai' or 'dracula'
+
+	if(!themeName)
+	{
+		return;
+	}
+
+	for(let cn of document.body.classList)
+	{
+		if(cn.startsWith('theme-'))
+		{
+			document.body.classList.remove(cn);
+		}
+	}
+
+	document.body.classList.add(`theme-${themeName.replace(/_/g, '-')}`);
+}
 
 const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 	core: {
@@ -170,6 +189,13 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 			default: new Date(0),
 			description: 'The last commit date for the environment repository set automatically.',
 		},
+		savedTheme: {
+			key: 'theme',
+			default: 'ace/theme/monokai',
+			elementId: 'theme',
+			description: 'The visual theme layout package used to style the interactive Ace code editor window background and syntax colors.',
+			set: setTheme
+		}
 	}
 };
 

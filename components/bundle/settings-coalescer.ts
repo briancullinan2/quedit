@@ -56,7 +56,8 @@ function coalesceImportSettings(sourceFiles: string[], outputPath: string): void
 					{
 						if(
 							ts.isIdentifier(decl.name) &&
-							decl.name.text === 'IMPORT_SETTINGS' &&
+							(decl.name.text === 'IMPORT_SETTINGS'
+								|| decl.name.text === 'LOCAL_SETTINGS') &&
 							decl.initializer &&
 							ts.isObjectLiteralExpression(decl.initializer)
 						)
@@ -130,7 +131,13 @@ function coalesceImportSettings(sourceFiles: string[], outputPath: string): void
 		ts.forEachChild(sourceFile, visit);
 	}
 
-	const outputContent = `// Automatically compiled workspace settings cache pass\nexport const IMPORT_SETTINGS = ${JSON.stringify(unifiedSettings, null, 4)};\n`;
+	const outputContent = `
+import { SettingConfig } from "./settings";
+
+// Automatically compiled workspace settings cache pass
+
+export const IMPORT_SETTINGS: Record<string, Record<string, SettingConfig>> = ${JSON.stringify(unifiedSettings, null, 4)};
+`;
 	const dir = path.dirname(outputPath);
 	if(!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
@@ -142,6 +149,7 @@ function coalesceImportSettings(sourceFiles: string[], outputPath: string): void
 const componentScripts = [
 	'./components/bundle/github-settings.ts',
 	'./components/bundle/lumino.ts',
+	'./components/editor/widget.ts',
 	//'./components/engine/quake-config.ts'
 ];
 

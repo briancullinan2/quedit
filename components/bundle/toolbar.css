@@ -105,6 +105,7 @@ ul.toolbar>li {
 	border-bottom: 1px solid var(--ace-gutter-bg);
 	overflow: visible !important;
 	flex-wrap: wrap;
+	gap: 8px;
 }
 
 /* Clear, aligned spacing for your script tools */
