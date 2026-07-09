@@ -2,53 +2,6 @@ const SCROLLBAR_WIDTH = 15
 
 let TERMINATE = false
 
-function updateSelectOptions(elementId, items, selectedValue = 'main') {
-    const selector = elementId instanceof Element ? elementId : document.getElementById(elementId);
-    if (!selector) return;
-
-    // 1. Clear existing options
-    selector.innerHTML = '';
-
-    // 2. Normalize input items into a standard loopable collection
-    let normalizedItems = [];
-
-    if (items && typeof items === 'object' && !Array.isArray(items)) {
-        // Handle key: value pair object (Dictionary)
-        normalizedItems = Object.entries(items).map(([key, val]) => ({
-            value: key,
-            text: val
-        }));
-    } else if (Array.isArray(items)) {
-        // Handle flat arrays of strings or GitHub/Engine branch objects
-        normalizedItems = items.map(item => {
-            const name = typeof item === 'object' ? item.name : item;
-            return {
-                value: name,
-                text: name
-            };
-        });
-    }
-
-    // 3. Create and append normalized entries
-    normalizedItems.forEach(item => {
-        const option = document.createElement('option');
-
-        option.value = item.value;
-        option.textContent = item.text;
-
-        // Check matching state against the intended target option value
-        if (item.value === selectedValue || item.text === selectedValue) {
-            option.selected = true;
-        }
-
-        selector.appendChild(option);
-    });
-
-    // 4. Force layout recalculation
-    // This helps with the "wont shrink" issue if the new text is shorter
-    selector.style.minWidth = '0';
-}
-
 
 const tokenInput = document.getElementById('gh-token-input');
 const modal = document.getElementById('token-modal');
@@ -262,31 +215,6 @@ async function findFileTestPath(hintPath) {
             }
         }
 
-        // LAYER C: Parse Inline Explicit Repository Invocations ("owner/repo/path")
-        /*
-        if (!dbFile) {
-            const pathParts = currentPath.split('/');
-            const pathOwner = pathParts.length >= 2 ? pathParts[0] : null;
-            const pathRepo = pathParts.length >= 2 ? pathParts[1] : pathParts[0];
-
-            if (pathOwner && pathRepo && !pathOwner.includes('.') && !pathRepo.includes('.')) {
-                const dynamicRepoKey = `${pathOwner}/${pathRepo}`;
-                if (!files[dynamicRepoKey]) {
-                    try {
-                        const branch = await getDefaultBranch(pathOwner, pathRepo);
-                        await loadGitHubTree(pathOwner, pathRepo, branch);
-                    } catch (e) {}
-                }
-                if (files[dynamicRepoKey]) {
-                    selectedRepo = dynamicRepoKey;
-                    const strippedPath = pathParts.slice(2).join('/');
-                    if (files[selectedRepo][strippedPath]) {
-                        dbFile = files[selectedRepo][strippedPath];
-                    }
-                }
-            }
-        }
-        */
 
         // If this round found a hit, return the composite metadata array immediately
         if (dbFile) {

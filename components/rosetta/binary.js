@@ -131,7 +131,7 @@ const BINARY_DETECTOR = {
 };
 
 
-const AssetInspector = {
+export const AssetInspector = {
     isActuallyImage: (bytes, path) => {
         const binType = detectBinaryType(bytes);
         if (binType !== 'unknown') return ['png', 'jpeg', 'gif', 'webp', 'dds', 'tga', 'pcx', 'bmp'].includes(binType);

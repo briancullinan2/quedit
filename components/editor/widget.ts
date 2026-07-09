@@ -459,6 +459,7 @@ export class AceEditorWidget extends Widget
 		this.title.label = fileId || this._fileId;
 		this.title.closable = true;
 
+		window.SettingsManager.hydrateAll(LOCAL_SETTINGS.editor);
 	}
 
 	public get fileId(): string

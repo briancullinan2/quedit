@@ -76,7 +76,7 @@ const SETTINGS_CONTROLS: ControlConfig[] = [
 		type: 'select',
 		name: 'wasi',
 		options: [
-			{ value: '', label: 'WASI-SDK v33 (Not downloaded)' }
+			{ selected: true, value: '', label: 'WASI-SDK v33 (Not downloaded)' }
 		]
 	},
 	{

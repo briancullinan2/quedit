@@ -5,7 +5,7 @@ import * as messaging from '@lumino/messaging';
 import { createTopBar, initializeMenus } from './menu';
 import { StatusBarWidget } from './status';
 import { ServiceWorkerManager } from './worker';
-import { SettingConfig } from './settings';
+import { SettingConfig, SettingsManager } from './settings';
 
 import '@lumino/widgets/style/index.css';
 import { ResponsiveManager } from './lumino-resize';
@@ -114,7 +114,13 @@ function main(): void
 	window.resizeHandler = resizeHandler;
 	window.addEventListener('resize', resizeHandler);
 
+	SettingsManager.hydrateAll();
+
 	startServiceWorker();
+
+	const userWorkspaceChoice = SettingsManager.get('core', 'workspaceDefault');
+
+	// TODO:
 }
 
 function startServiceWorker()
@@ -215,6 +221,4 @@ for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
 // 4. Export the unified reference for standard module compilation tracking
 export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
 
-
-
-window.onload = main;
+window.document.addEventListener('DOMContentLoaded', main)

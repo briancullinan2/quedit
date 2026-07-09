@@ -4,7 +4,7 @@ import { FS_FILE } from "./local";
 import { RepositoryToolbar } from "./menu-repos";
 import type { AceEditorWidget } from "../editor/widget";
 import { DockPanel } from "@lumino/widgets";
-import { IMPORT_SETTINGS } from "./coalesced-settings";
+import { IMPORT_SETTINGS as LOCAL_SETTINGS } from "./settings-coalesced";
 
 export interface SettingConfig
 {
@@ -21,7 +21,6 @@ export interface SettingConfig
 }
 
 
-
 declare global
 {
 	interface Window
@@ -34,6 +33,26 @@ declare global
 		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
 	}
 }
+
+
+
+if(!window.IMPORT_SETTINGS)
+{
+	window.IMPORT_SETTINGS = {};
+}
+
+for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
+{
+	window.IMPORT_SETTINGS[moduleKey] = {
+		...configs,
+		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+	};
+}
+
+
+export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
+
+
 
 export class Settings
 {
@@ -61,11 +80,38 @@ export class Settings
 	/**
 	 * 1. Initial hydration loop running across local storage on boot
 	 */
-	public hydrateAll(): void
+	public hydrateAll(): void;
+	public hydrateAll(settings: Record<string, SettingConfig> | string): void;
+	public hydrateAll(inputSettings?: Record<string, SettingConfig> | string): void
 	{
-		for(const [moduleKey, settings] of Object.entries(IMPORT_SETTINGS))
+		// 1. Establish our baseline configuration array
+		let hydrationEntries: [string, Record<string, SettingConfig>][];
+
+		if(inputSettings)
 		{
-			for(const [camelKey, config] of Object.entries(settings))
+			if(typeof inputSettings === 'string')
+			{
+				// Case A: Passed a specific module key string name
+				const moduleKey = inputSettings;
+				const moduleGroup = IMPORT_SETTINGS[moduleKey];
+				hydrationEntries = moduleGroup ? [[moduleKey, moduleGroup]] : [];
+			}
+			else
+			{
+				// Case B: Passed an isolated, explicit Record runtime block
+				hydrationEntries = [['explicit-context', inputSettings]];
+			}
+		}
+		else
+		{
+			// Case C: No arguments passed on boot; hydrate every configuration globally
+			hydrationEntries = Object.entries(IMPORT_SETTINGS);
+		}
+
+		// 2. Execute the iteration pipeline safely avoiding name shadow collisions
+		for(const [moduleKey, groupConfig] of hydrationEntries)
+		{
+			for(const [camelKey, config] of Object.entries(groupConfig))
 			{
 				config.windowName = camelKey;
 				const raw = localStorage.getItem(config.key);

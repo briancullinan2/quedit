@@ -154,4 +154,4 @@ const componentScripts = [
 ];
 
 console.log('Coalescing settings: ', componentScripts);
-coalesceImportSettings(componentScripts, './components/bundle/coalesced-settings.ts');
+coalesceImportSettings(componentScripts, './components/bundle/settings-coalesced.ts');

@@ -131,7 +131,7 @@ export class FileListWidget extends Widget
 
 
 
-function treeHandler(selector: string, e: Event): void
+async function treeHandler(selector: string, e: Event): Promise<void>
 {
 	const target = e.target as HTMLElement | null;
 	if(!target) return;
@@ -194,6 +194,14 @@ function treeHandler(selector: string, e: Event): void
 		const parts = selected.split('/');
 		const newRepo = parts.length === 2 ? parts[1] : parts[0] || window.RepositoryToolbar.repository?.value;
 		const newOwner = parts.length === 2 ? parts[0] : window.RepositoryToolbar.owner?.value;
+
+
+		if(typeof window.AceEditorWidget === 'undefined')
+		{
+			await window.triggerPanelRoute('editor', window.mainDock);
+		}
+
+		//window.AceEditorWidget.openFileInNewTab(filePath, 'settings.json', settingsString);
 
 		console.warn('TODO: openFile: ' + filePath);
 		//openFile(newOwner, newRepo, filePath, tree.nodesById[fileId].sha);
