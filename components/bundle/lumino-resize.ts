@@ -92,13 +92,17 @@ export class ResponsiveManager
 				// args.oldValue -> The widget that lost focus
 				// args.newValue -> The widget that gained focus
 
-				if(window.lastInteractedWidget !== args.newValue)
+				const newType = args.newValue?.constructor.name;
+				const lastType = window.lastInteractedWidget?.constructor.name;
+
+				// Only update history if the incoming widget type is different from the last tracked type
+				if(newType !== lastType)
 				{
 					window.previousInteractedWidget = window.lastInteractedWidget;
+					window.lastInteractedWidget = args.newValue;
 				}
-				window.lastInteractedWidget = args.newValue;
 
-				// Call your visibility method safely
+				console.log('Active: ' + window.lastInteractedWidget?.constructor.name + ' inActive: ' + window.previousInteractedWidget?.constructor.name);
 				ResponsiveManager._instance?._updateVisibility(window.workspaceBox, window.toolbarWidget);
 			});
 
@@ -139,7 +143,7 @@ export class ResponsiveManager
 	/**
 	 * Utility 1: Handle UI Visibility, State and Mobile Adaptations
 	 */
-	private _updateVisibility(workspaceBox: BoxPanel, toolbar: Widget): void
+	public _updateVisibility(workspaceBox: BoxPanel, toolbar: Widget): void
 	{
 		const isWidescreen = window.innerWidth >= WIDESCREEN;
 		const isNormal = window.innerWidth < 800;

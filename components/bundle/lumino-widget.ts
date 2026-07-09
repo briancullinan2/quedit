@@ -1,4 +1,5 @@
 import { DockPanel, Widget } from '@lumino/widgets';
+import { ResponsiveManager } from './lumino-resize';
 
 export const WIDESCREEN = 1200;
 
@@ -36,11 +37,19 @@ function trackWidgetInteraction(widget: Widget): void
 
 	const registerSelection = (): void =>
 	{
-		if(widget !== window.lastInteractedWidget)
+		const newType = widget?.constructor.name;
+		const lastType = window.lastInteractedWidget?.constructor.name;
+
+		// Only update history if the incoming widget type is different from the last tracked type
+		if(newType !== lastType)
 		{
 			window.previousInteractedWidget = window.lastInteractedWidget;
+			window.lastInteractedWidget = widget;
 		}
-		window.lastInteractedWidget = widget;
+
+		console.log('Focused: ' + window.lastInteractedWidget?.constructor.name + ' unFocused: ' + window.previousInteractedWidget?.constructor.name);
+		ResponsiveManager.getInstance()._updateVisibility(window.workspaceBox, window.toolbarWidget);
+
 	};
 
 	widget.node.addEventListener('focusin', registerSelection);

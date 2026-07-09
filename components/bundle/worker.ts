@@ -134,7 +134,7 @@ export class ServiceWorkerManager
 
 		const swVersion = await this.queryWorkerValue(registration.active, 'GET_VERSION', 'VERSION_REPORT', 'version');
 
-		if(swVersion && serverVersion !== swVersion)
+		if(swVersion && new Date(serverVersion).getTime() !== new Date(swVersion).getTime())
 		{
 			console.warn(`Version Mismatch! Server: ${serverVersion}, SW: ${swVersion}. Unregistering...`);
 			await this.queryWorkerValue(registration.active, 'DEREGISTER', 'DEREGISTERED');

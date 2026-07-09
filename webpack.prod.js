@@ -2,6 +2,7 @@
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
 
 module.exports = {
@@ -80,6 +81,49 @@ module.exports = {
 				{
 					from: path.resolve(__dirname, 'node_modules/@babel/standalone/babel.min.js'),
 					to: path.resolve(__dirname, 'dist/babel.min.js'),
+				},
+			],
+		}),
+		new HtmlWebpackPlugin({
+			template: 'index.html', // Path to your source HTML file
+			filename: 'index.html',
+			inject: false, // Prevents duplicating script tags since they are hardcoded in your HTML
+		}),
+		{
+			apply: (compiler) =>
+			{
+				compiler.hooks.compilation.tap('CacheBusterPlugin', (compilation) =>
+				{
+					HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync(
+						'CacheBusterPlugin',
+						(data, cb) =>
+						{
+							const timestamp = Date.now();
+
+							// Regex to catch href="..." and src="..." (ignoring external absolute URLs starting with http/https)
+							// This appends or replaces the query param with ?t=timestamp
+							data.html = data.html.replace(
+								(/(href|src)=["'](?!http|\/\/)([^"'\s?]+)(?:\?[^"']*)?["']/g),
+								(match, attribute, path) =>
+								{
+									return `${attribute}="${path}?t=${timestamp}"`;
+								}
+							);
+
+							cb(null, data);
+						}
+					);
+				});
+			},
+		},
+		new CopyPlugin({
+			patterns: [
+				{
+					// Copy everything from dist into docs
+					from: path.resolve(__dirname, 'dist'),
+					to: path.resolve(__dirname),
+					// Force overwrite existing files in docs
+					force: true
 				},
 			],
 		}),
