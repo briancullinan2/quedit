@@ -1,5 +1,6 @@
 
 const path = require('path');
+const fs = require('fs');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -80,7 +81,7 @@ module.exports = {
 			patterns: [
 				{
 					from: path.resolve(__dirname, 'node_modules/@babel/standalone/babel.min.js'),
-					to: path.resolve(__dirname, 'dist/babel.min.js'),
+					to: path.resolve(__dirname, 'babel.min.js'),
 				},
 			],
 		}),
@@ -116,17 +117,25 @@ module.exports = {
 				});
 			},
 		},
-		new CopyPlugin({
-			patterns: [
+		{
+			apply: (compiler) =>
+			{
+				// 'afterDone' triggers ONLY after the entire build is finished and written to disk
+				compiler.hooks.afterDone.tap('CopyToDocsPlugin', () =>
 				{
-					// Copy everything from dist into docs
-					from: path.resolve(__dirname, 'dist'),
-					to: path.resolve(__dirname),
-					// Force overwrite existing files in docs
-					force: true
-				},
-			],
-		}),
+					try
+					{
+						// Deep copy the fresh dist folder to docs
+						fs.copyFileSync(path.resolve(__dirname, 'dist/index.html'), path.resolve(__dirname, 'index.html'));
+						fs.copyFileSync(path.resolve(__dirname, 'dist/app.bundle.js'), path.resolve(__dirname, 'app.bundle.js'));
+						console.log('\n🚀 Success: Dynamically mirrored "dist" into "docs" folder.');
+					} catch(err)
+					{
+						console.error('\n❌ Failed to copy assets to docs directory:', err);
+					}
+				});
+			},
+		},
 	],
 	performance: {
 		hints: false,

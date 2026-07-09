@@ -10,6 +10,7 @@ declare global
 		LayoutAdjuster: typeof LayoutAdjuster;
 		lastInteractedWidget: Widget | null;
 		previousInteractedWidget: Widget | null;
+		resizeHandler: () => void;
 	}
 }
 

@@ -26,7 +26,6 @@ declare global
 		commandRegistry: CommandRegistry;
 		workspaceBox: BoxPanel;
 		toolbarWidget: Widget;
-		//sidebarPanel: BoxPanel;
 		resizeHandler: () => void;
 	}
 }
@@ -68,15 +67,6 @@ function main(): void
 	// Initialize remaining menus safely passing down the clean tracking components
 	initializeMenus(commands, menuBar, mainDock, toolbar.node);
 
-	/*
-	const sidebarPanel = new BoxPanel({ direction: 'top-to-bottom', spacing: 0 });
-	sidebarPanel.id = 'sidebar-panel';
-	sidebarPanel.node.style.width = '250px'; // Give the file list its explicit sidebar width
-	sidebarPanel.node.style.minWidth = '250px';
-	window.sidebarPanel = sidebarPanel;
-	*/
-
-
 	const statusBar = new StatusBarWidget();
 	window.statusBar = statusBar;
 	const envStatusNode = statusBar.addStatusItem('env-state', 'Initializing Sync...', 'bx bx-sync bx-spin', 'left');
@@ -88,10 +78,8 @@ function main(): void
 	workspaceBox.id = 'workspace-box';
 	window.workspaceBox = workspaceBox;
 	BoxPanel.setStretch(toolbar, 0);
-	//BoxPanel.setStretch(sidebarPanel, 0);
 	BoxPanel.setStretch(mainDock, 1);
 	workspaceBox.addWidget(toolbar);
-	//workspaceBox.addWidget(sidebarPanel);
 	workspaceBox.addWidget(mainDock);
 
 	// Assemble Main Window layout

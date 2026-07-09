@@ -244,6 +244,7 @@ export class ResponsiveManager
 
 		// 1. Gather file list widget targets
 		const targetIds = this._extractTargetWidgetIds(currentWidgets);
+		console.log('Resizing file list target: ' + targetIds.size);
 
 		if(targetIds.size > 0)
 		{
@@ -285,8 +286,14 @@ export class ResponsiveManager
 	 */
 	private _traverseAndAdjustSizes(node: LuminoLayoutNode, availablePixelSpace: number, targetIds: Set<string>): void
 	{
-		if(node.type === 'split-area' && node.children && node.sizes)
+		if(node.type === 'split-area' && node.children)
 		{
+			// FIX: If sizes array is missing or unpopulated, initialize it to equal shares
+			if(!node.sizes || node.sizes.length !== node.children.length)
+			{
+				node.sizes = new Array(node.children.length).fill(1 / node.children.length);
+			}
+
 			let targetIndex = -1;
 
 			// Locate which split slot sibling branch contains our matching view frame
@@ -299,7 +306,7 @@ export class ResponsiveManager
 			});
 
 			// Mutate fractional scales for this split boundary layout inline
-			if(targetIndex !== -1 && node.sizes.length > 0)
+			if(targetIndex !== -1)
 			{
 				node.sizes = this._calculateProportionalSizes(node.sizes, targetIndex, availablePixelSpace);
 			}
@@ -307,7 +314,7 @@ export class ResponsiveManager
 			// Bubble allocations downward to deep sub-splits
 			node.children.forEach((child, index) =>
 			{
-				const childRatio = node.sizes ? node.sizes[index] : (1 / node.children!.length);
+				const childRatio = node.sizes![index]; // Guaranteed to exist now
 				const childPixels = availablePixelSpace * childRatio;
 				this._traverseAndAdjustSizes(child, childPixels, targetIds);
 			});
