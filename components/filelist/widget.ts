@@ -1,9 +1,10 @@
 // components/FileListWidget.ts
 import { Widget, DockPanel } from '@lumino/widgets';
-import type { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
-import type { GitHubFileEntry } from '../bundle/github-types.js';
-import type { RepositoryToolbar } from '../bundle/menu-repos.js';
-import type { Settings } from '../bundle/settings.js';
+import { type FlatFileNode, type NestedTreeNode } from '../bundle/github-tools';
+import type { GitHubFileEntry } from '../bundle/github-types';
+import type { RepositoryToolbar } from '../bundle/menu-repos';
+import type { Settings } from '../bundle/settings';
+import type { FileManager } from '../bundle/lumino-files';
 import Tree from './tree.js';
 
 declare global
@@ -14,11 +15,13 @@ declare global
 		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
 		loadFileTree: (repoOwner: string, repoName: string, branch: string, selector: string) => Promise<void>;
+		cacheFile: (repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload?: boolean) => Promise<any>;
 		mainDock: DockPanel;
 		trees: Record<string, any>;
 		filesRepo: Record<string, GitHubFileEntry>;
 		RepositoryToolbar: typeof RepositoryToolbar;
 		SettingsManager: Settings;
+		FileManager: typeof FileManager;
 	}
 }
 
@@ -191,19 +194,25 @@ async function treeHandler(selector: string, e: Event): Promise<void>
 			}
 		}
 
-		const parts = selected.split('/');
-		const newRepo = parts.length === 2 ? parts[1] : parts[0] || window.RepositoryToolbar.repository?.value;
-		const newOwner = parts.length === 2 ? parts[0] : window.RepositoryToolbar.owner?.value;
-
-
 		if(typeof window.AceEditorWidget === 'undefined')
 		{
 			await window.triggerPanelRoute('editor', window.mainDock);
 		}
 
-		//window.AceEditorWidget.openFileInNewTab(filePath, 'settings.json', settingsString);
+		const [realFilePath, selectedGithub, dbFile, lineNumber] = await window.FileManager.findFileTestPath(filePath);
+		console.warn('openFile: ' + filePath + ' length: ' + dbFile?.contents?.length);
+		if(selectedGithub && (!dbFile?.contents || dbFile.contents?.length === 0))
+		{
 
-		console.warn('TODO: openFile: ' + filePath);
-		//openFile(newOwner, newRepo, filePath, tree.nodesById[fileId].sha);
+			const parts = selectedGithub.split('/');
+			const newRepo = parts.length === 2 ? parts[1] : parts[0] || window.RepositoryToolbar.repository?.value;
+			const newOwner = parts.length === 2 ? parts[0] : window.RepositoryToolbar.owner?.value;
+			const githubFile = await window.cacheFile(newOwner, newRepo, filePath) as ArrayBuffer;
+			const content = new TextDecoder().decode(githubFile);
+			window.AceEditorWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, content);
+		} else if(dbFile)
+		{
+			window.AceEditorWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, dbFile?.contents);
+		}
 	}
 }

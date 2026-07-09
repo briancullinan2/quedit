@@ -1,5 +1,19 @@
 // --- Type Definitions & Interfaces ---
 
+import { cacheFileInternal } from "./github-tools";
+import { FS } from "./global";
+import type { RepositoryToolbar } from "./menu-repos";
+
+
+declare global
+{
+	interface Window
+	{
+		RepositoryToolbar: typeof RepositoryToolbar;
+	}
+}
+
+
 export interface DatabaseMetadata
 {
 	key: string;
@@ -24,7 +38,7 @@ export interface FileRecord
 {
 	timestamp: Date;
 	mode: any;
-	contents: Uint8Array | ArrayBuffer | any;
+	contents?: Uint8Array | ArrayBuffer | any;
 	path: string;
 	sha?: string;
 	parent: string | null;
@@ -57,17 +71,11 @@ interface DebounceToken
 		record: string | FileRecord | any;
 		lower: any;
 		upper: any;
-		dbName: string | null;
+		dbName: string | undefined | null;
 		ownerName: string;
 		repoName: string;
 	};
 }
-
-// Environmental Variable Signatures
-declare let FS: { virtual: Record<string, FileRecord>; } | undefined;
-declare let owner: { value: string; } | undefined;
-declare let repository: { value: string; } | undefined;
-declare function cacheFileInternal(...args: any[]): Promise<any>;
 
 // --- Constants ---
 
@@ -413,15 +421,15 @@ export function debounceRecords(
 	record: any,
 	lower: any,
 	upper: any,
-	dbName: string | null,
+	dbName: string | null | undefined,
 	MODE: 'put' | 'get' | 'query' | 'cache' = 'get',
 	noBounce = false
 ): Promise<any>
 {
 	const path: string = typeof record === 'string' ? record : record?.path || '';
 	const parts = (dbName || '').split('/');
-	const ownerName = parts.length === 2 ? parts[0] : (typeof owner !== 'undefined' ? owner.value : '');
-	const repoName = parts.length === 2 ? parts[1] : (parts[0] || (typeof repository !== 'undefined' ? repository.value : ''));
+	const ownerName = parts.length === 2 ? parts[0] : (typeof window.RepositoryToolbar.owner !== 'undefined' ? window.RepositoryToolbar.owner?.value ?? '' : '');
+	const repoName = parts.length === 2 ? parts[1] : (parts[0] || (typeof window.RepositoryToolbar.repository !== 'undefined' ? window.RepositoryToolbar.repository?.value ?? '' : ''));
 
 	const compositeArgs = {
 		storeName,
@@ -572,9 +580,9 @@ export function findVirtualFiles(globPattern: string): Record<string, FileRecord
 
 	return filePaths.reduce((accumulator: Record<string, FileRecord>, path) =>
 	{
-		if(rx.test(path))
+		if(rx.test(path) && FS.virtual[path])
 		{
-			accumulator[path] = FS.virtual![path];
+			accumulator[path] = FS.virtual[path];
 		}
 		return accumulator;
 	}, {});

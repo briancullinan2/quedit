@@ -8,7 +8,7 @@ import { ServiceWorkerManager } from './worker';
 import { SettingConfig, SettingsManager } from './settings';
 
 import '@lumino/widgets/style/index.css';
-import { ResponsiveManager } from './lumino-resize';
+import { isDevToolsOpen, ResponsiveManager } from './lumino-resize';
 
 
 
@@ -121,6 +121,8 @@ function main(): void
 	const userWorkspaceChoice = SettingsManager.get('core', 'workspaceDefault');
 
 	// TODO:
+
+	isDevToolsOpen();
 }
 
 function startServiceWorker()
@@ -221,4 +223,4 @@ for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
 // 4. Export the unified reference for standard module compilation tracking
 export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
 
-window.document.addEventListener('DOMContentLoaded', main)
+window.document.addEventListener('DOMContentLoaded', main);

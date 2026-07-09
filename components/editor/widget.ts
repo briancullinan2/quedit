@@ -634,8 +634,14 @@ export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
 
 function tryLoadingTerminalEditorBridge(aceEditor: Ace.Editor | null): void
 {
-	if(!aceEditor || window.compilerDiagnostics /* already setup */)
+	if(!aceEditor)
 	{
+		return;
+	}
+
+	if(window.compilerDiagnostics /* already setup */)
+	{
+		window.compilerDiagnostics.getBridge().refreshActiveEditorView(aceEditor?.getSession());
 		return;
 	}
 

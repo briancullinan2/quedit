@@ -254,3 +254,23 @@ export class ResponsiveManager
 		});
 	}
 }
+
+export function isDevToolsOpen(): boolean {
+    const threshold = 160; // Cushion for window borders
+
+    const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+    const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+
+    const hasClass = document.body?.classList.contains('debugger') ?? false;
+    const debuggerIsOpen = widthThreshold || heightThreshold;
+
+    if (document.body) {
+        if (debuggerIsOpen && !hasClass) {
+            document.body.classList.add('debugger');
+        } else if (!debuggerIsOpen && hasClass) {
+            document.body.classList.remove('debugger');
+        }
+    }
+
+    return debuggerIsOpen;
+}

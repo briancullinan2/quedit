@@ -27,7 +27,7 @@ declare global
 	{
 		mainDock: DockPanel;
 		SettingsManager: Settings;
-		engineRepository: string | null;
+		engineRepository?: string | undefined | null;
 		AceEditorWidget: typeof AceEditorWidget;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
 		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;

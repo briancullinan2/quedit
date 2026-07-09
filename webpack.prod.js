@@ -6,7 +6,10 @@ const webpack = require('webpack');
 
 module.exports = {
 	mode: 'production',
-	entry: './components/bundle/lumino.ts', // Aligned with your actual entry location
+	entry: [
+		'./components/bundle/lumino.ts',
+		'./components/bundle/lumino-files.ts'
+	], // Aligned with your actual entry location
 	target: 'web',
 	output: {
 		filename: 'app.bundle.js',
@@ -26,6 +29,13 @@ module.exports = {
 	module: {
 		rules: [
 			{
+				test: /rosetta\/binary\.js$/,
+				type: 'javascript/auto', // Resets the module type configuration
+				parser: {
+					sourceType: 'module' // Explicitly forces webpack to permit import/export
+				}
+			},
+			{
 				// require.resolve returns the exact absolute path to the node_modules entrypoint
 				test: require.resolve('diff'),
 				use: [
@@ -34,6 +44,17 @@ module.exports = {
 						options: {
 							// This registers it directly on window.diff and globalThis.diff
 							exposes: ['diff'],
+						},
+					},
+				],
+			},
+			{
+				test: path.resolve(__dirname, './components/bundle/lumino-files.ts'),
+				use: [
+					{
+						loader: 'expose-loader',
+						options: {
+							exposes: ['FileManager'],
 						},
 					},
 				],

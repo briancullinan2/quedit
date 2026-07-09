@@ -65,34 +65,6 @@ const IMPORT_MODULES = {
 
 
 
-async function onLoadCore() {
-    isDevToolsOpen()
-    await initializeFiletrees()
-    // give other tools time to startup
-    setTimeout(() => {
-        renderHashCommand(window.location.hash.substring(1), true)
-    }, 300);
-}
-
-
-function isDevToolsOpen() {
-    const threshold = 160; // Cushion for window borders
-
-    const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-    const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-
-    const hasClass = document.body.classList.contains('debugger')
-
-    const debuggerIsOpen = widthThreshold || heightThreshold
-    if (debuggerIsOpen && !hasClass)
-        document.body.classList.add('debugger')
-    else if (!debuggerIsOpen && hasClass)
-        document.body.classList.remove('debugger')
-
-    return widthThreshold || heightThreshold;
-}
-
-
 
 // One-time terminal startup. This is only invoked by ensureTerminalStarted()
 // (terminal.js), which guarantees the panel is visible and xterm has a valid
