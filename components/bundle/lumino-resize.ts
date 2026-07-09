@@ -1,5 +1,12 @@
 import { BoxPanel, DockPanel, MenuBar, Panel, Widget } from "@lumino/widgets";
-import { LayoutAdjuster } from "./lumino-widget";
+import { LayoutAdjuster, WIDESCREEN } from "./lumino-widget";
+import type { RepositoryToolbar } from "./menu-repos";
+import type { ScriptToolbar } from "./menu-script";
+import type { ApplicationToolbar } from "./menu-app";
+import type { FileToolbar } from "./menu-file";
+import type { HistoryToolbar } from "./menu-history";
+import type { SettingsToolbar } from "./menu-settings";
+import type { EngineToolbar } from "./menu-engine";
 
 export interface LuminoLayoutNode
 {
@@ -9,6 +16,26 @@ export interface LuminoLayoutNode
 	widgets?: any[];
 	sizes?: number[];
 }
+
+
+
+declare global
+{
+	interface Window
+	{
+		lastInteractedWidget: Widget | null;
+		previousInteractedWidget: Widget | null;
+		repoToolbar: RepositoryToolbar;
+		scriptToolbar: ScriptToolbar;
+		appToolbar: ApplicationToolbar;
+		fileToolbar: FileToolbar;
+		historyToolbar: HistoryToolbar;
+		settingsToolbar: SettingsToolbar;
+		engineToolbar: EngineToolbar;
+	}
+}
+
+
 
 export class ResponsiveManager
 {
@@ -60,28 +87,42 @@ export class ResponsiveManager
 	 */
 	private _updateVisibility(workspaceBox: BoxPanel, toolbar: Widget): void
 	{
+		const isWidescreen = window.innerWidth >= WIDESCREEN;
+		const isNormal = window.innerWidth < 800;
 		const isMobile = window.innerWidth < 600;
 		const isToolbarScrollable = window.innerHeight < 700;
-		const inlineToolbar = document.getElementById('script-inline-toolbar');
+
+		const shouldHideScripts = window.lastInteractedWidget?.constructor.name !== 'ConsoleWidget'
+			|| isWidescreen && window.previousInteractedWidget?.constructor.name !== 'ConsoleWidget';
+
+
+		if(isToolbarScrollable)
+		{
+			toolbar.node.style.minWidth = '60px';
+		} else
+		{
+			toolbar.node.style.minWidth = '50px';
+		}
+
 
 		if(isMobile)
 		{
 			workspaceBox.direction = 'top-to-bottom';
 			toolbar.node.style.display = 'none';
 			toolbar.node.style.minWidth = '0px';
-			if(inlineToolbar) inlineToolbar.style.display = 'none';
+			if(shouldHideScripts)
+			{
+				window.scriptToolbar.node.style.display = 'none';
+			}
 		} else
 		{
 			workspaceBox.direction = 'left-to-right';
 			toolbar.node.style.display = 'flex';
-			if(isToolbarScrollable)
+
+			if(isWidescreen)
 			{
-				toolbar.node.style.minWidth = '60px';
-			} else
-			{
-				toolbar.node.style.minWidth = '50px';
+				window.scriptToolbar.node.style.display = 'flex';
 			}
-			if(inlineToolbar) inlineToolbar.style.display = 'flex';
 		}
 	}
 

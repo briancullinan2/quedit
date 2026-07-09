@@ -36,6 +36,13 @@ declare global
 	{
 		resizeHandler: () => void;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
+		repoToolbar: RepositoryToolbar;
+		scriptToolbar: ScriptToolbar;
+		appToolbar: ApplicationToolbar;
+		fileToolbar: FileToolbar;
+		historyToolbar: HistoryToolbar;
+		settingsToolbar: SettingsToolbar;
+		engineToolbar: EngineToolbar;
 	}
 }
 
@@ -572,12 +579,19 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 
 	// 4. Build the inline toolbar segment
 	const repoToolbar = RepositoryToolbar.getInstance().initialize(commands);
+	window.repoToolbar = repoToolbar;
 	const scriptToolbar = ScriptToolbar.getInstance().initialize(commands);
+	window.scriptToolbar = scriptToolbar;
 	const appToolbar = ApplicationToolbar.getInstance().initialize(commands);
+	window.appToolbar = appToolbar;
 	const fileToolbar = FileToolbar.getInstance().initialize(commands);
+	window.fileToolbar = fileToolbar;
 	const historyToolbar = HistoryToolbar.getInstance().initialize(commands);
+	window.historyToolbar = historyToolbar;
 	const settingsToolbar = SettingsToolbar.getInstance().initialize(commands);
+	window.settingsToolbar = settingsToolbar;
 	const engineToolbar = EngineToolbar.getInstance().initialize(commands);
+	window.engineToolbar = engineToolbar;
 
 	headerRow.addWidget(menuBar);
 	headerRow.addWidget(repoToolbar);

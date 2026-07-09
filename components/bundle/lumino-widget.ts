@@ -1,10 +1,14 @@
 import { DockPanel, Widget } from '@lumino/widgets';
 
+export const WIDESCREEN = 1200;
+
 declare global
 {
 	interface Window
 	{
 		LayoutAdjuster: typeof LayoutAdjuster;
+		lastInteractedWidget: Widget | null;
+		previousInteractedWidget: Widget | null;
 	}
 }
 
@@ -18,7 +22,6 @@ export interface LayoutOptions
 }
 
 // Global tracking structures
-let lastInteractedWidget: Widget | null = null;
 const trackedWidgets = new WeakSet<Widget>();
 
 /**
@@ -33,7 +36,11 @@ function trackWidgetInteraction(widget: Widget): void
 
 	const registerSelection = (): void =>
 	{
-		lastInteractedWidget = widget;
+		if(widget !== window.lastInteractedWidget)
+		{
+			window.previousInteractedWidget = window.lastInteractedWidget;
+		}
+		window.lastInteractedWidget = widget;
 	};
 
 	widget.node.addEventListener('focusin', registerSelection);
@@ -72,7 +79,7 @@ export class LayoutAdjuster
 		{
 			dockPanel.addWidget(newWidget, {
 				mode: 'split-bottom',
-				ref: lastInteractedWidget ?? undefined
+				ref: window.lastInteractedWidget ?? undefined
 			});
 			dockPanel.activateWidget(newWidget);
 			window.resizeHandler();
@@ -101,8 +108,7 @@ export class LayoutAdjuster
 		// --- BRANCH 3: THE CORE EDITOR / PROJECT TAB RANKING SYSTEM ---
 		if(type === 'editor')
 		{
-
-			const isWidescreen = window.innerWidth >= 1200;
+			const isWidescreen = window.innerWidth >= WIDESCREEN;
 			if(isWidescreen)
 			{
 				HTMLElement.dataset.layoutGroup = 'split-column';
@@ -136,7 +142,7 @@ export class LayoutAdjuster
 		// Default Fallback
 		dockPanel.addWidget(newWidget, {
 			mode: 'tab-after',
-			ref: lastInteractedWidget ?? undefined
+			ref: window.lastInteractedWidget ?? undefined
 		});
 		dockPanel.activateWidget(newWidget);
 		window.resizeHandler();
@@ -148,12 +154,12 @@ export class LayoutAdjuster
 	private static _findRankedReference(dockPanel: DockPanel, projectId: string): Widget | null
 	{
 		// Rank 1: Check last global interaction
-		if(lastInteractedWidget && lastInteractedWidget.isAttached)
+		if(window.lastInteractedWidget && window.lastInteractedWidget.isAttached)
 		{
-			const lastEl = lastInteractedWidget.node as HTMLElement;
+			const lastEl = window.lastInteractedWidget.node as HTMLElement;
 			if(lastEl.dataset?.projectId === projectId)
 			{
-				return lastInteractedWidget;
+				return window.lastInteractedWidget;
 			}
 		}
 
@@ -188,9 +194,9 @@ export class LayoutAdjuster
 		}
 
 		// Rank 3: Fallback to whatever was last touched globally
-		if(lastInteractedWidget && lastInteractedWidget.isAttached)
+		if(window.lastInteractedWidget && window.lastInteractedWidget.isAttached)
 		{
-			return lastInteractedWidget;
+			return window.lastInteractedWidget;
 		}
 
 		return null;
@@ -201,12 +207,12 @@ export class LayoutAdjuster
 	 */
 	private static _findBestEditorForProject(dockPanel: DockPanel, projectId: string): Widget | null
 	{
-		if(lastInteractedWidget && lastInteractedWidget.isAttached)
+		if(window.lastInteractedWidget && window.lastInteractedWidget.isAttached)
 		{
-			const lastEl = lastInteractedWidget.node as HTMLElement;
+			const lastEl = window.lastInteractedWidget.node as HTMLElement;
 			if(lastEl.dataset?.projectId === projectId)
 			{
-				return lastInteractedWidget;
+				return window.lastInteractedWidget;
 			}
 		}
 
@@ -229,7 +235,7 @@ export class LayoutAdjuster
 	 */
 	public static handleResponsiveLayoutCollapse(dockPanel: DockPanel): void
 	{
-		const isWidescreen = window.innerWidth >= 1200;
+		const isWidescreen = window.innerWidth >= WIDESCREEN;
 		if(isWidescreen) return;
 
 		const iterator = dockPanel.widgets();
