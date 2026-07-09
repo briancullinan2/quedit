@@ -85,7 +85,7 @@ ul.toolbar>li {
 #left-toolbar a {
 	color: var(--ace-comment);
 	font-size: 24px;
-	padding: 10px;
+	padding: 4px;
 	display: block;
 	text-decoration: none;
 	transition: color 0.15s ease;
@@ -135,4 +135,10 @@ ul.toolbar>li {
 	border-left: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
 	height: 16px;
 	margin: 0 4px;
+}
+
+@media all and (max-height: 700px) {
+	#left-toolbar {
+		overflow-y: scroll;
+	}
 }

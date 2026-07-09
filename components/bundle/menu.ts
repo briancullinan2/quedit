@@ -80,24 +80,8 @@ export const registry = new Map<string, Promise<void>>(
 
 
 
-async function loadAndInstantiate(route: ComponentRoute): Promise<any>
+function collectDependencies(rawCode: string, route: ComponentRoute): string[]
 {
-	if(!route.url || !route.className)
-	{
-		throw new Error(`Route definition "${route.label}" is missing execution target pathways.`);
-	}
-
-	if(route.url.endsWith('.js'))
-	{
-		const module = await import(/* webpackIgnore: true */ route.url + '?t=' + Date.now() + '&local-csp=true');
-		return new module[route.className](route.label);
-	}
-
-	const response = await fetch(route.url + '?t=' + Date.now());
-	const rawCode = await response.text();
-
-	if(!response.ok) throw new Error('Component not found: ' + route.url);
-	if(!transform) throw new Error("Babel standalone runner not found on the window context.");
 
 	const dependenciesToFetch: string[] = [];
 	const ast = parseBabel(rawCode, {
@@ -141,31 +125,40 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 
 	});
 
+	return dependenciesToFetch;
+}
 
 
-	if(dependenciesToFetch.length > 0)
+async function preloadDependencies(dependenciesToFetch: string[]): Promise<void>
+{
+	if(dependenciesToFetch.length === 0)
 	{
-		await Promise.all(dependenciesToFetch.map(url =>
-		{
-			if(url.includes('.mjs'))
-			{
-				const existingPromise = registry.get(url);
-				if(existingPromise)
-				{
-					return existingPromise;
-				}
-
-				var scriptPromise = import(url + '?t=' + Date.now());
-
-				registry.set(url + '?t=' + Date.now(), scriptPromise);
-				return scriptPromise;
-			} else
-			{
-				return loadScript(url);
-			}
-		}));
+		return;
 	}
+	await Promise.all(dependenciesToFetch.map(url =>
+	{
+		if(url.includes('.mjs'))
+		{
+			const existingPromise = registry.get(url);
+			if(existingPromise)
+			{
+				return existingPromise;
+			}
 
+			var scriptPromise = import(url + '?t=' + Date.now());
+
+			registry.set(url + '?t=' + Date.now(), scriptPromise);
+			return scriptPromise;
+		} else
+		{
+			return loadScript(url);
+		}
+	}));
+}
+
+
+function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): string
+{
 
 	const transpiled = transform(rawCode, {
 		presets: ['env'],
@@ -304,8 +297,41 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 		filename: route.url
 	});
 
+
+	return transpiled.code;
+}
+
+
+
+async function loadAndInstantiate(route: ComponentRoute): Promise<any>
+{
+	if(!route.url || !route.className)
+	{
+		throw new Error(`Route definition "${route.label}" is missing execution target pathways.`);
+	}
+
+	if(route.url.endsWith('.js'))
+	{
+		const modulePromise = import(/* webpackIgnore: true */ route.url + '?t=' + Date.now() + '&local-csp=true');
+		registry.set(route.url, modulePromise);
+		const module = await modulePromise;
+		return new module[route.className](route.label);
+	}
+
+	const response = await fetch(route.url + '?t=' + Date.now());
+	const rawCode = await response.text();
+
+	if(!response.ok) throw new Error('Component not found: ' + route.url);
+	if(!transform) throw new Error("Babel standalone runner not found on the window context.");
+
+	const dependenciesToFetch = collectDependencies(rawCode, route);
+
+	await preloadDependencies(dependenciesToFetch);
+
+	const transpiled = transpileTypescriptWidget(rawCode, route);
+
 	const encoder = new TextEncoder();
-	const arrayBuffer = encoder.encode(transpiled.code ?? '').buffer;
+	const arrayBuffer = encoder.encode(transpiled ?? '').buffer;
 
 	// Direct the target URL from .ts to .js for the Service Worker's consumption
 	const targetUrl = route.url.replace(/\.ts$/, '.js').replace(/^\.\//, '/base/');
@@ -329,7 +355,7 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 
 	// Import directly from the pipeline URL rather than an ephemeral blob URL
 	const modulePromise = import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
-	registry.set(targetUrl + '?t=' + Date.now(), modulePromise);
+	registry.set(targetUrl, modulePromise);
 	const module = await modulePromise;
 	return new module[route.className](route.label);
 }
@@ -379,14 +405,15 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 
 	try
 	{
-		const widgetInstance = await loadAndInstantiate(route);
-		/*
-		if(route.port)
+		const currentWidgets = Array.from(mainDock.widgets());
+		const existing = currentWidgets.filter(w => w.constructor.name === route.className);
+		if(existing.length > 0)
 		{
-			const sidePanel = window[route.port] as BoxPanel;
-			sidePanel.addWidget(widgetInstance);
-		} else
-		*/
+			existing[0].activate();
+			return;
+		}
+
+		const widgetInstance = await loadAndInstantiate(route);
 		if(widgetInstance.constructor.name === 'FileListWidget')
 		{
 			mainDock.addWidget(widgetInstance, { mode: 'split-left' });
@@ -449,33 +476,36 @@ export function initializeMenus(commands: CommandRegistry, menuBar: MenuBar, mai
 	menuBar.addMenu(viewMenu);
 
 	// 3. Isolated internal event capture handling bounded to the toolbar container
-	toolbarNode.addEventListener('click', (event: MouseEvent) =>
+	toolbarNode.addEventListener('click', mainModuleHandler.bind(toolbarNode, mainDock, toolbarNode));
+}
+
+
+function mainModuleHandler(mainDock: DockPanel, toolbarNode: HTMLElement, event: MouseEvent)
+{
+	const anchor = (event.target as HTMLElement).closest('a');
+	if(!anchor) return;
+
+	const href = anchor.getAttribute('href');
+	if(href && href.startsWith('#'))
 	{
-		const anchor = (event.target as HTMLElement).closest('a');
-		if(!anchor) return;
+		event.preventDefault();
+		const panelId = href.substring(1);
 
-		const href = anchor.getAttribute('href');
-		if(href && href.startsWith('#'))
+		// Manage localized highlight toggle styles across the sidebar icons
+		toolbarNode.querySelectorAll('a').forEach(el => el.classList.remove('active'));
+		if(panelId !== 'collapse')
 		{
-			event.preventDefault();
-			const panelId = href.substring(1);
-
-			// Manage localized highlight toggle styles across the sidebar icons
-			toolbarNode.querySelectorAll('a').forEach(el => el.classList.remove('active'));
-			if(panelId !== 'collapse')
-			{
-				anchor.classList.add('active');
-			}
-
-			if(panelId === 'collapse')
-			{
-				toolbarNode.classList.toggle('collapsed');
-				return;
-			}
-
-			triggerPanelRoute(panelId, mainDock);
+			anchor.classList.add('active');
 		}
-	});
+
+		if(panelId === 'collapse')
+		{
+			toolbarNode.classList.toggle('collapsed');
+			return;
+		}
+
+		triggerPanelRoute(panelId, mainDock);
+	}
 }
 
 

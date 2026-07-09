@@ -37,11 +37,10 @@ export class ResponsiveManager
 		mainDock: DockPanel
 	): void
 	{
-		const width = window.innerWidth;
 		const currentWidgets = Array.from(mainDock.widgets());
 
 		// 1. Process responsive visibility rules & directions
-		this._updateVisibility(workspaceBox, toolbar, width);
+		this._updateVisibility(workspaceBox, toolbar);
 
 		// 2. Measure wrapped DOM layout sizes & update Lumino layout limits
 		this._recalculateToolbarHeight(headerRow);
@@ -58,9 +57,10 @@ export class ResponsiveManager
 	/**
 	 * Utility 1: Handle UI Visibility, State and Mobile Adaptations
 	 */
-	private _updateVisibility(workspaceBox: BoxPanel, toolbar: Widget, width: number): void
+	private _updateVisibility(workspaceBox: BoxPanel, toolbar: Widget): void
 	{
-		const isMobile = width < 768;
+		const isMobile = window.innerWidth < 600;
+		const isToolbarScrollable = window.innerHeight < 700;
 		const inlineToolbar = document.getElementById('script-inline-toolbar');
 
 		if(isMobile)
@@ -73,7 +73,13 @@ export class ResponsiveManager
 		{
 			workspaceBox.direction = 'left-to-right';
 			toolbar.node.style.display = 'flex';
-			toolbar.node.style.minWidth = '50px';
+			if(isToolbarScrollable)
+			{
+				toolbar.node.style.minWidth = '60px';
+			} else
+			{
+				toolbar.node.style.minWidth = '50px';
+			}
 			if(inlineToolbar) inlineToolbar.style.display = 'flex';
 		}
 	}
