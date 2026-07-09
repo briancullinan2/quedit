@@ -200,7 +200,7 @@ async function treeHandler(selector: string, e: Event): Promise<void>
 		}
 
 		const [realFilePath, selectedGithub, dbFile, lineNumber] = await window.FileManager.findFileTestPath(filePath);
-		console.warn('openFile: ' + filePath + ' length: ' + dbFile?.contents?.length);
+		console.warn('openFile: ' + filePath + ' length: ' + dbFile?.contents?.length + ' from: ' + selectedGithub);
 		if(selectedGithub && (!dbFile?.contents || dbFile.contents?.length === 0))
 		{
 

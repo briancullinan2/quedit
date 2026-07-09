@@ -1,4 +1,5 @@
 import { BoxPanel, DockPanel, MenuBar, Panel, Widget } from "@lumino/widgets";
+import { LayoutAdjuster } from "./lumino-widget";
 
 export interface LuminoLayoutNode
 {
@@ -131,6 +132,7 @@ export class ResponsiveManager
 			const initialSpace = rootOrientation === 'horizontal' ? totalWidth : totalHeight;
 
 			// 2. Execute the recursive layout size mutations
+			LayoutAdjuster.handleResponsiveLayoutCollapse(mainDock);
 			this._traverseAndAdjustSizes(layout.main, initialSpace, targetIds);
 
 			// 3. Flush layout modifications back to the dock
@@ -255,22 +257,26 @@ export class ResponsiveManager
 	}
 }
 
-export function isDevToolsOpen(): boolean {
-    const threshold = 160; // Cushion for window borders
+export function isDevToolsOpen(): boolean
+{
+	const threshold = 160; // Cushion for window borders
 
-    const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-    const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+	const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+	const heightThreshold = window.outerHeight - window.innerHeight > threshold;
 
-    const hasClass = document.body?.classList.contains('debugger') ?? false;
-    const debuggerIsOpen = widthThreshold || heightThreshold;
+	const hasClass = document.body?.classList.contains('debugger') ?? false;
+	const debuggerIsOpen = widthThreshold || heightThreshold;
 
-    if (document.body) {
-        if (debuggerIsOpen && !hasClass) {
-            document.body.classList.add('debugger');
-        } else if (!debuggerIsOpen && hasClass) {
-            document.body.classList.remove('debugger');
-        }
-    }
+	if(document.body)
+	{
+		if(debuggerIsOpen && !hasClass)
+		{
+			document.body.classList.add('debugger');
+		} else if(!debuggerIsOpen && hasClass)
+		{
+			document.body.classList.remove('debugger');
+		}
+	}
 
-    return debuggerIsOpen;
+	return debuggerIsOpen;
 }

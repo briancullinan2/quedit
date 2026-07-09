@@ -18,6 +18,7 @@ import { FileToolbar } from './menu-file';
 import { SettingsToolbar } from './menu-settings';
 import { EngineToolbar } from './menu-engine';
 import { HistoryToolbar } from './menu-history';
+import { LayoutAdjuster } from './lumino-widget';
 
 const parseBabel = packages.parser.parse;
 const traverse = packages.traverse.default;
@@ -401,7 +402,11 @@ export async function loadScript(src: string): Promise<any>
 export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): Promise<void>
 {
 	const route = MODULE_REGISTRY[panelId];
-	if(!route || !route.url) return; // Skip routes without code targets (like collapse)
+	if(!route || !route.url)
+	{
+		console.log('Panel route not found: ' + panelId);
+		return; // Skip routes without code targets (like collapse)
+	}
 
 	try
 	{
@@ -409,6 +414,7 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 		const existing = currentWidgets.filter(w => w.constructor.name === route.className);
 		if(existing.length > 0)
 		{
+			console.log('Panel route already loaded: ' + panelId);
 			existing[0].activate();
 			return;
 		}
@@ -416,13 +422,18 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 		const widgetInstance = await loadAndInstantiate(route);
 		if(widgetInstance.constructor.name === 'FileListWidget')
 		{
-			mainDock.addWidget(widgetInstance, { mode: 'split-left' });
+			LayoutAdjuster.addOptimalWidgetLayout(mainDock, widgetInstance, {
+				type: 'outline',
+				projectId: widgetInstance.constructor.name
+			});
 		} else
 		{
-			mainDock.addWidget(widgetInstance, { mode: 'split-right' });
+			LayoutAdjuster.addOptimalWidgetLayout(mainDock, widgetInstance, {
+				type: 'editor',
+				projectId: widgetInstance.constructor.name
+			});
 		}
-		mainDock.activateWidget(widgetInstance);
-		window.resizeHandler();
+
 	} catch(err)
 	{
 		console.error(`Module initialization fault on pathway [${panelId}]:`, err);

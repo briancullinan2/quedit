@@ -3,6 +3,7 @@ import { Message } from '@lumino/messaging';
 import type { Ace } from 'ace-builds';
 import type { SettingConfig } from '../bundle/settings';
 import type { HistoryToolbar } from '../bundle/menu-history';
+import type { LayoutAdjuster } from '../bundle/lumino-widget';
 
 interface ISessionCache
 {
@@ -37,6 +38,7 @@ declare global
 	{
 		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
 		ace: typeof ace;
+		LayoutAdjuster: typeof LayoutAdjuster;
 		mainDock: DockPanel;
 		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
 		compilerDiagnostics?: any;
@@ -550,10 +552,10 @@ export class AceEditorWidget extends Widget
 		newTab.title.label = fileName;
 		newTab.title.closable = true;
 
-		// 3. Drop it directly into the active Dock tab layout stack
-		window.mainDock.addWidget(newTab);
-		window.mainDock.activateWidget(newTab);
-		window.mainDock.fit();
+		window.LayoutAdjuster.addOptimalWidgetLayout(window.mainDock, newTab, {
+			type: 'editor',
+			projectId: newTab.constructor.name
+		});
 	}
 }
 
