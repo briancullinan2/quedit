@@ -58,7 +58,7 @@ if(cluster.isMaster)
 		fullReload: true,
 
 		// 1. Keep this matching your project directory root
-		watch: ['./components/**'],
+		watch: ['./*.js', './*.html', './components/**'],
 
 		// 2. Add the ignore array right here.
 		// This stops live-server/chokidar from crawling these directories entirely.

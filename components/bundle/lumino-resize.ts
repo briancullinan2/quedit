@@ -23,6 +23,7 @@ declare global
 {
 	interface Window
 	{
+		activityTracker: FocusTracker<Widget>;
 		workspaceBox: BoxPanel;
 		toolbarWidget: Widget;
 		lastInteractedWidget: Widget | null;
@@ -72,6 +73,7 @@ const TOOLBAR_CONTEXT_MAP: Record<ToolbarKey, string[]> = {
 const ALL_TOOLBARS = Object.keys(TOOLBAR_CONTEXT_MAP) as ToolbarKey[];
 
 export const activityTracker = new FocusTracker<Widget>();
+window.activityTracker = activityTracker;
 
 export class ResponsiveManager
 {
@@ -143,7 +145,7 @@ export class ResponsiveManager
 	/**
 	 * Utility 1: Handle UI Visibility, State and Mobile Adaptations
 	 */
-	public _updateVisibility(workspaceBox: BoxPanel, toolbar: Widget): void
+	private _updateVisibility(workspaceBox: BoxPanel, toolbar: Widget): void
 	{
 		const isWidescreen = window.innerWidth >= WIDESCREEN;
 		const isNormal = window.innerWidth < 800;

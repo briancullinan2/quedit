@@ -52,7 +52,6 @@ function main(): void
 		mode: 'multiple-document'
 	});
 	mainDock.id = 'main-workspace';
-
 	window.mainDock = mainDock;
 
 	// Generate the top application header structures using our unified layout export
@@ -97,6 +96,57 @@ function main(): void
 	Widget.attach(windowRoot, document.body);
 	windowRoot.fit();
 
+	mainDock.layoutModified.connect(() =>
+	{
+		const remainingWidgets = Array.from(mainDock.widgets());
+		console.log('Dock layout updated. Remaining widget count:', remainingWidgets.length);
+		window.resizeHandler();
+	});
+
+
+	messaging.MessageLoop.installMessageHook(mainDock, (handler, msg: messaging.Message) =>
+	{
+		console.warn(msg);
+		// 1. Check if the message is a close request hitting the dock
+		if(msg.type === 'close-request')
+		{
+			// The handler in this context is the widget receiving the close command
+			const closingWidget = handler as Widget;
+			console.log(`Intercepted close event for: ${closingWidget.id}`);
+
+			// 2. Determine your fallback activation target
+			let fallbackWidget: Widget | null = null;
+
+			// Strategy A: Fallback to the last tracked active widget if it's still alive and not the closing one
+			if(window.previousInteractedWidget && window.previousInteractedWidget !== closingWidget && !window.previousInteractedWidget.isDisposed)
+			{
+				fallbackWidget = window.previousInteractedWidget;
+			} else
+			{
+				// Strategy B: Pull remaining widgets and find the first non-filelist editor
+				const remaining = Array.from(mainDock.widgets()).filter(w => w !== closingWidget && !w.isHidden);
+				fallbackWidget = remaining.find(w => w.constructor.name !== 'FileListWidget') || remaining[0] || null;
+			}
+
+			// 3. Queue the activation right after the layout pass finishes processing the removal
+			if(fallbackWidget)
+			{
+				const target = fallbackWidget;
+				requestAnimationFrame(() =>
+				{
+					if(!target.isDisposed && !target.isHidden)
+					{
+						mainDock.activateWidget(target);
+					}
+				});
+			}
+		}
+
+		// CRITICAL: Always return true so the message continues down the pipeline
+		// to let Lumino finish removing and disposing the closed widget.
+		return true;
+	});
+
 	const resizeHandler = () =>
 	{
 		ResponsiveManager.getInstance().handleResize(windowRoot, workspaceBox, headerRow, menuBar, toolbar, mainDock);
@@ -111,7 +161,7 @@ function main(): void
 
 	const userWorkspaceChoice = SettingsManager.get('core', 'workspaceDefault');
 
-	// TODO:
+	// TODO: load default editor specified in localStorage
 
 	isDevToolsOpen();
 }

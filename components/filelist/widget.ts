@@ -6,6 +6,7 @@ import type { RepositoryToolbar } from '../bundle/menu-repos';
 import type { Settings } from '../bundle/settings';
 import type { FileManager } from '../bundle/lumino-files';
 import Tree from './tree.js';
+import { Message, MessageLoop } from '@lumino/messaging';
 
 declare global
 {
@@ -46,6 +47,26 @@ export class FileListWidget extends Widget
 		// Defer file tree checking until element is mounted to layout viewport
 		requestAnimationFrame(() => this.initializeFiletrees());
 	}
+
+	public processMessage(msg: Message): void
+	{
+		if(msg.type === 'close-request')
+		{
+			// Hijack the close! Instead of destroying, hide the panel
+			this.hide();
+
+			// Notify the parent DockPanel to recalculate layout paths immediately
+			if(this.parent)
+			{
+				// Forcing an internal update pass so layout sizes collapse seamlessly
+				MessageLoop.sendMessage(this.parent, new Message('layout-request'));
+			}
+			return; // BAIL OUT: Avoid calling super.processMessage() to prevent disposal
+		}
+
+		super.processMessage(msg);
+	}
+
 
 	/**
 	 * Safe HTML Structure Injection
