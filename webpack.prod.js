@@ -27,6 +27,7 @@ module.exports = {
 		extensions: ['.ts', '.js', '.css'],
 	},
 	module: {
+		noParse: [/[\\/]node_modules[\\/]@babel[\\/]standalone[\\/]/],
 		rules: [
 			{
 				test: /rosetta\/binary\.js$/,
@@ -90,6 +91,8 @@ module.exports = {
 		minimize: true,
 		minimizer: [
 			new TerserPlugin({
+				exclude: /babel\.min\.js$/,
+				parallel: true,
 				terserOptions: {
 					// Prevents name mangling stripping
 					mangle: {

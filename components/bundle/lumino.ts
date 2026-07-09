@@ -6,10 +6,9 @@ import { createTopBar, initializeMenus } from './menu';
 import { StatusBarWidget } from './status';
 import { ServiceWorkerManager } from './worker';
 import { SettingConfig, SettingsManager } from './settings';
-
-import '@lumino/widgets/style/index.css';
 import { isDevToolsOpen, ResponsiveManager } from './lumino-resize';
 
+import '@lumino/widgets/style/index.css';
 
 
 declare global
@@ -25,6 +24,8 @@ declare global
 		envStatusNode: HTMLDivElement;
 		mainDock: DockPanel;
 		commandRegistry: CommandRegistry;
+		workspaceBox: BoxPanel;
+		toolbarWidget: Widget;
 		//sidebarPanel: BoxPanel;
 		resizeHandler: () => void;
 	}
@@ -39,7 +40,6 @@ window.Lumino = {
 
 console.log("Lumino Core injected into global window space.");
 
-
 function main(): void
 {
 	// Initialize the Command Registry
@@ -53,6 +53,7 @@ function main(): void
 		mode: 'multiple-document'
 	});
 	mainDock.id = 'main-workspace';
+
 	window.mainDock = mainDock;
 
 	// Generate the top application header structures using our unified layout export
@@ -61,6 +62,7 @@ function main(): void
 	// Build a manual sidebar widget for the left boundary (VSCode style)
 	const toolbar = new Widget();
 	toolbar.id = 'left-toolbar';
+	window.toolbarWidget = toolbar;
 	toolbar.node.style.minWidth = '50px';
 
 	// Initialize remaining menus safely passing down the clean tracking components
@@ -84,6 +86,7 @@ function main(): void
 	// Construct the global parent layout anchor structure
 	const workspaceBox = new BoxPanel({ direction: 'left-to-right', spacing: 0 });
 	workspaceBox.id = 'workspace-box';
+	window.workspaceBox = workspaceBox;
 	BoxPanel.setStretch(toolbar, 0);
 	//BoxPanel.setStretch(sidebarPanel, 0);
 	BoxPanel.setStretch(mainDock, 1);

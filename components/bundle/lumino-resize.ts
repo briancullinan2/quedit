@@ -1,4 +1,4 @@
-import { BoxPanel, DockPanel, MenuBar, Panel, Widget } from "@lumino/widgets";
+import { BoxPanel, DockPanel, FocusTracker, MenuBar, Panel, Widget } from "@lumino/widgets";
 import { LayoutAdjuster, WIDESCREEN } from "./lumino-widget";
 import type { RepositoryToolbar } from "./menu-repos";
 import type { ScriptToolbar } from "./menu-script";
@@ -23,6 +23,8 @@ declare global
 {
 	interface Window
 	{
+		workspaceBox: BoxPanel;
+		toolbarWidget: Widget;
 		lastInteractedWidget: Widget | null;
 		previousInteractedWidget: Widget | null;
 		repoToolbar: RepositoryToolbar;
@@ -35,7 +37,41 @@ declare global
 	}
 }
 
+export type ToolbarKey = 'repoToolbar' | 'scriptToolbar' | 'appToolbar' | 'fileToolbar' | 'historyToolbar' | 'settingsToolbar' | 'engineToolbar';
 
+/**
+ * Inverted Registry: Maps each Toolbar to the Widget classes that activate it.
+ */
+const TOOLBAR_CONTEXT_MAP: Record<ToolbarKey, string[]> = {
+	appToolbar: [
+		'ConsoleWidget', 'AceEditorWidget', 'PaintWidget', 'NunuStudioWidget',
+		'DedicatedCanvasWidget', 'FileListWidget', 'GameListWidget',
+		'AssetListWidget', 'GithubWidget', 'SettingsWidget', 'SearchWidget', 'AudioEditorWidget'
+	],
+	fileToolbar: [
+		'AceEditorWidget', 'FileListWidget', 'GameListWidget', 'AssetListWidget'
+	],
+	scriptToolbar: [
+		'ConsoleWidget', 'AceEditorWidget'
+	],
+	repoToolbar: [
+		'FileListWidget', 'GameListWidget', 'GithubWidget'
+	],
+	engineToolbar: [
+		'PaintWidget', 'NunuStudioWidget', 'DedicatedCanvasWidget', 'AssetListWidget'
+	],
+	historyToolbar: [
+		'ConsoleWidget', 'GithubWidget', 'AceEditorWidget'
+	],
+	settingsToolbar: [
+		'NunuStudioWidget', 'SettingsWidget'
+	]
+};
+
+// Array for iterating through your global window instances safely
+const ALL_TOOLBARS = Object.keys(TOOLBAR_CONTEXT_MAP) as ToolbarKey[];
+
+export const activityTracker = new FocusTracker<Widget>();
 
 export class ResponsiveManager
 {
@@ -49,6 +85,23 @@ export class ResponsiveManager
 		if(!ResponsiveManager._instance)
 		{
 			ResponsiveManager._instance = new ResponsiveManager();
+
+			// 2. Connect directly to the active widget change signal
+			activityTracker.currentChanged.connect((sender: FocusTracker<Widget>, args: FocusTracker.IChangedArgs<Widget>) =>
+			{
+				// args.oldValue -> The widget that lost focus
+				// args.newValue -> The widget that gained focus
+
+				if(window.lastInteractedWidget !== args.newValue)
+				{
+					window.previousInteractedWidget = window.lastInteractedWidget;
+				}
+				window.lastInteractedWidget = args.newValue;
+
+				// Call your visibility method safely
+				ResponsiveManager._instance?._updateVisibility(window.workspaceBox, window.toolbarWidget);
+			});
+
 		}
 		return ResponsiveManager._instance;
 	}
@@ -82,6 +135,7 @@ export class ResponsiveManager
 		windowRoot.update();
 	}
 
+
 	/**
 	 * Utility 1: Handle UI Visibility, State and Mobile Adaptations
 	 */
@@ -92,10 +146,7 @@ export class ResponsiveManager
 		const isMobile = window.innerWidth < 600;
 		const isToolbarScrollable = window.innerHeight < 700;
 
-		const shouldHideScripts = window.lastInteractedWidget?.constructor.name !== 'ConsoleWidget'
-			|| isWidescreen && window.previousInteractedWidget?.constructor.name !== 'ConsoleWidget';
-
-
+		// 1. ORIGINAL TOOLBAR PARAMETER LOGIC (UNTOUCHED)
 		if(isToolbarScrollable)
 		{
 			toolbar.node.style.minWidth = '60px';
@@ -104,27 +155,53 @@ export class ResponsiveManager
 			toolbar.node.style.minWidth = '50px';
 		}
 
-
 		if(isMobile)
 		{
 			workspaceBox.direction = 'top-to-bottom';
 			toolbar.node.style.display = 'none';
 			toolbar.node.style.minWidth = '0px';
-			if(shouldHideScripts)
-			{
-				window.scriptToolbar.node.style.display = 'none';
-			}
 		} else
 		{
 			workspaceBox.direction = 'left-to-right';
 			toolbar.node.style.display = 'flex';
-
-			if(isWidescreen)
-			{
-				window.scriptToolbar.node.style.display = 'flex';
-			}
 		}
+
+		// 2. DYNAMIC REGISTRY VISIBILITY LOGIC (ON GLOBAL WINDOW TOOLBARS)
+		const currentClass = window.lastInteractedWidget?.constructor.name || '';
+		const previousClass = window.previousInteractedWidget?.constructor.name || '';
+
+		ALL_TOOLBARS.forEach((key) =>
+		{
+			const globalToolbar = window[key];
+			if(!globalToolbar || !globalToolbar.node) return;
+
+			const allowedWidgets = TOOLBAR_CONTEXT_MAP[key] || [];
+			const isNeededByCurrent = allowedWidgets.includes(currentClass);
+			const isNeededByPrevious = allowedWidgets.includes(previousClass);
+
+			let dynamicContextMatch = isNeededByCurrent;
+			if(isWidescreen && !dynamicContextMatch)
+			{
+				dynamicContextMatch ||= isNeededByPrevious;
+			}
+
+			if(isMobile)
+			{
+				globalToolbar.node.style.display = 'none';
+				globalToolbar.node.style.minWidth = '0px';
+			} else
+			{
+				if(dynamicContextMatch)
+				{
+					globalToolbar.node.style.display = 'flex';
+				} else
+				{
+					globalToolbar.node.style.display = 'none';
+				}
+			}
+		});
 	}
+
 
 	/**
 	 * Utility 2: Dynamic Scroll Height Profiler (Fixes the wrapping clipping bug)
