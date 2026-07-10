@@ -23,6 +23,7 @@ declare global
 		RepositoryToolbar: typeof RepositoryToolbar;
 		SettingsManager: Settings;
 		FileManager: typeof FileManager;
+		fileListWidgets?: Array<FileListWidget>;
 	}
 }
 
@@ -30,12 +31,14 @@ declare global
 export class FileListWidget extends Widget
 {
 	private treeContainerId: string;
+	public static fileListWidgets: Array<FileListWidget> = new Array<FileListWidget>();
 
 	constructor(titleStr: string)
 	{
 		super();
 		this.id = 'filelist-panel';
 		this.title.label = titleStr;
+		FileListWidget.fileListWidgets[FileListWidget.fileListWidgets.length] = this;
 		this.title.closable = true;
 		this.node.style.minWidth = '200px';
 		this.addClass('ide-file-tree-widget');
@@ -52,6 +55,7 @@ export class FileListWidget extends Widget
 	{
 		if(msg.type === 'close-request')
 		{
+			console.log('Intercepted close request, hiding instead: ' + this.title.label);
 			// Hijack the close! Instead of destroying, hide the panel
 			this.hide();
 
@@ -153,6 +157,8 @@ export class FileListWidget extends Widget
 }
 
 
+export const fileListWidgets = FileListWidget.fileListWidgets;
+window.fileListWidgets = fileListWidgets;
 
 
 async function treeHandler(selector: string, e: Event): Promise<void>

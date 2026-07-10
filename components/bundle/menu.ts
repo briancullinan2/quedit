@@ -19,6 +19,7 @@ import { SettingsToolbar } from './menu-settings';
 import { EngineToolbar } from './menu-engine';
 import { HistoryToolbar } from './menu-history';
 import { LayoutAdjuster } from './lumino-widget';
+import type { FileListWidget } from '../filelist/widget';
 
 const parseBabel = packages.parser.parse;
 const traverse = packages.traverse.default;
@@ -43,6 +44,7 @@ declare global
 		historyToolbar: HistoryToolbar;
 		settingsToolbar: SettingsToolbar;
 		engineToolbar: EngineToolbar;
+		fileListWidgets?: Array<FileListWidget>;
 	}
 }
 
@@ -331,6 +333,15 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 
 	if(!response.ok) throw new Error('Component not found: ' + route.url);
 	if(!transform) throw new Error("Babel standalone runner not found on the window context.");
+	const targetUrl = route.url.replace(/\.ts$/, '.js').replace(/^\.\//, '/base/');
+
+	const existingPromise = registry.get(targetUrl);
+	if(existingPromise)
+	{
+		console.log('Already transpiled: ' + route.className);
+		const module2 = await existingPromise;
+		return new module2[route.className](route.label);
+	}
 
 	const dependenciesToFetch = collectDependencies(rawCode, route);
 
@@ -342,7 +353,6 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 	const arrayBuffer = encoder.encode(transpiled ?? '').buffer;
 
 	// Direct the target URL from .ts to .js for the Service Worker's consumption
-	const targetUrl = route.url.replace(/\.ts$/, '.js').replace(/^\.\//, '/base/');
 	const editorDatabase = SettingsManager.get('github', 'environmentRepository');
 
 	// Commit the compiled asset to your service worker pipeline
@@ -354,12 +364,6 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 		parent: targetUrl.substring(0, targetUrl.lastIndexOf('/')),
 		sha: await getGitShaBrowser(arrayBuffer)
 	}, editorDatabase);
-
-	const existingPromise = registry.get(targetUrl);
-	if(existingPromise)
-	{
-		return existingPromise;
-	}
 
 	// Import directly from the pipeline URL rather than an ephemeral blob URL
 	const modulePromise = import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
@@ -423,6 +427,14 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 		{
 			console.log('Panel route already loaded: ' + panelId);
 			existing[0].activate();
+			return;
+		}
+
+		const currentFileList = window.fileListWidgets?.filter(f => f.title.label === route.label);
+		if(currentFileList && currentFileList.length > 0)
+		{
+			currentFileList[0].show();
+			currentFileList[0].activate();
 			return;
 		}
 

@@ -106,12 +106,11 @@ function main(): void
 
 	messaging.MessageLoop.installMessageHook(mainDock, (handler, msg: messaging.Message) =>
 	{
-		console.warn(msg);
 		// 1. Check if the message is a close request hitting the dock
-		if(msg.type === 'close-request')
+		if(msg.type === 'child-removed')
 		{
 			// The handler in this context is the widget receiving the close command
-			const closingWidget = handler as Widget;
+			const closingWidget = (msg as any).child as Widget;
 			console.log(`Intercepted close event for: ${closingWidget.id}`);
 
 			// 2. Determine your fallback activation target
@@ -137,6 +136,7 @@ function main(): void
 					if(!target.isDisposed && !target.isHidden)
 					{
 						mainDock.activateWidget(target);
+						window.resizeHandler();
 					}
 				});
 			}
