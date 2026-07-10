@@ -426,6 +426,7 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 		if(existing.length > 0)
 		{
 			console.log('Panel route already loaded: ' + panelId);
+			existing[0].show();
 			existing[0].activate();
 			return;
 		}

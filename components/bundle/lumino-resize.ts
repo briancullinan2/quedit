@@ -105,7 +105,7 @@ export class ResponsiveManager
 				}
 
 				console.log('Active: ' + window.lastInteractedWidget?.constructor.name + ' inActive: ' + window.previousInteractedWidget?.constructor.name);
-				ResponsiveManager._instance?._updateVisibility(window.workspaceBox, window.toolbarWidget);
+				window.resizeHandler();
 			});
 
 		}

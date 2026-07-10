@@ -27,6 +27,7 @@ declare global
 		workspaceBox: BoxPanel;
 		toolbarWidget: Widget;
 		resizeHandler: () => void;
+		lastInteractedWidget: Widget | null;
 	}
 }
 
@@ -135,6 +136,7 @@ function main(): void
 				{
 					if(!target.isDisposed && !target.isHidden)
 					{
+						window.lastInteractedWidget = target;
 						mainDock.activateWidget(target);
 						window.resizeHandler();
 					}
