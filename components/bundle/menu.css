@@ -44,3 +44,10 @@
 	padding: 4px;
 }
 
+.lm-Menu-itemLabel {
+	flex-grow: 1;
+}
+
+.lm-Menu-itemShortcut {
+	padding: 4px;
+}

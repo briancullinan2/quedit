@@ -22,7 +22,8 @@
 		"allowSyntheticDefaultImports": true,
 		"forceConsistentCasingInFileNames": true,
 		"noImplicitAny": false,
-		"ignoreDeprecations": "6.0"
+		"ignoreDeprecations": "6.0",
+		"sourceMap": true
 	},
 	"include": [
 		"components/bundle/*",

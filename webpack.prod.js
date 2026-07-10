@@ -8,6 +8,7 @@ const webpack = require('webpack');
 
 module.exports = {
 	mode: 'production',
+	devtool: 'eval-source-map',
 	entry: [
 		'./components/bundle/lumino.ts',
 		'./components/bundle/lumino-files.ts'
@@ -69,7 +70,13 @@ module.exports = {
 			},
 			{
 				test: /\.css$/,
-				use: ['style-loader', 'css-loader'],
+				use: [
+					'style-loader',
+					{
+						loader: 'css-loader',
+						options: { sourceMap: true }
+					}
+				]
 			},
 		],
 	},

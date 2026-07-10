@@ -43,7 +43,7 @@ const IMPORT_SETTINGS = {
     paint: {
         transparency: {
             key: 'paint_transparency',
-            default: false,
+            default: true,
             elementId: 'pop_data_transparency',
             type: 'boolean',
             description: 'Toggles visibility transparent handling states inside the built-in textures/imaging application paint tools.'

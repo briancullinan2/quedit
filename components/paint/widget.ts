@@ -12,7 +12,6 @@ export interface MiniPaintApp
 	Layers: MiniPaintLayers;
 	State: MiniPaintState;
 	Tools: MiniPaintTools;
-	AppConfig?: MiniPaintConfig;
 }
 
 export interface MiniPaintConfig
@@ -35,6 +34,13 @@ export interface MiniPaintGUI
 	set_size(width: number, height: number): void;
 	clear_canvas(): void;
 	draw_grid(ctx: CanvasRenderingContext2D): void;
+	GUI_menu: MiniPaintMenu;
+}
+
+
+export interface MiniPaintMenu
+{
+	menuDefinition: MiniPaintMenuConfig[];
 }
 
 export interface MiniPaintLayers
@@ -91,6 +97,18 @@ export interface MiniPaintFileSave
 	export_as_json(): void; // Native project structures
 }
 
+
+export interface MiniPaintMenuConfig
+{
+	name?: string;
+	target?: string;
+	shortcut?: string;
+	ellipsis?: boolean;
+	divider?: boolean;
+	children?: MiniPaintMenuConfig[];
+}
+
+
 // Declares the bundle components available via import maps or actions modules
 declare namespace MiniPaintActions
 {
@@ -127,10 +145,10 @@ export class PaintWidget extends Widget
 		this._buildInterface();
 
 		// 2. Register Lumino commands matching miniPaint global triggers
-		this._registerPaintCommands();
 
 		// 3. Track focus internally to swap menu environments dynamically
-		this.node.addEventListener('focusin', () => this.injectContextualMenus());
+		this.node.addEventListener('focusin',
+			() => this.injectContextualMenus(this._instance?.GUI.GUI_menu.menuDefinition ?? []));
 		this.node.addEventListener('focusout', (e) =>
 		{
 			// Only remove if focus didn't move somewhere else inside this same panel
@@ -215,6 +233,8 @@ export class PaintWidget extends Widget
 		{
 			this._instance = window.initializeMiniPaint();
 			this._onLoadPaint();
+			this._registerPaintCommands(this._instance?.GUI.GUI_menu.menuDefinition ?? []);
+			this.injectContextualMenus(this._instance?.GUI.GUI_menu.menuDefinition ?? []);
 		}
 	}
 
@@ -241,10 +261,10 @@ export class PaintWidget extends Widget
 	 */
 	private _onLoadPaint(): void
 	{
-		if(this._instance?.AppConfig)
+		if(this._instance?.Config)
 		{
 			// Force alpha layer grid defaults natively
-			this._instance.AppConfig.TRANSPARENCY = true;
+			this._instance.Config.TRANSPARENCY = true;
 			if(this._instance.Layers && typeof this._instance.Layers.render === 'function')
 			{
 				this._instance.Layers.render();
@@ -279,47 +299,123 @@ export class PaintWidget extends Widget
 	}
 
 	/**
-	 * Register standalone workspace commands to command registry pipeline
+	 * Recursively parses the miniPaint menu definition structure to register commands
 	 */
-	private _registerPaintCommands(): void
+	private _registerPaintCommands(menuItems: MiniPaintMenuConfig[]): void
 	{
-		if(window.commandRegistry.hasCommand('paint-editor:clear-canvas')) return;
+		menuItems.forEach((item) =>
+		{
+			if(item.divider) return;
 
-		window.commandRegistry.addCommand('paint-editor:clear-canvas', {
-			label: 'Clear Canvas Layers',
-			execute: () =>
+			// If it has children, walk into the sub-branch recursively
+			if(item.children && item.children.length > 0)
 			{
-				if(this._instance?.GUI) this._instance.GUI.clear_canvas();
+				this._registerPaintCommands(item.children);
+				return;
 			}
-		});
 
-		window.commandRegistry.addCommand('paint-editor:render-gui', {
-			label: 'Force UI Redraw',
-			execute: () =>
+			// Guard: Must have a functional target action link
+			if(!item.target) return;
+
+			const commandId = `minipaint:${item.target}`;
+
+			// Prevent double-registration artifacts
+			if(window.commandRegistry.hasCommand(commandId)) return;
+
+			// Map standard text label decorators
+			const labelStr = item.name + (item.ellipsis ? '...' : '');
+			const mnemonicChar = item.shortcut ? item.shortcut.trim().split(/[\s+]+/).pop()!.toUpperCase() : '';
+
+			window.commandRegistry.addCommand(commandId, {
+				label: labelStr,
+				mnemonic: item.shortcut ? labelStr.indexOf(mnemonicChar) : -1,
+				execute: () =>
+				{
+					// Route directly into the active miniPaint State pipeline instance
+					if(this._instance?.State && typeof this._instance.State.do_action === 'function')
+					{
+						this._instance.State.do_action(item.target!);
+					} else
+					{
+						console.warn(`Cannot execute miniPaint command ${item.target} - instance not active.`);
+					}
+				}
+			});
+
+			if(item.shortcut)
 			{
-				if(this._instance?.GUI) this._instance.GUI.render_main_gui();
+				const keybindingSequence = [item.shortcut.replace(/Ctrl/gi, 'Accel').replace(/Shift\s*\+\s*/gi, 'Shift ').replace(/\s*\+\s*/g, ' ')];
+				if(keybindingSequence.length > 0)
+				{
+					window.commandRegistry.addKeyBinding({
+						command: commandId,
+						keys: keybindingSequence,
+						selector: 'lm-miniPaintPanel'
+					});
+				}
 			}
 		});
 	}
 
 	/**
+	 * Helper to recursively build nested Lumino Menu trees from configuration files
+	 */
+	private _buildLuminoSubMenu(menuItems: MiniPaintMenuConfig[], titleLabel: string): Menu
+	{
+		const menu = new Menu({ commands: window.commandRegistry });
+		menu.title.label = titleLabel;
+
+		menuItems.forEach((item) =>
+		{
+			if(item.divider)
+			{
+				menu.addItem({ type: 'separator' });
+				return;
+			}
+
+			if(item.children && item.children.length > 0)
+			{
+				// Nested branch: Create a cascading child menu item
+				const subMenu = this._buildLuminoSubMenu(item.children, item.name || '');
+				menu.addItem({ type: 'submenu', submenu: subMenu });
+			} else if(item.target)
+			{
+				// Leaf item: Bind directly back to the matching generated command string
+				const commandId = `minipaint:${item.target}`;
+				menu.addItem({ command: commandId });
+			}
+		});
+
+		return menu;
+	}
+
+	/**
 	 * Contextual Menu Insertion Trigger
 	 */
-	public injectContextualMenus(): void
+	public injectContextualMenus(menuDefinition: MiniPaintMenuConfig[]): void
 	{
 		if(this._isAttachedToMenu) return;
+
+		// Ensure all commands mapped across leaf attributes are registered
+		this._registerPaintCommands(menuDefinition);
 
 		if(!this._paintMenu)
 		{
 			this._paintMenu = new Menu({ commands: window.commandRegistry });
 			this._paintMenu.title.label = 'Painter';
 
-			// Map out items linking back down to your registered command executors
-			this._paintMenu.addItem({ command: 'paint-editor:clear-canvas' });
-			this._paintMenu.addItem({ command: 'paint-editor:render-gui' });
+			// Walk top-level array blocks (e.g., File, Edit, Image, Layers)
+			menuDefinition.forEach((topLevelItem) =>
+			{
+				if(topLevelItem.children && topLevelItem.children.length > 0)
+				{
+					const subMenu = this._buildLuminoSubMenu(topLevelItem.children, topLevelItem.name || '');
+					this._paintMenu!.addItem({ type: 'submenu', submenu: subMenu });
+				}
+			});
 		}
 
-		// Add the menu directly into the application level menu bar layout
+		// Mount the parsed menu tree straight onto your workspace top rails
 		window.globalMenuBar.addMenu(this._paintMenu);
 		this._isAttachedToMenu = true;
 	}

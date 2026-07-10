@@ -138,7 +138,8 @@ function main(): void
 			let fallbackWidget: Widget | null = null;
 
 			// Strategy A: Fallback to the last tracked active widget if it's still alive and not the closing one
-			if(window.previousInteractedWidget && window.previousInteractedWidget !== closingWidget && !window.previousInteractedWidget.isDisposed)
+			if(window.previousInteractedWidget && window.previousInteractedWidget !== closingWidget
+				&& window.previousInteractedWidget.parent && !window.previousInteractedWidget.isDisposed)
 			{
 				fallbackWidget = window.previousInteractedWidget;
 			} else

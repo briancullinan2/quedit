@@ -140,10 +140,14 @@ export class LayoutAdjuster
 					mode: shouldSplit ? 'split-right' : 'tab-after',
 					ref: bestRef
 				});
-			} else
+			} else if(isWidescreen)
 			{
 				console.log('Opening tab split-right');
 				dockPanel.addWidget(newWidget, { mode: 'split-right' });
+			} else
+			{
+				console.log('Opening tab-after');
+				dockPanel.addWidget(newWidget, { mode: 'tab-after' });
 			}
 			dockPanel.activateWidget(newWidget);
 			window.resizeHandler();
@@ -177,9 +181,11 @@ export class LayoutAdjuster
 		// Rank 2: Scan for the largest existing project match
 		let largestProjectWidget: Widget | null = null;
 		let maxArea = -1;
+		let maxAreaNotFiles = -1;
 
 		const iterator = dockPanel.widgets();
 		let current = iterator.next();
+		let notFiles = null;
 
 		while(current && current.value)
 		{
@@ -195,6 +201,15 @@ export class LayoutAdjuster
 					maxArea = area;
 					largestProjectWidget = w;
 				}
+			} else if(!(w.constructor.name !== 'FileListWidget'))
+			{
+				const rect = el.getBoundingClientRect();
+				const area = rect.width * rect.height;
+				if(area > maxAreaNotFiles)
+				{
+					maxAreaNotFiles = area;
+					notFiles = w;
+				}
 			}
 			current = iterator.next();
 		}
@@ -202,6 +217,11 @@ export class LayoutAdjuster
 		if(largestProjectWidget)
 		{
 			return largestProjectWidget;
+		}
+
+		if(notFiles)
+		{
+			return notFiles;
 		}
 
 		// Rank 3: Fallback to whatever was last touched globally
