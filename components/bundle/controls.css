@@ -27,6 +27,7 @@ ul.toolbar button,
 	vertical-align: middle;
 	background: var(--ace-gutter-bg);
 	border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
+	border-radius: 0;
 	color: var(--ace-foreground);
 	font-family: inherit;
 	cursor: pointer;

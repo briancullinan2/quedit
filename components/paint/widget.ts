@@ -148,7 +148,6 @@ export class PaintWidget extends Widget
 		<nav aria-label="Main Menu" class="main_menu" id="main_menu"></nav>
 
 		<div class="submenu">
-			<a class="logo" href="#">miniPaint</a>
 			<div class="block attributes" id="action_attributes"></div>
 			<button class="undo_button" id="undo_button" type="button">
 				<span class="sr_only">Undo</span>
