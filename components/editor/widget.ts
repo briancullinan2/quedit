@@ -1,7 +1,7 @@
 import { DockPanel, Widget } from '@lumino/widgets';
 import { Message } from '@lumino/messaging';
 import type { Ace } from 'ace-builds';
-import type { SettingConfig } from '../bundle/settings';
+import type { SettingConfig, FileOpenTuple, Settings } from '../bundle/settings';
 import type { HistoryToolbar } from '../bundle/menu-history';
 import type { LayoutAdjuster } from '../bundle/lumino-widget';
 import { FileListWidget } from '../filelist/widget';
@@ -46,6 +46,7 @@ declare global
 		diagnosticsBridge: any;
 		AceEditorWidget: typeof AceEditorWidget;
 		historyToolbar: HistoryToolbar;
+		SettingsManager: Settings;
 	}
 }
 
@@ -441,10 +442,10 @@ class AceEditorPool
  */
 export class AceEditorWidget extends Widget
 {
-	private _fileId: string;
-	private _initialContent: string;
-	private _editor: Ace.Editor | null = null;
-	private static _defaultContent: string = '#include <stdio.h>\n\n// this is a comment\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\\n");\n    return 0;\n}\n';
+	protected _fileId: string;
+	protected _initialContent: string;
+	protected _editor: Ace.Editor | null = null;
+	protected static _defaultContent: string = '#include <stdio.h>\n\n// this is a comment\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\\n");\n    return 0;\n}\n';
 
 	constructor(fileId?: string, initialContent?: string)
 	{
@@ -581,6 +582,34 @@ export class AceEditorWidget extends Widget
 }
 
 window.AceEditorWidget = AceEditorWidget;
+
+
+export class SettingsWidget extends AceEditorWidget
+{
+	constructor(fileId?: string, initialContent?: string)
+	{
+		super(fileId, initialContent);
+		const self = this;
+		window.SettingsManager.settings().then(settings =>
+		{
+			self._fileId = settings[0] ?? self._fileId;
+			self._initialContent = settings[2] ?? self._initialContent;
+
+			if(self._editor)
+			{
+				const session = AceEditorPool.getOrCreateAceSession(self._fileId, self._initialContent);
+				self._editor.setSession(session);
+				self._editor.resize();
+				self._editor.renderer.updateFull();
+				tryLoadingTerminalEditorBridge(self._editor);
+			}
+		});
+	}
+
+	// TODO: on save, also call window.SettingsManager.saveSettings
+}
+
+
 
 const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 	editor: {

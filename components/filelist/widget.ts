@@ -5,8 +5,8 @@ import type { GitHubFileEntry } from '../bundle/github-types';
 import type { RepositoryToolbar } from '../bundle/menu-repos';
 import type { Settings } from '../bundle/settings';
 import type { FileManager } from '../bundle/lumino-files';
-import Tree from './tree.js';
 import { Message, MessageLoop } from '@lumino/messaging';
+import Tree from './tree.js';
 
 declare global
 {

@@ -109,18 +109,6 @@ function onUnloadTerminal() {
     if (window.term?.dispose) window.term.dispose();
 }
 
-function onLoadEditor() {
-    updateMaxLines()
-
-    const themeSelector = document.getElementById('theme');
-    if (themeSelector && window.ace) {
-        setTheme(SettingsManager.get('editor', 'savedTheme'))
-    }
-
-    tryLoadingTerminalEditorBridge()
-}
-
-
 
 
 function hasChangedEditor() {
@@ -164,11 +152,6 @@ function onLoadToji() {
 }
 
 function onLoadPaint() {
-    // TRICK WEBPACK MINI_PAINT: Intercept and force-resolve their internal Deferred initialization ready flag
-    // If miniPaint mapped its entry wrapper 'k' onto window scope:
-    if (!window.GUI && typeof window.loadPaint === 'function') {
-        window.loadPaint()
-    }
 
     if (typeof window.hookMiniPaintIntercept === 'function') {
         window.hookMiniPaintIntercept();

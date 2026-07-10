@@ -1,10 +1,12 @@
 /* Jupyter-style Top MenuBar Styling */
 #top-menubar {
-	background: var(--ace-bg);
 	color: var(--ace-foreground);
-	border-bottom: 1px solid var(--ace-gutter-bg);
 	z-index: 10;
+	display: flex;
+	flex-shrink: 0;
+	overflow: visible !important;
 }
+
 
 #app-top-header-row .lm-MenuBar-item {
 	padding: 6px 10px;
@@ -40,13 +42,5 @@
 
 .lm-Menu-itemIcon {
 	padding: 4px;
-}
-
-
-/* Ensure the MenuBar sizing matches its text footprint */
-#top-menubar {
-	display: flex;
-	flex-shrink: 0;
-	overflow: visible !important;
 }
 

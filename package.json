@@ -9,6 +9,8 @@
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"start": "node dev.js",
+		"build-nunu": "webpack --config webpack.nunu.js",
+		"build-paint": "webpack --config webpack.paint.js",
 		"build-settings": "npx ts-node -O \"{\\\"module\\\":\\\"commonjs\\\",\\\"moduleResolution\\\":\\\"node\\\"}\" components/bundle/settings-coalescer.ts",
 		"build": "webpack --config webpack.prod.js",
 		"set-google": "gcloud storage buckets update gs://quake.games --cors-file=cors-json-file.json"
@@ -30,6 +32,7 @@
 		"copy-webpack-plugin": "^14.0.0",
 		"css-loader": "^7.1.4",
 		"expose-loader": "^5.0.1",
+		"git-revision-webpack-plugin": "^5.0.0",
 		"html-webpack-plugin": "^5.6.7",
 		"style-loader": "^4.0.0",
 		"terser-webpack-plugin": "^5.6.1",

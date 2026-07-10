@@ -53,6 +53,13 @@ for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
 export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
 
 
+export type FileOpenTuple = [
+	fileId: string | null,
+	fileName: string | null,
+	fileContents: string | null
+];
+
+
 
 export class Settings
 {
@@ -341,7 +348,7 @@ export class Settings
 	/**
 	 * 5. Spawns the in-memory filesystem changes and updates the target workspace editor
 	 */
-	public async settings(): Promise<void>
+	public async settings(): Promise<FileOpenTuple>
 	{
 		const database = `${RepositoryToolbar.owner?.value}/${RepositoryToolbar.repository?.value}`;
 		const filePath = `settings${++this.tempCount}.json`;
@@ -368,12 +375,7 @@ export class Settings
 			};
 		}
 
-		if(typeof window.AceEditorWidget === 'undefined')
-		{
-			await window.triggerPanelRoute('editor', window.mainDock);
-		}
-
-		window.AceEditorWidget.openFileInNewTab(filePath, 'settings.json', settingsString);
+		return [filePath, 'settings.json', settingsString];
 	}
 
 

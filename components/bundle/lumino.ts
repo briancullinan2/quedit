@@ -107,7 +107,7 @@ function main(): void
 
 	messaging.MessageLoop.installMessageHook(mainDock, (handler, msg: messaging.Message) =>
 	{
-		console.log(msg);
+		//console.log(msg);
 		if(msg.type === 'child-added')
 		{
 			const addingWidget = (msg as any).child as Widget;

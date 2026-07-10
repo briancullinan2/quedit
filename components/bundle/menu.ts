@@ -45,6 +45,7 @@ declare global
 		settingsToolbar: SettingsToolbar;
 		engineToolbar: EngineToolbar;
 		fileListWidgets?: Array<FileListWidget>;
+		globalMenuBar: MenuBar;
 	}
 }
 
@@ -61,16 +62,16 @@ interface ComponentRoute
 const MODULE_REGISTRY: Record<string, ComponentRoute> = {
 	'collapse': { label: 'Collapse', iconClass: 'bx bx-arrow-in-left-square-half' },
 	'editor': { label: 'Code Editor', url: './components/editor/widget.ts', className: 'AceEditorWidget', iconClass: 'bx bx-code' },
-	'paint': { label: 'miniPaint', url: './components/PaintWidget.ts', className: 'PaintWidget', iconClass: 'bx bx-palette' },
+	'paint': { label: 'miniPaint', url: './components/paint/widget.ts', className: 'PaintWidget', iconClass: 'bx bx-palette' },
 	'nunu': { label: 'nunuStudio', url: './components/NunuStudioWidget.ts', className: 'NunuStudioWidget', iconClass: 'bx bx-vector-triangle' },
 	'audio-editor': { label: 'AudioMass', url: './components/AudioEditorWidget.ts', className: 'AudioEditorWidget', iconClass: 'bx bx-sine-wave' },
 	'searchlist': { label: 'Search Files', url: './components/SearchWidget.ts', className: 'SearchWidget', iconClass: 'bx bx-search' },
 	'filelist': { label: 'Engine Files', url: './components/filelist/widget.ts', className: 'FileListWidget', iconClass: 'bx bx-folder-code' },
-	'gamelist': { label: 'Game Files', url: './components/GameListWidget.ts', className: 'GameListWidget', iconClass: 'bx bx-handheld-alt' },
-	'assetlist': { label: 'Assets', url: './components/AssetListWidget.ts', className: 'AssetListWidget', iconClass: 'bx bx-treasure-chest' },
+	'gamelist': { label: 'Game Files', url: './components/filelist/widget.ts', className: 'FileListWidget', iconClass: 'bx bx-handheld-alt' },
+	'assetlist': { label: 'Assets', url: './components/filelist/widget.ts', className: 'FileListWidget', iconClass: 'bx bx-treasure-chest' },
 	'database': { label: 'Local Database', url: './components/DatabaseWidget.ts', className: 'DatabaseWidget', iconClass: 'bx bx-database' },
 	'github': { label: 'Github Commit', url: './components/GithubWidget.ts', className: 'GithubWidget', iconClass: 'bx bx-git-repo-forked' },
-	'settings': { label: 'Edit Settings', url: './components/SettingsWidget.ts', className: 'SettingsWidget', iconClass: 'bx bx-gear' },
+	'settings': { label: 'Edit Settings', url: './components/editor/widget.ts', className: 'SettingsWidget', iconClass: 'bx bx-gear' },
 	'viewport-frame': { label: '3D Viewport', url: './components/DedicatedCanvasWidget.ts', className: 'DedicatedCanvasWidget', iconClass: 'bx bx-joystick' },
 	'terminal-container': { label: 'Show Console', url: './components/ConsoleWidget.ts', className: 'ConsoleWidget', iconClass: 'bx bx-terminal' },
 };
@@ -113,6 +114,9 @@ function collectDependencies(rawCode: string, route: ComponentRoute): string[]
 			} else if(moduleName === './tree.js' && route.url)
 			{
 				dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
+			} else if(moduleName === './bundle.js' && route.url)
+			{
+				dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
 			}
 		},
 		CallExpression(babelPath)
@@ -127,6 +131,9 @@ function collectDependencies(rawCode: string, route: ComponentRoute): string[]
 				console.log('Overloading: ' + moduleName);
 
 				if(moduleName === './tree.js' && route.url)
+				{
+					dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
+				} else if(moduleName === './bundle.js' && route.url)
 				{
 					dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
 				}
@@ -201,6 +208,9 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): stri
 								} else if(moduleName === './tree.js')
 								{
 									path.replaceWithSourceString('window.Tree');
+								} else if(moduleName === './bundle.js')
+								{
+									path.replaceWithSourceString('window');
 								}
 							}
 						},
@@ -236,6 +246,9 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): stri
 									t.identifier('window'),
 									t.identifier('Tree')
 								);
+							} else if(moduleName === './bundle.js')
+							{
+								globalExpression = t.identifier('window');
 							}
 
 							if(globalExpression)
@@ -597,6 +610,7 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 			isVisible: false
 		}
 	});
+	window.globalMenuBar = menuBar;
 	menuBar.id = 'top-menubar';
 	menuBar.addMenu(fileMenu);
 
