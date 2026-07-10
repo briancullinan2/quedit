@@ -426,16 +426,30 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 		if(existing.length > 0)
 		{
 			console.log('Panel route already loaded: ' + panelId);
+			if(route.className === 'FileListWidget')
+			{
+				existing[0].hide();
+				existing[0].parent = null;
+				window.resizeHandler();
+				return;
+			}
+
 			existing[0].show();
 			existing[0].activate();
 			return;
 		}
 
+		// TODO: make this a global singleton list?
 		const currentFileList = window.fileListWidgets?.filter(f => f.title.label === route.label);
 		if(currentFileList && currentFileList.length > 0)
 		{
-			currentFileList[0].show();
-			currentFileList[0].activate();
+			console.log('Panel singleton toggle: ' + panelId);
+			LayoutAdjuster.addOptimalWidgetLayout(mainDock, currentFileList[0], {
+				type: 'outline',
+				projectId: currentFileList[0].constructor.name
+			});
+			//currentFileList[0].show();
+			//currentFileList[0].activate();
 			return;
 		}
 

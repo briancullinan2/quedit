@@ -58,6 +58,7 @@ export class FileListWidget extends Widget
 			console.log('Intercepted close request, hiding instead: ' + this.title.label);
 			// Hijack the close! Instead of destroying, hide the panel
 			this.hide();
+			this.parent = null;
 
 			// Notify the parent DockPanel to recalculate layout paths immediately
 			if(this.parent)

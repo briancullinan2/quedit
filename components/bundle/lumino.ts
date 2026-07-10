@@ -107,6 +107,26 @@ function main(): void
 
 	messaging.MessageLoop.installMessageHook(mainDock, (handler, msg: messaging.Message) =>
 	{
+		console.log(msg);
+		if(msg.type === 'child-added')
+		{
+			const addingWidget = (msg as any).child as Widget;
+			const newType = addingWidget?.constructor.name;
+			const lastType = window.lastInteractedWidget?.constructor.name;
+
+			// Only update history if the incoming widget type is different from the last tracked type
+			if(newType !== lastType)
+			{
+				window.previousInteractedWidget = window.lastInteractedWidget;
+				window.lastInteractedWidget = addingWidget;
+			}
+
+			console.log('Added widget: ' + window.lastInteractedWidget?.constructor.name + ' inActive: ' + window.previousInteractedWidget?.constructor.name);
+			requestAnimationFrame(() =>
+			{
+				window.resizeHandler();
+			});
+		}
 		// 1. Check if the message is a close request hitting the dock
 		if(msg.type === 'child-removed')
 		{

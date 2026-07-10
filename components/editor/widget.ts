@@ -4,6 +4,7 @@ import type { Ace } from 'ace-builds';
 import type { SettingConfig } from '../bundle/settings';
 import type { HistoryToolbar } from '../bundle/menu-history';
 import type { LayoutAdjuster } from '../bundle/lumino-widget';
+import { FileListWidget } from '../filelist/widget';
 
 interface ISessionCache
 {
@@ -443,7 +444,7 @@ export class AceEditorWidget extends Widget
 	private _fileId: string;
 	private _initialContent: string;
 	private _editor: Ace.Editor | null = null;
-	private _defaultContent: string = '#include <stdio.h>\n\n// this is a comment\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\\n");\n    return 0;\n}\n';
+	private static _defaultContent: string = '#include <stdio.h>\n\n// this is a comment\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\\n");\n    return 0;\n}\n';
 
 	constructor(fileId?: string, initialContent?: string)
 	{
@@ -451,7 +452,7 @@ export class AceEditorWidget extends Widget
 		this.addClass('lm-AceEditorWidget');
 
 		this._fileId = AceEditorPool.getNextTempName();
-		this._initialContent = initialContent || this._defaultContent;
+		this._initialContent = initialContent || AceEditorWidget._defaultContent;
 
 		// Ensure Lumino layout updates do not break text selection systems
 		this.node.style.overflow = 'hidden';
@@ -541,6 +542,26 @@ export class AceEditorWidget extends Widget
 		{
 			// If it's already open, just activate it and bring it to focus
 			window.mainDock.activateWidget(existingTab);
+			return;
+		}
+
+		// take over the default tab instead of creating a new one
+		const existingDefault = tabs.find(t => t.constructor.name === AceEditorWidget.name
+			&& t._editor?.getValue() === AceEditorWidget._defaultContent
+		);
+		if(existingDefault)
+		{
+			existingDefault.title.label = fileName;
+			existingDefault._initialContent = fileContent;
+			const session = AceEditorPool.getOrCreateAceSession(fileId, fileContent);
+			existingDefault._editor?.setSession(session);
+
+			// Synchronize and render bounds accurately
+			existingDefault._editor?.resize();
+			existingDefault._editor?.renderer.updateFull();
+
+			tryLoadingTerminalEditorBridge(existingDefault._editor);
+			window.mainDock.activateWidget(existingDefault);
 			return;
 		}
 

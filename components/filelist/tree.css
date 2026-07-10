@@ -15,16 +15,6 @@
     width: max-content;
 }
 
-.treejs-label::before {
-    font-family: 'boxicons' !important;
-    content: "\f413";
-    /* Boxicons 'file' code */
-    color: #555;
-    position: relative;
-    top: 3px;
-    padding-right: 4px;
-}
-
 .treejs-node__checked {
     background: #ccc;
 }
@@ -47,19 +37,6 @@
 #filelist .treejs .treejs-node {
     overflow: visible;
     max-width: none;
-}
-
-/* Folder Icon (When node has children) */
-.treejs-node__close[data-extension="folder"]>.treejs-label::before {
-    content: "\f440";
-    /* Boxicons 'folder' code */
-    color: #f1c40f;
-}
-
-.treejs-node__open[data-extension="folder"]>.treejs-label::before {
-    content: "\f439";
-    /* Boxicons 'folder' code */
-    color: #f1c40f;
 }
 
 .treejs .treejs-node__open>.treejs-nodes {
