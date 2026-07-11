@@ -13,6 +13,12 @@ export interface MiniPaintApp
 	Layers: MiniPaintLayers;
 	State: MiniPaintState;
 	Tools: MiniPaintTools;
+	alertify: Alertify;
+}
+
+export interface Alertify
+{
+	success: (msg: string) => void;
 }
 
 export interface MiniPaintConfig
@@ -36,13 +42,13 @@ export interface MiniPaintGUI
 	clear_canvas(): void;
 	draw_grid(ctx: CanvasRenderingContext2D): void;
 	GUI_menu: MiniPaintMenu;
+	modules: Record<string, Record<string, Function>>;
 }
 
 
 export interface MiniPaintMenu
 {
 	menuDefinition: MenuConfig[];
-	modules: Record<string, Record<string, Function>>;
 }
 
 export interface MiniPaintLayers
@@ -668,7 +674,7 @@ export class PaintWidget extends Widget implements MenuModules
 {
 	private _paintMenu: Menu | null = null;
 	private _isAttachedToMenu = false;
-	private _instance?: MiniPaintApp;
+	public _instance?: MiniPaintApp;
 	public modules?: Record<string, Record<string, Function>>;
 
 	constructor(fileId?: string, initialContent?: string)
@@ -769,8 +775,9 @@ export class PaintWidget extends Widget implements MenuModules
 		if(typeof window.initializeMiniPaint === 'function')
 		{
 			this._instance = window.initializeMiniPaint();
-			this.modules = this._instance?.GUI.GUI_menu.modules;
+			this.modules = this._instance?.GUI.modules;
 			this._onLoadPaint();
+			window.registerAllCommands(this._instance?.GUI.GUI_menu.menuDefinition ?? []);
 			window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
 		}
 	}

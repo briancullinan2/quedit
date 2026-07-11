@@ -1,6 +1,7 @@
 import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
 import { MenuConfig, MenuManager } from "./menu-manager";
+import type { PaintWidget } from '../paint/widget';
 
 declare global
 {
@@ -398,6 +399,50 @@ export class FileToolbar extends Widget
 
 window.FileToolbar = FileToolbar;
 
+const fileGroups = {
+	// Standard Web/Texture assets
+	'Images (*.png, *.jpg, *.tga, *.pcx)': [
+		'image/png',
+		'image/jpeg',
+		'image/x-tga',
+		'.tga',
+		'.pcx'
+	],
+
+	// Map geometry types
+	'Quake 3 Maps (*.bsp, *.aas)': [
+		'application/x-quake3-map',
+		'.bsp',
+		'.aas'
+	],
+
+	// Scripts, Shaders, and Configuration plain text targets
+	'Text & Scripts (*.shader, *.cfg, *.qvm)': [
+		'text/plain',
+		'.shader',
+		'.cfg',
+		'.qvm'
+	],
+
+	// 3D Model asset packages
+	'3D Models (*.md3, *.md4)': [
+		'application/x-quake3-model',
+		'.md3',
+		'.md4'
+	],
+
+	// Compressed pak collections
+	'Game Archives (*.pk3)': [
+		'application/zip',
+		'.pk3'
+	]
+};
+
+// Flatten all defined groups into a single unified comma-separated lookup string
+const targetAcceptString = Object.values(fileGroups)
+	.reduce((acc, currentGroup) => acc.concat(currentGroup), [])
+	.join(',');
+
 if(!window.globalModules)
 {
 	window.globalModules = {};
@@ -407,6 +452,39 @@ if(!window.globalModules['file/exit'])
 {
 	window.globalModules['file/exit'] = {
 		exit: FileToolbar.closeApp
+	};
+	window.globalModules['file/open'] = {
+		open_file: function ()
+		{
+			var _this = this;
+
+			if(window.lastInteractedWidget?.constructor.name === 'PaintWidget'
+				&& (window.lastInteractedWidget as PaintWidget)._instance
+				&& (window.lastInteractedWidget as PaintWidget)._instance?.alertify
+			)
+			{
+				const alertify = (window.lastInteractedWidget as PaintWidget)._instance!.alertify;
+				alertify.success('You can also drag and drop items into browser.');
+			}
+
+			const temp = document.getElementById("tmp");
+			if(temp)
+			{
+				temp.innerHTML = '';
+				var a = document.createElement('input');
+				a.setAttribute("id", "file_open");
+				a.setAttribute('accept', targetAcceptString);
+				a.type = 'file';
+				a.multiple = true;
+				temp.appendChild(a);
+				a.addEventListener('change', function (e)
+				{
+					_this.open_handler(e);
+				}, false);
+				//force click
+				a.click();
+			}
+		}
 	};
 }
 

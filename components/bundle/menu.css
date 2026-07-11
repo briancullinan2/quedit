@@ -31,11 +31,13 @@
 	display: flex !important;
 	white-space: nowrap;
 	align-items: center;
+	border: 2px solid transparent;
 }
 
 
 .lm-Menu-item:hover,
 .lm-Menu-item.lm-mod-active {
+	border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
 	background: rgb(from var(--ace-selection-bg) r g b / 30%);
 	color: var(--ace-foreground);
 }
@@ -49,7 +51,7 @@
 }
 
 .lm-Menu-itemShortcut {
-	padding: 4px;
+	padding: 0 4px;
 }
 
 .lm-Menu-item[data-type="separator"] {

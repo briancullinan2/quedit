@@ -269,7 +269,7 @@ export class MenuManager
 				{
 					if(item.target)
 					{
-						this.doAction.bind(this, item.target, item);
+						this.doAction(item.target, item);
 					} else if(item.href)
 					{
 						window.open(item.href, '_blank');
@@ -323,13 +323,14 @@ export class MenuManager
 			console.warn(`Cannot execute command ${object.name} - ${object.target} - module function not found: ${module}.${function_name}`);
 			return;
 		}
-		return modules[module][function_name](param);
+		return modules[module][function_name].apply(modules[module], [param]);
 	}
 
 
 }
 
 
-
-window.registerAllCommands = MenuManager.registerAllCommands;
+window.injectMenus = MenuManager.injectMenus.bind(MenuManager);
+window.removeMenus = MenuManager.removeMenus.bind(MenuManager);
+window.registerAllCommands = MenuManager.registerAllCommands.bind(MenuManager);
 

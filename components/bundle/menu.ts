@@ -178,11 +178,12 @@ async function preloadDependencies(dependenciesToFetch: string[]): Promise<void>
 }
 
 
-function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): string
+function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): any
 {
 
 	const transpiled = transform(rawCode, {
 		presets: ['env'],
+		sourceMaps: 'inline',
 		plugins: [
 			['transform-typescript', { isTSX: false }],
 			function (babel: { types: typeof tType, template: any; }): PluginObj
@@ -325,7 +326,7 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): stri
 	});
 
 
-	return transpiled.code;
+	return transpiled;
 }
 
 
@@ -365,9 +366,8 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 	await preloadDependencies(dependenciesToFetch);
 
 	const transpiled = transpileTypescriptWidget(rawCode, route);
-
 	const encoder = new TextEncoder();
-	const arrayBuffer = encoder.encode(transpiled ?? '').buffer;
+	const arrayBuffer = encoder.encode(transpiled.code ?? '').buffer;
 
 	// Direct the target URL from .ts to .js for the Service Worker's consumption
 	const editorDatabase = SettingsManager.get('github', 'environmentRepository');
@@ -381,6 +381,21 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 		parent: targetUrl.substring(0, targetUrl.lastIndexOf('/')),
 		sha: await getGitShaBrowser(arrayBuffer)
 	}, editorDatabase);
+
+
+	if(transpiled.map)
+	{
+		const sourceMapBuffer = encoder.encode(transpiled.map ?? '').buffer;
+		await putRecord(DB_STORE_NAME, {
+			timestamp: new Date(),
+			mode: FS_FILE,
+			contents: sourceMapBuffer,
+			path: targetUrl.replace('.js', '.map'),
+			parent: targetUrl.substring(0, targetUrl.lastIndexOf('/')),
+			sha: await getGitShaBrowser(arrayBuffer)
+		}, editorDatabase);
+	}
+
 
 	// Import directly from the pipeline URL rather than an ephemeral blob URL
 	const modulePromise = import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');

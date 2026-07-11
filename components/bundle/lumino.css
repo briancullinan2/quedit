@@ -55,7 +55,7 @@ html {
 .lm-TabBar {
 	background: var(--ace-bg);
 	border-bottom: 1px solid var(--ace-gutter-bg);
-	min-height: 30px;
+	min-height: 38px;
 }
 
 .lm-TabBar-tab {

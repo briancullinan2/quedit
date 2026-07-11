@@ -89,10 +89,15 @@ ul.toolbar>li {
 	display: block;
 	text-decoration: none;
 	transition: color 0.15s ease;
+	width: 100%;
+	text-align: center;
+	border: 2px solid transparent;
 }
 
 #left-toolbar a:hover,
 #left-toolbar a.active {
+	background: rgb(from var(--ace-selection-bg) r g b / 50%);
+	border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
 	color: var(--ace-foreground);
 }
 
