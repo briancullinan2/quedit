@@ -23,7 +23,6 @@ declare global
 {
 	interface Window
 	{
-		activityTracker: FocusTracker<Widget>;
 		workspaceBox: BoxPanel;
 		toolbarWidget: Widget;
 		lastInteractedWidget: Widget | null;
@@ -72,8 +71,6 @@ const TOOLBAR_CONTEXT_MAP: Record<ToolbarKey, string[]> = {
 // Array for iterating through your global window instances safely
 const ALL_TOOLBARS = Object.keys(TOOLBAR_CONTEXT_MAP) as ToolbarKey[];
 
-export const activityTracker = new FocusTracker<Widget>();
-window.activityTracker = activityTracker;
 
 export class ResponsiveManager
 {
@@ -87,27 +84,6 @@ export class ResponsiveManager
 		if(!ResponsiveManager._instance)
 		{
 			ResponsiveManager._instance = new ResponsiveManager();
-
-			// 2. Connect directly to the active widget change signal
-			activityTracker.currentChanged.connect((sender: FocusTracker<Widget>, args: FocusTracker.IChangedArgs<Widget>) =>
-			{
-				// args.oldValue -> The widget that lost focus
-				// args.newValue -> The widget that gained focus
-
-				const newType = args.newValue?.constructor.name;
-				const lastType = window.lastInteractedWidget?.constructor.name;
-
-				// Only update history if the incoming widget type is different from the last tracked type
-				if(newType !== lastType)
-				{
-					window.previousInteractedWidget = window.lastInteractedWidget;
-					window.lastInteractedWidget = args.newValue;
-				}
-
-				console.log('Active: ' + window.lastInteractedWidget?.constructor.name + ' inActive: ' + window.previousInteractedWidget?.constructor.name);
-				window.resizeHandler();
-			});
-
 		}
 		return ResponsiveManager._instance;
 	}

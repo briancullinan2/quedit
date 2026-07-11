@@ -7,6 +7,10 @@ textarea {
 }
 
 
+#popups .popup .buttons button,
+#popups select,
+#popups *:not(.ui_number_input)>button,
+#popups input,
 .toolbar a.bx,
 .toolbar button.bx,
 #app-top-header-row button.bx,
@@ -35,6 +39,17 @@ ul.toolbar button,
 	cursor: pointer;
 }
 
+#popups input[type="radio"],
+#popups input[type="checkbox"] {
+	width: min-content;
+	zoom: 1;
+}
+
+
+#popups .popup input:focus,
+#popups .popup .buttons button:focus,
+#popups .popup input:hover,
+#popups .popup .buttons button:hover,
 .toolbar a.bx:hover,
 .toolbar button.bx:hover,
 #app-top-header-row button.bx:hover,
@@ -82,6 +97,7 @@ ul.toolbar button:hover,
 
 
 /* The container/track */
+#popups input[type="checkbox"],
 #app-top-header-row input[type="checkbox"] {
 	appearance: none;
 	-webkit-appearance: none;
@@ -113,6 +129,7 @@ ul.toolbar button:hover,
 
 
 /* The sliding dot (thumb) */
+#popups input[type="checkbox"]::before,
 #app-top-header-row input[type="checkbox"]::before {
 	content: "";
 	position: absolute;
@@ -130,6 +147,7 @@ ul.toolbar button:hover,
 	height: calc(var(--global-height) - 4px);
 }
 
+#popups input[type="checkbox"]::after,
 #app-top-header-row input[type="checkbox"]::after {
 	content: "OFF";
 	left: calc(100% - 25px);
@@ -141,6 +159,7 @@ ul.toolbar button:hover,
 }
 
 
+#popups input[type="checkbox"]:checked::after,
 #app-top-header-row input[type="checkbox"]:checked::after {
 	content: "ON";
 	left: 5px;
@@ -148,6 +167,8 @@ ul.toolbar button:hover,
 }
 
 /* Active state (Background turns green) */
+#popups input[type="checkbox"]:checked:focus,
+#popups input[type="checkbox"]:checked,
 #app-top-header-row input[type="checkbox"]:checked:focus,
 #app-top-header-row input[type="checkbox"]:checked {
 	background-color: var(--ace-blue);
@@ -157,12 +178,95 @@ ul.toolbar button:hover,
 
 
 /* Slide the dot over when checked */
+#popups input[type="checkbox"]:checked::before,
 #app-top-header-row input[type="checkbox"]:checked::before {
 	transform: translateX(26px);
 	transform: translateX(calc(60px - var(--global-height) - 4px));
 }
 
 /* Focus state for accessibility */
+#popups input[type="checkbox"]:focus-visible,
 #app-top-header-row input[type="checkbox"]:focus-visible {
 	box-shadow: 0 0 0 2px rgb(from var(--ace-green) r g b / 50%);
+}
+
+#list-wrapper ul.toolbar input:placeholder-shown,
+#popups input:placeholder-shown,
+select:has(option[value=""]:checked),
+#search-terminal input:placeholder-shown,
+#token-modal input:placeholder-shown,
+#toolbar input:placeholder-shown {
+	border-color: var(--ace-bg);
+	background-color: var(--ace-gutter-bg);
+	color: var(--ace-foreground);
+}
+
+#popups input:not(:placeholder-shown),
+select:not(:has(option[value=""]:checked)),
+#token-modal input:not(:placeholder-shown),
+#search:not(:placeholder-shown),
+#list-wrapper ul.toolbar input:not(:placeholder-shown),
+#toolbar input:not(:placeholder-shown),
+#search-terminal:not(:placeholder-shown) {
+	border-color: var(--ace-blue);
+	background: var(--ace-bg);
+}
+
+#popups input::placeholder,
+#gh-token-input::placeholder,
+#search-terminal::placeholder,
+#token-modal input::placeholder,
+#list-wrapper ul.toolbar input::placeholder,
+#search::placeholder,
+#toolbar input::placeholder {
+	background-color: var(--ace-background);
+	color: var(--ace-foreground);
+	opacity: 0.75;
+	font-style: italic;
+	color: rgb(from var(--ace-foreground) r g b / 50%);
+}
+
+body #popups .popup .close,
+#token-modal .close-btn {
+	position: absolute;
+	top: 0;
+	right: 0;
+	background: none;
+	border: none;
+	color: transparent;
+	font-size: 24px;
+	cursor: pointer;
+	transition: color 0.2s, transform 0.2s;
+	width: var(--global-height);
+	margin: 0;
+	line-height: unset;
+	height: var(--global-height);
+	width: var(--global-height);
+	vertical-align: middle;
+	align-content: center;
+	font-size: 24px;
+	font-family: boxicons !important;
+	box-shadow: none;
+	/*border-radius: 0 8px 0 0;*/
+}
+
+
+#popups .popup .close:before,
+#token-modal .close-btn:before {
+	font-family: boxicons !important;
+	content: "\f859";
+	color: rgb(from var(--ace-foreground) r g b / 50%);
+	font-size: 24px;
+}
+
+#popups .popup .close:hover:before,
+#token-modal .close-btn:hover:before {
+	color: var(--ace-pink);
+	margin: 0;
+}
+
+#popups .popup .close:hover,
+#token-modal .close-btn:hover {
+	transform: scale(1.1);
+	background-color: rgb(from var(--ace-selection-bg) r g b / 50%);
 }

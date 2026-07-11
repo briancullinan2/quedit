@@ -107,7 +107,23 @@ function main(): void
 
 	messaging.MessageLoop.installMessageHook(mainDock, (handler, msg: messaging.Message) =>
 	{
-		//console.log(msg);
+		if(msg.type === 'child-shown')
+		{
+			const shownWidget = (msg as any).child as Widget;
+			const newType = shownWidget?.constructor.name;
+			const lastType = window.lastInteractedWidget?.constructor.name;
+
+			if(newType !== lastType)
+			{
+				window.previousInteractedWidget = window.lastInteractedWidget;
+				window.lastInteractedWidget = shownWidget;
+			}
+
+			console.log('Active: ' + window.lastInteractedWidget?.constructor.name + ' inActive: ' + window.previousInteractedWidget?.constructor.name);
+			window.resizeHandler();
+		}
+
+
 		if(msg.type === 'child-added')
 		{
 			const addingWidget = (msg as any).child as Widget;
@@ -127,7 +143,8 @@ function main(): void
 				window.resizeHandler();
 			});
 		}
-		// 1. Check if the message is a close request hitting the dock
+
+
 		if(msg.type === 'child-removed')
 		{
 			// The handler in this context is the widget receiving the close command
@@ -165,8 +182,6 @@ function main(): void
 			}
 		}
 
-		// CRITICAL: Always return true so the message continues down the pipeline
-		// to let Lumino finish removing and disposing the closed widget.
 		return true;
 	});
 

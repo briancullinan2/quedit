@@ -1,5 +1,4 @@
 import { DockPanel, Widget } from '@lumino/widgets';
-import { activityTracker, ResponsiveManager } from './lumino-resize';
 
 export const WIDESCREEN = 1200;
 
@@ -41,7 +40,6 @@ function trackWidgetInteraction(widget: Widget): void
 		const newType = widget?.constructor.name;
 		const lastType = window.lastInteractedWidget?.constructor.name;
 
-		// Only update history if the incoming widget type is different from the last tracked type
 		if(newType !== lastType)
 		{
 			window.previousInteractedWidget = window.lastInteractedWidget;
@@ -50,13 +48,11 @@ function trackWidgetInteraction(widget: Widget): void
 
 		console.log('Focused: ' + window.lastInteractedWidget?.constructor.name + ' unFocused: ' + window.previousInteractedWidget?.constructor.name);
 		window.resizeHandler();
-
 	};
 
 	widget.node.addEventListener('focusin', registerSelection);
 	widget.node.addEventListener('mousedown', registerSelection);
 
-	activityTracker.add(widget);
 	trackedWidgets.add(widget);
 }
 
@@ -201,7 +197,7 @@ export class LayoutAdjuster
 					maxArea = area;
 					largestProjectWidget = w;
 				}
-			} else if(!(w.constructor.name !== 'FileListWidget'))
+			} else if(w.constructor.name !== 'FileListWidget')
 			{
 				const rect = el.getBoundingClientRect();
 				const area = rect.width * rect.height;

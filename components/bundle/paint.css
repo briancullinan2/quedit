@@ -1,3 +1,5 @@
+
+#popups,
 .lm-miniPaintPanel {
 	--background: var(--ace-bg);
 	--text-color: var(--ace-foreground);
@@ -235,7 +237,7 @@
 	background: rgb(from var(--ace-gutter-bg) r g b / 80%);
 	color: var(--ace-foreground);
 	border: 2px solid var(--ace-gutter-bg);
-	font-size: unset;
+	font-size: 16px;
 	box-shadow: 0 10px 30px rgb(from var(--ace-bg) r g b / 80%)
 }
 
