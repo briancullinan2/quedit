@@ -1,5 +1,6 @@
 import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
+import { MenuConfig } from "./menu";
 
 declare global
 {
@@ -7,8 +8,368 @@ declare global
 	{
 		fileToolbar: FileToolbar;
 		FileToolbar: typeof FileToolbar;
+		registerAllCommands: (menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry) => void;
 	}
 }
+
+const FILE_MENU: MenuConfig = {
+	name: "File",
+	iconClass: "bx bx-file",
+	children: [{
+		name: "New",
+		target: "file/new.new",
+		iconClass: "bx bx-file"
+	}, {
+		divider: true
+	}, {
+		name: "Open",
+		iconClass: "bx bx-folder-open",
+		children: [{
+			name: "Open File",
+			shortcut: "O",
+			ellipsis: true,
+			target: "file/open.open_file",
+			iconClass: "bx bx-file"
+		}, {
+			name: "Open Directory",
+			ellipsis: true,
+			target: "file/open.open_dir",
+			iconClass: "bx bx-folder"
+		}, {
+			name: "Open from Webcam",
+			target: "file/open.open_webcam",
+			iconClass: "bx bx-webcam"
+		}, {
+			name: "Open URL",
+			ellipsis: true,
+			target: "file/open.open_url",
+			iconClass: "bx bx-link"
+		}, {
+			name: "Open Data URL",
+			ellipsis: true,
+			target: "file/open.open_data_url",
+			iconClass: "bx bx-code-alt"
+		}, {
+			name: "Open Test Template",
+			target: "file/open.open_template_test",
+			iconClass: "bx bx-extension"
+		}]
+	}, {
+		name: "Load Sample File",
+		target: "file/load_sample",
+		iconClass: "bx bx-file"
+	},
+	{
+		name: "New Recording",
+		target: "file/new_recording",
+		iconClass: "bx bx-video-plus"
+	},
+	{
+		name: "Save Draft Locally",
+		ellipsis: true,
+		target: "file/save_draft_local",
+		iconClass: "bx bx-save"
+	},
+	{
+		name: "Open Local Drafts",
+		ellipsis: true,
+		target: "file/open_drafts_local",
+		iconClass: "bx bx-folder-open"
+	}, {
+		divider: true
+	},
+	{
+		name: "Search Images",
+		ellipsis: true,
+		target: "file/open.search",
+		iconClass: "bx bx-search-alt"
+	}, {
+		divider: true
+	}, {
+		name: "Export",
+		ellipsis: true,
+		shortcut: "S",
+		target: "file/save.export",
+		iconClass: "bx bx-export"
+	}, {
+		name: "Save As",
+		ellipsis: true,
+		shortcut: "Shift + S",
+		target: "file/save.save",
+		iconClass: "bx bx-save"
+	}, {
+		name: "Save As Data URL",
+		ellipsis: true,
+		target: "file/save.save_data_url",
+		iconClass: "bx bx-code-alt"
+	}, {
+		name: "Print",
+		ellipsis: true,
+		shortcut: "Ctrl+P",
+		target: "file/print.print",
+		iconClass: "bx bx-printer"
+	}, {
+		divider: true
+	},
+	{
+		name: "Settings",
+		target: "file/settings",
+		iconClass: "bx bx-cog"
+	},
+	{
+		divider: true
+	},
+	{
+		name: "Publish",
+		iconClass: "bx bx-export",
+		children: [
+			{ name: "Web", target: "file/publish/web", iconClass: "bx bx-globe" },
+			{ name: "Windows", target: "file/publish/windows", iconClass: "bxl bx-microsoft" },
+			{ name: "Linux", target: "file/publish/linux", iconClass: "bxl bx-tux" },
+			{ name: "macOS", target: "file/publish/macos", iconClass: "bxl bx-apple" }
+		]
+	},
+	{
+		name: "Import",
+		target: "file/import"
+	},
+	{
+		divider: true
+	},
+	{
+		name: "Quick Save",
+		shortcut: "F9",
+		target: "file/quicksave.quicksave",
+		iconClass: "bx bx-bolt-circle"
+	}, {
+		name: "Quick Load",
+		shortcut: "F10",
+		target: "file/quickload.quickload",
+		iconClass: "bx bx-refresh"
+	}, {
+		divider: true
+	},
+	{
+		name: "Exit IDE",
+		shortcut: "F10",
+		target: "file/exit",
+		iconClass: "bx bx-power"
+	}]
+};
+
+
+const EDIT_MENU: MenuConfig = {
+	name: "Edit",
+	iconClass: "bx bx-edit",
+	children: [{
+		name: "Undo",
+		shortcut: "Ctrl+Z",
+		target: "edit/undo.undo",
+		iconClass: "bx bx-undo"
+	}, {
+		name: "Redo",
+		shortcut: "Ctrl+Y",
+		target: "edit/redo.redo",
+		iconClass: "bx bx-redo"
+	}, {
+		divider: true
+	}, {
+		name: "Delete Selection",
+		shortcut: "Del",
+		target: "edit/selection.delete",
+		iconClass: "bx bx-trash"
+	}, {
+		name: "Copy Selection",
+		target: "layer/new.new_selection",
+		iconClass: "bx bx-copy"
+	}, {
+		name: "Copy to Clipboard",
+		shortcut: "Ctrl+C",
+		target: "edit/copy.copy_to_clipboard",
+		iconClass: "bx bx-copy"
+	}, {
+		name: "Cut",
+		target: "edit/cut",
+		iconClass: "bx bx-cut"
+	}, {
+		name: "Paste",
+		shortcut: "Ctrl+V",
+		target: "edit/paste.paste",
+		iconClass: "bx bx-paste"
+	}, {
+		name: "Delete",
+		target: "edit/delete",
+		iconClass: "bx bx-trash"
+	}, {
+		divider: true
+	}, {
+		name: "Select All",
+		shortcut: "Ctrl+A",
+		target: "edit/selection.select_all",
+		iconClass: "bx bx-select-all"
+	}]
+};
+
+
+const VIEW_MENU: MenuConfig = {
+	name: "View",
+	iconClass: "bx bx-eye",
+	children: [{
+		name: "Zoom",
+		iconClass: "bx bx-search-alt",
+		children: [{
+			name: "Zoom In",
+			target: "view/zoom.in",
+			iconClass: "bx bx-search-plus"
+		}, {
+			name: "Zoom Out",
+			target: "view/zoom.out",
+			iconClass: "bx bx-search-minus"
+		}, {
+			divider: true
+		}, {
+			name: "Original Size",
+			target: "view/zoom.original",
+			iconClass: "bx bx-size-uniform"
+		}, {
+			name: "Fit Window",
+			target: "view/zoom.auto",
+			iconClass: "bx bx-fullscreen"
+		}]
+	}, {
+		name: "Grid",
+		shortcut: "G",
+		target: "view/grid.grid",
+		iconClass: "bx bx-grid"
+	}, {
+		name: "Guides",
+		iconClass: "bx bx-border-inner",
+		children: [{
+			name: "Insert",
+			ellipsis: true,
+			target: "view/guides.insert",
+			iconClass: "bx bx-plus"
+		}, {
+			name: "Update",
+			target: "view/guides.update",
+			iconClass: "bx bx-refresh"
+		}, {
+			name: "Remove all",
+			target: "view/guides.remove",
+			iconClass: "bx bx-trash"
+		}]
+	}, {
+		name: "Ruler",
+		target: "view/ruler.ruler",
+		iconClass: "bx bx-ruler"
+	}, {
+		divider: true
+	}, {
+		name: "Full Screen",
+		target: "view/full_screen.fs",
+		iconClass: "bx bx-fullscreen"
+	}, {
+		divider: true
+	}]
+};
+
+
+
+const NUNU_EDIT: MenuConfig[] = [{
+	name: "CSG",
+	iconClass: "bx bx-shape-unite",
+	children: [
+		{ name: "Intersect", target: "edit/csg/intersect", iconClass: "bx bx-shape-intersect" },
+		{ name: "Subtract", target: "edit/csg/subtract", iconClass: "bx bx-shape-subtract" },
+		{ name: "Union", target: "edit/csg/union", iconClass: "bx bx-shape-unite" }
+	]
+}, {
+	name: "Modifiers",
+	iconClass: "bx bx-slider",
+	children: [
+		{ name: "Simplify", ellipsis: true, target: "edit/modifiers/simplify" },
+		{ name: "Subdivide", target: "edit/modifiers/subdivide", iconClass: "bx bx-split" },
+		{ name: "Twist", target: "edit/modifiers/twist" }
+	]
+}, {
+	name: "Compute Normals",
+	target: "edit/compute_normals"
+}, {
+	name: "Apply Transformation",
+	target: "edit/apply_transformation"
+}, {
+	name: "Merge Geometries",
+	target: "edit/merge_geometries",
+	iconClass: "bx bx-merge"
+}, {
+	divider: true
+}, {
+	name: "Play",
+	shortcut: "Space",
+	target: "edit/play",
+	iconClass: "bx bx-play"
+}, {
+	name: "Stop",
+	target: "edit/stop",
+	iconClass: "bx bx-stop"
+}, {
+	name: "Deselect All",
+	shortcut: "~",
+	target: "edit/deselect_all"
+}, {
+	name: "Channel Info/Flip",
+	target: "edit/channel_info_flip",
+	iconClass: "bx bx-reflect-vertical"
+}, {
+	name: "Seamless Loop",
+	target: "edit/seamless_loop",
+	iconClass: "bx bx-repeat"
+}, {
+	name: "Zero Cross Selection",
+	target: "edit/zero_cross_selection"
+}];
+
+
+
+const HELP_MENU: MenuConfig = {
+	name: "Help",
+	iconClass: "bx bx-help-circle",
+	children: [{
+		name: "Keyboard Shortcuts",
+		ellipsis: true,
+		target: "help/shortcuts.shortcuts",
+		iconClass: "bx bx-keyboard"
+	}, {
+		name: "Report Issues",
+		href: "https://github.com/viliusle/miniPaint/issues",
+		iconClass: "bx bx-bug"
+	}, {
+		divider: true
+	}, {
+		name: "About",
+		ellipsis: true,
+		target: "help/about.about",
+		iconClass: "bx bx-info-circle"
+	}, {
+		divider: true
+	}, {
+		divider: true
+	}, {
+		name: "Store Offline Version",
+		target: "help/store_offline",
+		iconClass: "bx bx-download"
+	}, {
+		name: "See Welcome Message",
+		target: "help/see_welcome",
+		iconClass: "bx bx-smile"
+	}, {
+		name: "SourceCode on Github",
+		target: "help/github_source",
+		iconClass: "bx bxl-github"
+	}]
+};
+
+
 
 export class FileToolbar extends Widget
 {
@@ -35,77 +396,11 @@ export class FileToolbar extends Widget
 	public initialize(commands: CommandRegistry): FileToolbar
 	{
 		this._commands = commands;
-		this._registerCommands();
+		window.registerAllCommands(FILE_MENU);
+		window.registerAllCommands(EDIT_MENU);
 		return this;
 	}
 
-	private _registerCommands()
-	{
-		if(!this._commands)
-		{
-			return;
-		}
-
-		if(!this._commands.hasCommand('file-new'))
-		{
-			this._commands.addCommand('file-new', {
-				label: 'New File',
-				iconClass: 'bx bx-file-plus',
-				execute: () =>
-				{
-					console.log('New File Command Executed');
-				}
-			});
-		}
-
-		if(!this._commands.hasCommand('file-save'))
-		{
-			this._commands.addCommand('file-save', {
-				label: 'Save File',
-				iconClass: 'bx bx-save',
-				execute: () =>
-				{
-					console.log('Save File Command Executed');
-				}
-			});
-		}
-
-		if(!this._commands.hasCommand('file-upload'))
-		{
-			this._commands.addCommand('file-upload', {
-				label: 'Upload File',
-				iconClass: 'bx bx-folder-up-arrow',
-				execute: () =>
-				{
-					console.log('Upload File Command Executed');
-				}
-			});
-		}
-
-		if(!this._commands.hasCommand('file-undo'))
-		{
-			this._commands.addCommand('file-undo', {
-				label: 'Undo',
-				iconClass: 'bx bx-undo',
-				execute: () =>
-				{
-					console.log('Undo Command Executed');
-				}
-			});
-		}
-
-		if(!this._commands.hasCommand('file-redo'))
-		{
-			this._commands.addCommand('file-redo', {
-				label: 'Redo',
-				iconClass: 'bx bx-redo',
-				execute: () =>
-				{
-					console.log('Redo Command Executed');
-				}
-			});
-		}
-	}
 
 	private _buildInterface(): void
 	{
@@ -119,27 +414,27 @@ export class FileToolbar extends Widget
 
 		this.node.querySelector('#file-bar-btn-new')?.addEventListener('click', () =>
 		{
-			this._commands?.execute('file-new');
+			this._commands?.execute('file/new.new');
 		});
 
 		this.node.querySelector('#file-bar-btn-save')?.addEventListener('click', () =>
 		{
-			this._commands?.execute('file-save');
+			this._commands?.execute('file/save.save');
 		});
 
 		this.node.querySelector('#file-bar-btn-upload')?.addEventListener('click', () =>
 		{
-			this._commands?.execute('file-upload');
+			this._commands?.execute('file/open.open_dir');
 		});
 
 		this.node.querySelector('#file-bar-btn-undo')?.addEventListener('click', () =>
 		{
-			this._commands?.execute('file-undo');
+			this._commands?.execute('edit/undo.undo');
 		});
 
 		this.node.querySelector('#file-bar-btn-redo')?.addEventListener('click', () =>
 		{
-			this._commands?.execute('file-redo');
+			this._commands?.execute('edit/redo.redo');
 		});
 	}
 }

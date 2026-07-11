@@ -37,6 +37,7 @@ declare global
 	{
 		resizeHandler: () => void;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
+		registerAllCommands: (menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry) => void;
 		repoToolbar: RepositoryToolbar;
 		scriptToolbar: ScriptToolbar;
 		appToolbar: ApplicationToolbar;
@@ -47,6 +48,21 @@ declare global
 		fileListWidgets?: Array<FileListWidget>;
 		globalMenuBar: MenuBar;
 	}
+}
+
+
+
+export interface MenuConfig
+{
+	name?: string;
+	target?: string;
+	href?: string;
+	parameter?: string;
+	shortcut?: string;
+	iconClass?: string;
+	ellipsis?: boolean;
+	divider?: boolean;
+	children?: MenuConfig[];
 }
 
 
@@ -569,35 +585,11 @@ function mainModuleHandler(mainDock: DockPanel, toolbarNode: HTMLElement, event:
 
 
 /**
- * Registers script lifecycle commands into the central command registry.
- */
-export function registerAllCommands(commands: CommandRegistry): void
-{
-	// File Commands
-	if(!commands.hasCommand('file-exit'))
-	{
-		commands.addCommand('file-exit', {
-			label: 'Exit IDE',
-			iconClass: 'bx bx-power',
-			execute: () =>
-			{
-				if(confirm('Are you sure you want to exit?'))
-				{
-					window.close();
-				}
-			}
-		});
-	}
-
-}
-
-/**
  * Main export to assemble and return the unified top header row.
  */
 export function createTopBar(commands: CommandRegistry): TopBarComponents
 {
 	// 1. Core registration of all commands in one place
-	registerAllCommands(commands);
 
 	// 2. Build the File dropdown Menu system
 	const fileMenu = new Menu({ commands });
