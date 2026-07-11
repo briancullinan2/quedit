@@ -27,7 +27,7 @@ export interface MenuModules
  */
 interface TrackedMenuItem extends Menu.IItem
 {
-	ownerId?: string;
+	ownerId?: string | null;
 }
 
 
@@ -40,6 +40,7 @@ declare global
 		registerAllCommands: (menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry) => void;
 		commandRegistry: CommandRegistry;
 		globalMenuBar: MenuBar;
+		globalModules?: Record<string, Record<string, Function>>;
 	}
 }
 
@@ -51,7 +52,7 @@ export class MenuManager
 	 * @param ownerId Unique identifier for the calling widget (e.g., widget.id)
 	 * @param config Top-level menu categories (e.g., File, Edit, Tools)
 	 */
-	public static injectMenus(ownerId: string, config: MenuConfig[] | MenuConfig): void
+	public static injectMenus(ownerId: string | null | undefined, config: MenuConfig[] | MenuConfig): void
 	{
 		if(!(config instanceof Array))
 		{
@@ -102,7 +103,7 @@ export class MenuManager
 	/**
 	 * Recursively traverses and inserts missing configurations into a targeted menu node
 	 */
-	private static _mergeMenuItems(ownerId: string, targetMenu: Menu, items: MenuConfig[]): void
+	private static _mergeMenuItems(ownerId: string | null | undefined, targetMenu: Menu, items: MenuConfig[], parentMenu?: string | null): void
 	{
 		items.forEach((item) =>
 		{
@@ -132,16 +133,19 @@ export class MenuManager
 				}
 				// Continue structural merge down the branch
 				this._mergeMenuItems(ownerId, subMenu, item.children);
-			} else if(item.target)
+			} else
 			{
+				const fallback = item.name?.toLowerCase().replace(/[^a-z0-9\/\.-_]/gi, '');
+				const commandId = item.target ?? `${parentMenu ? parentMenu + '/' : ''}${fallback}.${fallback}`;
+				if(commandId.length === 1) return;
 				// Leaf Node: Check if this explicit command target is already in the specific menu node
 				const commandExists = targetMenu.items.some(
-					(existing) => existing.command === item.target
+					(existing) => existing.command === commandId
 				);
 
 				if(!commandExists)
 				{
-					const addedItem = targetMenu.addItem({ command: item.target }) as TrackedMenuItem;
+					const addedItem = targetMenu.addItem({ command: commandId }) as TrackedMenuItem;
 					addedItem.ownerId = ownerId;
 				}
 			}
@@ -226,7 +230,7 @@ export class MenuManager
 	/**
 	 * Registers script lifecycle commands into the central command registry.
 	 */
-	public static registerAllCommands(menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry): void
+	public static registerAllCommands(menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry, parentMenu?: string | null): void
 	{
 		commands ??= window.commandRegistry;
 		if(!(menuItems instanceof Array))
@@ -245,9 +249,10 @@ export class MenuManager
 			}
 
 			// Guard: Must have a functional target action link
-			if(!item.target) return;
+			if(!item.target && !item.href) return;
 
-			const commandId = `minipaint:${item.target}`;
+			const fallback = item.name?.toLowerCase().replace(/[^a-z0-9\/\.-_]/gi, '');
+			const commandId = item.target ?? `${parentMenu ? parentMenu + '/' : ''}${fallback}.${fallback}`;
 
 			// Prevent double-registration artifacts
 			if(window.commandRegistry.hasCommand(commandId)) return;
@@ -258,16 +263,16 @@ export class MenuManager
 
 			window.commandRegistry.addCommand(commandId, {
 				label: labelStr,
+				iconClass: item.iconClass,
 				mnemonic: item.shortcut ? labelStr.indexOf(mnemonicChar) : -1,
 				execute: () =>
 				{
-
-					// Route directly into the active miniPaint State pipeline instance
-					//if(this._instance?.State && typeof this._instance.State.do_action === 'function')
-					//{
-					//	this._instance.State.do_action(item.target!);
-					//} else
+					if(item.target)
 					{
+						this.doAction.bind(this, item.target, item);
+					} else if(item.href)
+					{
+						window.open(item.href, '_blank');
 					}
 				}
 			});
@@ -285,47 +290,40 @@ export class MenuManager
 				}
 			}
 		});
-		// File Commands
-		/*
-		if(!commands.hasCommand('file-exit'))
-		{
-			commands.addCommand('file-exit', {
-				label: '',
-				iconClass: 'bx bx-power',
-				execute: () =>
-				{
-					if(confirm('Are you sure you want to exit?'))
-					{
-						window.close();
-					}
-				}
-			});
-		}
-		*/
 	}
 
 
-	public static doAction(target: string, object: MenuConfig)
+	public static doAction(target: string, object: MenuConfig): any
 	{
-		let parts = target.split('.');
-		let module = parts[0];
-		let function_name = parts[1];
-		let param = object.parameter ??= undefined;
-
-		//call module
-		if(this.modules[module] == undefined)
+		const parts = target.split('.');
+		const module = parts[0];
+		const function_name = parts[1];
+		const param = object.parameter ??= undefined;
+		let modules = (window.lastInteractedWidget as MenuModules)?.modules;
+		if(window.globalModules && window.globalModules[module]
+			&& window.globalModules[module][function_name]
+		)
 		{
-			console.warn(`Cannot execute command ${item.name} - ${item.target} - module class not found: ${module}`);
-			alertify.error('Modules class not found: ' + module);
+			modules = window.globalModules;
+		}
+
+		if(!modules)
+		{
+			console.warn(`Cannot execute command ${object.name} - ${object.target} - current component has no modules: ${window.lastInteractedWidget?.constructor.name}`);
 			return;
 		}
-		if(this.modules[module][function_name] == undefined)
+
+		if(modules[module] == undefined)
 		{
-			alertify.error('Module function not found. ' + module + '.' + function_name);
+			console.warn(`Cannot execute command ${object.name} - ${object.target} - module class not found: ${module}`);
 			return;
 		}
-		this.modules[module][function_name](param);
-
+		if(modules[module][function_name] == undefined)
+		{
+			console.warn(`Cannot execute command ${object.name} - ${object.target} - module function not found: ${module}.${function_name}`);
+			return;
+		}
+		return modules[module][function_name](param);
 	}
 
 

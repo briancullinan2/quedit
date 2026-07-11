@@ -56,6 +56,7 @@ if(cluster.isMaster)
 		open: cluster.worker.id === 1,
 		logLevel: 2,
 		fullReload: true,
+		wait: 200,
 
 		// 1. Keep this matching your project directory root
 		watch: ['./*.js', './*.html', './components/**'],

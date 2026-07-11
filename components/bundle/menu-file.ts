@@ -1,11 +1,12 @@
 import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
-import { MenuConfig } from "./menu";
+import { MenuConfig, MenuManager } from "./menu-manager";
 
 declare global
 {
 	interface Window
 	{
+		globalModules?: Record<string, Record<string, Function>>;
 		fileToolbar: FileToolbar;
 		FileToolbar: typeof FileToolbar;
 		registerAllCommands: (menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry) => void;
@@ -152,7 +153,7 @@ const FILE_MENU: MenuConfig = {
 	{
 		name: "Exit IDE",
 		shortcut: "F10",
-		target: "file/exit",
+		target: "file/exit.exit",
 		iconClass: "bx bx-power"
 	}]
 };
@@ -272,41 +273,8 @@ const VIEW_MENU: MenuConfig = {
 		name: "Full Screen",
 		target: "view/full_screen.fs",
 		iconClass: "bx bx-fullscreen"
-	}, {
-		divider: true
 	}]
 };
-
-
-
-const NUNU_EDIT: MenuConfig[] = [{
-	name: "CSG",
-	iconClass: "bx bx-shape-unite",
-	children: [
-		{ name: "Intersect", target: "edit/csg/intersect", iconClass: "bx bx-shape-intersect" },
-		{ name: "Subtract", target: "edit/csg/subtract", iconClass: "bx bx-shape-subtract" },
-		{ name: "Union", target: "edit/csg/union", iconClass: "bx bx-shape-unite" }
-	]
-}, {
-	name: "Modifiers",
-	iconClass: "bx bx-slider",
-	children: [
-		{ name: "Simplify", ellipsis: true, target: "edit/modifiers/simplify" },
-		{ name: "Subdivide", target: "edit/modifiers/subdivide", iconClass: "bx bx-split" },
-		{ name: "Twist", target: "edit/modifiers/twist" }
-	]
-}, {
-	name: "Compute Normals",
-	target: "edit/compute_normals"
-}, {
-	name: "Apply Transformation",
-	target: "edit/apply_transformation"
-}, {
-	name: "Merge Geometries",
-	target: "edit/merge_geometries",
-	iconClass: "bx bx-merge"
-}];
-
 
 
 const HELP_MENU: MenuConfig = {
@@ -319,7 +287,7 @@ const HELP_MENU: MenuConfig = {
 		iconClass: "bx bx-keyboard"
 	}, {
 		name: "Report Issues",
-		href: "https://github.com/viliusle/miniPaint/issues",
+		href: "https://github.com/briancullinan2/quedit/issues",
 		iconClass: "bx bx-bug"
 	}, {
 		divider: true
@@ -328,8 +296,6 @@ const HELP_MENU: MenuConfig = {
 		ellipsis: true,
 		target: "help/about.about",
 		iconClass: "bx bx-info-circle"
-	}, {
-		divider: true
 	}, {
 		divider: true
 	}, {
@@ -342,11 +308,10 @@ const HELP_MENU: MenuConfig = {
 		iconClass: "bx bx-smile"
 	}, {
 		name: "SourceCode on Github",
-		target: "help/github_source",
-		iconClass: "bx bxl-github"
+		href: "https://github.com/briancullinan2/quedit",
+		iconClass: "bxl bx-github"
 	}]
 };
-
 
 
 export class FileToolbar extends Widget
@@ -376,6 +341,12 @@ export class FileToolbar extends Widget
 		this._commands = commands;
 		window.registerAllCommands(FILE_MENU);
 		window.registerAllCommands(EDIT_MENU);
+		window.registerAllCommands(VIEW_MENU);
+		window.registerAllCommands(HELP_MENU);
+		MenuManager.injectMenus(null, FILE_MENU);
+		MenuManager.injectMenus(null, EDIT_MENU);
+		MenuManager.injectMenus(null, VIEW_MENU);
+		MenuManager.injectMenus(null, HELP_MENU);
 		return this;
 	}
 
@@ -415,6 +386,27 @@ export class FileToolbar extends Widget
 			this._commands?.execute('edit/redo.redo');
 		});
 	}
+
+	public static closeApp()
+	{
+		if(confirm('Are you sure you want to exit?'))
+		{
+			window.close();
+		}
+	}
 }
 
 window.FileToolbar = FileToolbar;
+
+if(!window.globalModules)
+{
+	window.globalModules = {};
+}
+
+if(!window.globalModules['file/exit'])
+{
+	window.globalModules['file/exit'] = {
+		exit: FileToolbar.closeApp
+	};
+}
+

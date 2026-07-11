@@ -2,7 +2,7 @@
 
 Quake 3 browser game editor.
 
-## Goals/Bugs
+## Goals/Bugs/TODO
 
 Redoing my list of bugs because of AI slop.  My mind used to be employable. Now my memory is junk because anything that
 my brain thinks Google knows, it automatically discards and can only be recalled from exact context and wording
@@ -86,6 +86,13 @@ Need to implement all of these features as well:
 ## So far
 
 ---
+
+
+#### 7/10/2026
+
+Adding lumino interface for layout management. some of the TODO tasks above don't really make sense without it.
+
+![Lumino](<Screenshot 2026-07-08 225309.png>)
 
 
 #### 6/13/2026

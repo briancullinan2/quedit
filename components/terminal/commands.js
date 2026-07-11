@@ -397,7 +397,7 @@ function writeCommandHelp(targetCommand, argv) {
     if (schema.demos && schema.demos.length > 0) {
         terminalWrite(`\x1b[4mSample Execution Demos (Interactive):\x1b[0m\n\r`);
         schema.demos.forEach(demo => {
-            // Bright Turquoise underlines on the actual target command sequence lines 
+            // Bright Turquoise underlines on the actual target command sequence lines
             // making them instantly targetable for stage two processing maps
             terminalWrite(`\x1b[1;38;5;81m${demo.cmd.padEnd(50)}\x1b[0m \x1b[38;5;244m# ${demo.desc}\x1b[0m\n\r`);
         });
@@ -463,7 +463,7 @@ async function help(argv) {
     }
 
     // Scenario B: Global lookup list pass (Default plain "help" execution context)
-    terminalWrite(`\n\r\x1b[1;38;5;118m=== AVAILABLE SYSTEM MATRIX COMMANDS ===\x1b[0m\n\r`);
+    terminalWrite(`\n\r\x1b[1;38;5;118m=== AVAILABLE SYSTEM COMMANDS ===\x1b[0m\n\r`);
 
     // Sort keys to maintain a clean layout presentation
     const keys = Object.keys(COMMAND_SCHEMA).sort();
@@ -479,7 +479,7 @@ async function help(argv) {
             // Render basic alias linkage markers concisely
             terminalWrite(`  \x1b[38;5;244m${keyNameDisplay} -> alias to [${item.alias}]\x1b[0m\n\r`);
         } else {
-            // Render active descriptions 
+            // Render active descriptions
             terminalWrite(`  \x1b[1;38;5;45m${keyNameDisplay}\x1b[0m : ${item.description}\n\r`);
         }
     }
@@ -1281,7 +1281,7 @@ q3lcc -v -v -D__LCC__ -D__CHAR_UNSIGNED__ -U_CHAR_IS_SIGNED -DQ3_VM -D_Q3_VM -Ic
 ame/bg_lib.c build/debug-wasm-js/code/game/bg_lib.i
 q3lcc $Id$
 code/game/bg_lib.c:
-q3cpp -D__STDC__=1 -D__STRICT_ANSI__ -D__signed__=signed -DQ3_VM -D__LCC__ -D__LCC__ -D__CHAR_UNSIGNED__ -U_CHAR_IS_SIGNED 
+q3cpp -D__STDC__=1 -D__STRICT_ANSI__ -D__signed__=signed -DQ3_VM -D__LCC__ -D__LCC__ -D__CHAR_UNSIGNED__ -U_CHAR_IS_SIGNED
 -DQ3_VM -D_Q3_VM -Icode/game -Icode/cgame -Icode/q3_ui code/game/bg_lib.c /tmp/lcc420.i
 q3rcc -target=bytecode -v /tmp/lcc420.i bg_lib.asm
 build/debug-wasm-js/code/game/bg_lib.i:
@@ -1290,7 +1290,7 @@ rm /tmp/lcc420.i
 */
 
         /*
-        
+
                 await api.run({
                     tool: 'q3cpp.js.wasm',
                     args: [
@@ -1303,7 +1303,7 @@ rm /tmp/lcc420.i
                     database: selected,
                     toolsRepo: toolsRepo,
                     paths: [file, tempPath],
-        
+
                     // TODO:
                     contents: contents,
                     width: term.cols,
@@ -1311,7 +1311,7 @@ rm /tmp/lcc420.i
                     tempPath,
                     github_token: api.github_token
                 })
-        
+
                 await api.run({
                     tool: 'q3rcc.js.wasm',
                     args: [
@@ -1326,7 +1326,7 @@ rm /tmp/lcc420.i
                     toolsRepo: toolsRepo,
                     paths: [outPath, tempPath],
                 })
-        
+
                 */
 
         if (configuration.value === 'qvms') {

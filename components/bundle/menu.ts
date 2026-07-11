@@ -20,7 +20,7 @@ import { EngineToolbar } from './menu-engine';
 import { HistoryToolbar } from './menu-history';
 import { LayoutAdjuster } from './lumino-widget';
 import type { FileListWidget } from '../filelist/widget';
-import type { MenuConfig } from './menu-manager';
+import { MenuConfig } from './menu-manager';
 
 
 const parseBabel = packages.parser.parse;
@@ -577,13 +577,6 @@ function mainModuleHandler(mainDock: DockPanel, toolbarNode: HTMLElement, event:
  */
 export function createTopBar(commands: CommandRegistry): TopBarComponents
 {
-	// 1. Core registration of all commands in one place
-
-	// 2. Build the File dropdown Menu system
-	const fileMenu = new Menu({ commands });
-	fileMenu.title.label = 'File';
-	fileMenu.addItem({ command: 'file-exit' });
-
 	// 3. Assemble the base MenuBar
 	const menuBar = new MenuBar({
 		overflowMenuOptions: {
@@ -592,7 +585,6 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 	});
 	window.globalMenuBar = menuBar;
 	menuBar.id = 'top-menubar';
-	menuBar.addMenu(fileMenu);
 
 	const headerRow = new Panel();
 	headerRow.id = 'app-top-header-row';
