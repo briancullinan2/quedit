@@ -12,10 +12,10 @@
 
 #app-top-header-row ul,
 ul.toolbar {
-	display: inline-flex;
+	display: flex;
 	flex-direction: row;
 	max-width: 100%;
-	flex-wrap: nowrap;
+	flex-wrap: wrap;
 	justify-content: flex-start;
 	align-items: center;
 	list-style: none;
@@ -28,6 +28,20 @@ ul.toolbar {
 	transition-delay: 0.3s;
 	flex-shrink: 0;
 	gap: 8px;
+}
+
+#app-top-header-row ul {
+	display: contents;
+}
+
+#app-top-header-row .lm-MenuBar-content {
+	flex-basis: 100%;
+	display: contents;
+}
+
+#app-top-header-row .lm-MenuBar-content>li {
+	flex-basis: min-content;
+	flex-grow: 0;
 }
 
 ul.toolbar {
@@ -51,6 +65,10 @@ ul.toolbar>li {
 	padding: 0;
 	white-space: nowrap;
 	user-select: none;
+}
+
+#app-top-header-row li:has(select) {
+	flex-basis: 100px;
 }
 
 /* Left Sidebar Toolbar (VSCode Style) */
@@ -117,6 +135,7 @@ ul.toolbar>li {
 #app-top-header-row>* {
 	display: flex;
 	flex-direction: row;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 8px;
 	padding: 0;
