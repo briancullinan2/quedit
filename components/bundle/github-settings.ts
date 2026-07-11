@@ -14,7 +14,7 @@ export function addRepoIfNotExists(newRepo: string): void
 		return;
 	}
 
-	if(newRepo.trim().length > 0 && !document.querySelector(`#repository option[value="${newRepo}"]`))
+	if(newRepo.trim().length > 0 && !RepositoryToolbar.repository?.querySelector(`option[value="${newRepo}"]`))
 	{
 		const option = document.createElement('option');
 
@@ -35,7 +35,7 @@ export function addOwnerIfNotExists(newOwner: string): void
 		return;
 	}
 
-	if(newOwner && newOwner.trim().length > 0 && !document.querySelector(`#owner option[value="${newOwner}"]`))
+	if(newOwner && newOwner.trim().length > 0 && !RepositoryToolbar.owner?.querySelector(`option[value="${newOwner}"]`))
 	{
 		const option = document.createElement('option');
 
@@ -160,9 +160,25 @@ export function updateSelectOptions(
 		});
 	}
 
+	const seenValues = new Set<string>();
+	normalizedItems = normalizedItems.filter(item =>
+	{
+		if(seenValues.has(item.value))
+		{
+			return false; // Skip duplicate values
+		}
+		seenValues.add(item.value);
+		return true;
+	});
+
 	// 3. Create and append normalized entries
 	normalizedItems.forEach(item =>
 	{
+		if(selector.querySelector(`option[value="${item.value}"]`))
+		{
+			return;
+		}
+
 		const option = document.createElement('option');
 
 		option.value = item.value;

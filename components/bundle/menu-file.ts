@@ -438,7 +438,6 @@ const fileGroups = {
 	]
 };
 
-// Flatten all defined groups into a single unified comma-separated lookup string
 const targetAcceptString = Object.values(fileGroups)
 	.reduce((acc, currentGroup) => acc.concat(currentGroup), [])
 	.join(',');

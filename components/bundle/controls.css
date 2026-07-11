@@ -17,7 +17,9 @@ ul.toolbar input,
 ul.toolbar select,
 ul.toolbar select option,
 ul.toolbar button,
-.search-box input {
+.search-box input,
+.search-box input[type="text"],
+.search-box input[type="number"] {
 	margin: 0;
 	width: stretch;
 	box-sizing: border-box;
@@ -43,7 +45,9 @@ ul.toolbar input:hover,
 ul.toolbar select:hover,
 ul.toolbar select option:hover,
 ul.toolbar button:hover,
-.search-box input:hover {
+.search-box input:hover,
+.search-box input[type="text"]:hover,
+.search-box input[type="number"]:hover {
 	background: rgb(from var(--ace-selection-bg) r g b / 50%);
 	border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
 	cursor: pointer;

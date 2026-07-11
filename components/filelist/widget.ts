@@ -87,13 +87,13 @@ export class FileListWidget extends Widget
           <li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
           <li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
           <li class="setting" data-placeholder="Owner">
-            <select name="owner" id="owner">
+            <select name="owner" class="filelist-owner">
               <option value="briancullinan2">briancullinan2</option>
               <option value="ec-">ec-</option>
             </select>
           </li>
           <li class="setting" data-placeholder="Repository">
-            <select name="repository" id="repository">
+            <select name="repository" class="filelist-repository">
               <option value="Quake3e">Quake3e</option>
               <option value="baseq3a">baseq3a</option>
               <option value="q3lcc">q3lcc</option>
@@ -102,7 +102,7 @@ export class FileListWidget extends Widget
             </select>
           </li>
           <li class="setting" data-placeholder="Branch">
-            <select name="branch" id="branch">
+            <select name="branch" class="filelist-branch">
               <option value="main">main</option>
               <option value="wasm-support">wasm-support</option>
               <option value="recent_updates">recent_updates</option>
@@ -120,14 +120,14 @@ export class FileListWidget extends Widget
 	private bindDOMEvents(): void
 	{
 		// Handle select mutations
-		this.node.querySelector('#repository')?.addEventListener('change', () => this.onRepositoryChanged());
-		this.node.querySelector('#branch')?.addEventListener('change', () => this.onRepositoryChanged());
+		this.node.querySelector('.filelist-repository')?.addEventListener('change', () => this.onRepositoryChanged());
+		this.node.querySelector('.filelist-branch')?.addEventListener('change', () => this.onRepositoryChanged());
 		this.node.querySelector(`#${this.treeContainerId}`)?.addEventListener('click', treeHandler.bind(this, '#' + this.treeContainerId));
 	}
 
 	private async initializeFiletrees(): Promise<void>
 	{
-		const repoSelect = this.node.querySelector('#repository') as HTMLSelectElement;
+		const repoSelect = this.node.querySelector('.filelist-repository') as HTMLSelectElement;
 		const pathRepo = window.location.pathname?.trim().replace(/\/$|^\//, '');
 
 		if(pathRepo && pathRepo.length > 0)
@@ -139,9 +139,9 @@ export class FileListWidget extends Widget
 
 	private async onRepositoryChanged(): Promise<void>
 	{
-		const owner = (this.node.querySelector('#owner') as HTMLSelectElement).value;
-		const repo = (this.node.querySelector('#repository') as HTMLSelectElement).value;
-		const branch = (this.node.querySelector('#branch') as HTMLSelectElement).value;
+		const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement).value;
+		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement).value;
+		const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement).value;
 
 		const targetTreeElement = document.getElementById(this.treeContainerId);
 		if(!targetTreeElement) return;
