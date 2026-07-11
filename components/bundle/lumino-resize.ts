@@ -1,5 +1,5 @@
 import { BoxPanel, DockPanel, FocusTracker, MenuBar, Panel, Widget } from "@lumino/widgets";
-import { LayoutAdjuster, WIDESCREEN } from "./lumino-widget";
+import { LayoutAdjuster, MOBILEMODE, WIDESCREEN } from "./lumino-widget";
 import type { RepositoryToolbar } from "./menu-repos";
 import type { ScriptToolbar } from "./menu-script";
 import type { ApplicationToolbar } from "./menu-app";
@@ -61,7 +61,7 @@ const TOOLBAR_CONTEXT_MAP: Record<ToolbarKey, string[]> = {
 		'PaintWidget', 'NunuStudioWidget', 'DedicatedCanvasWidget', 'AssetListWidget'
 	],
 	historyToolbar: [
-		'ConsoleWidget', 'GithubWidget', 'AceEditorWidget'
+		'PaintWidget', 'NunuStudioWidget', 'AceEditorWidget', 'AudioEditorWidget'
 	],
 	settingsToolbar: [
 		'NunuStudioWidget', 'SettingsWidget'
@@ -124,8 +124,8 @@ export class ResponsiveManager
 	private _updateVisibility(workspaceBox: BoxPanel, toolbar: Widget): void
 	{
 		const isWidescreen = window.innerWidth >= WIDESCREEN;
-		const isNormal = window.innerWidth < 800;
-		const isMobile = window.innerWidth < 600;
+		const isNormal = window.innerWidth >= MOBILEMODE && window.innerWidth < WIDESCREEN;
+		const isMobile = window.innerWidth < MOBILEMODE;
 		const isToolbarScrollable = window.innerHeight < 700;
 
 		// 1. ORIGINAL TOOLBAR PARAMETER LOGIC (UNTOUCHED)
@@ -175,7 +175,7 @@ export class ResponsiveManager
 			{
 				if(dynamicContextMatch)
 				{
-					globalToolbar.node.style.display = 'flex';
+					globalToolbar.node.style.display = 'contents';
 				} else
 				{
 					globalToolbar.node.style.display = 'none';

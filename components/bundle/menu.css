@@ -2,7 +2,7 @@
 #top-menubar {
 	color: var(--ace-foreground);
 	z-index: 10;
-	display: flex;
+	display: inline-flex;
 	flex-shrink: 0;
 	overflow: visible !important;
 }

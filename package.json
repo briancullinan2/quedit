@@ -19,12 +19,12 @@
 		"@lumino/commands": "^2.3.4",
 		"@lumino/messaging": "^2.0.5",
 		"@lumino/widgets": "^2.9.0",
-		"@widgetjs/tree": "^1.8.3",
-		"@xterm/xterm": "^6.0.0",
 		"ace-builds": "^1.44.0",
 		"live-server": "^1.2.2"
 	},
 	"devDependencies": {
+		"@xterm/xterm": "^6.0.0",
+		"xterm": "^5.3.0",
 		"@babel/preset-env": "^8.0.2",
 		"@babel/standalone": "^8.0.3",
 		"@types/node": "^26.1.0",

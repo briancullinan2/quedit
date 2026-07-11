@@ -1,6 +1,7 @@
 import { DockPanel, Widget } from '@lumino/widgets';
 
 export const WIDESCREEN = 1200;
+export const MOBILEMODE = 600;
 
 declare global
 {

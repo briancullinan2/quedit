@@ -77,7 +77,7 @@ const MODULE_REGISTRY: Record<string, ComponentRoute> = {
 	'github': { label: 'Github Commit', url: './components/GithubWidget.ts', className: 'GithubWidget', iconClass: 'bx bx-git-repo-forked' },
 	'settings': { label: 'Edit Settings', url: './components/editor/widget.ts', className: 'SettingsWidget', iconClass: 'bx bx-gear' },
 	'viewport-frame': { label: '3D Viewport', url: './components/DedicatedCanvasWidget.ts', className: 'DedicatedCanvasWidget', iconClass: 'bx bx-joystick' },
-	'terminal-container': { label: 'Show Console', url: './components/ConsoleWidget.ts', className: 'ConsoleWidget', iconClass: 'bx bx-terminal' },
+	'terminal-container': { label: 'Show Console', url: './components/terminal/widget.ts', className: 'TerminalWidget', iconClass: 'bx bx-terminal' },
 };
 
 export const registry = new Map<string, Promise<void>>(

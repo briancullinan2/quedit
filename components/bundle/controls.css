@@ -120,6 +120,7 @@ ul.toolbar button:hover,
 	border: 2px solid var(--ace-blue);
 	height: calc(var(--global-height) + 4px);
 	transition: box-shadow ease-in-out 0.3s;
+	zoom: 1;
 }
 
 #app-top-header-row #reload-container {
