@@ -1,6 +1,25 @@
 import { Menu, MenuBar } from '@lumino/widgets';
 import { CommandRegistry } from '@lumino/commands';
-import { MenuConfig } from './menu';
+
+
+export interface MenuConfig
+{
+	name?: string;
+	target?: string;
+	href?: string;
+	parameter?: string;
+	shortcut?: string;
+	iconClass?: string;
+	ellipsis?: boolean;
+	divider?: boolean;
+	children?: MenuConfig[];
+}
+
+export interface MenuModules
+{
+	modules?: Record<string, Record<string, Function>>;
+}
+
 
 /**
  * Metadata key used to track the source owner of an item at runtime.
@@ -242,13 +261,13 @@ export class MenuManager
 				mnemonic: item.shortcut ? labelStr.indexOf(mnemonicChar) : -1,
 				execute: () =>
 				{
+
 					// Route directly into the active miniPaint State pipeline instance
 					//if(this._instance?.State && typeof this._instance.State.do_action === 'function')
 					//{
 					//	this._instance.State.do_action(item.target!);
 					//} else
 					{
-						console.warn(`Cannot execute command ${item.name} - ${item.target} - instance not active.`);
 					}
 				}
 			});
@@ -283,6 +302,30 @@ export class MenuManager
 			});
 		}
 		*/
+	}
+
+
+	public static doAction(target: string, object: MenuConfig)
+	{
+		let parts = target.split('.');
+		let module = parts[0];
+		let function_name = parts[1];
+		let param = object.parameter ??= undefined;
+
+		//call module
+		if(this.modules[module] == undefined)
+		{
+			console.warn(`Cannot execute command ${item.name} - ${item.target} - module class not found: ${module}`);
+			alertify.error('Modules class not found: ' + module);
+			return;
+		}
+		if(this.modules[module][function_name] == undefined)
+		{
+			alertify.error('Module function not found. ' + module + '.' + function_name);
+			return;
+		}
+		this.modules[module][function_name](param);
+
 	}
 
 

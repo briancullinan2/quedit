@@ -20,6 +20,8 @@ import { EngineToolbar } from './menu-engine';
 import { HistoryToolbar } from './menu-history';
 import { LayoutAdjuster } from './lumino-widget';
 import type { FileListWidget } from '../filelist/widget';
+import type { MenuConfig } from './menu-manager';
+
 
 const parseBabel = packages.parser.parse;
 const traverse = packages.traverse.default;
@@ -50,20 +52,6 @@ declare global
 	}
 }
 
-
-
-export interface MenuConfig
-{
-	name?: string;
-	target?: string;
-	href?: string;
-	parameter?: string;
-	shortcut?: string;
-	iconClass?: string;
-	ellipsis?: boolean;
-	divider?: boolean;
-	children?: MenuConfig[];
-}
 
 
 interface ComponentRoute

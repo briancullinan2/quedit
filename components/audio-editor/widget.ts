@@ -1,4 +1,4 @@
-import type { MenuConfig } from "../bundle/menu";
+import type { MenuConfig } from "../bundle/menu-manager";
 
 
 const AUDIO_EFFECTS_MENU: MenuConfig[] = [
@@ -71,4 +71,27 @@ const AUDIO_VIEW_MENU: MenuConfig[] = [{
 	target: "view/reset_zoom",
 	iconClass: "bx bx-refresh"
 }];
+
+const AUDIO_EDIT_MENU: MenuConfig[] = [{
+	name: "Play",
+	shortcut: "Space",
+	target: "edit/play",
+	iconClass: "bx bx-play"
+}, {
+	name: "Stop",
+	target: "edit/stop",
+	iconClass: "bx bx-stop"
+}, {
+	name: "Channel Info/Flip",
+	target: "edit/channel_info_flip",
+	iconClass: "bx bx-reflect-vertical"
+}, {
+	name: "Seamless Loop",
+	target: "edit/seamless_loop",
+	iconClass: "bx bx-repeat"
+}, {
+	name: "Zero Cross Selection",
+	target: "edit/zero_cross_selection"
+}];
+
 

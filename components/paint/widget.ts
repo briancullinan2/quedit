@@ -1,6 +1,6 @@
 import { Widget, Menu, MenuBar } from '@lumino/widgets';
 import { CommandRegistry } from '@lumino/commands';
-import type { MenuConfig } from '../bundle/menu';
+import type { MenuConfig, MenuModules } from '../bundle/menu-manager';
 import Paint from './bundle.js';
 
 export interface MiniPaintApp
@@ -42,6 +42,7 @@ export interface MiniPaintGUI
 export interface MiniPaintMenu
 {
 	menuDefinition: MenuConfig[];
+	modules: Record<string, Record<string, Function>>;
 }
 
 export interface MiniPaintLayers
@@ -663,11 +664,12 @@ const TOOLS_MENU: MenuConfig = {
 
 
 
-export class PaintWidget extends Widget
+export class PaintWidget extends Widget implements MenuModules
 {
 	private _paintMenu: Menu | null = null;
 	private _isAttachedToMenu = false;
 	private _instance?: MiniPaintApp;
+	public modules?: Record<string, Record<string, Function>>;
 
 	constructor(fileId?: string, initialContent?: string)
 	{
@@ -680,9 +682,6 @@ export class PaintWidget extends Widget
 
 		this._buildInterface();
 
-		// 2. Register Lumino commands matching miniPaint global triggers
-
-		// 3. Track focus internally to swap menu environments dynamically
 		this.node.addEventListener('focusin', () =>
 		{
 			window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
@@ -770,6 +769,7 @@ export class PaintWidget extends Widget
 		if(typeof window.initializeMiniPaint === 'function')
 		{
 			this._instance = window.initializeMiniPaint();
+			this.modules = this._instance?.GUI.GUI_menu.modules;
 			this._onLoadPaint();
 			window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
 		}

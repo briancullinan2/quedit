@@ -207,6 +207,10 @@ const EDIT_MENU: MenuConfig = {
 		shortcut: "Ctrl+A",
 		target: "edit/selection.select_all",
 		iconClass: "bx bx-select-all"
+	}, {
+		name: "Deselect All",
+		shortcut: "~",
+		target: "edit/deselect_all"
 	}]
 };
 
@@ -301,32 +305,6 @@ const NUNU_EDIT: MenuConfig[] = [{
 	name: "Merge Geometries",
 	target: "edit/merge_geometries",
 	iconClass: "bx bx-merge"
-}, {
-	divider: true
-}, {
-	name: "Play",
-	shortcut: "Space",
-	target: "edit/play",
-	iconClass: "bx bx-play"
-}, {
-	name: "Stop",
-	target: "edit/stop",
-	iconClass: "bx bx-stop"
-}, {
-	name: "Deselect All",
-	shortcut: "~",
-	target: "edit/deselect_all"
-}, {
-	name: "Channel Info/Flip",
-	target: "edit/channel_info_flip",
-	iconClass: "bx bx-reflect-vertical"
-}, {
-	name: "Seamless Loop",
-	target: "edit/seamless_loop",
-	iconClass: "bx bx-repeat"
-}, {
-	name: "Zero Cross Selection",
-	target: "edit/zero_cross_selection"
 }];
 
 
