@@ -8,6 +8,7 @@ declare global
 	interface Window
 	{
 		mainDock: DockPanel;
+		terminalFrameLimiter: typeof FrameRater;
 	}
 }
 
@@ -23,6 +24,190 @@ interface IPooledTerminal
 	activeOwner: TerminalWidget | null;
 }
 
+
+/**
+ * FrameCallback defines the signature for processing batched ticks.
+ */
+export type FrameCallback<T = any> = (data: T, elapsed: number, frameCount: number) => void;
+
+/**
+ * FrameRater limits and batches update calls targeting a maximum frame rate.
+ * Implemented as an ES6 Singleton with a static entry point.
+ *
+ * @class FrameRater
+ */
+class FrameRater<T = any>
+{
+	// Static private instance container reference holding the Singleton state
+	private static _instance: FrameRater<any> | null = null;
+
+	private callback!: FrameCallback<T> | null;
+	private startTime!: number;
+	private frameCount!: number;
+	private eventStack!: T[];
+	private isFlushing!: boolean;
+	private intervalId!: ReturnType<typeof setInterval> | null;
+
+	/**
+	 * Public static entry point to push events onto the frame processor loop stack.
+	 * Accessible globally via FrameRater.requestFrameUpdate(data);
+	 *
+	 * @static
+	 * @method requestFrameUpdate
+	 * @param {T} data Data payload or event object to pass down to the frame processing callback.
+	 */
+	static requestFrameUpdate<T = any>(data: T): void
+	{
+		if(!FrameRater._instance)
+		{
+			// Automatically initialize with default fallback values if called before instantiation
+			FrameRater._instance = new FrameRater<T>(60, null);
+		}
+		FrameRater._instance.push(data);
+	}
+
+	constructor(targetFps: number = 60, callback: FrameCallback<T> | null = null)
+	{
+		// Enforce the Singleton instantiation pattern behavior constraints strictly
+		if(FrameRater._instance)
+		{
+			return FrameRater._instance as FrameRater<T>;
+		}
+
+		this.callback = callback;
+		this.startTime = performance.now();
+		this.frameCount = 0;
+		this.eventStack = [];
+		this.isFlushing = false;
+		this.intervalId = null;
+
+		this.setTargetFps(targetFps);
+
+		FrameRater._instance = this;
+	}
+
+	/**
+	 * Changes the maximum target frame rate and re-initializes the internal processing heartbeat interval loop.
+	 *
+	 * @method setTargetFps
+	 * @param {number} targetFps New target frame rate.
+	 */
+	setTargetFps(targetFps: number): void
+	{
+		this.stop();
+
+		const fpsInterval = 1000 / targetFps;
+
+		if(this.intervalId)
+		{
+			clearInterval(this.intervalId);
+		}
+
+		this.intervalId = setInterval(() =>
+		{
+			// Only trigger if items are waiting AND we aren't currently inside a paint cycle
+			if(this.eventStack.length > 0 && !this.isFlushing)
+			{
+
+				// Shallow copy and clear the stack immediately
+				const currentBatch = [...this.eventStack];
+				this.eventStack.length = 0;
+
+				requestAnimationFrame((paintTime: number) =>
+				{
+					this.isFlushing = true; // Lock out the interval thread during execution
+
+					this.frameCount++;
+					const t = paintTime - this.startTime;
+
+					try
+					{
+						if(typeof this.callback === "function")
+						{
+							// Drain the batch execution. Isolate each callback so a single throw can't drop the rest of the batch.
+							for(let i = 0; i < currentBatch.length; i++)
+							{
+								try
+								{
+									this.callback(currentBatch[i], t, this.frameCount);
+								}
+								catch(e)
+								{
+									console.error("frame callback failed", e);
+								}
+							}
+						}
+					}
+					finally
+					{
+						// Always release the lock, even if a callback throws, so the limiter can never freeze permanently.
+						this.isFlushing = false;
+					}
+				});
+			}
+		}, fpsInterval);
+	}
+
+	/**
+	 * Sets or overrides the active application update callback wrapper function method.
+	 *
+	 * @method setCallback
+	 * @param {FrameCallback<T>} callback Handler processing batched ticks.
+	 */
+	setCallback(callback: FrameCallback<T>): void
+	{
+		this.callback = callback;
+	}
+
+	/**
+	 * Internal container context mapping function method to push items into processing array tracking lists.
+	 *
+	 * @method push
+	 * @param {T} data
+	 */
+	push(data: T): void
+	{
+		this.eventStack.push(data);
+	}
+
+	/**
+	 * Clears the current active heartbeat interval.
+	 *
+	 * @method stop
+	 */
+	stop(): void
+	{
+		if(this.intervalId !== null)
+		{
+			clearInterval(this.intervalId);
+			this.intervalId = null;
+		}
+	}
+
+	/**
+	 * Fully tears down the instance container reference layout parameters context properties.
+	 *
+	 * @method destroy
+	 */
+	destroy(): void
+	{
+		this.stop();
+		this.eventStack.length = 0;
+		if(FrameRater._instance === this)
+		{
+			FrameRater._instance = null;
+		}
+	}
+}
+
+export { FrameRater };
+new FrameRater(25, (e, t, frame) =>
+{
+	e(t, frame);
+});
+window.terminalFrameLimiter = FrameRater;
+
+
 /**
  * Global coordinator managing terminal resource allocation across dock layout splits.
  */
@@ -33,6 +218,11 @@ class TerminalPoolManager
 	private instanceCounter = 0;
 
 	private constructor() { }
+
+	public count(): Number
+	{
+		return this.pool.size;
+	}
 
 	public static getInstance(): TerminalPoolManager
 	{
@@ -155,17 +345,45 @@ export class TerminalWidget extends Widget
 {
 	private filterId: string;
 	private currentTerminalCtx: IPooledTerminal | null = null;
+	private searchContainer!: HTMLDivElement;
+	private searchInput!: HTMLInputElement;
 
 	constructor(filterId: string, titleLabel: string)
 	{
 		super();
-		this.filterId = filterId;
-		this.id = `terminal-panel-${filterId}`;
-		this.title.label = titleLabel;
+		if(filterId === 'Show Console')
+		{
+			this.filterId = terminalFilters[0].id;
+			this.id = `terminal-panel-${this.filterId}`;
+			this.title.label = terminalFilters[0].label;
+		} else
+		{
+			this.filterId = filterId;
+			this.id = `terminal-panel-${filterId}`;
+			this.title.label = titleLabel;
+		}
 		this.title.closable = true;
 
 		this.addClass('terminal-filter-widget');
 	}
+
+
+	private createSearchElement(): void
+	{
+		this.searchContainer = document.createElement('div');
+		this.searchContainer.className = 'lumino-tab-search-wrapper';
+		// Start hidden until onAfterShow fires
+		this.searchContainer.style.display = 'none';
+
+		this.searchInput = document.createElement('input');
+		this.searchInput.type = 'search';
+		this.searchInput.id = 'search-terminal';
+		this.searchInput.placeholder = 'Search...';
+		this.searchInput.autocomplete = 'off';
+
+		this.searchContainer.appendChild(this.searchInput);
+	}
+
 
 	/**
 	 * Triggered by Lumino lifecycle manager when the tab layout brings this item into view.
@@ -174,6 +392,14 @@ export class TerminalWidget extends Widget
 	{
 		super.onAfterShow(msg);
 		this.claimAndRenderSession();
+
+		const parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector('.lm-TabBar');
+
+		if(parentTabBar && this.searchContainer)
+		{
+			parentTabBar.appendChild(this.searchContainer);
+			this.searchContainer.style.display = 'flex';
+		}
 	}
 
 	/**
@@ -183,20 +409,40 @@ export class TerminalWidget extends Widget
 	{
 		super.onAfterHide(msg);
 		this.releaseSession();
+
+		if(this.searchContainer)
+		{
+			if(this.searchContainer.parentNode)
+			{
+				this.searchContainer.parentNode.removeChild(this.searchContainer);
+			}
+			this.searchContainer.style.display = 'none';
+		}
 	}
 
 	protected onAfterAttach(msg: any): void
 	{
-		super.onAfterAttach(msg);
+		this.createSearchElement();
 		if(this.isVisible)
 		{
+			const parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector('.lm-TabBar');
 			this.claimAndRenderSession();
+			if(parentTabBar && this.searchContainer)
+			{
+				parentTabBar.appendChild(this.searchContainer);
+				this.searchContainer.style.display = 'flex';
+			}
 		}
+		super.onAfterAttach(msg);
 	}
 
 	protected onBeforeDetach(msg: any): void
 	{
 		this.releaseSession();
+		if(this.searchContainer && this.searchContainer.parentNode)
+		{
+			this.searchContainer.parentNode.removeChild(this.searchContainer);
+		}
 		super.onBeforeDetach(msg);
 	}
 
@@ -209,12 +455,14 @@ export class TerminalWidget extends Widget
 		}
 	}
 
+
 	/**
 	 * Requests an available terminal session from the static pool and mounts its element.
 	 */
 	private claimAndRenderSession(): void
 	{
 		const manager = TerminalPoolManager.getInstance();
+		const shouldInitAll = manager.count() === 0;
 
 		// Acquire a terminal context (reused primary or dedicated secondary/tertiary split)
 		this.currentTerminalCtx = manager.acquireTerminal(this);
@@ -227,6 +475,11 @@ export class TerminalWidget extends Widget
 
 		// Recalculate dimensions for the newly attached node viewport
 		manager.fitTerminalLayout(this.currentTerminalCtx);
+
+		if(shouldInitAll)
+		{
+			TerminalWidget.initializeAllPanels();
+		}
 	}
 
 	/**
@@ -291,6 +544,7 @@ export class TerminalWidget extends Widget
 		}
 	}
 
+
 	/**
 	 * Pulls CSS variables from the DOM tree directly to paint the active terminal surface.
 	 */
@@ -338,31 +592,56 @@ export class TerminalWidget extends Widget
 			brightBlack: parseToHex(gutter)
 		};
 	}
+
+
+	static initializeAllPanels()
+	{
+
+		// Mount all widgets into the unified layout terminal area stack
+		terminalFilters.forEach((filter, index) =>
+		{
+			if(document.querySelector(`#terminal-panel-${filter.id}`))
+			{
+				return;
+			}
+
+			const widget = new TerminalWidget(filter.id, filter.label);
+
+			if(index === 0)
+			{
+				window.mainDock.addWidget(widget);
+			} else
+			{
+				const mainTerminal = Array.from(window.mainDock.widgets()).find(w => w.id === 'terminal-panel-all');
+				// Dock as tab items inside the same workspace panel grouping setup by default
+				window.mainDock.addWidget(widget, { mode: 'tab-before', ref: mainTerminal });
+			}
+		});
+
+	}
+
 }
 
-// Define the 8 target log workspace profiles
-const terminalFilters = [
-	{ id: 'all', label: 'All Logs' },
-	{ id: 'soft', label: 'Soft Console' },
-	{ id: 'system', label: 'System Errors' },
-	{ id: 'network', label: 'Network' },
-	{ id: 'compiler', label: 'Compiler' },
-	{ id: 'database', label: 'Database' },
-	{ id: 'auth', label: 'Auth Pipeline' },
-	{ id: 'runtime', label: 'Runtime Dev' }
-];
-
-// Mount all widgets into the unified layout terminal area stack
-terminalFilters.forEach((filter, index) =>
+export interface TerminalFilter
 {
-	const widget = new TerminalWidget(filter.id, filter.label);
+	id: string;
+	label: string;
+}
 
-	if(index === 0)
-	{
-		window.mainDock.addWidget(widget);
-	} else
-	{
-		// Dock as tab items inside the same workspace panel grouping setup by default
-		window.mainDock.addWidget(widget, { mode: 'tab-before', ref: widget });
-	}
-});
+
+export const terminalFilters: TerminalFilter[] = [
+	// Log Levels & Diagnostics
+	{ id: 'all', label: 'All Logs' },
+	{ id: 'error', label: 'Errors' },
+	{ id: 'warn', label: 'Warnings' },
+
+	// Core UI & Systems
+	{ id: 'soft', label: 'CLI Render' },    // Matches your custom terminal viewport / frame limiter
+	{ id: 'build', label: 'Build' },        // Compiler, AST parsers, build chains
+	{ id: 'runtime', label: 'Runtime Dev' }, // Main loop, tasks, orchestration
+
+	// Network & Background
+	{ id: 'network', label: 'Network' },    // Custom meshes, P2P syncing, OAuth channels
+	{ id: 'console', label: 'Console' },    // Standard fallback stdout / logging intercepts
+	{ id: 'ai', label: 'AI Integration' }   // Local models, WebGPU memory, inference steps
+];

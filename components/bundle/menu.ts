@@ -121,6 +121,9 @@ function collectDependencies(rawCode: string, route: ComponentRoute): string[]
 			} else if(moduleName === './bundle.js' && route.url)
 			{
 				dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
+			} else if(moduleName === 'xterm')
+			{
+				dependenciesToFetch.push('/components/terminal/xterm.js');
 			}
 		},
 		CallExpression(babelPath)
@@ -140,6 +143,9 @@ function collectDependencies(rawCode: string, route: ComponentRoute): string[]
 				} else if(moduleName === './bundle.js' && route.url)
 				{
 					dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
+				} else if(moduleName === 'xterm' && route.url)
+				{
+					dependenciesToFetch.push('/components/terminal/xterm.js');
 				}
 			}
 		},
@@ -216,6 +222,9 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): any
 								} else if(moduleName === './bundle.js')
 								{
 									path.replaceWithSourceString('window');
+								} else if(moduleName === 'xterm')
+								{
+									path.replaceWithSourceString('Terminal');
 								}
 							}
 						},
@@ -252,6 +261,9 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): any
 									t.identifier('Tree')
 								);
 							} else if(moduleName === './bundle.js')
+							{
+								globalExpression = t.identifier('window');
+							} else if(moduleName === 'xterm')
 							{
 								globalExpression = t.identifier('window');
 							}

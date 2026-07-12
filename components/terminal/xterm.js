@@ -14110,7 +14110,7 @@
                     this._domNode.style.position = "relative",
                     this._domNode.appendChild(e),
                     this._domNode.appendChild(this._horizontalScrollbar.domNode.domNode),
-                    document.getElementById('terminal-container').appendChild(this._verticalScrollbar.domNode.domNode),
+                    document.getElementById('terminal-panel-all').appendChild(this._verticalScrollbar.domNode.domNode),
                     this._options.useShadows ? (this._leftShadowDomNode = (0,
                     l.createFastDomNode)(document.createElement("div")),
                     this._leftShadowDomNode.setClassName("shadow"),
