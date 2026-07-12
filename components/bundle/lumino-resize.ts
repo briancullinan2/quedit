@@ -58,7 +58,7 @@ const TOOLBAR_CONTEXT_MAP: Record<ToolbarKey, string[]> = {
 		'FileListWidget', 'GameListWidget', 'GithubWidget'
 	],
 	engineToolbar: [
-		'PaintWidget', 'NunuStudioWidget', 'DedicatedCanvasWidget', 'AssetListWidget'
+		'NunuStudioWidget', 'DedicatedCanvasWidget', 'AssetListWidget'
 	],
 	historyToolbar: [
 		'PaintWidget', 'NunuStudioWidget', 'AceEditorWidget', 'AudioEditorWidget'

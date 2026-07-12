@@ -690,6 +690,7 @@ export class PaintWidget extends Widget implements MenuModules
 
 		this.node.addEventListener('focusin', () =>
 		{
+			window.injectMenus(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
 			window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
 		});
 		this.node.addEventListener('focusout', (e) =>
@@ -777,7 +778,9 @@ export class PaintWidget extends Widget implements MenuModules
 			this._instance = window.initializeMiniPaint();
 			this.modules = this._instance?.GUI.modules;
 			this._onLoadPaint();
+			window.registerAllCommands([IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
 			window.registerAllCommands(this._instance?.GUI.GUI_menu.menuDefinition ?? []);
+			window.injectMenus(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
 			window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
 		}
 	}
