@@ -14,6 +14,7 @@ export interface MiniPaintApp
 	State: MiniPaintState;
 	Tools: MiniPaintTools;
 	alertify: Alertify;
+	destroy: () => void;
 }
 
 export interface Alertify
@@ -785,6 +786,16 @@ export class PaintWidget extends Widget implements MenuModules
 		}
 	}
 
+
+	protected onActivateRequest(msg: any): void
+	{
+		super.onActivateRequest(msg);
+		window.injectMenus(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
+		window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
+		this.node.focus();
+	}
+
+
 	/**
 	 * LifeCycle: Sync Lumino's panel resize dimensions straight into miniPaint's inner loop
 	 */
@@ -800,6 +811,7 @@ export class PaintWidget extends Widget implements MenuModules
 	protected onBeforeDetach(msg: any): void
 	{
 		window.removeMenus(PaintWidget.name);
+		this._instance?.destroy();
 		super.onBeforeDetach(msg);
 	}
 
