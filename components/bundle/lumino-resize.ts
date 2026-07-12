@@ -112,9 +112,13 @@ export class ResponsiveManager
 		this._adjustDockPanelLayout(mainDock, currentWidgets);
 
 		// 4. Run synchronized layout updates cascading down the layout trees
-		workspaceBox.fit();
-		headerRow.fit();
-		windowRoot.update();
+		requestAnimationFrame(() =>
+		{
+			headerRow.fit();
+			mainDock.fit();
+			workspaceBox.fit();
+			windowRoot.update();
+		});
 	}
 
 

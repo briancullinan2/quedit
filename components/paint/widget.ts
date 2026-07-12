@@ -3,6 +3,7 @@ import { CommandRegistry } from '@lumino/commands';
 import type { MenuConfig, MenuModules } from '../bundle/menu-manager';
 import Paint from './bundle.js';
 import type { HistoryToolbar } from '../bundle/menu-history';
+import { Message } from '@lumino/messaging';
 
 export interface MiniPaintApp
 {
@@ -134,6 +135,7 @@ declare global
 {
 	interface Window
 	{
+		resizeHandler: () => void;
 		injectMenus: (ownerId: string, config: MenuConfig[] | MenuConfig) => void;
 		removeMenus: (ownerId: string) => void;
 		initializeMiniPaint?: (targetNode?: HTMLElement | null) => MiniPaintApp;
@@ -805,7 +807,14 @@ export class PaintWidget extends Widget implements MenuModules
 		super.onActivateRequest(msg);
 		window.injectMenus(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
 		window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
+		window.resizeHandler();
 		this.node.focus();
+	}
+
+
+	protected onBeforeHide(msg: Message): void
+	{
+		window.removeMenus(PaintWidget.name);
 	}
 
 

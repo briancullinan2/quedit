@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+		<meta charset="UTF-8">
+		<title>Serverless Google Drive Browser</title>
+		<!-- Load the official Google Identity Services SDK -->
+		<script src="https://accounts.google.com/gsi/client" async defer></script>
+	</head>
+
+	<body>
+
+		<h1>Google Drive Browser-Only Viewer</h1>
+
+		<button id="auth_btn">Connect Google Drive</button>
+		<button id="revoke_btn" style="display:none;">Disconnect</button>
+
+		<div id="content" style="margin-top: 20px;">
+			<p>Log in to view files.</p>
+		</div>
+
+		<script>
+			// --- CONFIGURATION ---
+			// Replace with your Client ID from Google Cloud Console
+			const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+
+			// The specific scope needed to read file metadata and list directories
+			const SCOPE = 'https://www.googleapis.com/auth/drive.metadata.readonly';
+
+			// Optional: Specify a target folder ID to list, or use 'root' for top-level Drive
+			const TARGET_FOLDER_ID = 'root';
+
+			let tokenClient;
+			let accessToken = null;
+
+			// Initialize the Google Identity SDK client
+			function initClient() {
+				tokenClient = google.accounts.oauth2.initTokenClient({
+					client_id: CLIENT_ID,
+					scope: SCOPE,
+					callback: (tokenResponse) => {
+						if (tokenResponse.error !== undefined) {
+							throw (tokenResponse);
+						}
+						// Capture token securely in app state memory
+						accessToken = tokenResponse.access_token;
+
+						document.getElementById('auth_btn').innerText = 'Refresh Token';
+						document.getElementById('revoke_btn').style.display = 'inline-block';
+
+						// Immediately list the contents once authenticated
+						listFolderContents(TARGET_FOLDER_ID);
+					},
+				});
+			}
+
+			// Trigger the pop-up login flow
+			document.getElementById('auth_btn').onclick = () => {
+				if (accessToken === null) {
+					// Request a new token
+					tokenClient.requestAccessToken({ prompt: 'consent' });
+				} else {
+					// Skip prompt if token exists but needs refreshing
+					tokenClient.requestAccessToken({ prompt: '' });
+				}
+			};
+
+			// Revoke access and wipe token
+			document.getElementById('revoke_btn').onclick = () => {
+				if (accessToken !== null) {
+					google.accounts.oauth2.revoke(accessToken, () => {
+						accessToken = null;
+						document.getElementById('content').innerHTML = '<p>Logged out successfully.</p>';
+						document.getElementById('auth_btn').innerText = 'Connect Google Drive';
+						document.getElementById('revoke_btn').style.display = 'none';
+					});
+				}
+			};
+
+			// Query the Google Drive v3 API via standard fetch using the access token
+			async function listFolderContents(folderId) {
+				const contentDiv = document.getElementById('content');
+				contentDiv.innerHTML = '<p>Fetching directory structure...</p>';
+
+				// We construct a query searching for children belonging to the parent folder ID
+				// We order by folders first, then by name
+				const query = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+				const fields = encodeURIComponent('files(id, name, mimeType, size)');
+				const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=${fields}&orderBy=folder%2Cname`;
+
+				try {
+					const response = await fetch(url, {
+						method: 'GET',
+						headers: {
+							'Authorization': `Bearer ${accessToken}`
+						}
+					});
+
+					if (!response.ok) {
+						throw new Error(`Drive API Error: ${response.statusText}`);
+					}
+
+					const data = await response.json();
+					renderDirectory(data.files);
+
+				} catch (error) {
+					contentDiv.innerHTML = `<p style="color:red;">Error listing files: ${error.message}</p>`;
+				}
+			}
+
+			// Generate the in-browser file/folder list structure
+			function renderDirectory(files) {
+				const contentDiv = document.getElementById('content');
+
+				if (!files || files.length === 0) {
+					contentDiv.innerHTML = '<p>This folder is empty.</p>';
+					return;
+				}
+
+				let html = '<ul>';
+				files.forEach(file => {
+					const isFolder = file.mimeType === 'application/vnd.google-apps.folder';
+					const icon = isFolder ? '📁' : '📄';
+					const sizeStr = file.size ? ` (${(file.size / 1024).toFixed(1)} KB)` : '';
+
+					if (isFolder) {
+						// Make folders interactive to navigate down the directory chain
+						html += `<li>${icon} <a href="#" onclick="listFolderContents('${file.id}'); return false;">${file.name}</a></li>`;
+					} else {
+						html += `<li>${icon} ${file.name}${sizeStr} <span style="font-size:10px; color:#aaa;">[ID: ${file.id}]</span></li>`;
+					}
+				});
+				html += '</ul>';
+
+				contentDiv.innerHTML = html;
+			}
+
+			// Initialize Google script bindings when window loads
+			window.onload = () => {
+				initClient();
+			};
+		</script>
+	</body>
+
+</html>

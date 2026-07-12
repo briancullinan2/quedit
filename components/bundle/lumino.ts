@@ -120,7 +120,10 @@ function main(): void
 			}
 
 			console.log('Active: ' + window.lastInteractedWidget?.constructor.name + ' inActive: ' + window.previousInteractedWidget?.constructor.name);
-			window.resizeHandler();
+			requestAnimationFrame(() =>
+			{
+				window.resizeHandler();
+			});
 		}
 
 
