@@ -2,6 +2,7 @@ import { Widget, Menu, MenuBar } from '@lumino/widgets';
 import { CommandRegistry } from '@lumino/commands';
 import type { MenuConfig, MenuModules } from '../bundle/menu-manager';
 import Paint from './bundle.js';
+import type { HistoryToolbar } from '../bundle/menu-history';
 
 export interface MiniPaintApp
 {
@@ -14,8 +15,23 @@ export interface MiniPaintApp
 	State: MiniPaintState;
 	Tools: MiniPaintTools;
 	alertify: Alertify;
-	destroy: () => void;
+	Events: MiniPaintEvents;
 }
+
+
+export interface MiniPaintEvents
+{
+	register(
+		target: EventTarget,
+		type: string,
+		handler: EventListenerOrEventListenerObject,
+		options?: boolean | AddEventListenerOptions
+	): void;
+	activate(): void;
+	deActivate(): void;
+	destroy(): void;
+}
+
 
 export interface Alertify
 {
@@ -124,6 +140,7 @@ declare global
 		registerAllCommands: (menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry) => void;
 		commandRegistry: CommandRegistry;
 		globalMenuBar: MenuBar;
+		historyToolbar: HistoryToolbar;
 	}
 }
 
@@ -779,10 +796,6 @@ export class PaintWidget extends Widget implements MenuModules
 			this._instance = window.initializeMiniPaint();
 			this.modules = this._instance?.GUI.modules;
 			this._onLoadPaint();
-			window.registerAllCommands([IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
-			window.registerAllCommands(this._instance?.GUI.GUI_menu.menuDefinition ?? []);
-			window.injectMenus(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
-			window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
 		}
 	}
 
@@ -811,7 +824,7 @@ export class PaintWidget extends Widget implements MenuModules
 	protected onBeforeDetach(msg: any): void
 	{
 		window.removeMenus(PaintWidget.name);
-		this._instance?.destroy();
+		this._instance?.Events.destroy();
 		super.onBeforeDetach(msg);
 	}
 
@@ -830,6 +843,76 @@ export class PaintWidget extends Widget implements MenuModules
 			}
 		}
 		this._updatePainterDimensions();
+
+		this.attachHistoryListener(this._instance?.State, window.historyToolbar.appendHistoryItem.bind(window.historyToolbar));
+		window.registerAllCommands([IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
+		window.registerAllCommands(this._instance?.GUI.GUI_menu.menuDefinition ?? []);
+		window.injectMenus(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
+		window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
+
+	}
+
+	attachHistoryListener(actionsInstance, callback)
+	{
+		let _historyArray = actionsInstance.action_history || [];
+		let _historyIndex = actionsInstance.action_history_index || 0;
+
+		const arrayMutationHandler = {
+			set(target, property, value, receiver)
+			{
+				const isNumericProp = !isNaN(Number(property));
+				const oldLength = target.length;
+
+				const success = Reflect.set(target, property, value, receiver);
+
+				if(success)
+				{
+					// If an action was added directly via an index assignment or push
+					if(isNumericProp && Number(property) >= oldLength)
+					{
+						callback({
+							type: 'action_added',
+							history: _historyArray,
+							index: _historyIndex,
+							...value
+						}, "paint");
+					} else if(property === 'length')
+					{
+						callback({
+							type: 'history_mutated',
+							history: _historyArray,
+							index: _historyIndex
+						}, "paint");
+					}
+				}
+				return success;
+			}
+		};
+
+		_historyArray = new Proxy(_historyArray, arrayMutationHandler);
+
+		Object.defineProperties(actionsInstance, {
+			'action_history': {
+				get() { return _historyArray; },
+				set(newArray)
+				{
+					_historyArray = Array.isArray(newArray) ? new Proxy(newArray, arrayMutationHandler) : newArray;
+					callback({ type: 'history_reassigned', history: _historyArray, index: _historyIndex });
+				},
+				configurable: true,
+				enumerable: true
+			},
+			'action_history_index': {
+				get() { return _historyIndex; },
+				set(newIndex)
+				{
+					_historyIndex = newIndex;
+					callback({ type: 'index_changed', history: _historyArray, index: _historyIndex });
+				},
+				configurable: true,
+				enumerable: true
+			}
+		});
 	}
 
 	/**

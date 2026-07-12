@@ -129,6 +129,9 @@ export class HistoryToolbar extends Widget
 		{
 			aceEditor.gotoLine(point.row + 1, point.column);
 		}
+
+		// TODO:
+		//this.updateTriggerButtonValue(meta.icon, meta.title, timeString);
 	}
 
 	// --- History Tracking Frame & Pipeline ---
@@ -293,7 +296,7 @@ export class HistoryToolbar extends Widget
 		{
 			e.stopPropagation();
 			const isVisible = this._dropdownMenu?.classList.contains('show');
-			const rect = this.node.getBoundingClientRect();
+			const rect = trigger.getBoundingClientRect();
 			if(this._dropdownMenu)
 			{
 				this._dropdownMenu.style.top = (rect.y + rect.height) + 'px';

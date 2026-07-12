@@ -16,7 +16,7 @@ const output = Path.resolve(__dirname, "./components/paint");
 
 module.exports = [
 	merge(paintConfig, {
-		devtool: 'eval-source-map',
+		devtool: 'inline-source-map',
 		mode: "production",
 		optimization: {
 			minimize: true,
