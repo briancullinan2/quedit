@@ -3,6 +3,7 @@ import { DockPanel, Widget } from '@lumino/widgets';
 import { Terminal } from 'xterm';
 import { TerminalEventManager } from './events';
 import type { StatusBarWidget } from '../bundle/status';
+import { SearchTerminal } from './search';
 
 const LINES_TO_SCROLLBACK = 5000;
 
@@ -366,8 +367,8 @@ export class TerminalWidget extends Widget
 {
 	public filterId: string;
 	private currentTerminalCtx: IPooledTerminal | null = null;
-	private searchContainer!: HTMLDivElement;
-	private searchInput!: HTMLInputElement;
+	public searchContainer!: HTMLDivElement;
+	public searchInput!: HTMLInputElement;
 
 	constructor(filterId: string, titleLabel: string)
 	{
@@ -404,6 +405,20 @@ export class TerminalWidget extends Widget
 		this.searchInput.placeholder = 'Search...';
 		this.searchInput.autocomplete = 'off';
 
+		this.searchInput.addEventListener('keypress', event =>
+		{
+			if(event.key === 'Enter')
+			{
+				event.preventDefault();
+			}
+
+			if(!this.currentTerminalCtx)
+			{
+				return;
+			}
+
+			SearchTerminal.executeFindQuery(this.currentTerminalCtx, event);
+		});
 		this.searchContainer.appendChild(this.searchInput);
 	}
 
@@ -563,9 +578,6 @@ export class TerminalWidget extends Widget
 		// Attach terminal DOM structure to this Lumino widget node
 		this.node.appendChild(this.currentTerminalCtx.container);
 
-		// Clean and synchronize viewport content
-		this.syncTerminalState();
-
 		// Recalculate dimensions for the newly attached node viewport
 		manager.fitTerminalLayout(this.currentTerminalCtx);
 
@@ -590,7 +602,7 @@ export class TerminalWidget extends Widget
 	/**
 	 * Clears out existing frame contexts and streams the matching log filter content.
 	 */
-	private syncTerminalState(): void
+	public syncTerminalState(): void
 	{
 		if(!this.currentTerminalCtx) return;
 

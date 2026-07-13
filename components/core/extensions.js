@@ -1,43 +1,6 @@
 
 // Organized by feature/context for easy on-demand loading
 const IMPORT_CSS = {
-    // Always loaded up front
-    core: [
-        // INCLUDED in index.html
-        //'/boxicons.min.css',
-        '/components/theme/boxicons.min.css',
-        '/components/core/base.css',
-        '/components/filelist/tree.css',
-        '/components/layout/layout.css',
-        '/components/layout/components.css',
-        '/components/filelist/search.css',
-        '/components/core/history.css',
-        '/components/paint/css/menu.css',
-        '/components/theme/theme.css',
-    ],
-
-    // Loaded dynamically on demand
-    terminal: [
-        '/components/terminal/xterm.css',
-        '/components/terminal/terminal.css',
-    ],
-
-    paint: [
-        '/components/paint/css/alertify.css',
-        '/components/paint/css/component.css',
-        '/components/paint/css/layout.css',
-        // '/components/paint/css/menu.css', // included with page
-        '/components/paint/css/popup.css',
-        '/components/paint/css/print.css',
-        '/components/paint/css/reset.css',
-        '/components/paint/css/utility.css',
-        '/components/paint/css/theme.css',
-        '/components/paint/paint.css',
-    ],
-
-    editor: [
-        '/components/editor/editor.css',
-    ], // Handled internally by Ace's DOM-injected themes
 
     nunu: [
         '/components/map-editor/codemirror.css',
@@ -51,52 +14,7 @@ const IMPORT_CSS = {
 };
 
 const IMPORT_JS = {
-    // Application Bootstrap / UI Orchestration
-    core: [
-        '/components/core/preambles.js',
-        '/components/editor/annotations.js',
-        '/components/core/logging.js',
-        //'/jszip.min.js',
-        //'/shared.js', trying to do without this? need to run build
-        '/components/core/local.js',
-        '/components/filelist/search.js',
-        //'/components/filelist/iso-git.min.js',
-        //'/components/filelist/sys_fsgit.js',
-        '/components/engine/sys_fs.js', // Core shared filesystem bridge
-        '/components/filelist/tree.js',
-        '/components/layout/configuration.js',
-        '/components/layout/settings.js',
-        '/components/layout/toolbar.js',
-        '/components/rosetta/rosetta.js',
-        '/components/rosetta/binary.js',
-        '/components/filelist/github.js',
-        '/components/filelist/vfs.js',
-        '/components/filelist/layout.js',
-        '/components/filelist/load-media.js',
-        '/components/filelist/filelist.js',
-        '/components/paint/utilities.js',
-        //'/unzip.js'
-    ],
 
-    // Virtual Terminal Environment
-    terminal: [
-        '/components/terminal/xterm.js',
-        '/components/terminal/search.js',
-        '/components/terminal/history.js',
-        '/components/terminal/utilities.js',
-        '/components/terminal/commands.js',
-        '/components/terminal/terminal.js',
-        '/components/terminal/events.js',
-        '/components/terminal/render.js',
-    ],
-
-    // Code Workspace
-    editor: [
-        '/ace/ace-noconflict.js',
-        '/components/editor/core.js',
-        '/components/editor/editor.js',
-        '/components/editor/events.js',
-    ],
 
     // Local QVM Compiler / Build Toolchain (Matches your Worker imports)
     build: [
@@ -140,13 +58,6 @@ const IMPORT_JS = {
         '/components/engine/sys_wasm.js',
 
     ],
-
-    // Image Editor Canvas
-    paint: [
-        '/components/paint/paint.js',
-        //'/components/paint/utilities.js',
-    ],
-
 
     nunu: [
         '/components/map-editor/codemirror.js',

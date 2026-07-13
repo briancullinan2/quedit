@@ -35,22 +35,6 @@ const TOOLS_PREAMBLE = '\x1b[38;5;121m[TOOLS-BUILD]\x1b[0m '
 const ENGINE_PREAMBLE = '\x1b[38;5;36m[QUAKE3E]\x1b[0m '
 
 
-// Simulating x-mode (verbose regex) by joining an array of strings with comments
-const FILE_NAME_REGEX = new RegExp([
-    '(?:',
-    // Group 1: Captures full URLs or relative/absolute file paths
-    '([a-z]+://[^\\s:]+|[\\w\\d._\\-/]+\\.[\\w\\d._\\-]+)',
-    ')',
-    '(?:',
-    // Line capture variations
-    '(?:,\\s*Line:\\s*(\\d+))', // Handles "File: path, Line: 324"
-    '|',
-    '(?::(\\d+))',              // Handles "path:324"
-    ')?',
-    '(?::(\\d+))?'                  // Handles secondary column offsets if present "path:324:10"
-].join(''), 'gi');
-
-
 
 // 1. Implementation of path.join for the browser
 const path = {

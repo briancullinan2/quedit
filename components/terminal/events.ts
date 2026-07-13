@@ -2,6 +2,7 @@ import { Terminal, IDisposable } from 'xterm';
 import { TerminalHistoryManager } from './history'; // Adjust path accordingly
 import type { StatusBarWidget } from '../bundle/status';
 import type { IPooledTerminal } from './widget';
+import { FILE_NAME_REGEX, SearchTerminal } from './search';
 
 // --- Types & Structural Interfaces ---
 export interface ExtractedFile
@@ -44,8 +45,6 @@ declare global
 	}
 }
 
-// Constants required by the internal parser expressions
-const FILE_NAME_REGEX = /(?:^|\s)([a-zA-Z0-9_\-\.\/]+)(?::(\d+)|#(\d+))?/g;
 
 export class TerminalEventManager
 {
@@ -66,6 +65,7 @@ export class TerminalEventManager
 	private renderWidth = 20; // Default spatial placeholder bounds
 	private renderMoved = false;
 	private isTERMINATED = false;
+	private terminalStartupBegun = false;
 
 	// Event cleanup references
 	private listeners: IDisposable[] = [];
@@ -328,10 +328,9 @@ export class TerminalEventManager
 
 		this.debounceTerminalMouse = setTimeout(() =>
 		{
-			const searchInput = document.getElementById('search-terminal') as HTMLInputElement | null;
-			if(searchInput)
+			if(this.pooledCtx.activeOwner?.searchInput)
 			{
-				this.scanVisibleViewport(searchInput.value);
+				SearchTerminal.scanVisibleViewport(this.pooledCtx, this.pooledCtx.activeOwner?.searchInput?.value);
 			}
 
 			if(!this.previousUpdate && !event)
@@ -376,10 +375,8 @@ export class TerminalEventManager
 
 		if(data.filePath && !data.isFallback && event.button === 0)
 		{
-			if(typeof (window as any).writeLog === 'function')
-			{
-				(window as any).writeLog(`File: ${data.filePath}, Line: ${data.lineNumber}, Fallback: ${data.isFallback}`);
-			}
+			console.log(`File: ${data.filePath}, Line: ${data.lineNumber}, Fallback: ${data.isFallback}`);
+
 			if(typeof (window as any).navigateFile === 'function')
 			{
 				await (window as any).navigateFile(data.filePath, data.lineNumber);
@@ -436,9 +433,9 @@ export class TerminalEventManager
 					searchTerminal.focus();
 					const selection = this.pooledCtx.term.getSelection();
 					if(selection) searchTerminal.value = selection;
-					if(searchTerminal.value.length > 0 && typeof (window as any).executeFindQuery === 'function')
+					if(searchTerminal.value.length > 0)
 					{
-						(window as any).executeFindQuery();
+						SearchTerminal.executeFindQuery(this.pooledCtx);
 					}
 				}
 			}
@@ -661,26 +658,54 @@ export class TerminalEventManager
 	// --- Placeholder Fallbacks for External Execution Methods ---
 	private refreshBlinkerState = (): void =>
 	{
-		if(typeof (window as any).refreshBlinkerState === 'function')
+		if(document.visibilityState !== 'visible') return;
+
+		this.pooledCtx.term.focus();
+		const core = (this.pooledCtx.term as any)._core;
+		if(!this.pooledCtx.term || !core) return;
+
+		if(core._cursorBlinkContext)
 		{
-			(window as any).refreshBlinkerState();
+			core._cursorBlinkContext.restartInterval();
+		}
+
+		if(core.renderService)
+		{
+			core.renderService.refreshRows(0, this.pooledCtx.term.rows - 1);
+		} else if(this.pooledCtx.term.refresh)
+		{
+			this.pooledCtx.term.refresh(0, this.pooledCtx.term.rows - 1);
 		}
 	};
 
-	private ensureTerminalStarted(): void
-	{
-		if(typeof (window as any).ensureTerminalStarted === 'function')
-		{
-			(window as any).ensureTerminalStarted();
-		}
-	}
 
-	private scanVisibleViewport(val: string): void
+	terminalHasValidLayout = () =>
 	{
-		if(typeof (window as any).scanVisibleViewport === 'function')
+		if(!this.pooledCtx.activeOwner) return false;
+		if(this.pooledCtx.container.clientWidth === 0 || this.pooledCtx.container.clientHeight === 0) return false;
+
+		const core = (this.pooledCtx.term as any)._core;
+		if(!core) return false;
+
+		// The panel is visible now; force xterm to (re)measure the font if it
+		// hasn't yet, since it skips measuring while display:none.
+		if(core._charSizeService && !core._charSizeService.hasValidSize)
 		{
-			(window as any).scanVisibleViewport(val);
+			core._charSizeService.measure();
 		}
-	}
+
+		const dims = core._renderService && core._renderService.dimensions;
+		return !!(dims && dims.css.cell.width > 0 && dims.css.cell.height > 0);
+	};
+
+
+	private ensureTerminalStarted = (): void =>
+	{
+		if(this.terminalStartupBegun) return;
+		if(!this.terminalHasValidLayout()) return;
+		this.terminalStartupBegun = true;
+		this.pooledCtx.activeOwner?.syncTerminalState();
+	};
+
 }
 
