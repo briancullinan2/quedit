@@ -7,6 +7,7 @@ textarea {
 }
 
 
+#search-terminal,
 #popups .popup .buttons button,
 #popups select,
 #popups *:not(.ui_number_input)>button,
@@ -46,6 +47,8 @@ ul.toolbar button,
 }
 
 
+#search-terminal:focus,
+#search-terminal:hover,
 #popups .popup input:focus,
 #popups .popup .buttons button:focus,
 #popups .popup input:hover,
@@ -194,7 +197,7 @@ ul.toolbar button:hover,
 #list-wrapper ul.toolbar input:placeholder-shown,
 #popups input:placeholder-shown,
 select:has(option[value=""]:checked),
-#search-terminal input:placeholder-shown,
+.lumino-tab-search-wrapper input:placeholder-shown,
 #token-modal input:placeholder-shown,
 #toolbar input:placeholder-shown {
 	border-color: var(--ace-bg);

@@ -107,6 +107,7 @@ export class ResponsiveManager
 
 		// 2. Measure wrapped DOM layout sizes & update Lumino layout limits
 		this._recalculateToolbarHeight(headerRow);
+		this._recalculateDockTabHeights(mainDock);
 
 		// 3. Process layout constraints if widget viewport configurations change
 		this._adjustDockPanelLayout(mainDock, currentWidgets);
@@ -204,7 +205,46 @@ export class ResponsiveManager
 		// Update headerRow constraints if your layouts restrict it
 		headerRow.node.style.minHeight = `${currentNeededHeight + 10}px`;
 		headerRow.update();
+
+
 	}
+
+	/**
+ * Utility 2: Dynamic Scroll Height Profiler (Fixes the wrapping clipping bug)
+ * Iterates through all tab bars inside the DockPanel and dynamically scales heights.
+ */
+	private _recalculateDockTabHeights(dockPanel: DockPanel): void
+	{
+		// Find all active tab bar elements within the entire dock panel workspace
+		const tabBars = dockPanel.node.querySelectorAll('.lm-TabBar');
+
+		tabBars.forEach((tabBarElement) =>
+		{
+			const tabBarNode = tabBarElement as HTMLElement;
+			const tabBarContent = tabBarElement.querySelector('.lm-TabBar-content') as HTMLElement;
+			if(!tabBarContent)
+			{
+				return;
+			}
+
+			// 1. Clear old inline style overrides to permit clean multi-row rendering calculations
+			tabBarContent.style.minHeight = '';
+			tabBarContent.style.height = '';
+
+			// 2. Measure the true vertical space occupied by the wrapped tab list
+			const currentNeededHeight = tabBarContent.scrollHeight;
+
+			// 3. Enforce the new height constraints on the node surface
+			// Adding a small padding buffer helps prevent sub-pixel layout tremors
+			tabBarContent.style.minHeight = `${currentNeededHeight + 4}px`;
+			tabBarNode.style.minHeight = `${currentNeededHeight + 4}px`;
+		});
+
+		// 4. Force Lumino to recalculate and distribute the absolute coordinates
+		// of the sub-panels based on the updated DOM heights
+		dockPanel.update();
+	}
+
 
 	/**
 	 * Utility 3: Tree Split Area Layout Size Allocation

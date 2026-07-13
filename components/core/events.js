@@ -151,25 +151,6 @@ function onLoadToji() {
     setTimeout(window.runTojiEngine, 100);
 }
 
-function onLoadPaint() {
-
-    if (typeof window.hookMiniPaintIntercept === 'function') {
-        window.hookMiniPaintIntercept();
-    }
-    if (window.AppConfig) {
-        // 1. Force transparent grid background setting to true
-        window.AppConfig.TRANSPARENCY = true
-
-        // 2. Trigger a full canvas re-render to update the visual workspace layers
-        //if (window.Layers && typeof window.Layers.render === 'function') {
-        window.Layers.render();
-        //}
-        //window.GUI.render_main_gui()
-    }
-
-    updatePainter()
-
-}
 
 function hasChangesPaint() {
     // Replaced miniPaint's auto-attached event listener with an explicit module evaluation

@@ -1,3 +1,4 @@
+import type { SettingConfig, Settings } from '../bundle/settings';
 import { DockPanel, Widget } from '@lumino/widgets';
 import { Terminal } from 'xterm';
 
@@ -9,6 +10,8 @@ declare global
 	{
 		mainDock: DockPanel;
 		terminalFrameLimiter: typeof FrameRater;
+		commandHistory: string[];
+		SettingsManager: Settings;
 	}
 }
 
@@ -365,6 +368,8 @@ export class TerminalWidget extends Widget
 		this.title.closable = true;
 
 		this.addClass('terminal-filter-widget');
+
+		window.SettingsManager.hydrateAll(LOCAL_SETTINGS.editor);
 	}
 
 
@@ -392,13 +397,87 @@ export class TerminalWidget extends Widget
 	{
 		super.onAfterShow(msg);
 		this.claimAndRenderSession();
+		this.showSearchBar();
+	}
 
-		const parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector('.lm-TabBar');
+	private resizeSearchContainer()
+	{
+		const parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector('.lm-TabBar') as HTMLElement;
+
+		if(!parentTabBar || !this.searchContainer || this.searchContainer.style.display === 'none')
+		{
+			return;
+		}
+
+		// Ensure searchContainer doesn't push the tab bar layout around
+		this.searchContainer.style.position = 'absolute';
+		this.searchContainer.style.right = '0px';
+
+		const totalWidth = parentTabBar.getBoundingClientRect().width;
+		let occupiedWidth = 0;
+
+		// Target the actual tab items (typically 'li' elements with the class '.lm-TabBar-tab')
+		// instead of the full-width wrapper panels.
+		const actualTabs = parentTabBar.querySelectorAll('.lm-TabBar-content li');
+
+		actualTabs.forEach((tab) =>
+		{
+			const element = tab as HTMLElement;
+			const rect = element.getBoundingClientRect();
+
+			const style = window.getComputedStyle(element);
+			const margins = parseFloat(style.marginLeft || '0') + parseFloat(style.marginRight || '0');
+			const elementTotalWidth = rect.width + margins;
+
+			// If adding this element exceeds the available row width, it wraps to a new row.
+			// We reset the row's occupied width tracking back to 0 before adding this element.
+			if(occupiedWidth + elementTotalWidth > totalWidth && occupiedWidth > 0)
+			{
+				occupiedWidth = 0;
+			}
+
+			occupiedWidth += elementTotalWidth;
+		});
+
+		// Handle any extra functional sibling controls (like scroll buttons if present)
+		const extraControls = parentTabBar.querySelectorAll('.lm-TabBar-scrollButton');
+		extraControls.forEach((control) =>
+		{
+			const element = control as HTMLElement;
+			const rect = element.getBoundingClientRect();
+			const elementTotalWidth = rect.width;
+
+			if(occupiedWidth + elementTotalWidth > totalWidth && occupiedWidth > 0)
+			{
+				occupiedWidth = 0;
+			}
+
+			occupiedWidth += elementTotalWidth;
+		});
+
+		// Set max-width based on the remaining space on the final row line
+		const remainingSpace = Math.max(0, totalWidth - occupiedWidth - 15);
+		this.searchContainer.style.maxWidth = `${remainingSpace}px`;
+	}
+
+	private showSearchBar()
+	{
+		const parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector('.lm-TabBar') as HTMLElement;
 
 		if(parentTabBar && this.searchContainer)
 		{
 			parentTabBar.appendChild(this.searchContainer);
 			this.searchContainer.style.display = 'flex';
+
+			// Calculate initial width
+			window.requestAnimationFrame(() =>
+			{
+				this.resizeSearchContainer();
+			});
+
+			// Listen for window resizing to keep the width updated
+			window.removeEventListener('resize', this.resizeSearchContainer.bind(this));
+			window.addEventListener('resize', this.resizeSearchContainer.bind(this));
 		}
 	}
 
@@ -417,6 +496,7 @@ export class TerminalWidget extends Widget
 				this.searchContainer.parentNode.removeChild(this.searchContainer);
 			}
 			this.searchContainer.style.display = 'none';
+			window.removeEventListener('resize', this.resizeSearchContainer);
 		}
 	}
 
@@ -425,13 +505,8 @@ export class TerminalWidget extends Widget
 		this.createSearchElement();
 		if(this.isVisible)
 		{
-			const parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector('.lm-TabBar');
 			this.claimAndRenderSession();
-			if(parentTabBar && this.searchContainer)
-			{
-				parentTabBar.appendChild(this.searchContainer);
-				this.searchContainer.style.display = 'flex';
-			}
+			this.showSearchBar();
 		}
 		super.onAfterAttach(msg);
 	}
@@ -528,7 +603,7 @@ export class TerminalWidget extends Widget
 			{
 				const text = log.text || log || '';
 				if(this.filterId === 'all') return true;
-				return text.includes('error') || log.source === this.filterId || log.source?.includes(this.filterId);
+				return log.source === this.filterId || log.source?.includes(this.filterId);
 			})
 			.map((log: any) => log.text || log || '')
 			.join('');
@@ -645,3 +720,50 @@ export const terminalFilters: TerminalFilter[] = [
 	{ id: 'console', label: 'Console' },    // Standard fallback stdout / logging intercepts
 	{ id: 'ai', label: 'AI Integration' }   // Local models, WebGPU memory, inference steps
 ];
+
+
+
+const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
+	terminal: {
+		commandHistory: {
+			key: 'history',
+			default: [],
+			type: 'array',
+			description: 'An indexed collection tracking sequential command strings typed into the text interface console for fast history scrolling.',
+			set: (val) =>
+			{
+				const newValue = val.slice(0);
+				if(!window.commandHistory) window.commandHistory = [];
+				window.commandHistory.length = 0;
+				if(Array.isArray(newValue))
+				{
+					newValue.forEach(cmd => { if(cmd.trim()) window.commandHistory.push(cmd); });
+				}
+			}
+		},
+		terminalLog: {
+			key: 'terminal_log',
+			edit: false,
+			default: [],
+			type: 'json',
+			description: 'Persistent text logging buffer retaining runtime system updates, build logs, and standard out/error print operations.'
+		}
+	},
+
+};
+
+
+if(!window.IMPORT_SETTINGS)
+{
+	window.IMPORT_SETTINGS = {};
+}
+
+for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
+{
+	window.IMPORT_SETTINGS[moduleKey] = {
+		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+		...configs
+	};
+}
+
+export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
