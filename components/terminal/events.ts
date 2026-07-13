@@ -1,5 +1,6 @@
 import { Terminal, IDisposable } from 'xterm';
 import { TerminalHistoryManager } from './history'; // Adjust path accordingly
+import type { StatusBarWidget } from '../bundle/status';
 
 // --- Types & Structural Interfaces ---
 export interface ExtractedFile
@@ -49,7 +50,7 @@ export class TerminalEventManager
 {
 	private term: Terminal;
 	private container: HTMLElement;
-	private statusBar: HTMLElement | null;
+	private statusBar: StatusBarWidget;
 	private historyManager: TerminalHistoryManager;
 
 	// Ephemeral instance trackers
@@ -68,11 +69,11 @@ export class TerminalEventManager
 	// Event cleanup references
 	private listeners: IDisposable[] = [];
 
-	constructor(term: Terminal, container: HTMLElement, statusBarId: string = 'status-bar')
+	constructor(term: Terminal, container: HTMLElement, statusBar: StatusBarWidget)
 	{
 		this.term = term;
 		this.container = container;
-		this.statusBar = document.getElementById(statusBarId);
+		this.statusBar = statusBar;
 		this.historyManager = TerminalHistoryManager.getInstance();
 
 		this.init();
@@ -212,11 +213,13 @@ export class TerminalEventManager
 		// Contextually locate active instance buffers safely outside the root loop
 		const currentCursorPos = this.historyManager.getHistory().length > 0 ? activeRow : 0;
 
-		this.statusBar.innerText = `Terminal: Mouse: ${col}x${row}, `
+		this.statusBar.updateStatusItem('env-state',
+			`Terminal: Mouse: ${col}x${row}, `
 			+ `Cursor: ${currentCursorPos}x${activeRow}, `
 			+ `Viewport: ${startRow}x${endRow}, `
 			+ (historyIndexValue !== null && historyIndexValue !== -1 ? `History: ${historyIndexValue}, ` : '')
-			+ (filePath && !isFallback ? (lineNumber !== null ? `File: ${filePath}, Line: ${lineNumber}` : `File: ${filePath}`) : '');
+			+ (filePath && !isFallback ? (lineNumber !== null ? `File: ${filePath}, Line: ${lineNumber}` : `File: ${filePath}`) : '')
+		);
 	}
 
 	private detectTerminalEvents(event: MouseEvent | null, x?: number, y?: number, updateStatus = true): TerminalEventPayload
@@ -401,7 +404,7 @@ export class TerminalEventManager
 		return false;
 	};
 
-	private handleMouseUp = (): void =>
+	private handleMouseUp(): void
 	{
 		this.isDragging = false;
 		document.body.classList.remove('dragging');

@@ -1,6 +1,8 @@
 import type { SettingConfig, Settings } from '../bundle/settings';
 import { DockPanel, Widget } from '@lumino/widgets';
 import { Terminal } from 'xterm';
+import { TerminalEventManager } from './events';
+import type { StatusBarWidget } from '../bundle/status';
 
 const LINES_TO_SCROLLBACK = 5000;
 
@@ -12,6 +14,7 @@ declare global
 		terminalFrameLimiter: typeof FrameRater;
 		commandHistory: string[];
 		SettingsManager: Settings;
+		statusBar: StatusBarWidget;
 	}
 }
 
@@ -25,6 +28,7 @@ interface IPooledTerminal
 	container: HTMLDivElement;
 	resizeObserver: ResizeObserver;
 	activeOwner: TerminalWidget | null;
+	events: TerminalEventManager;
 }
 
 
@@ -284,10 +288,12 @@ class TerminalPoolManager
 			term,
 			container,
 			resizeObserver,
-			activeOwner: widget
+			activeOwner: widget,
+			events: new TerminalEventManager(term, container, window.statusBar),
 		};
 
 		this.pool.set(terminalId, pooledContext);
+
 		return pooledContext;
 	}
 
@@ -400,7 +406,7 @@ export class TerminalWidget extends Widget
 		this.showSearchBar();
 	}
 
-	private resizeSearchContainer()
+	private resizeSearchContainer = () =>
 	{
 		const parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector('.lm-TabBar') as HTMLElement;
 
@@ -458,7 +464,7 @@ export class TerminalWidget extends Widget
 		// Set max-width based on the remaining space on the final row line
 		const remainingSpace = Math.max(0, totalWidth - occupiedWidth - 15);
 		this.searchContainer.style.maxWidth = `${remainingSpace}px`;
-	}
+	};
 
 	private showSearchBar()
 	{
@@ -476,8 +482,8 @@ export class TerminalWidget extends Widget
 			});
 
 			// Listen for window resizing to keep the width updated
-			window.removeEventListener('resize', this.resizeSearchContainer.bind(this));
-			window.addEventListener('resize', this.resizeSearchContainer.bind(this));
+			window.removeEventListener('resize', this.resizeSearchContainer);
+			window.addEventListener('resize', this.resizeSearchContainer);
 		}
 	}
 

@@ -1,10 +1,9 @@
 import { DockPanel, Widget } from '@lumino/widgets';
 import { Message } from '@lumino/messaging';
-import type { Ace } from 'ace-builds';
-import type { SettingConfig, FileOpenTuple, Settings } from '../bundle/settings';
+import { Ace } from 'ace-builds';
+import type { SettingConfig, Settings } from '../bundle/settings';
 import type { HistoryToolbar } from '../bundle/menu-history';
 import type { LayoutAdjuster } from '../bundle/lumino-widget';
-import { FileListWidget } from '../filelist/widget';
 
 interface ISessionCache
 {

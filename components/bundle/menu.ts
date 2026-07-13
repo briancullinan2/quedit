@@ -4,8 +4,8 @@ import { CommandRegistry } from '@lumino/commands';
 import { RepositoryToolbar } from './menu-repos';
 import
 {
-	transformFromAstSync, PluginObj, NodePath, transform
-	, types as tType, parseSync, traverse
+	PluginObj, NodePath, transform
+	, types as tType, traverse
 	, packages
 } from '@babel/standalone';
 import { DB_STORE_NAME, FS_FILE, putRecord } from './local';
@@ -95,7 +95,7 @@ export const registry = new Map<string, Promise<void>>(
 
 
 
-function collectDependencies(rawCode: string, route: ComponentRoute): string[]
+function collectDependencies(rawCode: string, baseRoute: string): string[]
 {
 
 	const dependenciesToFetch: string[] = [];
@@ -111,19 +111,36 @@ function collectDependencies(rawCode: string, route: ComponentRoute): string[]
 		ImportDeclaration(babelPath)
 		{
 			const moduleName = babelPath.node.source.value;
-			console.log('Overloading: ' + moduleName);
+			if(babelPath.node.importKind === 'type')
+			{
+				console.log('Skipping type: ' + moduleName);
+				return;
+			} else
+			{
+				console.log('Overloading import: ' + moduleName);
+			}
+
 			if(moduleName === 'ace-builds')
 			{
 				dependenciesToFetch.push('/ace/ace-noconflict.js');
-			} else if(moduleName === './tree.js' && route.url)
+			} else if(moduleName === './tree.js' && baseRoute)
 			{
-				dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
-			} else if(moduleName === './bundle.js' && route.url)
+				dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
+			} else if(moduleName === './bundle.js' && baseRoute)
 			{
-				dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
+				dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
 			} else if(moduleName === 'xterm')
 			{
 				dependenciesToFetch.push('/components/terminal/xterm.js');
+			} else if((moduleName.startsWith('./') || moduleName.startsWith('../'))
+				&& baseRoute?.includes('.'))
+			{
+				const ext = baseRoute.split('.').pop();
+				const modifiedModuleName = moduleName + (!moduleName.split('/').pop().includes('.')
+					? '.' + ext
+					: '');
+				dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
+					modifiedModuleName));
 			}
 		},
 		CallExpression(babelPath)
@@ -135,17 +152,26 @@ function collectDependencies(rawCode: string, route: ComponentRoute): string[]
 			)
 			{
 				const moduleName = babelPath.node.arguments[0].value;
-				console.log('Overloading: ' + moduleName);
+				console.log('Overloading import: ' + moduleName);
 
-				if(moduleName === './tree.js' && route.url)
+				if(moduleName === './tree.js' && baseRoute)
 				{
-					dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
-				} else if(moduleName === './bundle.js' && route.url)
+					dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
+				} else if(moduleName === './bundle.js' && baseRoute)
 				{
-					dependenciesToFetch.push(path.resolve(route.url.substring(0, route.url.lastIndexOf('/')), moduleName));
-				} else if(moduleName === 'xterm' && route.url)
+					dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
+				} else if(moduleName === 'xterm' && baseRoute)
 				{
 					dependenciesToFetch.push('/components/terminal/xterm.js');
+				} else if((moduleName.startsWith('./') || moduleName.startsWith('../'))
+					&& baseRoute?.includes('.'))
+				{
+					const ext = baseRoute.split('.').pop();
+					const modifiedModuleName = moduleName + (!moduleName.split('/').pop().includes('.')
+						? '.' + (ext ? ext : '.js')
+						: '');
+					dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
+						modifiedModuleName));
 				}
 			}
 		},
@@ -162,9 +188,9 @@ async function preloadDependencies(dependenciesToFetch: string[]): Promise<void>
 	{
 		return;
 	}
-	await Promise.all(dependenciesToFetch.map(url =>
+	await Promise.all(dependenciesToFetch.map(async url =>
 	{
-		if(url.includes('.mjs'))
+		if(url.endsWith('.mjs'))
 		{
 			const existingPromise = registry.get(url);
 			if(existingPromise)
@@ -176,6 +202,11 @@ async function preloadDependencies(dependenciesToFetch: string[]): Promise<void>
 
 			registry.set(url + '?t=' + Date.now(), scriptPromise);
 			return scriptPromise;
+		} else if(url.endsWith('.ts'))
+		{
+			const targetUrl = await fetchTranspileAndStore(url);
+			return import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
+
 		} else
 		{
 			return loadScript(url);
@@ -184,7 +215,67 @@ async function preloadDependencies(dependenciesToFetch: string[]): Promise<void>
 }
 
 
-function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): any
+async function fetchTranspileAndStore(baseRoute: string): Promise<string>
+{
+
+	const response = await fetch(baseRoute + '?t=' + Date.now());
+	const rawCode = await response.text();
+
+	if(!response.ok) throw new Error('Component not found: ' + baseRoute);
+	if(!transform) throw new Error("Babel standalone runner not found on the window context.");
+	const targetUrl = baseRoute.replace(/\.ts$/, '.js').replace(/^\.?\//, '/base/');
+
+	const existingPromise = registry.get(targetUrl);
+	if(existingPromise)
+	{
+		console.log('Already transpiled: ' + targetUrl);
+		return targetUrl;
+	} else
+	{
+		console.log('Transpiling and saving: ' + targetUrl);
+	}
+
+	const dependenciesToFetch = collectDependencies(rawCode, baseRoute);
+
+	await preloadDependencies(dependenciesToFetch);
+
+	const transpiled = transpileTypescriptWidget(rawCode, baseRoute);
+	const encoder = new TextEncoder();
+	const arrayBuffer = encoder.encode(transpiled.code ?? '').buffer;
+
+	// Direct the target URL from .ts to .js for the Service Worker's consumption
+	const editorDatabase = SettingsManager.get('github', 'environmentRepository');
+
+	// Commit the compiled asset to your service worker pipeline
+	await putRecord(DB_STORE_NAME, {
+		timestamp: new Date(),
+		mode: FS_FILE,
+		contents: arrayBuffer,
+		path: targetUrl,
+		parent: targetUrl.substring(0, targetUrl.lastIndexOf('/')),
+		sha: await getGitShaBrowser(arrayBuffer)
+	}, editorDatabase);
+
+
+	if(transpiled.map)
+	{
+		const sourceMapBuffer = encoder.encode(transpiled.map ?? '').buffer;
+		await putRecord(DB_STORE_NAME, {
+			timestamp: new Date(),
+			mode: FS_FILE,
+			contents: sourceMapBuffer,
+			path: targetUrl.replace('.js', '.map'),
+			parent: targetUrl.substring(0, targetUrl.lastIndexOf('/')),
+			sha: await getGitShaBrowser(arrayBuffer)
+		}, editorDatabase);
+	}
+
+	return targetUrl;
+}
+
+
+
+function transpileTypescriptWidget(rawCode: string, baseRoute: string): any
 {
 
 	const transpiled = transform(rawCode, {
@@ -228,9 +319,9 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): any
 								}
 							}
 						},
-						ImportDeclaration(path: NodePath<tType.ImportDeclaration>)
+						ImportDeclaration(babelPath: NodePath<tType.ImportDeclaration>)
 						{
-							const moduleName = path.node.source.value;
+							const moduleName = babelPath.node.source.value;
 							let globalExpression: tType.Expression | null = null;
 
 							console.warn('replacing: ' + moduleName);
@@ -251,7 +342,7 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): any
 							} else if(moduleName === 'ace-builds')
 							{
 								globalExpression = t.memberExpression(
-									t.memberExpression(t.identifier('window'), t.identifier('Lumino')),
+									t.identifier('window'),
 									t.identifier('ace')
 								);
 							} else if(moduleName === './tree.js')
@@ -266,6 +357,17 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): any
 							} else if(moduleName === 'xterm')
 							{
 								globalExpression = t.identifier('window');
+							} else if(moduleName.startsWith('./') || moduleName.startsWith('../'))
+							{
+								const ext = baseRoute.split('.').pop();
+								const modifiedModuleName = moduleName + (!moduleName.split('/').pop().includes('.')
+									? '.' + (ext ? ext : '.js')
+									: '');
+								const newPath = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
+									modifiedModuleName).replace('.ts', '.js').replace(/^\.?\//, '/base/') + '?t=' + Date.now() + '&local-csp=true';
+								console.warn(`Replacing import path: "${moduleName}" -> "${newPath}"`);
+								babelPath.node.source = t.stringLiteral(newPath);
+								return;
 							}
 
 							if(globalExpression)
@@ -273,7 +375,7 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): any
 								const declarations: tType.VariableDeclaration[] = [];
 
 								// Handle named imports safely: import { Widget, Panel } from '...'
-								const specifiers = path.node.specifiers.filter(
+								const specifiers = babelPath.node.specifiers.filter(
 									(spec): spec is tType.ImportSpecifier => t.isImportSpecifier(spec)
 								);
 
@@ -304,7 +406,7 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): any
 								}
 
 								// Handle namespace/default imports smoothly: import * as widgets from '...' or import Tree from '...'
-								const namespaceOrDefaultSpecifier = path.node.specifiers.find(
+								const namespaceOrDefaultSpecifier = babelPath.node.specifiers.find(
 									spec => t.isImportNamespaceSpecifier(spec) || t.isImportDefaultSpecifier(spec)
 								);
 
@@ -323,10 +425,10 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): any
 								// Replace or drop the nodes cleanly to maintain content security standards
 								if(declarations.length > 0)
 								{
-									path.replaceWithMultiple(declarations);
+									babelPath.replaceWithMultiple(declarations);
 								} else
 								{
-									path.remove();
+									babelPath.remove();
 								}
 							}
 						}
@@ -334,7 +436,7 @@ function transpileTypescriptWidget(rawCode: string, route: ComponentRoute): any
 				};
 			}
 		],
-		filename: route.url
+		filename: baseRoute
 	});
 
 
@@ -358,56 +460,16 @@ async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 		return new module[route.className](route.label);
 	}
 
-	const response = await fetch(route.url + '?t=' + Date.now());
-	const rawCode = await response.text();
-
-	if(!response.ok) throw new Error('Component not found: ' + route.url);
-	if(!transform) throw new Error("Babel standalone runner not found on the window context.");
 	const targetUrl = route.url.replace(/\.ts$/, '.js').replace(/^\.\//, '/base/');
-
 	const existingPromise = registry.get(targetUrl);
 	if(existingPromise)
 	{
-		console.log('Already transpiled: ' + route.className);
+		console.log('Already transpiled: ' + targetUrl);
 		const module2 = await existingPromise;
 		return new module2[route.className](route.label);
 	}
 
-	const dependenciesToFetch = collectDependencies(rawCode, route);
-
-	await preloadDependencies(dependenciesToFetch);
-
-	const transpiled = transpileTypescriptWidget(rawCode, route);
-	const encoder = new TextEncoder();
-	const arrayBuffer = encoder.encode(transpiled.code ?? '').buffer;
-
-	// Direct the target URL from .ts to .js for the Service Worker's consumption
-	const editorDatabase = SettingsManager.get('github', 'environmentRepository');
-
-	// Commit the compiled asset to your service worker pipeline
-	await putRecord(DB_STORE_NAME, {
-		timestamp: new Date(),
-		mode: FS_FILE,
-		contents: arrayBuffer,
-		path: targetUrl,
-		parent: targetUrl.substring(0, targetUrl.lastIndexOf('/')),
-		sha: await getGitShaBrowser(arrayBuffer)
-	}, editorDatabase);
-
-
-	if(transpiled.map)
-	{
-		const sourceMapBuffer = encoder.encode(transpiled.map ?? '').buffer;
-		await putRecord(DB_STORE_NAME, {
-			timestamp: new Date(),
-			mode: FS_FILE,
-			contents: sourceMapBuffer,
-			path: targetUrl.replace('.js', '.map'),
-			parent: targetUrl.substring(0, targetUrl.lastIndexOf('/')),
-			sha: await getGitShaBrowser(arrayBuffer)
-		}, editorDatabase);
-	}
-
+	await fetchTranspileAndStore(route.url);
 
 	// Import directly from the pipeline URL rather than an ephemeral blob URL
 	const modulePromise = import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
