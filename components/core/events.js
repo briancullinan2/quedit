@@ -64,45 +64,6 @@ const IMPORT_MODULES = {
 };
 
 
-
-
-// One-time terminal startup. This is only invoked by ensureTerminalStarted()
-// (terminal.js), which guarantees the panel is visible and xterm has a valid
-// cell size before we run -- so there is no setTimeout guesswork here. Ordering
-// is preserved by dumping the backlog first and only flipping
-// window.terminalLoaded (the live-write gate in logging.js) afterwards, so live
-// log lines can't interleave ahead of the backlog.
-function onLoadTerminal() {
-    lineCount += terminalLog.reduce((sum, l) => {
-        const text = l.text || l; // handles both structured objects and raw strings
-        return sum + (text.match(/\n/g) || []).length;
-    }, 0)
-
-    syncThemeWithAce()
-    forceFitLayout(true)
-
-    // Dump the buffered backlog, then draw the prompt once it has been written.
-    // terminalLoaded is flipped synchronously right after queueing the backlog
-    // so that live log lines (logging.js) queue into xterm's ordered write
-    // buffer behind the backlog instead of being dropped or interleaved.
-    window.terminalFrameLimiter.requestFrameUpdate(() => {
-        const backlog = terminalLog.map(l => l.text || l).join('');
-        const hadBacklog = terminalLog.length > 0;
-        term.write(backlog, () => { if (hadBacklog) writePrompt(); });
-        window.terminalLoaded = true;
-    });
-
-    terminalContainer.focus()
-
-    // Kick off the initial viewport scan on the render queue.
-    window.terminalFrameLimiter.requestFrameUpdate(() => {
-        const searchInput = document.getElementById('search-terminal');
-        if (typeof scanVisibleViewport === 'function' && searchInput) {
-            scanVisibleViewport(searchInput.value);
-        }
-    });
-}
-
 function onUnloadTerminal() {
     // That xterm "bs" is an event emitter notifying the process tree to close standard I/O streams.
     // Call it safely right here before the tab tears down.

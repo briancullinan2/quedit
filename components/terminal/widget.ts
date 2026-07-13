@@ -15,21 +15,33 @@ declare global
 		commandHistory: string[];
 		SettingsManager: Settings;
 		statusBar: StatusBarWidget;
+		terminalLog: TerminalLogEntry[];
 	}
 }
 
 /**
  * Interface tracking an active xterm instance context inside our static pool.
  */
-interface IPooledTerminal
+export interface IPooledTerminal
 {
 	id: string;
 	term: Terminal;
 	container: HTMLDivElement;
 	resizeObserver: ResizeObserver;
 	activeOwner: TerminalWidget | null;
-	events: TerminalEventManager;
+	events?: TerminalEventManager;
 }
+
+export interface TerminalLogEntry
+{
+	render: string;
+	source: string[] | string;
+	text: string;
+	index: number;
+	line: number;
+}
+
+
 
 
 /**
@@ -289,8 +301,8 @@ class TerminalPoolManager
 			container,
 			resizeObserver,
 			activeOwner: widget,
-			events: new TerminalEventManager(term, container, window.statusBar),
 		};
+		pooledContext.events = new TerminalEventManager(pooledContext, container, window.statusBar);
 
 		this.pool.set(terminalId, pooledContext);
 
@@ -352,7 +364,7 @@ class TerminalPoolManager
  */
 export class TerminalWidget extends Widget
 {
-	private filterId: string;
+	public filterId: string;
 	private currentTerminalCtx: IPooledTerminal | null = null;
 	private searchContainer!: HTMLDivElement;
 	private searchInput!: HTMLInputElement;
@@ -589,7 +601,7 @@ export class TerminalWidget extends Widget
 		this.syncThemeWithAce(term);
 
 		// Pull systemic historical logs from global/window structures
-		const sharedLogs = (window as any).terminalLog;
+		const sharedLogs = window.terminalLog;
 		if(!sharedLogs || !Array.isArray(sharedLogs)) return;
 
 		if(this.filterId === 'soft')

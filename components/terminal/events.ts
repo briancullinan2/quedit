@@ -1,6 +1,7 @@
 import { Terminal, IDisposable } from 'xterm';
 import { TerminalHistoryManager } from './history'; // Adjust path accordingly
 import type { StatusBarWidget } from '../bundle/status';
+import type { IPooledTerminal } from './widget';
 
 // --- Types & Structural Interfaces ---
 export interface ExtractedFile
@@ -48,7 +49,7 @@ const FILE_NAME_REGEX = /(?:^|\s)([a-zA-Z0-9_\-\.\/]+)(?::(\d+)|#(\d+))?/g;
 
 export class TerminalEventManager
 {
-	private term: Terminal;
+	private pooledCtx: IPooledTerminal;
 	private container: HTMLElement;
 	private statusBar: StatusBarWidget;
 	private historyManager: TerminalHistoryManager;
@@ -69,9 +70,9 @@ export class TerminalEventManager
 	// Event cleanup references
 	private listeners: IDisposable[] = [];
 
-	constructor(term: Terminal, container: HTMLElement, statusBar: StatusBarWidget)
+	constructor(pooledCtx: IPooledTerminal, container: HTMLElement, statusBar: StatusBarWidget)
 	{
-		this.term = term;
+		this.pooledCtx = pooledCtx;
 		this.container = container;
 		this.statusBar = statusBar;
 		this.historyManager = TerminalHistoryManager.getInstance();
@@ -91,11 +92,11 @@ export class TerminalEventManager
 		document.addEventListener('visibilitychange', this.refreshBlinkerState);
 
 		// Core terminal hooks
-		this.listeners.push(this.term.onScroll(() => this.debounceTerminalStatus(null)));
-		this.listeners.push(this.term.onRender(() => this.ensureTerminalStarted()));
+		this.listeners.push(this.pooledCtx.term.onScroll(() => this.debounceTerminalStatus(null)));
+		this.listeners.push(this.pooledCtx.term.onRender(() => this.ensureTerminalStarted()));
 
-		this.term.attachCustomKeyEventHandler((arg) => this.handleCustomKeyEvent(arg));
-		this.listeners.push(this.term.onData((data) => this.handleRawStreamData(data)));
+		this.pooledCtx.term.attachCustomKeyEventHandler((arg) => this.handleCustomKeyEvent(arg));
+		this.listeners.push(this.pooledCtx.term.onData((data) => this.handleRawStreamData(data)));
 	}
 
 	public dispose(): void
@@ -109,13 +110,13 @@ export class TerminalEventManager
 		document.removeEventListener('visibilitychange', this.refreshBlinkerState);
 
 		this.listeners.forEach(l => l.dispose());
-		this.historyManager.unregister(this.term);
+		this.historyManager.unregister(this.pooledCtx.term);
 		if(this.debounceTerminalMouse) clearTimeout(this.debounceTerminalMouse);
 	}
 
 	private extractFiles(col: number, row: number): ExtractedFile[]
 	{
-		const buffer = this.term.buffer.active;
+		const buffer = this.pooledCtx.term.buffer.active;
 		const offsets = [-2, -1, 0, 1, 2];
 
 		let unifiedText = '';
@@ -206,9 +207,9 @@ export class TerminalEventManager
 	{
 		if(!this.statusBar) return;
 
-		const buffer = this.term.buffer.active;
+		const buffer = this.pooledCtx.term.buffer.active;
 		const startRow = buffer.viewportY;
-		const endRow = startRow + this.term.rows;
+		const endRow = startRow + this.pooledCtx.term.rows;
 
 		// Contextually locate active instance buffers safely outside the root loop
 		const currentCursorPos = this.historyManager.getHistory().length > 0 ? activeRow : 0;
@@ -229,15 +230,15 @@ export class TerminalEventManager
 		const finalY = event ? (y !== undefined ? y : (event.clientY - rect.top)) : 0;
 
 		// Access internal dimensions structures securely
-		const coreTerm = (this.term as any)._core;
+		const coreTerm = (this.pooledCtx.term as any)._core;
 		const dims = coreTerm._renderService.dimensions.css.cell;
 
 		const col = Math.floor(finalX / dims.width);
-		const row = Math.floor(finalY / dims.height) + this.term.buffer.active.viewportY;
-		const activeRow = this.term.buffer.active.baseY + this.term.buffer.active.cursorY;
+		const row = Math.floor(finalY / dims.height) + this.pooledCtx.term.buffer.active.viewportY;
+		const activeRow = this.pooledCtx.term.buffer.active.baseY + this.pooledCtx.term.buffer.active.cursorY;
 
 		const files = this.extractFiles(col, row);
-		const lineText = files[0]?.text?.trim() || this.term.buffer.active.getLine(row)?.translateToString(true) || "";
+		const lineText = files[0]?.text?.trim() || this.pooledCtx.term.buffer.active.getLine(row)?.translateToString(true) || "";
 
 		let filePath: string | null = null;
 		let lineNumber: number | null = null;
@@ -313,10 +314,10 @@ export class TerminalEventManager
 		{
 			event.preventDefault();
 			event.stopPropagation();
-			const coreTerm = (this.term as any)._core;
+			const coreTerm = (this.pooledCtx.term as any)._core;
 			const dims = coreTerm._renderService.dimensions.css.cell;
 			const col = Math.floor(currentX / dims.width);
-			const row = Math.floor(currentY / dims.height) + this.term.buffer.active.viewportY;
+			const row = Math.floor(currentY / dims.height) + this.pooledCtx.term.buffer.active.viewportY;
 			this.targetStartY = row;
 			this.targetStartX = col - this.dragDownOffset;
 			this.renderMoved = true;
@@ -359,8 +360,7 @@ export class TerminalEventManager
 
 		const data = this.detectTerminalEvents(event, x, y);
 
-		const softTab = document.querySelector('#terminals a[href="#soft"].active');
-		if(softTab !== null)
+		if(this.pooledCtx.activeOwner?.filterId === 'soft')
 		{
 			if(data.row === this.targetStartY && data.col > this.targetStartX && data.col < this.targetStartX + this.renderWidth)
 			{
@@ -368,7 +368,7 @@ export class TerminalEventManager
 				this.dragDownOffset = data.col - this.targetStartX;
 				document.body.classList.add('dragging');
 			}
-			if(data.row < this.term.buffer.active.viewportY + (this.term.rows / 2))
+			if(data.row < this.pooledCtx.term.buffer.active.viewportY + (this.pooledCtx.term.rows / 2))
 			{
 				return false;
 			}
@@ -392,13 +392,13 @@ export class TerminalEventManager
 		// Command Prompt Input Locus Shifting mapped via context routing
 		if(data.row === data.activeRow)
 		{
-			this.historyManager.changeCursorPosition(this.term, data.col);
+			this.historyManager.changeCursorPosition(this.pooledCtx.term, data.col);
 		} else if(data.history !== null && data.history !== -1)
 		{
 			// Fetch internal target frame state indicators cleanly
-			const state = (this.historyManager as any).getState(this.term);
+			const state = (this.historyManager as any).getState(this.pooledCtx.term);
 			state.historyIndex = data.history;
-			this.historyManager.updateLineFromHistory(this.term);
+			this.historyManager.updateLineFromHistory(this.pooledCtx.term);
 		}
 
 		return false;
@@ -424,7 +424,7 @@ export class TerminalEventManager
 
 		if(arg.type === "keydown")
 		{
-			const state = (this.historyManager as any).getState(this.term);
+			const state = (this.historyManager as any).getState(this.pooledCtx.term);
 
 			// --- Ctrl+F: Focus Search Box ---
 			if(window.isModifierPressed && arg.code === "KeyF")
@@ -434,7 +434,7 @@ export class TerminalEventManager
 				if(searchTerminal)
 				{
 					searchTerminal.focus();
-					const selection = this.term.getSelection();
+					const selection = this.pooledCtx.term.getSelection();
 					if(selection) searchTerminal.value = selection;
 					if(searchTerminal.value.length > 0 && typeof (window as any).executeFindQuery === 'function')
 					{
@@ -446,16 +446,16 @@ export class TerminalEventManager
 			// --- Ctrl+C: Copy / Cancel ---
 			if(window.isModifierPressed && arg.code === "KeyC")
 			{
-				const selection = this.term.getSelection();
+				const selection = this.pooledCtx.term.getSelection();
 				if(selection)
 				{
 					navigator.clipboard.writeText(selection);
 					return false;
 				}
-				this.term.write('\n\rCTRL+C');
+				this.pooledCtx.term.write('\n\rCTRL+C');
 				this.isTERMINATED = true;
-				if((window as any).building) this.term.write('\n\rStopping build...');
-				this.historyManager.writePrompt(this.term);
+				if((window as any).building) this.pooledCtx.term.write('\n\rStopping build...');
+				this.historyManager.writePrompt(this.pooledCtx.term);
 				state.cursorPosition = 0;
 				state.currentLine = '';
 			}
@@ -473,17 +473,17 @@ export class TerminalEventManager
 					state.currentLine = leftSide + rightSide;
 					state.cursorPosition = state.cursorPosition - 1;
 
-					if(this.term.buffer.active.cursorX === 0)
+					if(this.pooledCtx.term.buffer.active.cursorX === 0)
 					{
-						this.term.write(`\x1b[A\x1b[${this.term.cols}C`);
+						this.pooledCtx.term.write(`\x1b[A\x1b[${this.pooledCtx.term.cols}C`);
 					} else
 					{
-						this.term.write('\b');
+						this.pooledCtx.term.write('\b');
 					}
 
-					this.term.write('\x1b[s');
-					this.term.write(rightSide + '\x1b[K');
-					this.term.write('\x1b[u');
+					this.pooledCtx.term.write('\x1b[s');
+					this.pooledCtx.term.write(rightSide + '\x1b[K');
+					this.pooledCtx.term.write('\x1b[u');
 				}
 				return false;
 			}
@@ -503,7 +503,7 @@ export class TerminalEventManager
 
 						state.cursorPosition = state.cursorPosition + filtered.length;
 						state.currentLine = state.currentLine + filtered;
-						this.term.write(filtered);
+						this.pooledCtx.term.write(filtered);
 					}
 				}).catch(err => console.error('Paste failed: ', err));
 				return false;
@@ -541,7 +541,7 @@ export class TerminalEventManager
 			}
 		}
 
-		const state = (this.historyManager as any).getState(this.term);
+		const state = (this.historyManager as any).getState(this.pooledCtx.term);
 
 		switch(data)
 		{
@@ -550,7 +550,7 @@ export class TerminalEventManager
 
 				if(state.currentLine.trim().length > 0)
 				{
-					committedCommand = this.historyManager.commitLine(this.term, state.currentLine);
+					committedCommand = this.historyManager.commitLine(this.pooledCtx.term, state.currentLine);
 
 					if(typeof (window as any).terminalWrite === 'function')
 					{
@@ -558,7 +558,7 @@ export class TerminalEventManager
 					}
 				} else
 				{
-					this.historyManager.commitLine(this.term, '');
+					this.historyManager.commitLine(this.pooledCtx.term, '');
 				}
 
 				if(typeof window.triggerIncrementalSave === 'function')
@@ -569,7 +569,7 @@ export class TerminalEventManager
 				try
 				{
 					window.lastNewLine = true;
-					this.term.write('\n\r');
+					this.pooledCtx.term.write('\n\r');
 
 					if(typeof (window as any).handleCommand === 'function')
 					{
@@ -583,22 +583,22 @@ export class TerminalEventManager
 					}
 				}
 
-				this.historyManager.writePrompt(this.term);
+				this.historyManager.writePrompt(this.pooledCtx.term);
 				break;
 
 			case '\u001b[A': // Up Arrow
-				this.historyManager.navigateHistory(this.term, 'up');
+				this.historyManager.navigateHistory(this.pooledCtx.term, 'up');
 				break;
 
 			case '\u001b[B': // Down Arrow
-				this.historyManager.navigateHistory(this.term, 'down');
+				this.historyManager.navigateHistory(this.pooledCtx.term, 'down');
 				break;
 
 			case '\u001b[D': // Left Arrow
 				if(state.cursorPosition > 0)
 				{
 					state.cursorPosition = state.cursorPosition - 1;
-					this.term.write('\u001b[D');
+					this.pooledCtx.term.write('\u001b[D');
 				}
 				break;
 
@@ -606,7 +606,7 @@ export class TerminalEventManager
 				if(state.cursorPosition < state.currentLine.length)
 				{
 					state.cursorPosition = state.cursorPosition + 1;
-					this.term.write('\u001b[C');
+					this.pooledCtx.term.write('\u001b[C');
 				}
 				break;
 
@@ -614,7 +614,7 @@ export class TerminalEventManager
 			case '\u001bOH':
 				if(state.cursorPosition > 0)
 				{
-					this.term.write(`\u001b[${state.cursorPosition}D`);
+					this.pooledCtx.term.write(`\u001b[${state.cursorPosition}D`);
 					state.cursorPosition = 0;
 				}
 				break;
@@ -623,17 +623,17 @@ export class TerminalEventManager
 			case '\u001bOF':
 				if(state.cursorPosition < state.currentLine.length)
 				{
-					this.term.write(`\u001b[${state.currentLine.length - state.cursorPosition}C`);
+					this.pooledCtx.term.write(`\u001b[${state.currentLine.length - state.cursorPosition}C`);
 					state.cursorPosition = state.currentLine.length;
 				}
 				break;
 
 			case '\u001b[5~': // Page Up
-				this.term.scrollLines(-Math.floor(this.term.rows / 2));
+				this.pooledCtx.term.scrollLines(-Math.floor(this.pooledCtx.term.rows / 2));
 				break;
 
 			case '\u001b[6~': // Page Down
-				this.term.scrollLines(Math.floor(this.term.rows / 2));
+				this.pooledCtx.term.scrollLines(Math.floor(this.pooledCtx.term.rows / 2));
 				break;
 
 			default: // Standard Type Splicing Pass
@@ -647,11 +647,11 @@ export class TerminalEventManager
 
 					if(rightSide.length === 0)
 					{
-						this.term.write(data);
+						this.pooledCtx.term.write(data);
 					} else
 					{
-						this.term.write(data + rightSide);
-						this.term.write(`\x1b[${rightSide.length}D`);
+						this.pooledCtx.term.write(data + rightSide);
+						this.pooledCtx.term.write(`\x1b[${rightSide.length}D`);
 					}
 				}
 		}

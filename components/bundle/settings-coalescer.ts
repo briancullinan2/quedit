@@ -150,6 +150,7 @@ const componentScripts = [
 	'./components/bundle/github-settings.ts',
 	'./components/bundle/lumino.ts',
 	'./components/editor/widget.ts',
+	'./components/temrinal/widget.ts',
 	//'./components/engine/quake-config.ts'
 ];
 

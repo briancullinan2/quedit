@@ -4,6 +4,7 @@ import { Ace } from 'ace-builds';
 import type { SettingConfig, Settings } from '../bundle/settings';
 import type { HistoryToolbar } from '../bundle/menu-history';
 import type { LayoutAdjuster } from '../bundle/lumino-widget';
+import type { TerminalLogEntry } from '../terminal/widget';
 
 interface ISessionCache
 {
@@ -46,6 +47,7 @@ declare global
 		AceEditorWidget: typeof AceEditorWidget;
 		historyToolbar: HistoryToolbar;
 		SettingsManager: Settings;
+		terminalLog: TerminalLogEntry[];
 	}
 }
 
@@ -328,9 +330,10 @@ class AceEditorPool
 			container.style.height = '100%';
 
 			const editor: Ace.Editor = ace.edit(container);
-			if((window as any).savedTheme)
+			const theme = window.SettingsManager.get('editor', 'savedTheme');
+			if(theme)
 			{
-				editor.setTheme((window as any).savedTheme);
+				editor.setTheme(theme);
 			}
 			const renderer = editor.renderer as Ace.VirtualRenderer & {
 				$gutterLayer: { setShowLineNumbers(show: boolean): void; };
@@ -714,9 +717,9 @@ function tryLoadingTerminalEditorBridge(aceEditor: Ace.Editor | null): void
 			{
 				// TODO: the bridge takes errors from parsing and displays little squigglies and gutter exclaimnations
 				//   this on the other hand, takes error from actually compiling with clang and adds them to the bridge
-				//window.diagnosticsBridge.collectedLogLines = terminalLog.map(log =>
-				//	typeof log === 'object' && log !== null ? (log.text || '') : log
-				//);
+				window.diagnosticsBridge.collectedLogLines = window.terminalLog?.map(log =>
+					typeof log === 'object' && log !== null ? (log.text || '') : log
+				);
 				window.diagnosticsBridge.triggerBridgeRefresh(aceEditor.getSession());
 			}
 
