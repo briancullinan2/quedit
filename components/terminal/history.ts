@@ -1,4 +1,4 @@
-import { Terminal } from 'xterm';
+import type { Terminal } from 'xterm';
 
 export interface TerminalState
 {

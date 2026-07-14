@@ -93,7 +93,7 @@ export function collectDependencies(rawCode: string, baseRoute: string, dependen
 			)
 			{
 				const moduleName = babelPath.node.arguments[0].value;
-				console.log('Overloading import: ' + moduleName);
+				console.log('Overloading require: ' + moduleName);
 				let newDependency;
 
 				if(moduleName === './tree.js' && baseRoute)
@@ -136,39 +136,41 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 	{
 		return;
 	}
-	await Promise.all(dependenciesToFetch.map(async url =>
+
+	const allPromises: Promise<any>[] = [];
+	for(let url of dependenciesToFetch)
 	{
 		const targetUrl = url.replace(/\.ts$/, '.js').replace(/^\.?\//, '/base/');
 		const existingPromise = registry.get(targetUrl);
 		if(existingPromise)
 		{
-			return existingPromise;
+			console.log('Skipping, already preloaded: ' + url);
+			continue;
 		}
-		/*if(url.endsWith('.mjs'))
-		{
-			const existingPromise = registry.get(url);
-			if(existingPromise)
-			{
-				return existingPromise;
-			}
 
-			const scriptPromise = fetchAndStore(url, dependenciesToFetch)
-				.then(targetUrl => import(/* webpackIgnore: true targetUrl[0] + '?t=' + Date.now() + '&local-csp=true'));
-			registry.set(targetUrl, scriptPromise);
-			return scriptPromise;
-		} */
-		else if(url.endsWith('.ts'))
+		console.log('Preloading: ' + url);
+
+		if(url.endsWith('.ts'))
 		{
 			const scriptPromise = fetchTranspileAndStore(url, dependenciesToFetch)
 				.then(targetUrl => import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true'));
 			registry.set(targetUrl, scriptPromise);
-			return scriptPromise;
+			allPromises.push(scriptPromise);
 		}
 		else
 		{
-			return loadScript(url);
+			const isPromise = loadScript(url);
+			if(isPromise instanceof Promise)
+			{
+				allPromises.push(isPromise);
+			}
 		}
-	}));
+	}
+	console.log('Waiting for ' + allPromises.length + ' piece of shit promises.');
+
+	await Promise.all(allPromises);
+
+	console.log('Finishing bullshit: ' + JSON.stringify(dependenciesToFetch));
 }
 
 
@@ -177,7 +179,14 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 
 export async function loadScript(src: string): Promise<any>
 {
+	console.log('Fetching bullshit: ' + src);
 	const [targetUrl, isModule] = await fetchAndStore(src);
+
+	if(document.head.querySelector(`script[src*="${targetUrl}"]`))
+	{
+		console.warn('Already loaded bullshit: ' + src);
+		return;
+	}
 
 	// Create the promise and cache it immediately to block secondary asset creation runs
 	const scriptPromise = new Promise<void>((resolve, reject) =>
@@ -186,8 +195,13 @@ export async function loadScript(src: string): Promise<any>
 		script.src = targetUrl + '?t=' + Date.now() + '&local-csp=true';
 		script.type = isModule ? 'module' : 'text/javascript';
 		script.async = false; // Preserves literal script tree order
+		console.log('Sourcing bullshit: ' + targetUrl);
 
-		script.onload = () => resolve();
+		script.onload = () =>
+		{
+			console.log('Loaded bullshit: ' + targetUrl);
+			resolve();
+		};
 		script.onerror = () =>
 		{
 			registry.delete(targetUrl); // Evict on failure so a retry can clear the pipe
@@ -278,7 +292,11 @@ export async function fetchTranspileAndStore(baseRoute: string, dependenciesToFe
 
 	collectDependencies(rawCode, baseRoute, dependenciesToFetch);
 
+	console.log('Preloading dependencies: ' + baseRoute + ' : ' + JSON.stringify(dependenciesToFetch));
+
 	await preloadDependencies(dependenciesToFetch);
+
+	console.log('Done preloading, transpiling: ' + baseRoute);
 
 	const transpiled = transpileTypescriptWidget(rawCode, baseRoute);
 	const encoder = new TextEncoder();
@@ -512,6 +530,8 @@ export async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 	}
 
 	await fetchTranspileAndStore(route.url);
+
+	console.log('Importing transpiled widget: ' + route.url);
 
 	// Import directly from the pipeline URL rather than an ephemeral blob URL
 	const modulePromise = import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
