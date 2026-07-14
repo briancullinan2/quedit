@@ -28,10 +28,11 @@ export const registry = new Map<string, Promise<void>>(
 
 
 
-export function collectDependencies(rawCode: string, baseRoute: string): string[]
+export function collectDependencies(rawCode: string, baseRoute: string, dependenciesToFetch?: string[]): string[]
 {
 
-	const dependenciesToFetch: string[] = [];
+	dependenciesToFetch ??= [];
+
 	const ast = parseBabel(rawCode, {
 		sourceType: 'module',
 		plugins: [
@@ -53,18 +54,20 @@ export function collectDependencies(rawCode: string, baseRoute: string): string[
 				console.log('Overloading import: ' + moduleName);
 			}
 
+			let newDependency;
+
 			if(moduleName === 'ace-builds')
 			{
-				dependenciesToFetch.push('/ace/ace-noconflict.js');
+				newDependency = '/ace/ace-noconflict.js';
 			} else if(moduleName === './tree.js' && baseRoute)
 			{
-				dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
+				newDependency = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName);
 			} else if(moduleName === './bundle.js' && baseRoute)
 			{
-				dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
+				newDependency = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName);
 			} else if(moduleName === 'xterm')
 			{
-				dependenciesToFetch.push('/components/terminal/xterm.js');
+				newDependency = '/components/terminal/xterm.js';
 			} else if((moduleName.startsWith('./') || moduleName.startsWith('../'))
 				&& baseRoute?.includes('.'))
 			{
@@ -72,8 +75,13 @@ export function collectDependencies(rawCode: string, baseRoute: string): string[
 				const modifiedModuleName = moduleName + (!moduleName.split('/').pop().includes('.')
 					? '.' + ext
 					: '');
-				dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
-					modifiedModuleName));
+				newDependency = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
+					modifiedModuleName);
+			}
+
+			if(newDependency && !dependenciesToFetch.includes(newDependency))
+			{
+				dependenciesToFetch.push(newDependency);
 			}
 		},
 		CallExpression(babelPath)
@@ -86,16 +94,17 @@ export function collectDependencies(rawCode: string, baseRoute: string): string[
 			{
 				const moduleName = babelPath.node.arguments[0].value;
 				console.log('Overloading import: ' + moduleName);
+				let newDependency;
 
 				if(moduleName === './tree.js' && baseRoute)
 				{
-					dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
+					newDependency = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName);
 				} else if(moduleName === './bundle.js' && baseRoute)
 				{
-					dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
+					newDependency = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName);
 				} else if(moduleName === 'xterm' && baseRoute)
 				{
-					dependenciesToFetch.push('/components/terminal/xterm.js');
+					newDependency = '/components/terminal/xterm.js';
 				} else if((moduleName.startsWith('./') || moduleName.startsWith('../'))
 					&& baseRoute?.includes('.'))
 				{
@@ -103,8 +112,14 @@ export function collectDependencies(rawCode: string, baseRoute: string): string[
 					const modifiedModuleName = moduleName + (!moduleName.split('/').pop().includes('.')
 						? '.' + (ext ? ext : '.js')
 						: '');
-					dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
-						modifiedModuleName));
+					newDependency = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
+						modifiedModuleName);
+				}
+
+
+				if(newDependency && !dependenciesToFetch.includes(newDependency))
+				{
+					dependenciesToFetch.push(newDependency);
 				}
 			}
 		},
@@ -123,6 +138,12 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 	}
 	await Promise.all(dependenciesToFetch.map(async url =>
 	{
+		const targetUrl = url.replace(/\.ts$/, '.js').replace(/^\.?\//, '/base/');
+		const existingPromise = registry.get(targetUrl);
+		if(existingPromise)
+		{
+			return existingPromise;
+		}
 		if(url.endsWith('.mjs'))
 		{
 			const existingPromise = registry.get(url);
@@ -131,16 +152,18 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 				return existingPromise;
 			}
 
-			var scriptPromise = import(url + '?t=' + Date.now());
-
-			registry.set(url + '?t=' + Date.now(), scriptPromise);
+			const scriptPromise = import(url + '?t=' + Date.now());
+			registry.set(targetUrl, scriptPromise);
 			return scriptPromise;
-		} else if(url.endsWith('.ts'))
+		}
+		else if(url.endsWith('.ts'))
 		{
-			const targetUrl = await fetchTranspileAndStore(url);
-			return import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
-
-		} else
+			const scriptPromise = fetchTranspileAndStore(url, dependenciesToFetch)
+				.then(targetUrl => import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true'));
+			registry.set(targetUrl, scriptPromise);
+			return scriptPromise;
+		}
+		else
 		{
 			return loadScript(url);
 		}
@@ -148,8 +171,9 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 }
 
 
-export async function fetchTranspileAndStore(baseRoute: string): Promise<string>
+export async function fetchTranspileAndStore(baseRoute: string, dependenciesToFetch?: string[]): Promise<string>
 {
+	dependenciesToFetch ??= [];
 
 	const response = await fetch(baseRoute + '?t=' + Date.now());
 	const rawCode = await response.text();
@@ -168,7 +192,7 @@ export async function fetchTranspileAndStore(baseRoute: string): Promise<string>
 		console.log('Transpiling and saving: ' + targetUrl);
 	}
 
-	const dependenciesToFetch = collectDependencies(rawCode, baseRoute);
+	collectDependencies(rawCode, baseRoute, dependenciesToFetch);
 
 	await preloadDependencies(dependenciesToFetch);
 

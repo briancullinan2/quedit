@@ -1,6 +1,6 @@
 // components/FileListWidget.ts
 import { Widget, DockPanel } from '@lumino/widgets';
-import { type FlatFileNode, type NestedTreeNode } from '../bundle/github-tools';
+import type { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
 import type { GitHubFileEntry } from '../bundle/github-types';
 import type { RepositoryToolbar } from '../bundle/menu-repos';
 import type { Settings } from '../bundle/settings';
