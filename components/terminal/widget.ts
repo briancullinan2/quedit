@@ -56,7 +56,7 @@ export type FrameCallback<T = any> = (data: T, elapsed: number, frameCount: numb
  *
  * @class FrameRater
  */
-class FrameRater<T = any>
+export class FrameRater<T = any>
 {
 	// Static private instance container reference holding the Singleton state
 	private static _instance: FrameRater<any> | null = null;
@@ -220,7 +220,6 @@ class FrameRater<T = any>
 	}
 }
 
-export { FrameRater };
 new FrameRater(25, (e, t, frame) =>
 {
 	e(t, frame);
@@ -237,7 +236,16 @@ class TerminalPoolManager
 	private pool: Map<string, IPooledTerminal> = new Map();
 	private instanceCounter = 0;
 
-	private constructor() { }
+	private constructor()
+	{
+		window.addEventListener('beforeunload', () =>
+		{
+			for(const pooled of this.pool.values())
+			{
+				pooled.term.dispose();
+			}
+		});
+	}
 
 	public count(): Number
 	{

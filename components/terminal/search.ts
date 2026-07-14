@@ -126,8 +126,7 @@ export class TerminalSearchManager
 		let startRow = buffer.viewportY;
 
 		// Split-pane alignment parsing layout logic
-		const softTab = document.querySelector('#terminals a[href="#soft"].active');
-		if(softTab !== null)
+		if(pooledCtx.activeOwner?.filterId === 'soft')
 		{
 			startRow = buffer.viewportY + (pooledCtx.term.rows / 2);
 		}

@@ -1,4 +1,6 @@
 import { Terminal, IDecoration } from 'xterm';
+import { FrameRater } from './widget';
+import { DockPanel } from '@lumino/widgets';
 
 // --- Ambient Structural Declarations ---
 declare const term: Terminal;
@@ -9,6 +11,16 @@ declare const quakeEngineMenuData: Record<string, any>;
 declare function getAvailableContext(canvas: HTMLElement | null, contexts: string[]): WebGLRenderingContext | WebGL2RenderingContext;
 declare function obThemeFormObject(key: string, category: any, width: number): string;
 declare function refreshBlinkerState(): void;
+
+
+declare global
+{
+	interface Window
+	{
+		mainDock: DockPanel;
+		terminalFrameLimiter: typeof FrameRater;
+	}
+}
 
 export interface RenderFootprint
 {
@@ -146,7 +158,7 @@ export async function captureRenderToTerminalCorner(): Promise<void>
 
 	if(document.querySelector('#terminals a[href="#soft"].active') !== null)
 	{
-		cliRenderFrameLimiter.requestFrameUpdate();
+		//FrameRater.requestFrameUpdate();
 	}
 
 	if(renderMoved)
@@ -185,7 +197,7 @@ export async function captureRenderToTerminal(): Promise<void>
 	term.write("\x1b[H" + ansiStringFrame);
 	if(document.querySelector('#terminals a[href="#soft"].active') !== null)
 	{
-		cliRenderFrameLimiter.requestFrameUpdate();
+		//cliRenderFrameLimiter.requestFrameUpdate();
 	}
 }
 

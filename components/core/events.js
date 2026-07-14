@@ -64,14 +64,6 @@ const IMPORT_MODULES = {
 };
 
 
-function onUnloadTerminal() {
-    // That xterm "bs" is an event emitter notifying the process tree to close standard I/O streams.
-    // Call it safely right here before the tab tears down.
-    if (window.term?.dispose) window.term.dispose();
-}
-
-
-
 function hasChangedEditor() {
     if (!window.aceEditor) return false;
     const session = currentSession()

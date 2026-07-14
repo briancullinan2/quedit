@@ -5,16 +5,7 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
     if (!buttonId || buttonId.startsWith('main_menu')) return true;
 
     switch (buttonId) {
-        case 'fullscreen':
-            if (document.fullscreenElement === document.body) {
-                document.exitFullscreen()
-            } else {
-                document.body.requestFullscreen()
-            }
-            break
-        case 'layout':
-            rotateLayout()
-            break
+
         case 'compile':
             // Requires the compilation toolchain scripts
             await DependencyLoader.loadModule('build');
@@ -38,17 +29,6 @@ async function renderToolbarCommand(buttonId, noBounce = false) {
             await DependencyLoader.loadModule(preferredRenderer);
             break;
 
-        case 'terminal':
-        case 'terminal-container':
-            // Spins up Virtual Terminal I/O environments
-            await DependencyLoader.loadModule('terminal');
-            break;
-        case 'nunu':
-            await DependencyLoader.loadModule('nunu');
-            break;
-        case 'audio-editor':
-            await DependencyLoader.loadModule('audio');
-            break;
 
         case 'map':
             await clickFile(document.getElementById('map').value, 1, false, true)
@@ -268,67 +248,4 @@ function selectHistory(element) {
     // Close menu after selection
     historyMenu.classList.remove("show");
 }
-
-const LAYOUT_AXES = {
-    panels: ['left-hand-files', 'right-hand-files'],
-    order: ['normal-order', 'reverse-order'],
-    terminal: ['terminal', 'no-terminal'],
-    mode: ['full-mode', 'focus-mode']
-};
-
-const layoutState = {
-    panels: 'left-hand-files',
-    order: 'normal-order',
-    terminal: 'terminal',
-    mode: 'full-mode'
-};
-
-
-function rotateLayout(element = document.body) {
-
-    Object.keys(LAYOUT_AXES).forEach(axis => {
-        // Find which variant inside this specific axis array is currently on the element
-        const matchedClass = LAYOUT_AXES[axis].find(variant => element.classList.contains(`layout-${variant}`));
-
-        if (matchedClass) {
-            // Update the state with the discovered active class
-            layoutState[axis] = matchedClass;
-
-            // Strip the old atomic layout class from the DOM token list
-            element.classList.remove(`layout-${matchedClass}`);
-        }
-    });
-
-    const currentLayoutClass = `layout-${layoutState.panels} layout-${layoutState.order} layout-${layoutState.terminal} layout-${layoutState.mode}`
-
-    // Find where it lives in your 16-element permutation list
-    const currentIndex = ALL_LAYOUTS.indexOf(currentLayoutClass);
-
-    // Step forward by exactly +1, wrapping cleanly back to 0 when hitting the end boundary
-    const nextIndex = (currentIndex + 1) % ALL_LAYOUTS.length;
-    const newLayoutClass = ALL_LAYOUTS[nextIndex].split(' ');
-
-    if (newLayoutClass.includes('layout-terminal')
-        && typeof term === 'undefined') {
-        DependencyLoader.loadModule('terminal')
-    }
-
-    // 5. Inject it back onto the target DOM node element
-    element.classList.add(...newLayoutClass);
-
-    console.log(`🔄 Layout rotated from [${currentLayoutClass || 'None'}] ➡️ [${newLayoutClass}] (Index: ${nextIndex})`);
-    return newLayoutClass;
-}
-
-const ALL_LAYOUTS = Object.values(LAYOUT_AXES).reduce((combinations, currentAxisVariants) => {
-    // If it's the first axis (panels), initialize the array with its base variants
-    if (combinations.length === 0) return currentAxisVariants;
-
-    // Cross-multiply the existing strings with the variants of the next axis
-    return combinations.flatMap(existingString =>
-        currentAxisVariants.map(variant => `${existingString} layout-${variant}`)
-    );
-}, []).map(combinedString => `layout-${combinedString}`);
-
-
 
