@@ -32,6 +32,7 @@ declare global
 		Range: new (startRow: number, startColumn: number, endRow: number, endColumn: number) => Ace.Range;
 		config: {
 			loadModule: (module: [string, string], callback: () => void) => void;
+			set: (key: string, value: string) => void;
 		};
 		require: (modules: string[], callback: (moduleExports: any) => void) => void;
 	};
@@ -395,6 +396,10 @@ class AceEditorPool
 			container.className = 'ace-shared-pool-element';
 			container.style.width = '100%';
 			container.style.height = '100%';
+			ace.config.set('basePath', '/ace');
+			ace.config.set('modePath', '/ace');
+			ace.config.set('workerPath', '/ace');
+			ace.config.set('themePath', '/ace');
 
 			const editor: Ace.Editor = ace.edit(container);
 			const theme = window.SettingsManager.get('editor', 'savedTheme');
@@ -521,7 +526,8 @@ export class AceEditorWidget extends Widget
 		super();
 		this.addClass('lm-AceEditorWidget');
 
-		this._fileId = fileId || AceEditorPool.getNextTempName();
+		// TODO: so it starts with .c
+		this._fileId = AceEditorPool.getNextTempName();
 		this._initialContent = initialContent || AceEditorWidget._defaultContent;
 
 		// Ensure Lumino layout updates do not break text selection systems

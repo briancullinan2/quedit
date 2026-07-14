@@ -222,25 +222,24 @@ async function treeHandler(selector: string, e: Event): Promise<void>
 			}
 		}
 
+		const [realFilePath, selectedGithub, dbFile, lineNumber] = await window.FileManager.findFileTestPath(filePath);
+		console.warn('openFile: ' + filePath + ' length: ' + dbFile?.contents?.length + ' from: ' + selectedGithub);
+		let contents = dbFile?.contents;
+		if(!contents && selectedGithub && (!dbFile?.contents || dbFile.contents?.length === 0))
+		{
+			const parts = selectedGithub.split('/');
+			const newRepo = parts.length === 2 ? parts[1] : parts[0] || window.RepositoryToolbar.repository?.value;
+			const newOwner = parts.length === 2 ? parts[0] : window.RepositoryToolbar.owner?.value;
+			const githubFile = await window.cacheFile(newOwner, newRepo, filePath) as ArrayBuffer;
+			contents = new TextDecoder().decode(githubFile);
+		}
+
+
 		if(typeof window.AceEditorWidget === 'undefined')
 		{
 			await window.triggerPanelRoute('editor', window.mainDock);
 		}
 
-		const [realFilePath, selectedGithub, dbFile, lineNumber] = await window.FileManager.findFileTestPath(filePath);
-		console.warn('openFile: ' + filePath + ' length: ' + dbFile?.contents?.length + ' from: ' + selectedGithub);
-		if(selectedGithub && (!dbFile?.contents || dbFile.contents?.length === 0))
-		{
-
-			const parts = selectedGithub.split('/');
-			const newRepo = parts.length === 2 ? parts[1] : parts[0] || window.RepositoryToolbar.repository?.value;
-			const newOwner = parts.length === 2 ? parts[0] : window.RepositoryToolbar.owner?.value;
-			const githubFile = await window.cacheFile(newOwner, newRepo, filePath) as ArrayBuffer;
-			const content = new TextDecoder().decode(githubFile);
-			window.AceEditorWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, content);
-		} else if(dbFile)
-		{
-			window.AceEditorWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, dbFile?.contents);
-		}
+		window.AceEditorWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
 	}
 }
