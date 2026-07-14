@@ -376,7 +376,7 @@ export class FileManager
 		const sampleStr = decoder.decode(sampleBytes);
 
 		const isImageFile = AssetInspector.isActuallyImage(sampleBytes, filePath);
-		const isMapFile = AssetInspector.isActuallyMap(sampleBytes, sampleStr, filePath);
+		const isMapFile = AssetInspector.isActuallyMap(sampleBytes, filePath);
 
 		let outputString = "";
 

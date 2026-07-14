@@ -149,7 +149,7 @@ export const AssetInspector = {
 		return /\.(wav|mp3|ogg|flac)$/i.test(path);
 	},
 
-	isActuallyMap: (bytes, strContent, path) =>
+	isActuallyMap: (bytes, path) =>
 	{
 		// Binary check
 		if(detectBinaryType(bytes) === 'bsp' || path.endsWith('.bsp')) return true;

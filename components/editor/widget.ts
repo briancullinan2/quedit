@@ -608,8 +608,12 @@ export class AceEditorWidget extends Widget
 	}
 
 	// Call this function inside your file tree selection/click event listener
-	static openFileInNewTab(fileId: string, fileName: string, fileContent: string)
+	static openFileInNewTab(fileId: string, fileName: string, fileContent: string | ArrayBuffer | Uint8Array)
 	{
+		if(fileContent instanceof ArrayBuffer || fileContent instanceof Uint8Array)
+		{
+			fileContent = new TextDecoder().decode(fileContent);
+		}
 		// 1. Optional Check: Look for an existing open tab matching this file ID to prevent duplicates
 		const tabs = Array.from(window.mainDock.widgets());
 		const existingTab = tabs.find(t => t.constructor.name === AceEditorWidget.name
@@ -628,7 +632,7 @@ export class AceEditorWidget extends Widget
 		) as AceEditorWidget;
 		if(existingDefault)
 		{
-			existingDefault.title.label = fileName;
+			existingDefault.title.label = fileName.split('/').pop() ?? fileName;
 			existingDefault._initialContent = fileContent;
 			const session = AceEditorPool.getOrCreateAceSession(fileId, fileContent);
 			existingDefault._editor?.setSession(session);
@@ -647,7 +651,7 @@ export class AceEditorWidget extends Widget
 		newTab._fileId = fileId;
 		newTab._initialContent = fileContent;
 
-		newTab.title.label = fileName;
+		newTab.title.label = fileName.split('/').pop() ?? fileName;
 		newTab.title.closable = true;
 
 		window.LayoutAdjuster.addOptimalWidgetLayout(window.mainDock, newTab, {

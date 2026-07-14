@@ -127,6 +127,10 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 			});
 		}
 
+		await new Promise(resolve =>
+		{
+			window.requestAnimationFrame(resolve);
+		});
 	} catch(err)
 	{
 		console.error(`Module initialization fault on pathway [${panelId}]:`, err);

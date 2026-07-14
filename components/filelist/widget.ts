@@ -7,6 +7,9 @@ import type { Settings } from '../bundle/settings';
 import type { FileManager } from '../bundle/lumino-files';
 import { Message, MessageLoop } from '@lumino/messaging';
 import Tree from './tree.js';
+import { AssetInspector, hasSequentialBinaryRegex, hexDump } from '../rosetta/binary.mjs';
+import type { AceEditorWidget } from '../editor/widget';
+import type { PaintWidget } from '../paint/widget';
 
 declare global
 {
@@ -24,6 +27,8 @@ declare global
 		SettingsManager: Settings;
 		FileManager: typeof FileManager;
 		fileListWidgets?: Array<FileListWidget>;
+		AceEditorWidget: typeof AceEditorWidget;
+		PaintWidget: typeof PaintWidget;
 	}
 }
 
@@ -230,16 +235,38 @@ async function treeHandler(selector: string, e: Event): Promise<void>
 			const parts = selectedGithub.split('/');
 			const newRepo = parts.length === 2 ? parts[1] : parts[0] || window.RepositoryToolbar.repository?.value;
 			const newOwner = parts.length === 2 ? parts[0] : window.RepositoryToolbar.owner?.value;
-			const githubFile = await window.cacheFile(newOwner, newRepo, filePath) as ArrayBuffer;
-			contents = new TextDecoder().decode(githubFile);
+			contents = await window.cacheFile(newOwner, newRepo, filePath) as ArrayBuffer;
 		}
 
+		const byteView = new Uint8Array(contents).subarray(0, 8192);
+		const sampleText = new TextDecoder().decode(byteView);
 
-		if(typeof window.AceEditorWidget === 'undefined')
+		const isImageFile = AssetInspector.isActuallyImage(byteView, filePath);
+		if(isImageFile)
 		{
-			await window.triggerPanelRoute('editor', window.mainDock);
+			if(typeof window.PaintWidget === 'undefined')
+			{
+				await window.triggerPanelRoute('paint', window.mainDock);
+			}
+
+			window.PaintWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
+		} else
+		{
+			if(hasSequentialBinaryRegex.test(sampleText))
+			{
+				contents = hexDump(byteView, contents, filePath);
+			} else
+			{
+				contents = new TextDecoder().decode(contents);
+			}
+
+			if(typeof window.AceEditorWidget === 'undefined')
+			{
+				await window.triggerPanelRoute('editor', window.mainDock);
+			}
+
+			window.AceEditorWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
 		}
 
-		window.AceEditorWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
 	}
 }

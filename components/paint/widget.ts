@@ -151,6 +151,7 @@ declare global
 		commandRegistry: CommandRegistry;
 		globalMenuBar: MenuBar;
 		historyToolbar: HistoryToolbar;
+		PaintWidget: typeof PaintWidget;
 	}
 }
 
@@ -705,9 +706,9 @@ export class PaintWidget extends Widget implements MenuModules
 	public _instance?: MiniPaintApp;
 	public modules?: Record<string, Record<string, Function>>;
 	protected _fileId: string;
-	protected _initialContent?: string | ArrayBuffer | HTMLImageElement;
+	protected _initialContent?: string | ArrayBuffer | Uint8Array | HTMLImageElement;
 
-	constructor(fileId?: string, initialContent?: string | ArrayBuffer | HTMLImageElement)
+	constructor(fileId?: string, initialContent?: string | ArrayBuffer | Uint8Array | HTMLImageElement)
 	{
 		super();
 
@@ -823,10 +824,12 @@ export class PaintWidget extends Widget implements MenuModules
 			this._instance = window.initializeMiniPaint();
 			this.modules = this._instance?.GUI.modules;
 
+			this._onLoadPaint();
+
 			const instance = this._instance;
 			if(this._initialContent instanceof ArrayBuffer)
 			{
-				this._initialContent = arrayBufferToDataUri(this._initialContent);
+				this._initialContent = arrayBufferToDataUri(this._initialContent, this._fileId);
 			}
 			if(typeof this._initialContent === 'string' && this._initialContent.length > 0 && instance)
 			{
@@ -834,7 +837,6 @@ export class PaintWidget extends Widget implements MenuModules
 					.then(img => PaintWidget.setInitialContent(this._fileId, img, instance));
 			}
 
-			this._onLoadPaint();
 		}
 	}
 
@@ -987,7 +989,7 @@ export class PaintWidget extends Widget implements MenuModules
 	}
 
 
-	static async openFileInNewTab(fileId: string, fileName: string, fileContent: string | ArrayBuffer | HTMLImageElement)
+	static async openFileInNewTab(fileId: string, fileName: string, fileContent: string | ArrayBuffer | HTMLImageElement | Uint8Array)
 	{
 		const tabs = Array.from(window.mainDock.widgets());
 		const existingTab = tabs.find(t => (t as PaintWidget).fileId === fileId);
@@ -1008,10 +1010,12 @@ export class PaintWidget extends Widget implements MenuModules
 		) as PaintWidget;
 		if(existingDefault)
 		{
+			existingDefault.title.label = fileName.split('/').pop() ?? fileName;
+			existingDefault._initialContent = fileContent;
 			let img: HTMLImageElement | undefined = undefined;
-			if(fileContent instanceof ArrayBuffer)
+			if(fileContent instanceof ArrayBuffer || fileContent instanceof Uint8Array)
 			{
-				fileContent = arrayBufferToDataUri(fileContent);
+				fileContent = arrayBufferToDataUri(fileContent, fileName);
 			}
 			if(typeof fileContent === 'string')
 			{
@@ -1022,13 +1026,14 @@ export class PaintWidget extends Widget implements MenuModules
 				this.setInitialContent(fileName, img, existingDefault._instance);
 			}
 			window.mainDock.activateWidget(existingDefault);
+			return;
 		}
 
 		const newTab = new PaintWidget(fileId, fileContent);
 		newTab._fileId = fileId;
 		newTab._initialContent = fileContent;
 
-		newTab.title.label = fileName;
+		newTab.title.label = fileName.split('/').pop() ?? fileName;
 		newTab.title.closable = true;
 
 		window.LayoutAdjuster.addOptimalWidgetLayout(window.mainDock, newTab, {
@@ -1126,7 +1131,7 @@ export class PaintWidget extends Widget implements MenuModules
 }
 
 
-
+window.PaintWidget = PaintWidget;
 
 
 const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
