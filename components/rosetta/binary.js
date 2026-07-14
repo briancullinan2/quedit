@@ -1,13 +1,13 @@
 
-const hasSequentialBinaryRegex = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]{3,}/;
-const checkMagic = (bytes, offset, pattern) =>
+export const hasSequentialBinaryRegex = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]{3,}/;
+export const checkMagic = (bytes, offset, pattern) =>
 {
 	if(bytes.length < offset + pattern.length) return false;
 	return pattern.every((byte, i) => bytes[offset + i] === byte);
 };
 
 
-const BINARY_DETECTOR = {
+export const BINARY_DETECTOR = {
 	wasm: {
 		description: "WebAssembly Binary / LLVM Wasm Object File",
 		match: (b) => checkMagic(b, 0, [0x00, 0x61, 0x73, 0x6D])
@@ -133,7 +133,7 @@ const BINARY_DETECTOR = {
 };
 
 
-const AssetInspector = {
+export const AssetInspector = {
 	isActuallyImage: (bytes, path) =>
 	{
 		const binType = detectBinaryType(bytes);
@@ -183,7 +183,7 @@ const AssetInspector = {
  * @param {ArrayBuffer|Uint8Array} sourceBuffer
  * @returns {string} The detected format key, or 'unknown'
  */
-function detectBinaryType(sourceBuffer)
+export function detectBinaryType(sourceBuffer)
 {
 	const bytes = sourceBuffer instanceof Uint8Array ? sourceBuffer : new Uint8Array(sourceBuffer);
 
@@ -201,7 +201,7 @@ function detectBinaryType(sourceBuffer)
  * Unpacks variable-length LEB128 unsigned integers from byte streams.
  * Crucial for avoiding pointer-drift caused by 5-byte compiler padding.
  */
-function decodeLEB128(uint8Array, offset)
+export function decodeLEB128(uint8Array, offset)
 {
 	let result = 0;
 	let shift = 0;
@@ -221,7 +221,7 @@ function decodeLEB128(uint8Array, offset)
  * Extracts comprehensive WebAssembly layout metrics and diagnostic symbols
  * to map a decorative, high-density telemetry header block.
  */
-function getWasmObjectHeader(sampleBytes, content, filePath)
+export function getWasmObjectHeader(sampleBytes, content, filePath)
 {
 	const isWasm = sampleBytes[0] === 0x00 && sampleBytes[1] === 0x61 && sampleBytes[2] === 0x73 && sampleBytes[3] === 0x6D;
 
@@ -562,7 +562,7 @@ function getWasmObjectHeader(sampleBytes, content, filePath)
 	return infoStack;
 }
 
-function getQVMHeader(sampleBytes, content, filePath)
+export function getQVMHeader(sampleBytes, content, filePath)
 {
 
 
@@ -608,7 +608,7 @@ function getQVMHeader(sampleBytes, content, filePath)
 
 
 
-function hexDump(sampleBytes, content, filePath)
+export function hexDump(sampleBytes, content, filePath)
 {
 	let infoStack;
 
@@ -708,7 +708,7 @@ const WASM_OPCODES = {
 /**
  * Sweeps a 16-byte buffer and returns a side-by-side disassembly text string map.
  */
-function disassembleWasmRow(bytes, globalOffset)
+export function disassembleWasmRow(bytes, globalOffset)
 {
 	let outputLines = [];
 	let i = 0;
@@ -768,7 +768,7 @@ function disassembleWasmRow(bytes, globalOffset)
  * @param {number|null} viewportStart - Optional custom byte offset to target; defaults to Code Start
  * @param {number} viewportLength - Total size slice boundary to dump into the active view pane
  */
-function renderWasmDisassemblySuite(sampleBytes, rowWidth = 16, viewportStart = null, viewportLength = null, codeStart = null, codeLength = null, dataStart = null, dataLength = null)
+export function renderWasmDisassemblySuite(sampleBytes, rowWidth = 16, viewportStart = null, viewportLength = null, codeStart = null, codeLength = null, dataStart = null, dataLength = null)
 {
 	const isWasm = sampleBytes[0] === 0x00 && sampleBytes[1] === 0x61 && sampleBytes[2] === 0x73 && sampleBytes[3] === 0x6D;
 	if(!isWasm)
@@ -1024,7 +1024,7 @@ function renderWasmDisassemblySuite(sampleBytes, rowWidth = 16, viewportStart = 
  * @param {number} options.viewportLength - Total byte size slice boundary to render
  * @param {Object} options.syscallMap - Optional map of negative integer IDs to String syscall names
  */
-function renderQvmDisassemblySuite(sampleBytes, rowWidth = 16, options = {})
+export function renderQvmDisassemblySuite(sampleBytes, rowWidth = 16, options = {})
 {
 	const globalOffset = options.globalOffset || 0;
 	const syscallMap = options.syscallMap || {};
@@ -1339,7 +1339,7 @@ function renderQvmDisassemblySuite(sampleBytes, rowWidth = 16, options = {})
  * @param {number} options.dataStart - Pre-calculated Data Section start
  * @param {number} options.dataLength - Pre-calculated Data Section length
  */
-function renderWasmDisassemblyPrintout(sampleBytes, rowWidth = 16, options = {})
+export function renderWasmDisassemblyPrintout(sampleBytes, rowWidth = 16, options = {})
 {
 	// 1. Default fallback parameters for stream synchronization
 	const globalOffset = options.globalOffset || 0;
@@ -1471,7 +1471,7 @@ function renderWasmDisassemblyPrintout(sampleBytes, rowWidth = 16, options = {})
  * @param {string|Uint8Array} content - The file context stream data wrapper.
  * @param {string} filePath - Path identifier of the active workspace file.
  */
-function getWasmFinalHeader(sampleBytes, content, filePath)
+export function getWasmFinalHeader(sampleBytes, content, filePath)
 {
 	const isWasm = sampleBytes[0] === 0x00 && sampleBytes[1] === 0x61 && sampleBytes[2] === 0x73 && sampleBytes[3] === 0x6D;
 
@@ -1847,7 +1847,7 @@ function getWasmFinalHeader(sampleBytes, content, filePath)
  * Consolidated WebAssembly Binary Analysis & Side-by-Side Disassembly Suite
  * Fully optimized to handle streaming chunk truncations on large final production binaries.
  */
-function renderWasmDisassembly(sampleBytes, rowWidth = 16, viewportStart = null, viewportLength = null, codeStart = null, codeLength = null, dataStart = null, dataLength = null)
+export function renderWasmDisassembly(sampleBytes, rowWidth = 16, viewportStart = null, viewportLength = null, codeStart = null, codeLength = null, dataStart = null, dataLength = null)
 {
 	const isWasm = sampleBytes[0] === 0x00 && sampleBytes[1] === 0x61 && sampleBytes[2] === 0x73 && sampleBytes[3] === 0x6D;
 	if(!isWasm)
@@ -2079,7 +2079,7 @@ function renderWasmDisassembly(sampleBytes, rowWidth = 16, viewportStart = null,
  * @param {string} filePath - Input path or label identifier for telemetry reporting
  * @returns {string} High-density diagnostic blueprint report
  */
-function renderMd3DisassemblySuite(sampleBytes, filePath = "model.md3")
+export function renderMd3DisassemblySuite(sampleBytes, filePath = "model.md3")
 {
 	const bytes = sampleBytes instanceof Uint8Array ? sampleBytes : new Uint8Array(sampleBytes);
 
@@ -2269,7 +2269,7 @@ function renderMd3DisassemblySuite(sampleBytes, filePath = "model.md3")
  * @param {string} filePath - Input path or label identifier for telemetry reporting
  * @returns {string} High-density diagnostic map blueprint report
  */
-function renderBspDisassemblySuite(sampleBytes, filePath = "map.bsp")
+export function renderBspDisassemblySuite(sampleBytes, filePath = "map.bsp")
 {
 	const bytes = sampleBytes instanceof Uint8Array ? sampleBytes : new Uint8Array(sampleBytes);
 
@@ -2503,7 +2503,7 @@ function renderBspDisassemblySuite(sampleBytes, filePath = "map.bsp")
  * @param {string} filePath - Input path or label identifier for telemetry reporting
  * @returns {string} High-density diagnostic navigation blueprint report
  */
-function renderAasDisassemblySuite(sampleBytes, filePath = "botnav.aas")
+export function renderAasDisassemblySuite(sampleBytes, filePath = "botnav.aas")
 {
 	const bytes = sampleBytes instanceof Uint8Array ? sampleBytes : new Uint8Array(sampleBytes);
 
@@ -2878,7 +2878,7 @@ function renderAasDisassemblySuite(sampleBytes, filePath = "botnav.aas")
 	return report;
 }
 
-const HUFFMAN_DECODER_TABLE =
+export const HUFFMAN_DECODER_TABLE =
 	[
 		2512, 2182, 512, 2763, 1859, 2808, 512, 2360, 1918, 1988, 512, 1803, 2158, 2358, 512, 2180,
 		1798, 2053, 512, 1804, 2603, 1288, 512, 2166, 2285, 2167, 512, 1281, 1640, 2767, 512, 1664,
@@ -3023,7 +3023,7 @@ const HUFFMAN_DECODER_TABLE =
  * @param {Uint8Array} bytes - Raw DM3 binary
  * @returns {string} Plain text diagnostic console log
  */
-function parseDM3Telemetry(bytes)
+export function parseDM3Telemetry(bytes)
 {
 	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 	let report = `========================================================================\n`;
@@ -3253,7 +3253,7 @@ function parseDM3Telemetry(bytes)
  * @param {Uint8Array} bytes - Raw DAT binary
  * @returns {string} Plain text diagnostic console log
  */
-function parseQ3FontDat(bytes)
+export function parseQ3FontDat(bytes)
 {
 	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 
@@ -3380,7 +3380,7 @@ function parseQ3FontDat(bytes)
 }
 
 
-function arrayBufferToDataUri(buffer, filename)
+export function arrayBufferToDataUri(buffer, filename)
 {
 	// Determine MIME type based on extension (fallback to png)
 	let type = "image/png";
@@ -3401,7 +3401,7 @@ function arrayBufferToDataUri(buffer, filename)
 
 
 // Quick helper to evaluate header buffers using your existing magics
-function isQuakeBinaryMagic(bytes)
+export function isQuakeBinaryMagic(bytes)
 {
 	const magicStr = Array.from(bytes.subarray(0, 4)).map(b => String.fromCharCode(b)).join('');
 	// "IBSP" = Map, "IDP3" = Mesh, "EAAS" = Bot AI navigation
@@ -3413,7 +3413,6 @@ function isQuakeBinaryMagic(bytes)
 
 (function (root)
 {
-
 	const exportsObject = {
 		hasSequentialBinaryRegex,
 		hexDump,

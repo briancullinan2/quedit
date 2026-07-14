@@ -152,7 +152,8 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 				return existingPromise;
 			}
 
-			const scriptPromise = import(url + '?t=' + Date.now());
+			const scriptPromise = fetchAndStore(url, dependenciesToFetch)
+				.then(targetUrl => import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true'));
 			registry.set(targetUrl, scriptPromise);
 			return scriptPromise;
 		}
@@ -171,15 +172,104 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 }
 
 
-export async function fetchTranspileAndStore(baseRoute: string, dependenciesToFetch?: string[]): Promise<string>
+// Define the class property registry somewhere above this method in your class:
+// private registry = new Map<string, Promise<any>>();
+
+export async function loadScript(src: string): Promise<any>
+{
+	const targetUrl = await fetchAndStore(src);
+
+	// Create the promise and cache it immediately to block secondary asset creation runs
+	const scriptPromise = new Promise<void>((resolve, reject) =>
+	{
+		const script: HTMLScriptElement = document.createElement('script');
+		script.src = targetUrl + '?t=' + Date.now() + '&local-csp=true';
+		script.type = 'text/javascript';
+		script.async = false; // Preserves literal script tree order
+
+		script.onload = () => resolve();
+		script.onerror = () =>
+		{
+			registry.delete(targetUrl); // Evict on failure so a retry can clear the pipe
+			reject(new Error(`Failed execution pipeline: ${src}`));
+		};
+
+		document.head.appendChild(script);
+	});
+
+	registry.set(targetUrl, scriptPromise);
+	return scriptPromise;
+}
+
+
+export async function fetchAndStore(baseRoute: string, dependenciesToFetch?: string[])
 {
 	dependenciesToFetch ??= [];
+
+	const targetUrl = baseRoute.replace(/\.mjs$/, '.js').replace(/^\.?\//, '/base/');
+
+	const existingPromise = registry.get(targetUrl);
+	if(existingPromise)
+	{
+		console.log('Already transpiled: ' + targetUrl);
+		return targetUrl;
+	} else
+	{
+		console.log('Transpiling and saving: ' + targetUrl);
+	}
+
 
 	const response = await fetch(baseRoute + '?t=' + Date.now());
 	const rawCode = await response.text();
 
-	if(!response.ok) throw new Error('Component not found: ' + baseRoute);
-	if(!transform) throw new Error("Babel standalone runner not found on the window context.");
+	collectDependencies(rawCode, baseRoute, dependenciesToFetch);
+
+	await preloadDependencies(dependenciesToFetch);
+
+	const encoder = new TextEncoder();
+
+	// 1. Safely convert the JSON string containing UTF-8 characters to base64
+	const jsonString = JSON.stringify({
+		version: 3,
+		sources: [targetUrl],
+		sourcesContent: [rawCode],
+		names: [],
+		mappings: '',
+		ignoreList: []
+	});
+
+	// A safe UTF-8 base64 conversion using TextEncoder + u8 array mapping
+	const jsonBytes = encoder.encode(jsonString);
+	const binaryString = Array.from(jsonBytes, (byte) => String.fromCharCode(byte)).join('');
+	const base64Json = btoa(binaryString);
+
+	// 2. Concatenate your code with the safe base64 source map
+	const completeCode = rawCode + '\n\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,' + base64Json;
+
+	// 3. Convert the final string to your array buffer
+	const arrayBuffer = encoder.encode(completeCode).buffer;
+
+	const editorDatabase = SettingsManager.get('github', 'environmentRepository');
+
+	// Commit the compiled asset to your service worker pipeline
+	await putRecord(DB_STORE_NAME, {
+		timestamp: new Date(),
+		mode: FS_FILE,
+		contents: arrayBuffer,
+		path: targetUrl,
+		parent: targetUrl.substring(0, targetUrl.lastIndexOf('/')),
+		sha: await getGitShaBrowser(arrayBuffer)
+	}, editorDatabase);
+
+	return targetUrl;
+}
+
+
+
+export async function fetchTranspileAndStore(baseRoute: string, dependenciesToFetch?: string[]): Promise<string>
+{
+	dependenciesToFetch ??= [];
+
 	const targetUrl = baseRoute.replace(/\.ts$/, '.js').replace(/^\.?\//, '/base/');
 
 	const existingPromise = registry.get(targetUrl);
@@ -191,6 +281,12 @@ export async function fetchTranspileAndStore(baseRoute: string, dependenciesToFe
 	{
 		console.log('Transpiling and saving: ' + targetUrl);
 	}
+
+	const response = await fetch(baseRoute + '?t=' + Date.now());
+	const rawCode = await response.text();
+
+	if(!response.ok) throw new Error('Component not found: ' + baseRoute);
+	if(!transform) throw new Error("Babel standalone runner not found on the window context.");
 
 	collectDependencies(rawCode, baseRoute, dependenciesToFetch);
 
@@ -411,6 +507,7 @@ export async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 
 	if(route.url.endsWith('.js'))
 	{
+
 		const modulePromise = import(/* webpackIgnore: true */ route.url + '?t=' + Date.now() + '&local-csp=true');
 		registry.set(route.url, modulePromise);
 		const module = await modulePromise;
@@ -436,44 +533,6 @@ export async function loadAndInstantiate(route: ComponentRoute): Promise<any>
 }
 
 
-// Define the class property registry somewhere above this method in your class:
-// private registry = new Map<string, Promise<any>>();
-
-export async function loadScript(src: string): Promise<any>
-{
-	const absoluteUrl: string = new URL(src, window.location.origin).pathname;
-
-	// ─── THE CONCURRENCY LOCK CHECK ───
-	// If it's already loaded OR currently downloading, return the existing tracking handle
-	const existingPromise = registry.get(absoluteUrl);
-	if(existingPromise)
-	{
-		return existingPromise;
-	}
-
-	// Create the promise and cache it immediately to block secondary asset creation runs
-	const scriptPromise = new Promise<void>((resolve, reject) =>
-	{
-		const script: HTMLScriptElement = document.createElement('script');
-		script.src = src + '?t=' + Date.now();
-		script.type = 'text/javascript';
-		script.async = false; // Preserves literal script tree order
-
-		script.onload = () => resolve();
-		script.onerror = () =>
-		{
-			registry.delete(absoluteUrl); // Evict on failure so a retry can clear the pipe
-			reject(new Error(`Failed execution pipeline: ${src}`));
-		};
-
-		document.head.appendChild(script);
-	});
-
-	registry.set(absoluteUrl, scriptPromise);
-	return scriptPromise;
-}
-
-
 /*
 =======================================================================
 Sys_CompileJsToWasmRef
@@ -482,79 +541,83 @@ Dynamically generates a minimal, isolated WebAssembly module in memory
 that binds a JavaScript function to a true native WASM execution vector.
 =======================================================================
 */
-function Sys_CompileJsToWasmRef(jsFunction, paramCount = 1) {
-    // WebAssembly Opcode Constants
-    const WASM_MAGIC = [0x00, 0x61, 0x73, 0x6d];
-    const WASM_VERSION = [0x01, 0x00, 0x00, 0x00];
+function Sys_CompileJsToWasmRef(jsFunction, paramCount = 1)
+{
+	// WebAssembly Opcode Constants
+	const WASM_MAGIC = [0x00, 0x61, 0x73, 0x6d];
+	const WASM_VERSION = [0x01, 0x00, 0x00, 0x00];
 
-    const SECTION_TYPE = 1;
-    const SECTION_IMPORT = 2;
-    const SECTION_EXPORT = 7;
+	const SECTION_TYPE = 1;
+	const SECTION_IMPORT = 2;
+	const SECTION_EXPORT = 7;
 
-    const TYPE_I32 = 0x7f;
-    const TYPE_FUNC = 0x60;
+	const TYPE_I32 = 0x7f;
+	const TYPE_FUNC = 0x60;
 
-    // 1. Build the Type Section payload: (i32, i32, ...) -> i32
-    // Generates an exact parameter map matching the requested arity footprint
-    const typePayload = [
-        0x01,                      // Number of types defined in this section
-        TYPE_FUNC,                 // Form: Regular function type definition
-        paramCount,                // Parameter count (e.g., 1 for dllEntry, or more for traps)
-        ...Array(paramCount).fill(TYPE_I32), // Fill parameter types as i32 scalars
-        0x01,                      // Return count
-        TYPE_I32                   // Return type: i32
-    ];
+	// 1. Build the Type Section payload: (i32, i32, ...) -> i32
+	// Generates an exact parameter map matching the requested arity footprint
+	const typePayload = [
+		0x01,                      // Number of types defined in this section
+		TYPE_FUNC,                 // Form: Regular function type definition
+		paramCount,                // Parameter count (e.g., 1 for dllEntry, or more for traps)
+		...Array(paramCount).fill(TYPE_I32), // Fill parameter types as i32 scalars
+		0x01,                      // Return count
+		TYPE_I32                   // Return type: i32
+	];
 
-    // 2. Build the Import Section payload: Imports "env.f" matching Type Index 0
-    const importPayload = [
-        0x01,                      // Number of imports
-        0x03, 0x65, 0x6e, 0x76,    // Module Name String: "env"
-        0x01, 0x66,                // Field Name String: "f"
-        0x00,                      // Kind: External Function
-        0x00                       // Type Index mapped to Type Slot 0
-    ];
+	// 2. Build the Import Section payload: Imports "env.f" matching Type Index 0
+	const importPayload = [
+		0x01,                      // Number of imports
+		0x03, 0x65, 0x6e, 0x76,    // Module Name String: "env"
+		0x01, 0x66,                // Field Name String: "f"
+		0x00,                      // Kind: External Function
+		0x00                       // Type Index mapped to Type Slot 0
+	];
 
-    // 3. Build the Export Section payload: Exports internal function 0 as "f"
-    const exportPayload = [
-        0x01,                      // Number of exports
-        0x01, 0x66,                // Export Name String: "f"
-        0x00,                      // Kind: External Function
-        0x00                       // Function Index: 0 (The imported function)
-    ];
+	// 3. Build the Export Section payload: Exports internal function 0 as "f"
+	const exportPayload = [
+		0x01,                      // Number of exports
+		0x01, 0x66,                // Export Name String: "f"
+		0x00,                      // Kind: External Function
+		0x00                       // Function Index: 0 (The imported function)
+	];
 
-    // Helper function to format sections with standard LEB128 length headers
-    function createSection(sectionId, payload) {
-        return [sectionId, ...encodeLEB128(payload.length), ...payload];
-    }
+	// Helper function to format sections with standard LEB128 length headers
+	function createSection(sectionId, payload)
+	{
+		return [sectionId, ...encodeLEB128(payload.length), ...payload];
+	}
 
-    // Combine sections into a solid, structured byte sequence
-    const totalModuleBytes = new Uint8Array([
-        ...WASM_MAGIC,
-        ...WASM_VERSION,
-        ...createSection(SECTION_TYPE, typePayload),
-        ...createSection(SECTION_IMPORT, importPayload),
-        ...createSection(SECTION_EXPORT, exportPayload)
-    ]);
+	// Combine sections into a solid, structured byte sequence
+	const totalModuleBytes = new Uint8Array([
+		...WASM_MAGIC,
+		...WASM_VERSION,
+		...createSection(SECTION_TYPE, typePayload),
+		...createSection(SECTION_IMPORT, importPayload),
+		...createSection(SECTION_EXPORT, exportPayload)
+	]);
 
-    // Instantiate the custom binary sandbox container instantly on the main thread
-    const transientModule = new WebAssembly.Module(totalModuleBytes);
-    const transientInstance = new WebAssembly.Instance(transientModule, {
-        env: { f: jsFunction }
-    });
+	// Instantiate the custom binary sandbox container instantly on the main thread
+	const transientModule = new WebAssembly.Module(totalModuleBytes);
+	const transientInstance = new WebAssembly.Instance(transientModule, {
+		env: { f: jsFunction }
+	});
 
-    // Extract the raw, certified WebAssembly execution handler
-    return transientInstance.exports.f;
+	// Extract the raw, certified WebAssembly execution handler
+	return transientInstance.exports.f;
 }
 
 // Minimal LEB128 unsigned integer length packer utility
-function encodeLEB128(value) {
-    const bytes: number[] = [];
-    do {
-        let byte = value & 0x7F;
-        value >>= 7;
-        if (value !== 0) byte |= 0x80;
-        bytes.push(byte);
-    } while (value !== 0);
-    return bytes;
+function encodeLEB128(value)
+{
+	const bytes: number[] = [];
+	do
+	{
+		let byte = value & 0x7F;
+		value >>= 7;
+		if(value !== 0) byte |= 0x80;
+		bytes.push(byte);
+	} while(value !== 0);
+	return bytes;
 }
 

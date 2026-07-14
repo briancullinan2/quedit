@@ -5,7 +5,7 @@ const Paint = require('./bundle.js');
 import type { HistoryToolbar } from '../bundle/menu-history';
 import { Message } from '@lumino/messaging';
 import type { SettingConfig } from '../bundle/settings';
-import { arrayBufferToDataUri } from '../rosetta/binary';
+import { arrayBufferToDataUri } from '../rosetta/binary.js';
 
 
 export interface MiniPaintApp
@@ -705,14 +705,13 @@ export class PaintWidget extends Widget implements MenuModules
 	public _instance?: MiniPaintApp;
 	public modules?: Record<string, Record<string, Function>>;
 	protected _fileId: string;
-	protected _initialContent: string | ArrayBuffer | HTMLImageElement;
+	protected _initialContent?: string | ArrayBuffer | HTMLImageElement;
 
 	constructor(fileId?: string, initialContent?: string | ArrayBuffer | HTMLImageElement)
 	{
 		super();
 
 		this._fileId = PaintWidget.getNextTempName();
-		this._initialContent = '';
 
 		this.id = 'mini-paint-panel';
 		this.title.label = fileId ?? 'Canvas Editor';
@@ -824,16 +823,15 @@ export class PaintWidget extends Widget implements MenuModules
 			this._instance = window.initializeMiniPaint();
 			this.modules = this._instance?.GUI.modules;
 
-			const isntance = this._instance;
-			let img: HTMLImageElement | undefined = undefined;
+			const instance = this._instance;
 			if(this._initialContent instanceof ArrayBuffer)
 			{
 				this._initialContent = arrayBufferToDataUri(this._initialContent);
 			}
-			if(typeof this._initialContent === 'string' && isntance)
+			if(typeof this._initialContent === 'string' && this._initialContent.length > 0 && instance)
 			{
 				PaintWidget.stringToImageElement(this._initialContent)
-					.then(img => PaintWidget.setInitialContent(this._fileId, img, isntance));
+					.then(img => PaintWidget.setInitialContent(this._fileId, img, instance));
 			}
 
 			this._onLoadPaint();
