@@ -5,7 +5,7 @@ const Paint = require('./bundle.js');
 import type { HistoryToolbar } from '../bundle/menu-history';
 import { Message } from '@lumino/messaging';
 import type { SettingConfig } from '../bundle/settings';
-import { arrayBufferToDataUri } from '../rosetta/binary.js';
+import { arrayBufferToDataUri } from '../rosetta/binary.mjs';
 
 
 export interface MiniPaintApp

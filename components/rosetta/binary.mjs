@@ -1,6 +1,7 @@
 
 export const hasSequentialBinaryRegex = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]{3,}/;
-export const checkMagic = (bytes, offset, pattern) =>
+
+export function checkMagic(bytes, offset, pattern)
 {
 	if(bytes.length < offset + pattern.length) return false;
 	return pattern.every((byte, i) => bytes[offset + i] === byte);

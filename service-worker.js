@@ -943,6 +943,7 @@ function getMimeType(url)
 {
 	if(url.endsWith('.wasm')) return 'application/wasm';
 	if(url.endsWith('.js')) return 'application/javascript; charset=utf-8';
+	if(url.endsWith('.mjs')) return 'application/javascript; charset=utf-8';
 	if(url.endsWith('.json')) return 'application/json; charset=utf-8';
 	if(url.endsWith('.html')) return 'text/html; charset=utf-8';
 	if(url.endsWith('.css')) return 'text/css; charset=utf-8';

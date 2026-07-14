@@ -144,7 +144,7 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 		{
 			return existingPromise;
 		}
-		if(url.endsWith('.mjs'))
+		/*if(url.endsWith('.mjs'))
 		{
 			const existingPromise = registry.get(url);
 			if(existingPromise)
@@ -153,10 +153,10 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 			}
 
 			const scriptPromise = fetchAndStore(url, dependenciesToFetch)
-				.then(targetUrl => import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true'));
+				.then(targetUrl => import(/* webpackIgnore: true targetUrl[0] + '?t=' + Date.now() + '&local-csp=true'));
 			registry.set(targetUrl, scriptPromise);
 			return scriptPromise;
-		}
+		} */
 		else if(url.endsWith('.ts'))
 		{
 			const scriptPromise = fetchTranspileAndStore(url, dependenciesToFetch)
@@ -177,14 +177,14 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 
 export async function loadScript(src: string): Promise<any>
 {
-	const targetUrl = await fetchAndStore(src);
+	const [targetUrl, isModule] = await fetchAndStore(src);
 
 	// Create the promise and cache it immediately to block secondary asset creation runs
 	const scriptPromise = new Promise<void>((resolve, reject) =>
 	{
 		const script: HTMLScriptElement = document.createElement('script');
 		script.src = targetUrl + '?t=' + Date.now() + '&local-csp=true';
-		script.type = 'text/javascript';
+		script.type = isModule ? 'module' : 'text/javascript';
 		script.async = false; // Preserves literal script tree order
 
 		script.onload = () => resolve();
@@ -202,23 +202,11 @@ export async function loadScript(src: string): Promise<any>
 }
 
 
-export async function fetchAndStore(baseRoute: string, dependenciesToFetch?: string[])
+export async function fetchAndStore(baseRoute: string, dependenciesToFetch?: string[]): Promise<[string, boolean]>
 {
 	dependenciesToFetch ??= [];
 
-	const targetUrl = baseRoute.replace(/\.mjs$/, '.js').replace(/^\.?\//, '/base/');
-
-	const existingPromise = registry.get(targetUrl);
-	if(existingPromise)
-	{
-		console.log('Already transpiled: ' + targetUrl);
-		return targetUrl;
-	} else
-	{
-		console.log('Transpiling and saving: ' + targetUrl);
-	}
-
-
+	const targetUrl = baseRoute.replace(/^\.?\//, '/base/');
 	const response = await fetch(baseRoute + '?t=' + Date.now());
 	const rawCode = await response.text();
 
@@ -261,7 +249,7 @@ export async function fetchAndStore(baseRoute: string, dependenciesToFetch?: str
 		sha: await getGitShaBrowser(arrayBuffer)
 	}, editorDatabase);
 
-	return targetUrl;
+	return [targetUrl, !!rawCode.match(/^export\s/gmi)];
 }
 
 

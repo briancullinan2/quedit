@@ -8,7 +8,7 @@ const webpack = require('webpack');
 
 module.exports = {
 	mode: 'production',
-	devtool: 'inline-source-map',
+	//devtool: 'inline-source-map',
 	entry: [
 		'./components/bundle/lumino.ts',
 		'./components/bundle/lumino-files.ts'
@@ -33,7 +33,7 @@ module.exports = {
 		noParse: [/[\\/]node_modules[\\/]@babel[\\/]standalone[\\/]/],
 		rules: [
 			{
-				test: /rosetta\/binary\.js$/,
+				test: /rosetta\/binary/,
 				type: 'javascript/auto', // Resets the module type configuration
 				parser: {
 					sourceType: 'module' // Explicitly forces webpack to permit import/export
