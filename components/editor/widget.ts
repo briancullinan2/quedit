@@ -21,6 +21,7 @@ declare module "ace-builds" {
 interface AceSession extends Ace.EditSession
 {
 	workspaceFileId?: string;
+	$worker?: Worker;
 }
 
 declare global
@@ -37,6 +38,7 @@ declare global
 
 	interface Window
 	{
+		tempCount: number;
 		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
 		ace: typeof ace;
 		LayoutAdjuster: typeof LayoutAdjuster;
@@ -263,6 +265,72 @@ function getModeByFilename(filePath: string)
 }
 
 
+let navTimer: ReturnType<typeof setTimeout> | undefined;
+
+
+/*
+// TODO: fix block tracker
+function onBlockTrackerCursorChange(aceEditor: Ace.Editor): void
+{
+	if(typeof NavHistory !== "undefined" && NavHistory.isNavigating)
+	{
+		return;
+	}
+
+	if(navTimer)
+	{
+		clearTimeout(navTimer);
+	}
+
+	navTimer = setTimeout(() =>
+	{
+		const session = aceEditor.getSession() as Ace.EditSession & { workspaceFileId?: string | number; };
+		if(!session) return;
+
+		const pos = aceEditor.getCursorPosition();
+		const currentFile = typeof window.currentOpenFileId !== "undefined" ? window.currentOpenFileId : null;
+
+		const humanRow = pos.row + 1;
+		const humanCol = pos.column + 1;
+
+		const lastPoint: NavPoint | null = typeof NavHistory !== "undefined"
+			? NavHistory.stack[NavHistory.index]
+			: null;
+
+		if(!lastPoint || lastPoint.fileId !== currentFile || Math.abs(lastPoint.row - humanRow) > 5)
+		{
+			if(typeof NavHistory !== "undefined")
+			{
+				NavHistory.push(currentFile, humanRow, humanCol);
+			}
+		}
+
+		if(typeof window.updateEditorLineIds === "function")
+		{
+			window.updateEditorLineIds();
+		}
+
+		// Strongly type the hidden multi-layered Web Worker client inside Ace
+		const workerContainer = session as AceSession;
+		const activeWorker = workerContainer.$worker?.$worker;
+
+		if(activeWorker)
+		{
+			activeWorker.postMessage({
+				event: "calculateActiveBlockRange",
+				data: { lineNumber: humanRow }
+			});
+
+			activeWorker.postMessage({
+				event: "getFoldRegions",
+				data: { fileId: session.workspaceFileId ?? null }
+			});
+		}
+
+	}, 150);
+}
+*/
+
 function bindBlockTrackerToSession(session: Ace.EditSession)
 {
 	if(!session || !session.selection) return;
@@ -283,7 +351,6 @@ class AceEditorPool
 {
 	static instances: Array<{ editor: Ace.Editor; inUse: boolean; }> = [];
 	public static sessionCache: ISessionCache = {};
-	private static tempCount = 1;
 
 	public static getOrCreateAceSession(fileId: string, content: string): any
 	{
@@ -423,7 +490,7 @@ class AceEditorPool
 
 	public static getNextTempName(): string
 	{
-		return 'temp' + (++this.tempCount) + '.c';
+		return 'temp' + (++window.tempCount) + '.c';
 	}
 
 
@@ -454,7 +521,7 @@ export class AceEditorWidget extends Widget
 		super();
 		this.addClass('lm-AceEditorWidget');
 
-		this._fileId = AceEditorPool.getNextTempName();
+		this._fileId = fileId || AceEditorPool.getNextTempName();
 		this._initialContent = initialContent || AceEditorWidget._defaultContent;
 
 		// Ensure Lumino layout updates do not break text selection systems
@@ -538,8 +605,9 @@ export class AceEditorWidget extends Widget
 	static openFileInNewTab(fileId: string, fileName: string, fileContent: string)
 	{
 		// 1. Optional Check: Look for an existing open tab matching this file ID to prevent duplicates
-		const tabs = Array.from(window.mainDock.widgets()) as AceEditorWidget[];
-		const existingTab = tabs.find(t => t.fileId === fileId);
+		const tabs = Array.from(window.mainDock.widgets());
+		const existingTab = tabs.find(t => t.constructor.name === AceEditorWidget.name
+			&& (t as AceEditorWidget).fileId === fileId);
 
 		if(existingTab)
 		{
@@ -550,8 +618,8 @@ export class AceEditorWidget extends Widget
 
 		// take over the default tab instead of creating a new one
 		const existingDefault = tabs.find(t => t.constructor.name === AceEditorWidget.name
-			&& t._editor?.getValue() === AceEditorWidget._defaultContent
-		);
+			&& (t as AceEditorWidget)._editor?.getValue() === AceEditorWidget._defaultContent
+		) as AceEditorWidget;
 		if(existingDefault)
 		{
 			existingDefault.title.label = fileName;

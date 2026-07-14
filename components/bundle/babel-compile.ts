@@ -472,3 +472,89 @@ export async function loadScript(src: string): Promise<any>
 	registry.set(absoluteUrl, scriptPromise);
 	return scriptPromise;
 }
+
+
+/*
+=======================================================================
+Sys_CompileJsToWasmRef
+
+Dynamically generates a minimal, isolated WebAssembly module in memory
+that binds a JavaScript function to a true native WASM execution vector.
+=======================================================================
+*/
+function Sys_CompileJsToWasmRef(jsFunction, paramCount = 1) {
+    // WebAssembly Opcode Constants
+    const WASM_MAGIC = [0x00, 0x61, 0x73, 0x6d];
+    const WASM_VERSION = [0x01, 0x00, 0x00, 0x00];
+
+    const SECTION_TYPE = 1;
+    const SECTION_IMPORT = 2;
+    const SECTION_EXPORT = 7;
+
+    const TYPE_I32 = 0x7f;
+    const TYPE_FUNC = 0x60;
+
+    // 1. Build the Type Section payload: (i32, i32, ...) -> i32
+    // Generates an exact parameter map matching the requested arity footprint
+    const typePayload = [
+        0x01,                      // Number of types defined in this section
+        TYPE_FUNC,                 // Form: Regular function type definition
+        paramCount,                // Parameter count (e.g., 1 for dllEntry, or more for traps)
+        ...Array(paramCount).fill(TYPE_I32), // Fill parameter types as i32 scalars
+        0x01,                      // Return count
+        TYPE_I32                   // Return type: i32
+    ];
+
+    // 2. Build the Import Section payload: Imports "env.f" matching Type Index 0
+    const importPayload = [
+        0x01,                      // Number of imports
+        0x03, 0x65, 0x6e, 0x76,    // Module Name String: "env"
+        0x01, 0x66,                // Field Name String: "f"
+        0x00,                      // Kind: External Function
+        0x00                       // Type Index mapped to Type Slot 0
+    ];
+
+    // 3. Build the Export Section payload: Exports internal function 0 as "f"
+    const exportPayload = [
+        0x01,                      // Number of exports
+        0x01, 0x66,                // Export Name String: "f"
+        0x00,                      // Kind: External Function
+        0x00                       // Function Index: 0 (The imported function)
+    ];
+
+    // Helper function to format sections with standard LEB128 length headers
+    function createSection(sectionId, payload) {
+        return [sectionId, ...encodeLEB128(payload.length), ...payload];
+    }
+
+    // Combine sections into a solid, structured byte sequence
+    const totalModuleBytes = new Uint8Array([
+        ...WASM_MAGIC,
+        ...WASM_VERSION,
+        ...createSection(SECTION_TYPE, typePayload),
+        ...createSection(SECTION_IMPORT, importPayload),
+        ...createSection(SECTION_EXPORT, exportPayload)
+    ]);
+
+    // Instantiate the custom binary sandbox container instantly on the main thread
+    const transientModule = new WebAssembly.Module(totalModuleBytes);
+    const transientInstance = new WebAssembly.Instance(transientModule, {
+        env: { f: jsFunction }
+    });
+
+    // Extract the raw, certified WebAssembly execution handler
+    return transientInstance.exports.f;
+}
+
+// Minimal LEB128 unsigned integer length packer utility
+function encodeLEB128(value) {
+    const bytes: number[] = [];
+    do {
+        let byte = value & 0x7F;
+        value >>= 7;
+        if (value !== 0) byte |= 0x80;
+        bytes.push(byte);
+    } while (value !== 0);
+    return bytes;
+}
+

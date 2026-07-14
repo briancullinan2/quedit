@@ -5,11 +5,12 @@ const Paint = require('./bundle.js');
 import type { HistoryToolbar } from '../bundle/menu-history';
 import { Message } from '@lumino/messaging';
 import type { SettingConfig } from '../bundle/settings';
+import { arrayBufferToDataUri } from '../rosetta/binary';
 
 
 export interface MiniPaintApp
 {
-	Actions: typeof MiniPaintActions;
+	Actions: MiniPaintActions;
 	Config: MiniPaintConfig;
 	FileOpen: MiniPaintFileOpen;
 	FileSave: MiniPaintFileSave;
@@ -50,6 +51,7 @@ export interface MiniPaintConfig
 	ZOOM: number;
 	WIDTH: number;
 	HEIGHT: number;
+	layers: any[];
 	[key: string]: any; // Catch-all fallback for dynamic properties
 }
 
@@ -80,6 +82,8 @@ export interface MiniPaintLayers
 	select(layer_id: number): void;
 	get_layer(layer_id: number): MiniPaintLayerData | null;
 	convert_to_canvas(layer_id: number | null): HTMLCanvasElement;
+	is_layer_empty(layer_id: number): boolean;
+	get_layers(): any[];
 }
 
 export interface MiniPaintLayerData
@@ -116,6 +120,7 @@ export interface MiniPaintFileOpen
 	load_file_handler(event: Event | DragEvent): void;
 	open_file(file: File): void;
 	open_url(url: string): void;
+	extract_exif(object: HTMLImageElement): any;
 }
 
 export interface MiniPaintFileSave
@@ -127,9 +132,10 @@ export interface MiniPaintFileSave
 
 
 // Declares the bundle components available via import maps or actions modules
-declare namespace MiniPaintActions
+declare interface MiniPaintActions
 {
-	function Bundle_Action(type: string, data: any): void;
+	Bundle_Action(type: string, data: any): void;
+	[key: string]: any;
 }
 
 // Global declaration augmentation so the compiler understands window attachment targets
@@ -698,10 +704,15 @@ export class PaintWidget extends Widget implements MenuModules
 	private _isAttachedToMenu = false;
 	public _instance?: MiniPaintApp;
 	public modules?: Record<string, Record<string, Function>>;
+	protected _fileId: string;
+	protected _initialContent: string | ArrayBuffer | HTMLImageElement;
 
-	constructor(fileId?: string, initialContent?: string)
+	constructor(fileId?: string, initialContent?: string | ArrayBuffer | HTMLImageElement)
 	{
 		super();
+
+		this._fileId = PaintWidget.getNextTempName();
+		this._initialContent = '';
 
 		this.id = 'mini-paint-panel';
 		this.title.label = fileId ?? 'Canvas Editor';
@@ -724,6 +735,19 @@ export class PaintWidget extends Widget implements MenuModules
 			}
 		});
 	}
+
+
+	public get fileId(): string
+	{
+		return this._fileId;
+	}
+
+
+	public static getNextTempName(): string
+	{
+		return 'temp' + (++window.tempCount) + '.bmp';
+	}
+
 
 
 	private _buildInterface(): void
@@ -799,6 +823,19 @@ export class PaintWidget extends Widget implements MenuModules
 		{
 			this._instance = window.initializeMiniPaint();
 			this.modules = this._instance?.GUI.modules;
+
+			const isntance = this._instance;
+			let img: HTMLImageElement | undefined = undefined;
+			if(this._initialContent instanceof ArrayBuffer)
+			{
+				this._initialContent = arrayBufferToDataUri(this._initialContent);
+			}
+			if(typeof this._initialContent === 'string' && isntance)
+			{
+				PaintWidget.stringToImageElement(this._initialContent)
+					.then(img => PaintWidget.setInitialContent(this._fileId, img, isntance));
+			}
+
 			this._onLoadPaint();
 		}
 	}
@@ -950,6 +987,144 @@ export class PaintWidget extends Widget implements MenuModules
 			this._instance.Layers.render();
 		}
 	}
+
+
+	static async openFileInNewTab(fileId: string, fileName: string, fileContent: string | ArrayBuffer | HTMLImageElement)
+	{
+		const tabs = Array.from(window.mainDock.widgets());
+		const existingTab = tabs.find(t => (t as PaintWidget).fileId === fileId);
+
+		if(existingTab)
+		{
+			// If it's already open, just activate it and bring it to focus
+			window.mainDock.activateWidget(existingTab);
+			return;
+		}
+
+		const existingDefault = tabs.find(t => t.constructor.name === PaintWidget.name
+			&& (t as PaintWidget)._instance
+			&& (t as PaintWidget)._instance?.Config
+			&& (t as PaintWidget)._instance?.Layers
+			&& (t as PaintWidget)._instance?.Config.layers.length === 1
+			&& (t as PaintWidget)._instance?.Layers.is_layer_empty((t as PaintWidget)._instance?.Config.layer.id)
+		) as PaintWidget;
+		if(existingDefault)
+		{
+			let img: HTMLImageElement | undefined = undefined;
+			if(fileContent instanceof ArrayBuffer)
+			{
+				fileContent = arrayBufferToDataUri(fileContent);
+			}
+			if(typeof fileContent === 'string')
+			{
+				img = await this.stringToImageElement(fileContent);
+			}
+			if(img && existingDefault._instance)
+			{
+				this.setInitialContent(fileName, img, existingDefault._instance);
+			}
+			window.mainDock.activateWidget(existingDefault);
+		}
+
+		const newTab = new PaintWidget(fileId, fileContent);
+		newTab._fileId = fileId;
+		newTab._initialContent = fileContent;
+
+		newTab.title.label = fileName;
+		newTab.title.closable = true;
+
+		window.LayoutAdjuster.addOptimalWidgetLayout(window.mainDock, newTab, {
+			type: 'editor',
+			projectId: newTab.constructor.name
+		});
+	}
+
+
+
+	private static stringToImageElement(url: string): Promise<HTMLImageElement>
+	{
+		return new Promise((resolve) =>
+		{
+			const img = new Image();
+			img.crossOrigin = "Anonymous";
+
+			img.onload = () => resolve(img);
+
+			img.onerror = (e) =>
+			{
+				console.error("Failed to decode image data stream.");
+				resolve(img); // Avoid locking parent execution context threads on crash limits
+			};
+
+			// Fire single data stream translation pass
+			img.src = url;
+		});
+	}
+
+
+	private static setInitialContent(fileName: string, img: HTMLImageElement, instance: MiniPaintApp)
+	{
+		console.log(`[VFS Media] Decoded dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
+
+		// 1. Process EXIF hooks inline while the image memory context is active
+		let exif;
+		if((fileName.includes('.jpg') || fileName.includes('.jpeg')) && typeof instance.FileOpen.extract_exif === 'function')
+		{
+			try
+			{
+				exif = instance.FileOpen.extract_exif(img);
+			} catch(exifErr)
+			{
+				console.warn("EXIF extraction skipped:", exifErr);
+			}
+		}
+
+		// 2. Dispatch straight into miniPaint engine pipeline using the SAME image object instance reference
+		if(instance.State && instance.Actions)
+		{
+			try
+			{
+				if(instance.Layers && typeof instance.Layers.get_layers === 'function')
+				{
+					const existingLayers = instance.Layers.get_layers();
+					// Loop backwards to cleanly handle splicing indices out of the state trees
+					for(let i = existingLayers.length - 1; i >= 0; i--)
+					{
+						instance.State.do_action(new instance.Actions.Delete_layer_action(existingLayers[i].id));
+					}
+				}
+
+				const layerPayload = {
+					name: fileName || "Data URL",
+					type: "image",
+					link: img, // Pass the already loaded element directly
+					width: img.naturalWidth,
+					height: img.naturalHeight,
+					width_original: img.naturalWidth,
+					height_original: img.naturalHeight,
+					x: 0,
+					y: 0,
+					_exif: exif
+				};
+
+				instance.State.do_action(
+					new instance.Actions.Bundle_action("open_file_data_url", "Open File Data URL", [
+						new instance.Actions.Insert_layer_action(layerPayload),
+						new instance.Actions.Autoresize_canvas_action(img.naturalWidth, img.naturalHeight, null, true, true)
+					])
+				);
+
+			} catch(err)
+			{
+				console.error("Failed executing miniPaint bundled actions:", err);
+			}
+		} else
+		{
+			console.error("miniPaint core engine references missing during canvas load cycle.");
+		}
+
+	}
+
 }
 
 

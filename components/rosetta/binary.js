@@ -3417,7 +3417,8 @@ function isQuakeBinaryMagic(bytes)
 	const exportsObject = {
 		hasSequentialBinaryRegex,
 		hexDump,
-		AssetInspector
+		AssetInspector,
+		arrayBufferToDataUri
 	};
 
 	// 1. CommonJS Node environment

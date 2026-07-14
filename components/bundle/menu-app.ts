@@ -2,6 +2,8 @@ import { CommandRegistry } from "@lumino/commands";
 import { DockPanel, Widget } from "@lumino/widgets";
 import { triggerPanelRoute } from "./menu";
 import type { FrameRater } from "../terminal/widget";
+import { SettingsManager } from "./settings";
+import type { AceEditorWidget } from "../editor/widget";
 
 declare global
 {
@@ -11,6 +13,7 @@ declare global
 		ApplicationToolbar: typeof ApplicationToolbar;
 		mainDock: DockPanel;
 		terminalFrameLimiter: typeof FrameRater;
+		AceEditorWidget: typeof AceEditorWidget;
 	}
 }
 
@@ -97,9 +100,10 @@ export class ApplicationToolbar extends Widget
 			this._commands.addCommand('app-edit-settings', {
 				label: 'Edit Settings',
 				iconClass: 'bx bx-gear',
-				execute: () =>
+				execute: async () =>
 				{
-					console.log('Edit Settings Command Executed');
+					const [fileId, fileName, settingsJson] = await SettingsManager.settings();
+					window.AceEditorWidget.openFileInNewTab(fileId ?? 'settings.json', fileName ?? 'settings.json', settingsJson ?? '');
 				}
 			});
 		}

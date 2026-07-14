@@ -25,6 +25,7 @@ declare global
 {
 	interface Window
 	{
+		tempCount: number;
 		mainDock: DockPanel;
 		SettingsManager: Settings;
 		engineRepository?: string | undefined | null;
@@ -34,6 +35,8 @@ declare global
 	}
 }
 
+
+window.tempCount = 0;
 
 
 if(!window.IMPORT_SETTINGS)
@@ -67,7 +70,6 @@ export class Settings
 
 
 	private previousSettings: any = null;
-	private tempCount: number = 0;
 
 
 	private constructor() { }
@@ -351,7 +353,7 @@ export class Settings
 	public async settings(): Promise<FileOpenTuple>
 	{
 		const database = `${RepositoryToolbar.owner?.value}/${RepositoryToolbar.repository?.value}`;
-		const filePath = `settings${++this.tempCount}.json`;
+		const filePath = `settings${++window.tempCount}.json`;
 
 		if(window.engineRepository?.startsWith('Quake3e'))
 		{

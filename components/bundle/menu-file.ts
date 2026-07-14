@@ -2,14 +2,19 @@ import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
 import { MenuConfig, MenuManager } from "./menu-manager";
 import type { PaintWidget } from '../paint/widget';
+import type { AceEditorWidget } from "../editor/widget";
 
 declare global
 {
 	interface Window
 	{
+		tempCount: number;
+		lastInteractedWidget: Widget | null;
+		previousInteractedWidget: Widget | null;
 		globalModules?: Record<string, Record<string, Function>>;
 		fileToolbar: FileToolbar;
 		FileToolbar: typeof FileToolbar;
+		AceEditorWidget: typeof AceEditorWidget;
 		registerAllCommands: (menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry) => void;
 	}
 }
@@ -484,6 +489,41 @@ if(!window.globalModules['file/exit'])
 				a.click();
 			}
 		}
+	};
+
+	window.globalModules['file/new'] = {
+		new: function ()
+		{
+			const candidateTypes = ['AceEditorWidget', 'PaintWidget'];
+			// TODO: scan widgets for open editors and create a new file inside that editor
+			//   if there is none, make a new ace editor file
+			const editorCandidates: string[] = [];
+			if(window.lastInteractedWidget
+				&& candidateTypes.includes(window.lastInteractedWidget.constructor.name))
+			{
+				editorCandidates.push(window.lastInteractedWidget.constructor.name);
+			}
+			if(window.previousInteractedWidget
+				&& candidateTypes.includes(window.previousInteractedWidget.constructor.name))
+			{
+				editorCandidates.push(window.previousInteractedWidget.constructor.name);
+			}
+			for(let panel in window.mainDock.widgets())
+			{
+				if(candidateTypes.includes(panel.constructor.name))
+				{
+					editorCandidates.push(panel.constructor.name);
+				}
+			}
+			if(editorCandidates[0] === 'AceEditorWidget')
+			{
+				window.AceEditorWidget.openFileInNewTab('new-file-' + (++window.tempCount), 'New File', '');
+			} else if(editorCandidates[0] === 'PaintWidget')
+			{
+
+			}
+		}
+
 	};
 }
 
