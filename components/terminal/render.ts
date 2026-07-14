@@ -119,7 +119,7 @@ export async function captureRenderToTerminalCorner(): Promise<void>
 {
 	if(typeof getAvailableContext === 'undefined')
 	{
-		await DependencyLoader.loadModule('toji');
+		await window.triggerPanelRoute('toji', window.mainDock);
 	}
 
 	const viewport = document.getElementById("viewport");
@@ -184,7 +184,7 @@ export async function captureRenderToTerminal(): Promise<void>
 {
 	if(typeof getAvailableContext === 'undefined')
 	{
-		await DependencyLoader.loadModule('toji');
+		await window.triggerPanelRoute('toji', window.mainDock);
 	}
 
 	const viewport = document.getElementById("viewport");

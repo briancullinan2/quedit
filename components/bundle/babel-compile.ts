@@ -1,0 +1,450 @@
+import
+{
+	PluginObj, NodePath, transform
+	, types as tType, traverse
+	, packages
+} from '@babel/standalone';
+import { DB_STORE_NAME, FS_FILE, putRecord } from './local';
+import { Settings, SettingsManager } from './settings';
+import { getGitShaBrowser } from './github-tools';
+import { path } from './global';
+import type { ComponentRoute } from './menu';
+
+const parseBabel = packages.parser.parse;
+const traverse = packages.traverse.default;
+
+export const registry = new Map<string, Promise<void>>(
+	[...document.scripts]
+		.map((s: HTMLScriptElement) => s.getAttribute('src'))
+		.filter((src): src is string => Boolean(src))
+		.concat([...document.styleSheets].map((s: CSSStyleSheet) => s.href).filter((href): href is string => Boolean(href)))
+		.map((url: string): [string, Promise<void>] =>
+		{
+			const absoluteUrl = new URL(url, window.location.origin).pathname;
+			// Pre-seed the Map with an instantly resolved promise for elements already loaded
+			return [absoluteUrl, Promise.resolve()];
+		})
+);
+
+
+
+export function collectDependencies(rawCode: string, baseRoute: string): string[]
+{
+
+	const dependenciesToFetch: string[] = [];
+	const ast = parseBabel(rawCode, {
+		sourceType: 'module',
+		plugins: [
+			'typescript' // Enables parsing of TS syntax like interfaces and type annotations
+		]
+	});
+
+	// 2. Traverse the AST using a custom visitor
+	traverse(ast, {
+		ImportDeclaration(babelPath)
+		{
+			const moduleName = babelPath.node.source.value;
+			if(babelPath.node.importKind === 'type')
+			{
+				console.log('Skipping type: ' + moduleName);
+				return;
+			} else
+			{
+				console.log('Overloading import: ' + moduleName);
+			}
+
+			if(moduleName === 'ace-builds')
+			{
+				dependenciesToFetch.push('/ace/ace-noconflict.js');
+			} else if(moduleName === './tree.js' && baseRoute)
+			{
+				dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
+			} else if(moduleName === './bundle.js' && baseRoute)
+			{
+				dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
+			} else if(moduleName === 'xterm')
+			{
+				dependenciesToFetch.push('/components/terminal/xterm.js');
+			} else if((moduleName.startsWith('./') || moduleName.startsWith('../'))
+				&& baseRoute?.includes('.'))
+			{
+				const ext = baseRoute.split('.').pop();
+				const modifiedModuleName = moduleName + (!moduleName.split('/').pop().includes('.')
+					? '.' + ext
+					: '');
+				dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
+					modifiedModuleName));
+			}
+		},
+		CallExpression(babelPath)
+		{
+			if(
+				babelPath.node.callee.name === 'require' &&
+				babelPath.node.arguments.length === 1 &&
+				babelPath.node.arguments[0].type === 'StringLiteral'
+			)
+			{
+				const moduleName = babelPath.node.arguments[0].value;
+				console.log('Overloading import: ' + moduleName);
+
+				if(moduleName === './tree.js' && baseRoute)
+				{
+					dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
+				} else if(moduleName === './bundle.js' && baseRoute)
+				{
+					dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName));
+				} else if(moduleName === 'xterm' && baseRoute)
+				{
+					dependenciesToFetch.push('/components/terminal/xterm.js');
+				} else if((moduleName.startsWith('./') || moduleName.startsWith('../'))
+					&& baseRoute?.includes('.'))
+				{
+					const ext = baseRoute.split('.').pop();
+					const modifiedModuleName = moduleName + (!moduleName.split('/').pop().includes('.')
+						? '.' + (ext ? ext : '.js')
+						: '');
+					dependenciesToFetch.push(path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
+						modifiedModuleName));
+				}
+			}
+		},
+
+	});
+
+	return dependenciesToFetch;
+}
+
+
+export async function preloadDependencies(dependenciesToFetch: string[]): Promise<void>
+{
+	if(dependenciesToFetch.length === 0)
+	{
+		return;
+	}
+	await Promise.all(dependenciesToFetch.map(async url =>
+	{
+		if(url.endsWith('.mjs'))
+		{
+			const existingPromise = registry.get(url);
+			if(existingPromise)
+			{
+				return existingPromise;
+			}
+
+			var scriptPromise = import(url + '?t=' + Date.now());
+
+			registry.set(url + '?t=' + Date.now(), scriptPromise);
+			return scriptPromise;
+		} else if(url.endsWith('.ts'))
+		{
+			const targetUrl = await fetchTranspileAndStore(url);
+			return import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
+
+		} else
+		{
+			return loadScript(url);
+		}
+	}));
+}
+
+
+export async function fetchTranspileAndStore(baseRoute: string): Promise<string>
+{
+
+	const response = await fetch(baseRoute + '?t=' + Date.now());
+	const rawCode = await response.text();
+
+	if(!response.ok) throw new Error('Component not found: ' + baseRoute);
+	if(!transform) throw new Error("Babel standalone runner not found on the window context.");
+	const targetUrl = baseRoute.replace(/\.ts$/, '.js').replace(/^\.?\//, '/base/');
+
+	const existingPromise = registry.get(targetUrl);
+	if(existingPromise)
+	{
+		console.log('Already transpiled: ' + targetUrl);
+		return targetUrl;
+	} else
+	{
+		console.log('Transpiling and saving: ' + targetUrl);
+	}
+
+	const dependenciesToFetch = collectDependencies(rawCode, baseRoute);
+
+	await preloadDependencies(dependenciesToFetch);
+
+	const transpiled = transpileTypescriptWidget(rawCode, baseRoute);
+	const encoder = new TextEncoder();
+	const arrayBuffer = encoder.encode(transpiled.code ?? '').buffer;
+
+	// Direct the target URL from .ts to .js for the Service Worker's consumption
+	const editorDatabase = SettingsManager.get('github', 'environmentRepository');
+
+	// Commit the compiled asset to your service worker pipeline
+	await putRecord(DB_STORE_NAME, {
+		timestamp: new Date(),
+		mode: FS_FILE,
+		contents: arrayBuffer,
+		path: targetUrl,
+		parent: targetUrl.substring(0, targetUrl.lastIndexOf('/')),
+		sha: await getGitShaBrowser(arrayBuffer)
+	}, editorDatabase);
+
+
+	if(transpiled.map)
+	{
+		const sourceMapBuffer = encoder.encode(transpiled.map ?? '').buffer;
+		await putRecord(DB_STORE_NAME, {
+			timestamp: new Date(),
+			mode: FS_FILE,
+			contents: sourceMapBuffer,
+			path: targetUrl.replace('.js', '.map'),
+			parent: targetUrl.substring(0, targetUrl.lastIndexOf('/')),
+			sha: await getGitShaBrowser(arrayBuffer)
+		}, editorDatabase);
+	}
+
+	return targetUrl;
+}
+
+
+
+export function transpileTypescriptWidget(rawCode: string, baseRoute: string): any
+{
+
+	const transpiled = transform(rawCode, {
+		presets: ['env'],
+		sourceMaps: 'inline',
+		plugins: [
+			['transform-typescript', { isTSX: false }],
+			function (babel: { types: typeof tType, template: any; }): PluginObj
+			{
+				const { types: t, template } = babel;
+				return {
+					visitor: {
+						CallExpression(path)
+						{
+							if(
+								path.node.callee.name === 'require' &&
+								path.node.arguments.length === 1 &&
+								path.node.arguments[0].type === 'StringLiteral'
+							)
+							{
+								const moduleName = path.node.arguments[0].value;
+
+								console.warn('replacing: ' + moduleName);
+
+								// Map the Node modules cleanly to your exposed globals
+								if(moduleName === '@lumino/widgets')
+								{
+									path.replaceWithSourceString('window.Lumino.widgets');
+								} else if(moduleName === '@lumino/messaging')
+								{
+									path.replaceWithSourceString('window.Lumino.messaging');
+								} else if(moduleName === './tree.js')
+								{
+									path.replaceWithSourceString('window.Tree');
+								} else if(moduleName === './bundle.js')
+								{
+									path.replaceWithSourceString('window');
+								} else if(moduleName === 'xterm')
+								{
+									path.replaceWithSourceString('Terminal');
+								}
+							}
+						},
+						ImportDeclaration(babelPath: NodePath<tType.ImportDeclaration>)
+						{
+							const moduleName = babelPath.node.source.value;
+							let globalExpression: tType.Expression | null = null;
+
+							console.warn('replacing: ' + moduleName);
+
+							// Resolve the clean global base path node safely based on matching string declarations
+							if(moduleName === '@lumino/widgets')
+							{
+								globalExpression = t.memberExpression(
+									t.memberExpression(t.identifier('window'), t.identifier('Lumino')),
+									t.identifier('widgets')
+								);
+							} else if(moduleName === '@lumino/messaging')
+							{
+								globalExpression = t.memberExpression(
+									t.memberExpression(t.identifier('window'), t.identifier('Lumino')),
+									t.identifier('messaging')
+								);
+							} else if(moduleName === 'ace-builds')
+							{
+								globalExpression = t.memberExpression(
+									t.identifier('window'),
+									t.identifier('ace')
+								);
+							} else if(moduleName === './tree.js')
+							{
+								globalExpression = t.memberExpression(
+									t.identifier('window'),
+									t.identifier('Tree')
+								);
+							} else if(moduleName === './bundle.js')
+							{
+								globalExpression = t.identifier('window');
+							} else if(moduleName === 'xterm')
+							{
+								globalExpression = t.identifier('window');
+							} else if(moduleName.startsWith('./') || moduleName.startsWith('../'))
+							{
+								const ext = baseRoute.split('.').pop();
+								const modifiedModuleName = moduleName + (!moduleName.split('/').pop().includes('.')
+									? '.' + (ext ? ext : '.js')
+									: '');
+								const newPath = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
+									modifiedModuleName).replace('.ts', '.js').replace(/^\.?\//, '/base/') + '?t=' + Date.now() + '&local-csp=true';
+								console.warn(`Replacing import path: "${moduleName}" -> "${newPath}"`);
+								babelPath.node.source = t.stringLiteral(newPath);
+								return;
+							}
+
+							if(globalExpression)
+							{
+								const declarations: tType.VariableDeclaration[] = [];
+
+								// Handle named imports safely: import { Widget, Panel } from '...'
+								const specifiers = babelPath.node.specifiers.filter(
+									(spec): spec is tType.ImportSpecifier => t.isImportSpecifier(spec)
+								);
+
+								if(specifiers.length > 0)
+								{
+									const properties = specifiers.map(spec =>
+									{
+										const importedName = t.isIdentifier(spec.imported)
+											? spec.imported.name
+											: spec.imported.value;
+
+										return t.objectProperty(
+											t.identifier(importedName),
+											t.identifier(spec.local.name),
+											false,
+											importedName === spec.local.name
+										);
+									});
+
+									declarations.push(
+										t.variableDeclaration('const', [
+											t.variableDeclarator(
+												t.objectPattern(properties),
+												globalExpression!
+											)
+										])
+									);
+								}
+
+								// Handle namespace/default imports smoothly: import * as widgets from '...' or import Tree from '...'
+								const namespaceOrDefaultSpecifier = babelPath.node.specifiers.find(
+									spec => t.isImportNamespaceSpecifier(spec) || t.isImportDefaultSpecifier(spec)
+								);
+
+								if(namespaceOrDefaultSpecifier)
+								{
+									declarations.push(
+										t.variableDeclaration('const', [
+											t.variableDeclarator(
+												t.identifier(namespaceOrDefaultSpecifier.local.name),
+												globalExpression!
+											)
+										])
+									);
+								}
+
+								// Replace or drop the nodes cleanly to maintain content security standards
+								if(declarations.length > 0)
+								{
+									babelPath.replaceWithMultiple(declarations);
+								} else
+								{
+									babelPath.remove();
+								}
+							}
+						}
+					}
+				};
+			}
+		],
+		filename: baseRoute
+	});
+
+
+	return transpiled;
+}
+
+
+
+export async function loadAndInstantiate(route: ComponentRoute): Promise<any>
+{
+	if(!route.url || !route.className)
+	{
+		throw new Error(`Route definition "${route.label}" is missing execution target pathways.`);
+	}
+
+	if(route.url.endsWith('.js'))
+	{
+		const modulePromise = import(/* webpackIgnore: true */ route.url + '?t=' + Date.now() + '&local-csp=true');
+		registry.set(route.url, modulePromise);
+		const module = await modulePromise;
+		return new module[route.className](route.label);
+	}
+
+	const targetUrl = route.url.replace(/\.ts$/, '.js').replace(/^\.\//, '/base/');
+	const existingPromise = registry.get(targetUrl);
+	if(existingPromise)
+	{
+		console.log('Already transpiled: ' + targetUrl);
+		const module2 = await existingPromise;
+		return new module2[route.className](route.label);
+	}
+
+	await fetchTranspileAndStore(route.url);
+
+	// Import directly from the pipeline URL rather than an ephemeral blob URL
+	const modulePromise = import(/* webpackIgnore: true */ targetUrl + '?t=' + Date.now() + '&local-csp=true');
+	registry.set(targetUrl, modulePromise);
+	const module = await modulePromise;
+	return new module[route.className](route.label);
+}
+
+
+// Define the class property registry somewhere above this method in your class:
+// private registry = new Map<string, Promise<any>>();
+
+export async function loadScript(src: string): Promise<any>
+{
+	const absoluteUrl: string = new URL(src, window.location.origin).pathname;
+
+	// ─── THE CONCURRENCY LOCK CHECK ───
+	// If it's already loaded OR currently downloading, return the existing tracking handle
+	const existingPromise = registry.get(absoluteUrl);
+	if(existingPromise)
+	{
+		return existingPromise;
+	}
+
+	// Create the promise and cache it immediately to block secondary asset creation runs
+	const scriptPromise = new Promise<void>((resolve, reject) =>
+	{
+		const script: HTMLScriptElement = document.createElement('script');
+		script.src = src + '?t=' + Date.now();
+		script.type = 'text/javascript';
+		script.async = false; // Preserves literal script tree order
+
+		script.onload = () => resolve();
+		script.onerror = () =>
+		{
+			registry.delete(absoluteUrl); // Evict on failure so a retry can clear the pipe
+			reject(new Error(`Failed execution pipeline: ${src}`));
+		};
+
+		document.head.appendChild(script);
+	});
+
+	registry.set(absoluteUrl, scriptPromise);
+	return scriptPromise;
+}

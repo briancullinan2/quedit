@@ -1,5 +1,7 @@
 import { CommandRegistry } from "@lumino/commands";
-import { Widget } from "@lumino/widgets";
+import { DockPanel, Widget } from "@lumino/widgets";
+import { triggerPanelRoute } from "./menu";
+import type { FrameRater } from "../terminal/widget";
 
 declare global
 {
@@ -7,6 +9,8 @@ declare global
 	{
 		appToolbar: ApplicationToolbar;
 		ApplicationToolbar: typeof ApplicationToolbar;
+		mainDock: DockPanel;
+		terminalFrameLimiter: typeof FrameRater;
 	}
 }
 
@@ -168,7 +172,8 @@ export class ApplicationToolbar extends Widget
 window.ApplicationToolbar = ApplicationToolbar;
 
 
-
+// TODO: lumino-resize and lumino-widget will adjust their behavior based on the selected layout
+//   switching split-left and split-right
 const LAYOUT_AXES = {
 	panels: ['left-hand-files', 'right-hand-files'],
 	order: ['normal-order', 'reverse-order'],
@@ -184,7 +189,7 @@ const layoutState = {
 };
 
 
-function rotateLayout()
+async function rotateLayout()
 {
 
 	Object.keys(LAYOUT_AXES).forEach(axis =>
@@ -211,9 +216,9 @@ function rotateLayout()
 	const nextIndex = (currentIndex + 1) % ALL_LAYOUTS.length;
 	const newLayoutClass = ALL_LAYOUTS[nextIndex].split(' ');
 
-	if(newLayoutClass.includes('layout-terminal') && typeof term === 'undefined')
+	if(newLayoutClass.includes('layout-terminal') && typeof window.terminalFrameLimiter === 'undefined')
 	{
-		DependencyLoader.loadModule('terminal');
+		await triggerPanelRoute('terminal', window.mainDock);
 	}
 
 	// 5. Inject it back onto the target DOM node element
