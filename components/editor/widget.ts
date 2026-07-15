@@ -5,6 +5,7 @@ import type { SettingConfig, Settings } from '../bundle/settings';
 import type { HistoryToolbar } from '../bundle/menu-history';
 import type { LayoutAdjuster } from '../bundle/lumino-widget';
 import type { TerminalLogEntry } from '../terminal/widget';
+import { AceEventManager } from "./events";
 
 interface ISessionCache
 {
@@ -518,8 +519,9 @@ export class AceEditorWidget extends Widget
 {
 	protected _fileId: string;
 	protected _initialContent: string;
-	protected _editor: Ace.Editor | null = null;
+	public _editor: Ace.Editor | null = null;
 	protected static _defaultContent: string = '#include <stdio.h>\n\n// this is a comment\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\\n");\n    return 0;\n}\n';
+	private _eventManager: any;
 
 	constructor(fileId?: string, initialContent?: string)
 	{
@@ -529,6 +531,7 @@ export class AceEditorWidget extends Widget
 		// TODO: so it starts with .c
 		this._fileId = AceEditorPool.getNextTempName();
 		this._initialContent = initialContent || AceEditorWidget._defaultContent;
+		this._eventManager = new AceEventManager(this);
 
 		// Ensure Lumino layout updates do not break text selection systems
 		this.node.style.overflow = 'hidden';
@@ -566,6 +569,7 @@ export class AceEditorWidget extends Widget
 		// Synchronize and render bounds accurately
 		this._editor.resize();
 		this._editor.renderer.updateFull();
+		this._eventManager.attachListeners();
 
 		tryLoadingTerminalEditorBridge(this._editor);
 	}
@@ -581,6 +585,7 @@ export class AceEditorWidget extends Widget
 			this._editor = null;
 		}
 		super.onBeforeDetach(msg);
+		this._eventManager.detachListeners();
 	}
 
 	/**
@@ -628,7 +633,8 @@ export class AceEditorWidget extends Widget
 
 		// take over the default tab instead of creating a new one
 		const existingDefault = tabs.find(t => t.constructor.name === AceEditorWidget.name
-			&& (t as AceEditorWidget)._editor?.getValue() === AceEditorWidget._defaultContent
+			&& ((t as AceEditorWidget)._editor?.getValue() === AceEditorWidget._defaultContent
+				|| (t as AceEditorWidget)._editor?.getValue().trim() === '')
 		) as AceEditorWidget;
 		if(existingDefault)
 		{

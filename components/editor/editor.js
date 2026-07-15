@@ -138,64 +138,6 @@ function updateMaxLines() {
 
 }
 
-/**
- * Ace Editor Real-Time Interaction and Telemetry Linker
- * Tracks token context beneath cursor on hotkey modifier hold.
- */
-
-// Global tracking references for throttling layout updates
-
-/**
- * Updates your shared application status bar layout element
- */
-function updateAceStatus(data) {
-    if (!statusBar) return;
-    if (!data) {
-        statusBar.innerText = "Editor: Idle";
-        return;
-    }
-
-    const cursor = aceEditor.getCursorPosition();
-    const cursorLine = cursor.row + 1;
-    const cursorCol = cursor.column + 1;
-
-    const tokenInfo = data.tokenText
-        ? `Token: "${data.tokenText}" [${data.tokenType}]${data.isFunctionCall ? ' (Function Call)' : ''}, `
-        : '';
-
-    // 4. FORMAT ERROR BANNER TEXT
-    // If a compiler error is present on this line, append a bold visual flag
-    // to instantly warn the user inside the status layer.
-    const errorInfo = data.compilerError
-        ? ` ⚠️  ${data.compilerError.replace(/\n/g, ' | ')}, `
-        : '';
-
-    statusBar.innerText = `Editor: Mouse: ${data.row}x${data.column}, `
-        + `Cursor: ${cursorLine}x${cursorCol}, `
-        + tokenInfo
-        + errorInfo // Displays smoothly across the bottom line sequence
-        + `File: ${data.file}, ID: ${data.id}`;
-
-
-    /*
-    const aceContainer = event.target.closest('.ace_editor');
-
-    if (aceContainer && aceContainer.env) {
-        const diagnosticsModule = ace.require("ace/ext/compiler_diagnostics");
-        if (diagnosticsModule) {
-            const bridge = diagnosticsModule.getBridge();
-
-            // Confirm this specific DOM node belongs to our active tracking channel
-            if (bridge.activeEditor === aceContainer.env.editor) {
-                // Read or mutate the raw state context variables straight from your script
-                let rawLines = bridge.collectedLogLines;
-                let currentRegexPattern = bridge.lccPattern;
-            }
-        }
-    }
-    */
-}
-
 
 /**
  * Throttle handler to guard performance during heavy mouse drag/sweep gestures
