@@ -1,9 +1,10 @@
 import type { SettingConfig, Settings } from '../bundle/settings';
-import { DockPanel, Widget } from '@lumino/widgets';
+import { DockPanel, Title, Widget } from '@lumino/widgets';
 import { Terminal } from 'xterm';
 import { TerminalEventManager } from './events';
 import type { StatusBarWidget } from '../bundle/status';
 import { SearchTerminal } from './search';
+import { Message } from '@lumino/messaging';
 
 const LINES_TO_SCROLLBACK = 5000;
 
@@ -377,6 +378,8 @@ export class TerminalWidget extends Widget
 	private currentTerminalCtx: IPooledTerminal | null = null;
 	public searchContainer!: HTMLDivElement;
 	public searchInput!: HTMLInputElement;
+	private searchObserver?: ResizeObserver;
+	private parentTabBar?: HTMLElement;
 
 	constructor(filterId: string, titleLabel: string)
 	{
@@ -385,11 +388,13 @@ export class TerminalWidget extends Widget
 		{
 			this.filterId = terminalFilters[0].id;
 			this.id = `terminal-panel-${this.filterId}`;
+			this.title.className = this.id;
 			this.title.label = terminalFilters[0].label;
 		} else
 		{
 			this.filterId = filterId;
 			this.id = `terminal-panel-${filterId}`;
+			this.title.className = this.id;
 			this.title.label = titleLabel;
 		}
 		this.title.closable = true;
@@ -428,6 +433,15 @@ export class TerminalWidget extends Widget
 			SearchTerminal.executeFindQuery(this.currentTerminalCtx, event);
 		});
 		this.searchContainer.appendChild(this.searchInput);
+		this.searchObserver = new ResizeObserver((entries) =>
+		{
+			//for(const entry of entries)
+			//{
+			//const { width, height } = entry.contentRect;
+			//}
+			this.resizeSearchContainer();
+		});
+		this.searchObserver.observe(this.node);
 	}
 
 
@@ -438,17 +452,28 @@ export class TerminalWidget extends Widget
 	{
 		super.onAfterShow(msg);
 		this.claimAndRenderSession();
-		this.showSearchBar();
+		window.requestAnimationFrame(() =>
+		{
+			this.showSearchBar();
+		});
 	}
 
 	private resizeSearchContainer = () =>
 	{
-		const parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector('.lm-TabBar') as HTMLElement;
+		const parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector(`.lm-TabBar:has(li.${this.id})`) as HTMLElement;
+
+		console.log('search bar: ', parentTabBar, this.searchContainer, this.searchContainer.style.display);
 
 		if(!parentTabBar || !this.searchContainer || this.searchContainer.style.display === 'none')
 		{
 			return;
 		}
+		if(parentTabBar !== this.parentTabBar)
+		{
+			this.parentTabBar = parentTabBar;
+			this.parentTabBar?.appendChild(this.searchContainer);
+		}
+
 
 		// Ensure searchContainer doesn't push the tab bar layout around
 		this.searchContainer.style.position = 'absolute';
@@ -503,11 +528,11 @@ export class TerminalWidget extends Widget
 
 	private showSearchBar()
 	{
-		const parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector('.lm-TabBar') as HTMLElement;
+		this.parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector(`.lm-TabBar:has(li.${this.id})`) as HTMLElement;
 
-		if(parentTabBar && this.searchContainer)
+		if(this.parentTabBar && this.searchContainer)
 		{
-			parentTabBar.appendChild(this.searchContainer);
+			this.parentTabBar.appendChild(this.searchContainer);
 			this.searchContainer.style.display = 'flex';
 
 			// Calculate initial width
@@ -519,6 +544,7 @@ export class TerminalWidget extends Widget
 			// Listen for window resizing to keep the width updated
 			window.removeEventListener('resize', this.resizeSearchContainer);
 			window.addEventListener('resize', this.resizeSearchContainer);
+			this.searchObserver?.observe(this.node);
 		}
 	}
 
@@ -538,6 +564,7 @@ export class TerminalWidget extends Widget
 			}
 			this.searchContainer.style.display = 'none';
 			window.removeEventListener('resize', this.resizeSearchContainer);
+			this.searchObserver?.unobserve(this.node);
 		}
 	}
 
@@ -547,7 +574,10 @@ export class TerminalWidget extends Widget
 		if(this.isVisible)
 		{
 			this.claimAndRenderSession();
-			this.showSearchBar();
+			window.requestAnimationFrame(() =>
+			{
+				this.showSearchBar();
+			});
 		}
 		super.onAfterAttach(msg);
 	}
@@ -559,6 +589,7 @@ export class TerminalWidget extends Widget
 		{
 			this.searchContainer.parentNode.removeChild(this.searchContainer);
 		}
+		this.searchObserver?.disconnect();
 		super.onBeforeDetach(msg);
 	}
 
