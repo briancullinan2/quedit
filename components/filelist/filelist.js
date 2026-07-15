@@ -330,42 +330,6 @@ document.getElementById('tabs').addEventListener('click', async (e) => {
 
 
 async function initializeFiletrees() {
-    const newRepository = window.location.pathname?.trim().replace(/\/$|^\//, '')
-    if (newRepository.length > 0) {
-        await setRepository(newRepository)
-    } else if (window.location.hash.includes('/')
-        // TODO: make a caveat for #database??
-        && !window.location.hash.includes('.') // don't try this on filenames
-    ) {
-        await setRepository(window.location.hash.substring(1))
-    }
-
-
-    engineRepository = SettingsManager.get('core', 'engineRepository')
-
-    const parts = engineRepository?.split('/') || document.getElementById('filelist').dataset['repository']?.split('/')
-
-    if (parts && parts[0]) {
-        let newRepo = parts.length == 2 ? parts[1] : parts[0] || repository.value
-        let newOwner = parts.length == 2 ? parts[0] : owner.value
-        let branches = await getBranches(newOwner, newRepo)
-        updateSelectOptions('branch', branches)
-        if (newOwner && newRepo)
-            await loadFileTree(newOwner, newRepo, branches[0]?.name || 'main', '#filelist')
-    }
-
-    gameRepository = SettingsManager.get('core', 'gameRepository')
-
-    const parts2 = gameRepository?.split('/') || document.getElementById('gamelist').dataset['repository']?.split('/')
-    if (parts2 && parts2[0]) {
-
-        let newRepo2 = parts2.length == 2 ? parts2[1] : parts2[0] || repository.value
-        let newOwner2 = parts2.length == 2 ? parts2[0] : owner.value
-        let branches2 = await getBranches(newOwner2, newRepo2)
-
-        if (newOwner2 && newRepo2)
-            await loadFileTree(newOwner2, newRepo2, branches2[0]?.name || 'main', '#gamelist')
-    }
 
 
     assetRepository = SettingsManager.get('core', 'assetRepository')

@@ -33,20 +33,6 @@ let polyfill = new WebXRPolyfill();
 let mapName = 'maps/q3tourney2.bsp';
 
 // If you're running from your own copy of Quake 3, you'll want to use these shaders
-let mapShaders = [
-    'scripts/base.shader', 'scripts/base_button.shader', 'scripts/base_floor.shader',
-    'scripts/base_light.shader', 'scripts/base_object.shader', 'scripts/base_support.shader',
-    'scripts/base_trim.shader', 'scripts/base_wall.shader', 'scripts/common.shader',
-    'scripts/ctf.shader', 'scripts/eerie.shader', 'scripts/gfx.shader',
-    'scripts/gothic_block.shader', 'scripts/gothic_floor.shader', 'scripts/gothic_light.shader',
-    'scripts/gothic_trim.shader', 'scripts/gothic_wall.shader', 'scripts/hell.shader',
-    'scripts/liquid.shader', 'scripts/menu.shader', 'scripts/models.shader',
-    'scripts/organics.shader', 'scripts/sfx.shader', 'scripts/shrine.shader',
-    'scripts/skin.shader', 'scripts/sky.shader', 'scripts/test.shader'
-];
-
-// For my demo, I compiled only the shaders the map used into a single file for performance reasons
-//let mapShaders = ['scripts/common.shader'];
 
 // ===========================================
 // Everything below here is common to all maps
@@ -150,7 +136,6 @@ function initMap(gl, mapFile, mapContent, noBounce = false) {
     map.onentitiesloaded = initMapEntities;
     map.onbsp = initPlayerMover;
     //map.onsurfaces = initSurfaces;
-    map.loadShaders(mapShaders);
     map.load(mapContent || mapName, tesselation);
 
     maploadDebouncer = null
@@ -265,7 +250,7 @@ function getViewMatrix(out, pose, view) {
         let position = pose.position;
         if (!orientation) { orientation = [0, 0, 0, 1]; }
         if (!position) { position = [0, 0, 0]; }
-    
+
         mat4.fromRotationTranslation(poseMatrix, orientation, [
           position[0] * vrIPDScale,
           position[1] * vrIPDScale,
