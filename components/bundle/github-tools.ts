@@ -22,6 +22,7 @@ declare global
 		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
 		loadFileTree: (repoOwner: string, repoName: string, branch: string, selector: string) => Promise<void>;
 		cacheFile: (repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload?: boolean) => Promise<any>;
+		sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[];
 	}
 }
 
@@ -86,7 +87,9 @@ export async function cacheFileInternal(repoOwner: string, repoName: string, fil
 			FS.virtual[filePath] = await getRecord(DB_STORE_NAME, filePath, selected);
 		}
 
-		if(filesRepo[selected][filePath] && FS.virtual[filePath])
+		if(filesRepo[selected] && filesRepo[selected][filePath] && FS.virtual[filePath]
+			&& FS.virtual[filePath].timestamp && filesRepo[selected][filePath].timestamp
+		)
 		{
 			if(FS.virtual[filePath].timestamp > filesRepo[selected][filePath].timestamp)
 			{
@@ -162,7 +165,7 @@ export async function cacheFileInternal(repoOwner: string, repoName: string, fil
 		}
 
 		FS.virtual[filePath] = {
-			timestamp: filesRepo[selected][filePath].timestamp,
+			timestamp: filesRepo[selected] ? filesRepo[selected][filePath].timestamp : undefined,
 			mode: FS_FILE,
 			contents: bytes,
 			path: filePath,
@@ -261,7 +264,7 @@ export async function getAuthenticatedUser(): Promise<any>
 export interface FlatFileNode
 {
 	path: string;
-	sha: string;
+	sha?: string;
 	type?: 'blob' | 'tree' | string;
 	[key: string]: any;
 }
@@ -276,8 +279,9 @@ export interface NestedTreeNode
 		expanded: boolean;
 	};
 	path: string;
-	sha: string;
-	children?: NestedTreeNode[];
+	parent?: string;
+	sha?: string;
+	children?: NestedTreeNode[] | null | undefined;
 }
 
 export function convertFlatToNested(data: FlatFileNode[]): NestedTreeNode[]

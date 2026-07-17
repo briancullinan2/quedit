@@ -4,7 +4,7 @@ import { updateSelectOptions } from "./github-settings";
 import
 {
 	defaultBranches, filesRepo, GitHubBranch
-	, GitHubFileEntry, mapFiles
+	, GitHubFileEntry, GitHubFileTree, mapFiles
 } from "./github-types";
 import
 {
@@ -165,7 +165,7 @@ export async function githubGraphQL(query: string, variables: Record<string, any
 	return result.data;
 }
 
-export async function loadGitHubTree(repoOwner: string, repoName: string, branch: string): Promise<any>
+export async function loadGitHubTree(repoOwner: string, repoName: string, branch: string): Promise<GitHubFileTree | undefined>
 {
 	try
 	{
@@ -239,7 +239,7 @@ export async function loadGitHubTreeNew(repoOwner: string, repoName: string, bra
 	{
 		if(typeof filesRepo[database] === 'undefined')
 		{
-			filesRepo[database] = {} as GitHubFileEntry;
+			filesRepo[database] = {} as GitHubFileTree;
 		}
 
 		const filesToHydrate: string[] = [];

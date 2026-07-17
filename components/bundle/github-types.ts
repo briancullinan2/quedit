@@ -1,8 +1,15 @@
 import { FileRecord } from "./local";
 
+export interface GitHubFileTree
+{
+	[key: string]: GitHubFileEntry;
+}
+
+
 export interface GitHubFileEntry extends FileRecord
 {
-	type: 'file' | 'dir';
+	type?: 'file' | 'dir';
+	size?: number | undefined
 }
 
 export interface GitHubBranch
@@ -77,7 +84,7 @@ export const mapFiles: Record<string, string> = {
 };
 
 export const trees: Record<string, any> = {};
-export const filesRepo: Record<string, GitHubFileEntry> = {};
+export const filesRepo: Record<string, GitHubFileTree | undefined> = {};
 
 
 declare global
@@ -85,7 +92,7 @@ declare global
 	interface Window
 	{
 		trees: Record<string, any>;
-		filesRepo: Record<string, GitHubFileEntry>;
+		filesRepo: Record<string, GitHubFileTree | undefined>;
 	}
 }
 

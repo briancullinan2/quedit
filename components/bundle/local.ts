@@ -10,6 +10,17 @@ declare global
 	interface Window
 	{
 		RepositoryToolbar: typeof RepositoryToolbar;
+		getDatabaseMetadata(): Promise<DatabaseMetadata[]>;
+		queryIndex(
+			storeName: string,
+			indexName: string,
+			exactIndex: any,
+			lower: any,
+			upper: any,
+			dbName: string | null,
+			noBounce?: boolean
+		): Promise<FileRecord[]>;
+		DB_STORE_NAME: string;
 	}
 }
 
@@ -36,7 +47,7 @@ export interface SetupDatabaseResult
 
 export interface FileRecord
 {
-	timestamp: Date;
+	timestamp?: Date | null;
 	mode: any;
 	contents?: Uint8Array | ArrayBuffer | any;
 	path: string;
@@ -82,6 +93,7 @@ interface DebounceToken
 export const DB_VERSION = 1; // Increment this when you add new C# Entities!
 export const DB_NAME = "briancullinan2/illustrious";
 export const DB_STORE_NAME = 'FILE_DATA';
+window.DB_STORE_NAME = DB_STORE_NAME;
 export const DB_DEBOUNCE_INTERVAL = 50;
 
 export const ST_FILE = 8;
@@ -148,6 +160,8 @@ export async function getDatabaseMetadata(): Promise<DatabaseMetadata[]>
 	const dbs = await indexedDB.databases();
 	return dbs.map(db => ({ key: db.name || '', value: db.version || 0 }));
 }
+
+window.getDatabaseMetadata = getDatabaseMetadata;
 
 export async function needsInstall(dbName: string | null, expectedStores: SchemaStoreConfig[]): Promise<InstallCheckResult>
 {

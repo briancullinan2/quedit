@@ -112,7 +112,7 @@ declare global
 {
 	interface Window
 	{
-		FS?: {
+		FS: {
 			virtual: Record<string, FileRecord | null | undefined>;
 		};
 	}

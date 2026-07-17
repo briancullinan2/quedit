@@ -1,7 +1,7 @@
 // components/FileListWidget.ts
 import { Widget, DockPanel } from '@lumino/widgets';
 import type { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
-import type { GitHubBranch, GitHubFileEntry } from '../bundle/github-types';
+import type { GitHubBranch, GitHubFileEntry, GitHubFileTree } from '../bundle/github-types';
 import type { RepositoryToolbar } from '../bundle/menu-repos';
 import type { Settings } from '../bundle/settings';
 import type { FileManager } from '../bundle/lumino-files';
@@ -29,7 +29,7 @@ declare global
 		cacheFile: (repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload?: boolean) => Promise<any>;
 		mainDock: DockPanel;
 		trees: Record<string, any>;
-		filesRepo: Record<string, GitHubFileEntry>;
+		filesRepo: Record<string, GitHubFileTree | undefined>;
 		RepositoryToolbar: typeof RepositoryToolbar;
 		SettingsManager: Settings;
 		FileManager: typeof FileManager;
@@ -42,8 +42,13 @@ declare global
 
 export class FileListWidget extends Widget
 {
-	private treeContainerId: string;
+	protected treeContainerId: string;
 	public static fileListWidgets: Array<FileListWidget> = new Array<FileListWidget>();
+
+	protected get selector()
+	{
+		return '#' + this.treeContainerId;
+	}
 
 	constructor(titleStr: string)
 	{
@@ -148,10 +153,10 @@ export class FileListWidget extends Widget
 		// Handle select mutations
 		this.node.querySelector('.filelist-repository')?.addEventListener('change', () => this.onRepositoryChanged());
 		this.node.querySelector('.filelist-branch')?.addEventListener('change', () => this.onRepositoryChanged());
-		this.node.querySelector(`#${this.treeContainerId}`)?.addEventListener('click', treeHandler.bind(this, '#' + this.treeContainerId));
+		this.node.querySelector(`#${this.treeContainerId}`)?.addEventListener('click', treeHandler.bind(this, this.selector));
 	}
 
-	private async initializeFiletrees(): Promise<void>
+	protected async initializeFiletrees(): Promise<void>
 	{
 		const repoSelect = this.node.querySelector('.filelist-repository') as HTMLSelectElement;
 		const pathRepo = window.location.pathname?.trim().replace(/\/$|^\//, '');
@@ -173,7 +178,7 @@ export class FileListWidget extends Widget
 		if(!targetTreeElement) return;
 		targetTreeElement.innerHTML = '';
 
-		await window.loadFileTree(owner, repo, branch, '#' + this.treeContainerId);
+		await window.loadFileTree(owner, repo, branch, this.selector);
 	}
 
 	protected onResize(msg: Widget.ResizeMessage): void
