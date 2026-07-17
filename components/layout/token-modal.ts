@@ -53,7 +53,7 @@ export class TokenModal
 		this.modal.className = 'hidden';
 
 		const modalContent = document.createElement('div');
-		modalContent.className = 'modal-content';
+		modalContent.className = 'popup modal-content';
 
 		this.tokenForm = document.createElement('form');
 		this.tokenForm.id = 'token-form';

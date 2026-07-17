@@ -38,6 +38,7 @@ ul.toolbar button,
 	color: var(--ace-foreground);
 	font-family: inherit;
 	cursor: pointer;
+	box-shadow: none;
 }
 
 #popups input[type="radio"],
@@ -228,4 +229,9 @@ select:not(:has(option[value=""]:checked)),
 	opacity: 0.75;
 	font-style: italic;
 	color: rgb(from var(--ace-foreground) r g b / 50%);
+}
+
+a {
+	color: var(--ace-blue);
+	vertical-align: middle;
 }
