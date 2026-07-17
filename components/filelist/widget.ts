@@ -10,11 +10,17 @@ import Tree from './tree.js';
 import { AssetInspector, hasSequentialBinaryRegex, hexDump } from '../rosetta/binary.mjs';
 import type { AceEditorWidget } from '../editor/widget';
 import type { PaintWidget } from '../paint/widget';
+import type { GitHubBranchLike } from '../bundle/github-settings';
 
 declare global
 {
 	interface Window
 	{
+		updateSelectOptions: (
+			elementId: string | Element | undefined | null,
+			items: Record<string, string> | Array<string | GitHubBranchLike>,
+			selectedValue: string
+		) => void;
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
 		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
@@ -78,6 +84,12 @@ export class FileListWidget extends Widget
 	}
 
 
+	protected get defaultRepository()
+	{
+		return window.SettingsManager.get('github', 'engineRepository');
+	}
+
+
 	/**
 	 * Safe HTML Structure Injection
 	 */
@@ -93,17 +105,10 @@ export class FileListWidget extends Widget
           <li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
           <li class="setting" data-placeholder="Owner">
             <select name="owner" class="filelist-owner">
-              <option value="briancullinan2">briancullinan2</option>
-              <option value="ec-">ec-</option>
             </select>
           </li>
           <li class="setting" data-placeholder="Repository">
             <select name="repository" class="filelist-repository">
-              <option value="Quake3e">Quake3e</option>
-              <option value="baseq3a">baseq3a</option>
-              <option value="q3lcc">q3lcc</option>
-              <option value="q3asm">q3asm</option>
-              <option value="quedit">quedit</option>
             </select>
           </li>
           <li class="setting" data-placeholder="Branch">
@@ -120,6 +125,17 @@ export class FileListWidget extends Widget
         <div id="${this.treeContainerId}" class="treejs-render-target"></div>
       </div>
     `;
+		const parts = this.defaultRepository.split('/');
+		const ownerName = parts.length === 2 ? parts[0] : window.RepositoryToolbar.owner?.value;
+		const repoName = parts.length === 2 ? parts[1] : parts[0] || window.RepositoryToolbar.repository?.value;
+
+		const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement);
+		const owners = window.SettingsManager.get('github', 'ownersList');
+		window.updateSelectOptions(owner, owners, ownerName);
+
+		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement);
+		const repositories = window.SettingsManager.get('github', 'repositoriesList');
+		window.updateSelectOptions(repo, repositories, repoName);
 	}
 
 	private bindDOMEvents(): void
@@ -270,3 +286,12 @@ async function treeHandler(selector: string, e: Event): Promise<void>
 
 	}
 }
+
+
+export class GameListWidget extends FileListWidget
+{
+	protected override get defaultRepository() {
+		return window.SettingsManager.get('github', 'gameRepository');
+	}
+}
+

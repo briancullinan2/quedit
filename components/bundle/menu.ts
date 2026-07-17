@@ -60,7 +60,7 @@ const MODULE_REGISTRY: Record<string, ComponentRoute> = {
 	'audio-editor': { label: 'AudioMass', url: './components/AudioEditorWidget.ts', className: 'AudioEditorWidget', iconClass: 'bx bx-sine-wave' },
 	'searchlist': { label: 'Search Files', url: './components/SearchWidget.ts', className: 'SearchWidget', iconClass: 'bx bx-search' },
 	'filelist': { label: 'Engine Files', url: './components/filelist/widget.ts', className: 'FileListWidget', iconClass: 'bx bx-folder-code' },
-	'gamelist': { label: 'Game Files', url: './components/filelist/widget.ts', className: 'FileListWidget', iconClass: 'bx bx-handheld-alt' },
+	'gamelist': { label: 'Game Files', url: './components/filelist/widget.ts', className: 'GameListWidget', iconClass: 'bx bx-handheld-alt' },
 	'assetlist': { label: 'Assets', url: './components/filelist/widget.ts', className: 'FileListWidget', iconClass: 'bx bx-treasure-chest' },
 	'database': { label: 'Local Database', url: './components/DatabaseWidget.ts', className: 'DatabaseWidget', iconClass: 'bx bx-database' },
 	'github': { label: 'Github Commit', url: './components/GithubWidget.ts', className: 'GithubWidget', iconClass: 'bx bx-git-repo-forked' },
@@ -85,7 +85,9 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 		if(existing.length > 0)
 		{
 			console.log('Panel route already loaded: ' + panelId);
-			if(route.className === 'FileListWidget')
+			if(route.className === 'FileListWidget'
+				|| route.className === 'GameListWidget'
+			)
 			{
 				existing[0].hide();
 				existing[0].parent = null;
@@ -113,7 +115,9 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 		}
 
 		const widgetInstance = await loadAndInstantiate(route);
-		if(widgetInstance.constructor.name === 'FileListWidget')
+		if(widgetInstance.constructor.name === 'FileListWidget'
+			|| widgetInstance.constructor.name === 'GameListWidget'
+		)
 		{
 			LayoutAdjuster.addOptimalWidgetLayout(mainDock, widgetInstance, {
 				type: 'outline',

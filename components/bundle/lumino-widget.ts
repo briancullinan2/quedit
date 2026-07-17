@@ -198,7 +198,9 @@ export class LayoutAdjuster
 					maxArea = area;
 					largestProjectWidget = w;
 				}
-			} else if(w.constructor.name !== 'FileListWidget')
+			} else if(w.constructor.name !== 'FileListWidget'
+				&& w.constructor.name !== 'GameListWidget'
+			)
 			{
 				const rect = el.getBoundingClientRect();
 				const area = rect.width * rect.height;

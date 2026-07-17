@@ -5,6 +5,19 @@ import { SettingConfig } from "./settings";
 // --- Environmental Declarations ---
 declare const api: any;
 
+
+declare global
+{
+	interface Window
+	{
+		updateSelectOptions: (
+			elementId: string | Element | undefined | null,
+			items: Record<string, string> | Array<string | GitHubBranchLike>,
+			selectedValue: string
+		) => void;
+	}
+}
+
 export function addRepoIfNotExists(newRepo: string): void
 {
 	if(!newRepo || newRepo.includes('briancullinan2'))
@@ -112,7 +125,7 @@ interface NormalizedSelectItem
 	text: string;
 }
 
-interface GitHubBranchLike
+export interface GitHubBranchLike
 {
 	name: string;
 	[key: string]: any;
@@ -197,6 +210,9 @@ export function updateSelectOptions(
 	// This helps with the "wont shrink" issue if the new text is shorter
 	selector.style.minWidth = '0';
 }
+
+
+window.updateSelectOptions = updateSelectOptions;
 
 
 declare global

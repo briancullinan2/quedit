@@ -167,7 +167,9 @@ function main(): void
 			{
 				// Strategy B: Pull remaining widgets and find the first non-filelist editor
 				const remaining = Array.from(mainDock.widgets()).filter(w => w !== closingWidget && !w.isHidden);
-				fallbackWidget = remaining.find(w => w.constructor.name !== 'FileListWidget') || remaining[0] || null;
+				fallbackWidget = remaining.find(w => w.constructor.name !== 'FileListWidget'
+					&& w.constructor.name !== 'GameListWidget'
+				) || remaining[0] || null;
 			}
 
 			// 3. Queue the activation right after the layout pass finishes processing the removal
