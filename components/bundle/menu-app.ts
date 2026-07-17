@@ -4,6 +4,7 @@ import { triggerPanelRoute } from "./menu";
 import type { FrameRater } from "../terminal/widget";
 import { SettingsManager } from "./settings";
 import type { AceEditorWidget } from "../editor/widget";
+import { loadAndInstantiate } from "./babel-compile";
 
 declare global
 {
@@ -79,6 +80,11 @@ export class ApplicationToolbar extends Widget
 				execute: () =>
 				{
 					window.open('https://github.com/settings/tokens?type=beta', '_blank');
+					await loadAndInstantiate({
+						label: 'Enter Github Token',
+						url: './components/layout/token-modal.ts',
+						className: 'TokenModal',
+						iconClass: 'bx bx-key' })
 				}
 			});
 		}
