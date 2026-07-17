@@ -77,14 +77,16 @@ export class ApplicationToolbar extends Widget
 			this._commands.addCommand('app-github-login', {
 				label: 'Github Login',
 				iconClass: 'bx bx-key',
-				execute: () =>
+				execute: async () =>
 				{
 					window.open('https://github.com/settings/tokens?type=beta', '_blank');
-					await loadAndInstantiate({
+					const modal = await loadAndInstantiate({
 						label: 'Enter Github Token',
 						url: './components/layout/token-modal.ts',
 						className: 'TokenModal',
-						iconClass: 'bx bx-key' })
+						iconClass: 'bx bx-key'
+					});
+					modal.updatePlaceholder();
 				}
 			});
 		}

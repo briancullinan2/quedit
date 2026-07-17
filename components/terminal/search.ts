@@ -1,4 +1,4 @@
-import type { Terminal, IDecoration } from 'xterm';
+import type { Terminal, IDecoration } from '@xterm/xterm';
 import type { IPooledTerminal } from './widget';
 
 // --- Structural Interfaces ---

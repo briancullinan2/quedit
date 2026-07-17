@@ -226,31 +226,6 @@
 	line-height: unset !important;
 }
 
-#popups:not(:empty) {
-	z-index: 1000;
-	backdrop-filter: blur(4px);
-	background: rgba(0, 0, 0, 0.85);
-
-}
-
-#popups .popup {
-	background: rgb(from var(--ace-gutter-bg) r g b / 80%);
-	color: var(--ace-foreground);
-	border: 2px solid var(--ace-gutter-bg);
-	font-size: 16px;
-	box-shadow: 0 10px 30px rgb(from var(--ace-bg) r g b / 80%)
-}
-
-#popups h3 {
-	color: var(--ace-foreground);
-	border-bottom: 2px solid var(--ace-gutter-bg);
-}
-
-#popups p {
-	color: var(--ace-foreground);
-}
-
-
 .lm-miniPaintPanel .canvas_preview_details .details {
 	display: flex;
 	justify-content: space-evenly;
@@ -258,20 +233,6 @@
 
 .lm-miniPaintPanel .block h2 {
 	font-size: unset !important;
-}
-
-#popups .ui_range,
-.lm-miniPaintPanel .ui_range {
-	border: 2px solid rgb(from var(--ace-gutter-bg) r g b / 50%);
-}
-
-#popups .popup .buttons {
-	display: flex;
-	gap: 10px;
-	margin-top: 2px !important;
-	height: unset !important;
-	line-height: unset !important;
-	justify-content: flex-end;
 }
 
 .lm-miniPaintPanel #toggle_color_swatches_section_button,

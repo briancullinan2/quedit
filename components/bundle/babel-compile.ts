@@ -65,7 +65,7 @@ export function collectDependencies(rawCode: string, baseRoute: string, dependen
 			} else if(moduleName === './bundle.js' && baseRoute)
 			{
 				newDependency = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName);
-			} else if(moduleName === 'xterm')
+			} else if(moduleName === 'xterm' || moduleName === '@xterm/xterm')
 			{
 				newDependency = '/components/terminal/xterm.js';
 			} else if((moduleName.startsWith('./') || moduleName.startsWith('../'))
@@ -102,7 +102,7 @@ export function collectDependencies(rawCode: string, baseRoute: string, dependen
 				} else if(moduleName === './bundle.js' && baseRoute)
 				{
 					newDependency = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')), moduleName);
-				} else if(moduleName === 'xterm' && baseRoute)
+				} else if((moduleName === 'xterm' || moduleName === '@xterm/xterm') && baseRoute)
 				{
 					newDependency = '/components/terminal/xterm.js';
 				} else if((moduleName.startsWith('./') || moduleName.startsWith('../'))
@@ -372,7 +372,7 @@ export function transpileTypescriptWidget(rawCode: string, baseRoute: string): a
 								} else if(moduleName === './bundle.js')
 								{
 									path.replaceWithSourceString('window');
-								} else if(moduleName === 'xterm')
+								} else if(moduleName === 'xterm' || moduleName === '@xterm/xterm')
 								{
 									path.replaceWithSourceString('Terminal');
 								}
@@ -413,7 +413,7 @@ export function transpileTypescriptWidget(rawCode: string, baseRoute: string): a
 							} else if(moduleName === './bundle.js')
 							{
 								globalExpression = t.identifier('window');
-							} else if(moduleName === 'xterm')
+							} else if(moduleName === 'xterm' || moduleName === '@xterm/xterm')
 							{
 								globalExpression = t.identifier('window');
 							} else if(moduleName.startsWith('./') || moduleName.startsWith('../'))

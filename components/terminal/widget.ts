@@ -1,6 +1,6 @@
 import type { SettingConfig, Settings } from '../bundle/settings';
 import { DockPanel, Title, Widget } from '@lumino/widgets';
-import { Terminal } from 'xterm';
+import { Terminal } from '@xterm/xterm';
 import { TerminalEventManager } from './events';
 import type { StatusBarWidget } from '../bundle/status';
 import { SearchTerminal } from './search';

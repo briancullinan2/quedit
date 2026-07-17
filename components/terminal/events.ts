@@ -1,4 +1,4 @@
-import type { IDisposable } from 'xterm';
+import type { IDisposable } from '@xterm/xterm';
 import { TerminalHistoryManager } from './history'; // Adjust path accordingly
 import type { StatusBarWidget } from '../bundle/status';
 import type { IPooledTerminal } from './widget';

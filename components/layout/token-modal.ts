@@ -17,9 +17,23 @@ export class TokenModal
 	private modal: HTMLDivElement | null = null;
 	private tokenInput: HTMLInputElement | null = null;
 	private tokenForm: HTMLFormElement | null = null;
+	static _instance: TokenModal;
+
+	static getInstance()
+	{
+		if(this._instance)
+		{
+			return this._instance;
+		}
+		return new TokenModal();
+	}
 
 	constructor()
 	{
+		if(TokenModal._instance)
+		{
+			return TokenModal._instance;
+		}
 		this.container = document.getElementById('popups');
 		if(!this.container)
 		{
@@ -29,6 +43,7 @@ export class TokenModal
 		this.render();
 		this.initElements();
 		this.bindEvents();
+		TokenModal._instance = this;
 	}
 
 	private render(): void
@@ -147,6 +162,7 @@ export class TokenModal
 		} else if(target.classList.contains('close-btn'))
 		{
 			this.modal.classList.add('hidden');
+			this.container?.removeChild(this.modal);
 		}
 
 		return false;
@@ -174,6 +190,8 @@ export class TokenModal
 
 		setTimeout(() =>
 		{
+			if(this.modal)
+				this.container?.appendChild(this.modal);
 			this.modal?.classList.remove('hidden');
 		}, 200);
 	}
@@ -191,6 +209,8 @@ export class TokenModal
 			alert('Token saved to local storage.');
 			setTimeout(() =>
 			{
+				if(this.modal)
+					this.container?.removeChild(this.modal);
 				this.modal?.classList.add('hidden');
 			}, 200);
 		}
