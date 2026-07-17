@@ -23,6 +23,7 @@ declare global
 	{
 		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
 		loadGitHubTree: (repoOwner: string, repoName: string, branch: string) => Promise<any>;
+		getBranches: (repoOwner: string | undefined, repoName: string | undefined) => Promise<GitHubBranch[]>;
 	}
 }
 
@@ -139,6 +140,10 @@ export async function getBranches(repoOwner: string | undefined, repoName: strin
 		return [];
 	}
 }
+
+
+window.getBranches = getBranches;
+
 
 export async function githubGraphQL(query: string, variables: Record<string, any> = {}): Promise<any>
 {

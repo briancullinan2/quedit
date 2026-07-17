@@ -113,7 +113,7 @@ export async function setRepository(newRepo: string): Promise<void>
 	}
 
 	const branches = await getBranches(RepositoryToolbar.owner?.value, RepositoryToolbar.repository?.value);
-	updateSelectOptions('branch', branches);
+	updateSelectOptions(RepositoryToolbar.branch, branches);
 }
 
 

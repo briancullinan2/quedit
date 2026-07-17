@@ -1,7 +1,7 @@
 // components/FileListWidget.ts
 import { Widget, DockPanel } from '@lumino/widgets';
 import type { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
-import type { GitHubFileEntry } from '../bundle/github-types';
+import type { GitHubBranch, GitHubFileEntry } from '../bundle/github-types';
 import type { RepositoryToolbar } from '../bundle/menu-repos';
 import type { Settings } from '../bundle/settings';
 import type { FileManager } from '../bundle/lumino-files';
@@ -21,6 +21,7 @@ declare global
 			items: Record<string, string> | Array<string | GitHubBranchLike>,
 			selectedValue: string
 		) => void;
+		getBranches: (repoOwner: string | undefined, repoName: string | undefined) => Promise<GitHubBranch[]>;
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
 		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
@@ -55,11 +56,13 @@ export class FileListWidget extends Widget
 		this.addClass('ide-file-tree-widget');
 
 		this.treeContainerId = `tree-${Date.now()}`;
-		this.renderLayout();
+		this.renderLayout().then(() =>
+		{
+			requestAnimationFrame(() => this.initializeFiletrees());
+		});
 		this.bindDOMEvents();
 
 		// Defer file tree checking until element is mounted to layout viewport
-		requestAnimationFrame(() => this.initializeFiletrees());
 	}
 
 	public processMessage(msg: Message): void
@@ -93,7 +96,7 @@ export class FileListWidget extends Widget
 	/**
 	 * Safe HTML Structure Injection
 	 */
-	private renderLayout(): void
+	private async renderLayout(): Promise<void>
 	{
 		this.node.innerHTML = `
       <div class="filelist-wrapper">
@@ -113,9 +116,6 @@ export class FileListWidget extends Widget
           </li>
           <li class="setting" data-placeholder="Branch">
             <select name="branch" class="filelist-branch">
-              <option value="main">main</option>
-              <option value="wasm-support">wasm-support</option>
-              <option value="recent_updates">recent_updates</option>
             </select>
           </li>
         </ul>
@@ -136,6 +136,11 @@ export class FileListWidget extends Widget
 		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement);
 		const repositories = window.SettingsManager.get('github', 'repositoriesList');
 		window.updateSelectOptions(repo, repositories, repoName);
+
+		const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement);
+		const branches = await window.getBranches(ownerName, repoName);
+		window.updateSelectOptions(branch, branches, branches[0].name);
+
 	}
 
 	private bindDOMEvents(): void
@@ -290,7 +295,8 @@ async function treeHandler(selector: string, e: Event): Promise<void>
 
 export class GameListWidget extends FileListWidget
 {
-	protected override get defaultRepository() {
+	protected override get defaultRepository()
+	{
 		return window.SettingsManager.get('github', 'gameRepository');
 	}
 }

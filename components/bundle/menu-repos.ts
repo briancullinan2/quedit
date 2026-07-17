@@ -88,6 +88,10 @@ export class RepositoryToolbar extends Widget
                 <option value="repo-a">Repository A</option>
                 <option value="repo-b">Repository B</option>
             </select>
+			<select required id="top-bar-sel-branch">
+				<option value="" selected disabled>Current branch</option>
+				<option value="main">main</option>
+			</select>
         `;
 
 		this.node.querySelector('#top-bar-sel-owner')?.addEventListener('change', () =>
@@ -115,6 +119,11 @@ export class RepositoryToolbar extends Widget
 	public static get repository(): HTMLSelectElement | null
 	{
 		return RepositoryToolbar.getInstance().node.querySelector('#top-bar-sel-repo');
+	}
+
+	public static get branch(): HTMLSelectElement | null
+	{
+		return RepositoryToolbar.getInstance().node.querySelector('#top-bar-sel-branch');
 	}
 }
 
