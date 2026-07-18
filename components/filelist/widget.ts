@@ -108,6 +108,7 @@ export class FileListWidget extends Widget
         <ul class="toolbar">
           <li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
           <li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
+		  <li><a alt="Google Drive" href="#new-gdrive" class="bx bxl bx-google-cloud"></a></li>
           <li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
           <li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
           <li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>

@@ -9,6 +9,7 @@
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"start": "node dev.js",
+		"build-manifest": "npx ts-node -O \"{\\\"module\\\":\\\"commonjs\\\",\\\"moduleResolution\\\":\\\"node\\\"}\" components/bundle/generate-manifest.ts",
 		"build-nunu": "webpack --config webpack.nunu.js",
 		"build-paint": "webpack --config webpack.paint.js",
 		"build-settings": "npx ts-node -O \"{\\\"module\\\":\\\"commonjs\\\",\\\"moduleResolution\\\":\\\"node\\\"}\" components/bundle/settings-coalescer.ts",

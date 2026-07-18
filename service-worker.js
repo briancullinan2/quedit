@@ -71,7 +71,7 @@ async function initializeCoreScripts()
 {
 	const scriptsToLoad = [
 		'/components/core/local.js',
-		'/components/core/extensions.js',
+		'/file-manifest.js',
 		'/components/filelist/github.js',
 	];
 
@@ -794,23 +794,7 @@ async function manufactureRefreshResponse()
 
 
 console.log('⚙️ [SW-INSTALL] Compiling module path strings from global IMPORT arrays...');
-const uniqueAssets = [
-	'index.html',
-	'/components/core/extensions.js',
-	'/components/core/events.js',
-	'/components/core/modules.js',
-	'/components/theme/boxicons.ttf',
-	'/components/theme/boxicons.woff',
-	'/components/theme/boxicons.woff2',
-	'/components/map-editor/tern/browser.json',
-	'/components/map-editor/tern/ecmascript.json',
-	'/components/map-editor/tern/threejs.json',
-
-	...new Set([
-		...Object.values(IMPORT_CSS).flatMap(o => o),
-		...Object.values(IMPORT_JS).flatMap(o => o)
-	])
-].map(path => path.replace(/^\/?assets\/|^\//ig, '')); // Normalize paths to omit leading slashes\
+const uniqueAssets = __assetsManifest.map(ass => ass.path.replace(/^\/?assets\/|^\//ig, '')); // Normalize paths to omit leading slashes\
 
 
 
