@@ -358,4 +358,4 @@ export function sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[]
 	return nodes;
 }
 
-
+window.sortNodes = sortNodes;

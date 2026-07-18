@@ -27,6 +27,7 @@ declare global
 			virtual: Record<string, FileRecord | null | undefined>;
 		};
 		DB_STORE_NAME: string;
+		ST_DIR: number;
 	}
 }
 
@@ -124,6 +125,11 @@ export class DatabaseListWidget extends FileListWidget
 				{
 					window.filesRepo[database][r.path] = window.FS.virtual[r.path] = r;
 				}
+				const result3 = await window.queryIndex(window.DB_STORE_NAME, 'parent', `/${baseDir}`, null, null, database);
+				for(const r of result3)
+				{
+					window.filesRepo[database][r.path] = window.FS.virtual[r.path] = r;
+				}
 
 				resultSet = Object.values(window.filesRepo[database]).reduce((acc: any, r: any) =>
 				{
@@ -136,10 +142,11 @@ export class DatabaseListWidget extends FileListWidget
 			// Isolate immediate children
 			const childrenKeys = resultKeys.filter(path =>
 			{
-				const firstMatch = baseDir === '/' || baseDir === '' || path.startsWith(`${baseDir}/`);
+				const firstMatch = baseDir === '/' || baseDir === '' || path.startsWith(`${baseDir}/`)
+					|| path.startsWith(`/${baseDir}/`);
 				if(!firstMatch) return false;
 
-				const relativePath = path.substring(baseDir.length + 1);
+				const relativePath = path.replace(/^[\/\\]|[\/\\]$/gi, '').substring(baseDir.length + 1);
 				const slashIndex = relativePath.indexOf('/');
 				return slashIndex === -1 || slashIndex === relativePath.length - 1;
 			});
@@ -148,7 +155,7 @@ export class DatabaseListWidget extends FileListWidget
 			const newChildren = childrenKeys.map(path =>
 			{
 				const node = resultSet[path];
-				const isDir = node.mode === 16384; // FS_DIR mock or standard directory mode mask
+				const isDir = (node.mode >> 12) & window.ST_DIR; // FS_DIR mock or standard directory mode mask
 				const name = path.split('/').pop() || path;
 
 				const newNode: NestedTreeNode = {

@@ -21,6 +21,8 @@ declare global
 			noBounce?: boolean
 		): Promise<FileRecord[]>;
 		DB_STORE_NAME: string;
+		ST_DIR: number;
+		ST_FILE: number;
 	}
 }
 
@@ -97,7 +99,9 @@ window.DB_STORE_NAME = DB_STORE_NAME;
 export const DB_DEBOUNCE_INTERVAL = 50;
 
 export const ST_FILE = 8;
+window.ST_FILE = ST_FILE;
 export const ST_DIR = 4;
+window.ST_DIR = ST_DIR;
 export const FS_DEFAULT = (6 << 3) + (6 << 6) + (6);
 export const FS_FILE = (ST_FILE << 12) + FS_DEFAULT;
 export const FS_DIR = (ST_DIR << 12) + FS_DEFAULT;
@@ -428,6 +432,8 @@ export async function queryIndex(
 {
 	return await debounceRecords(storeName, indexName, exactIndex, lower, upper, dbName, 'query', noBounce);
 }
+
+window.queryIndex = queryIndex;
 
 export function debounceRecords(
 	storeName: string,
