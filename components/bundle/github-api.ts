@@ -22,7 +22,7 @@ declare global
 	interface Window
 	{
 		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
-		loadGitHubTree: (repoOwner: string, repoName: string, branch: string) => Promise<any>;
+		loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<any>;
 		getBranches: (repoOwner: string | undefined, repoName: string | undefined) => Promise<GitHubBranch[]>;
 	}
 }
@@ -165,7 +165,7 @@ export async function githubGraphQL(query: string, variables: Record<string, any
 	return result.data;
 }
 
-export async function loadGitHubTree(repoOwner: string, repoName: string, branch: string): Promise<GitHubFileTree | undefined>
+export async function loadGitHubTree(repoOwner: string, repoName: string, branch: string, path?: string): Promise<GitHubFileTree | undefined>
 {
 	try
 	{

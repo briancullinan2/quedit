@@ -168,7 +168,7 @@ export class FileListWidget extends Widget
 		this.onRepositoryChanged();
 	}
 
-	private async onRepositoryChanged(): Promise<void>
+	protected async onRepositoryChanged(): Promise<void>
 	{
 		const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement).value;
 		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement).value;
