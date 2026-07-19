@@ -1,7 +1,9 @@
 import { Widget } from '@lumino/widgets';
 import { q3bsp } from './q3bsp.js';
+import stats from './util/stats.min.js';
 import WebXR from './util/webxr-polyfill.min.js';
 import matrix from './util/gl-matrix-min.js';
+import { FrameRater } from '../bundle/frame-rater';
 
 // --- External Prototype Global Declarations ---
 // These match the standard JS imports you will be referencing at the top of your module.
@@ -11,12 +13,15 @@ declare const vec3: any;
 declare const quat: any;
 declare const q3movement: any;
 declare const Stats: any;
-declare const createFrameRater: any;
 declare const XRWebGLLayer: any;
 
 
 declare global
 {
+	interface Window
+	{
+		tojiFrameLimiter: FrameRater;
+	}
 	interface Navigator
 	{
 		xr?: {
@@ -32,6 +37,10 @@ declare global
 	}
 }
 
+
+export const DEFAULT_MAPNAME = 'maps/q3tourney2.bsp';
+
+
 /**
  * A Lumino Widget wrapping the Quake 3 WebGL demo engine.
  * Fully type-annotated while keeping all legacy implementation hints intact.
@@ -42,7 +51,7 @@ export class TojiWidget extends Widget
 	private polyfill = new WebXRPolyfill();
 
 	// Map Setup State
-	private mapName: string = 'maps/q3tourney2.bsp';
+	private mapName?: string;
 	private previousMapName: string | null = null;
 	private maploadDebouncer: any = null;
 
@@ -99,7 +108,6 @@ export class TojiWidget extends Widget
 	private tojiEngineRunning: boolean = false;
 	private tojiRendererRunning: boolean = false;
 	private notRunningFrameCount: number = 0;
-	private tojiFrameLimiter: any = null;
 	private rafCallback: any = null;
 
 	private startTime: number = 0;
@@ -169,9 +177,6 @@ export class TojiWidget extends Widget
 	protected override onAfterAttach(msg: any): void
 	{
 		super.onAfterAttach(msg);
-		// Explicitly check for auto-trigger context if viewport-frame conditions require it
-		debugger;
-		console.error('god fucking damnit');
 		this.runTojiEngine();
 	}
 
@@ -224,7 +229,7 @@ export class TojiWidget extends Widget
 		this.leftViewport = { x: 0, y: 0, width: 0, height: 0 };
 		this.rightViewport = { x: 0, y: 0, width: 0, height: 0 };
 
-		this.initMap(gl, this.mapName);
+		this.initMap(gl, DEFAULT_MAPNAME);
 	}
 
 	private initMap(gl: any, mapFile: string, mapContent?: any, noBounce: boolean = false): void
@@ -714,9 +719,9 @@ export class TojiWidget extends Widget
 		});
 		stats.end();
 
-		if(this.tojiFrameLimiter)
+		if(window.tojiFrameLimiter)
 		{
-			this.tojiFrameLimiter.requestFrameUpdate();
+			window.tojiFrameLimiter.requestFrameUpdate();
 		}
 	}
 
@@ -746,19 +751,12 @@ export class TojiWidget extends Widget
 
 	public runTojiEngine(): void
 	{
-		if(!this.viewportFrameElement.classList.contains('not-hidden')
-			&& (!document.body.classList.contains('previous-viewport-frame') || window.innerWidth < 1200)
-			&& (!document.body.classList.contains('panel-terminal-container')
-				&& document.querySelector('#terminals a[href="#soft"].active') === null)
-		)
-			return;
-
 		if(this.tojiEngineRunning)
 		{
 			if(!this.tojiRendererRunning)
 			{
 				this.notRunningFrameCount = 0;
-				if(this.tojiFrameLimiter) this.tojiFrameLimiter.requestFrameUpdate();
+				if(window.tojiFrameLimiter) window.tojiFrameLimiter.requestFrameUpdate();
 			}
 			return;
 		}
@@ -783,8 +781,9 @@ export class TojiWidget extends Widget
 			this.lastTimestamp = this.startTime;
 			this.lastFps = this.startTime;
 
-			(window as any).tojiFrameLimiter = this.tojiFrameLimiter = createFrameRater(25, (e: any, t: number, frame: any) =>
+			window.tojiFrameLimiter = new FrameRater(25, (e: any, t: number, frame: any) =>
 			{
+				/*
 				if(!this.viewportFrameElement.classList.contains('not-hidden')
 					&& (!document.body.classList.contains('previous-viewport-frame') || window.innerWidth < 1200)
 					&& (!document.body.classList.contains('panel-terminal-container')
@@ -798,11 +797,12 @@ export class TojiWidget extends Widget
 						return;
 					}
 				}
+				*/
 				this.tojiRendererRunning = true;
 				this.onRequestedFrame(gl, this.statsInstance, t, frame);
 			});
 
-			this.tojiFrameLimiter.requestFrameUpdate();
+			window.tojiFrameLimiter.requestFrameUpdate();
 			// TODO: make this lazy with a separate function
 			this.rafCallback = this.onRequestedFrame.bind(this, gl, this.statsInstance);
 		}
