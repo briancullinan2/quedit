@@ -108,6 +108,7 @@ export class AssetListWidget extends FileListWidget
 			const nodes = window.convertFlatToNested(Object.values(result ?? {}));
 			for(const r of nodes)
 			{
+				r.path = basePath + '/' + r.path;
 				window.filesRepo[database][r.path] = window.FS.virtual[r.path] = Object.assign(r, {
 					mode: r.mode ?? window.FS_FILE,
 				});
@@ -116,7 +117,6 @@ export class AssetListWidget extends FileListWidget
 
 			resultSet = Object.values(window.filesRepo[database]).reduce((acc: any, r: any) =>
 			{
-				r.path = basePath + '/' + r.path;
 				acc[r.path] = r;
 				return acc;
 			}, {});

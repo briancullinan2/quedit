@@ -6,7 +6,7 @@ import { createTopBar, initializeMenus } from './menu';
 import { StatusBarWidget } from './status';
 import { ServiceWorkerManager } from './worker';
 import { SettingConfig, SettingsManager } from './settings';
-import { isDevToolsOpen, ResponsiveManager } from './lumino-resize';
+import { isDevToolsOpen, OUTLINE_WIDGET_TYPES, ResponsiveManager } from './lumino-resize';
 
 import '@lumino/widgets/style/index.css';
 
@@ -167,9 +167,7 @@ function main(): void
 			{
 				// Strategy B: Pull remaining widgets and find the first non-filelist editor
 				const remaining = Array.from(mainDock.widgets()).filter(w => w !== closingWidget && !w.isHidden);
-				fallbackWidget = remaining.find(w => w.constructor.name !== 'FileListWidget'
-					&& w.constructor.name !== 'GameListWidget'
-				) || remaining[0] || null;
+				fallbackWidget = remaining.find(w => !OUTLINE_WIDGET_TYPES.includes(w.constructor.name)) ?? remaining[0] ?? null;
 			}
 
 			// 3. Queue the activation right after the layout pass finishes processing the removal

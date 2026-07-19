@@ -39,10 +39,17 @@ declare global
 
 export type ToolbarKey = 'repoToolbar' | 'scriptToolbar' | 'appToolbar' | 'fileToolbar' | 'historyToolbar' | 'settingsToolbar' | 'engineToolbar';
 
+
+export const OUTLINE_WIDGET_TYPES = [
+	'FileListWidget', 'GameListWidget',
+	'DatabaseListWidget', 'AssetListWidget'
+]
+
+
 /**
  * Inverted Registry: Maps each Toolbar to the Widget classes that activate it.
  */
-const TOOLBAR_CONTEXT_MAP: Record<ToolbarKey, string[]> = {
+export const TOOLBAR_CONTEXT_MAP: Record<ToolbarKey, string[]> = {
 	appToolbar: [
 		'ConsoleWidget', 'AceEditorWidget', 'PaintWidget', 'NunuStudioWidget',
 		'DedicatedCanvasWidget', 'FileListWidget', 'GameListWidget',
@@ -295,7 +302,7 @@ export class ResponsiveManager
 		const targetIds = new Set<string>();
 		widgets.forEach(widget =>
 		{
-			if(widget.constructor.name === 'FileListWidget')
+			if(OUTLINE_WIDGET_TYPES.includes(widget.constructor.name))
 			{
 				targetIds.add(widget.id);
 			}

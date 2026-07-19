@@ -104,7 +104,7 @@ export class FileManager
 			}
 		}
 
-		console.log(`[VFS Lookup Failed] File: ${hintPath}`);
+		console.log(`[VFS Lookup Failed] File: ${hintPath}\nTried:\n${candidates.map(c => c.testPath).join('\n')}\n${activeRepositories.join('\n')}`);
 		return [null, null, null, null];
 	}
 
@@ -232,10 +232,7 @@ export class FileManager
 				}
 			} catch(e)
 			{
-				if(typeof window.writeLog === 'function' && e instanceof Error)
-				{
-					window.writeLog(e.message);
-				}
+				console.error(e);
 			}
 		}
 		return null;

@@ -45,7 +45,7 @@ export const IMPORT_SETTINGS: Record<string, Record<string, SettingConfig>> = {
         },
         "assetRepository": {
             "key": "asset_repository",
-            "default": "",
+            "default": "briancullinan2/multigame-assets",
             "description": "Optional storage repository dedicated to static game assets, maps, texturing bundles, or audio assets required to run the game."
         },
         "toolsRepository": {

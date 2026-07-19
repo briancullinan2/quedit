@@ -13,6 +13,7 @@ import { LayoutAdjuster } from './lumino-widget';
 import type { FileListWidget } from '../filelist/widget';
 import { MenuConfig } from './menu-manager';
 import { loadAndInstantiate } from './babel-compile';
+import { OUTLINE_WIDGET_TYPES } from './lumino-resize';
 
 
 export interface TopBarComponents
@@ -85,9 +86,7 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 		if(existing.length > 0)
 		{
 			console.log('Panel route already loaded: ' + panelId);
-			if(route.className === 'FileListWidget'
-				|| route.className === 'GameListWidget'
-			)
+			if(route.className && OUTLINE_WIDGET_TYPES.includes(route.className))
 			{
 				existing[0].hide();
 				existing[0].parent = null;
@@ -115,9 +114,7 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 		}
 
 		const widgetInstance = await loadAndInstantiate(route);
-		if(widgetInstance.constructor.name === 'FileListWidget'
-			|| widgetInstance.constructor.name === 'GameListWidget'
-		)
+		if(OUTLINE_WIDGET_TYPES.includes(widgetInstance.constructor.name))
 		{
 			LayoutAdjuster.addOptimalWidgetLayout(mainDock, widgetInstance, {
 				type: 'outline',

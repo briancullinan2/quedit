@@ -1,4 +1,5 @@
 import { DockPanel, Widget } from '@lumino/widgets';
+import { OUTLINE_WIDGET_TYPES } from './lumino-resize';
 
 export const WIDESCREEN = 1200;
 export const MOBILEMODE = 600;
@@ -198,9 +199,7 @@ export class LayoutAdjuster
 					maxArea = area;
 					largestProjectWidget = w;
 				}
-			} else if(w.constructor.name !== 'FileListWidget'
-				&& w.constructor.name !== 'GameListWidget'
-			)
+			} else if(!OUTLINE_WIDGET_TYPES.includes(w.constructor.name))
 			{
 				const rect = el.getBoundingClientRect();
 				const area = rect.width * rect.height;
