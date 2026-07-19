@@ -394,37 +394,37 @@ async function hydrateFileMTimes(owner, repo, branch, filePaths, targetCache)
 
 async function getGitSha256Browser(content)
 {
-    const encoder = new TextEncoder();
-    let contentBytes;
+	const encoder = new TextEncoder();
+	let contentBytes;
 
-    if(content instanceof Uint8Array)
-    {
-        contentBytes = content;
-    } else if(content instanceof ArrayBuffer)
-    {
-        // Wrap the raw ArrayBuffer in a Uint8Array view so it has a .length property
-        contentBytes = new Uint8Array(content);
-    } else
-    {
-        contentBytes = encoder.encode(content);
-    }
+	if(content instanceof Uint8Array)
+	{
+		contentBytes = content;
+	} else if(content instanceof ArrayBuffer)
+	{
+		// Wrap the raw ArrayBuffer in a Uint8Array view so it has a .length property
+		contentBytes = new Uint8Array(content);
+	} else
+	{
+		contentBytes = encoder.encode(content);
+	}
 
-    // Create Git blob header using .byteLength for accuracy
-    const header = `blob ${contentBytes.byteLength}\0`;
-    const headerBytes = encoder.encode(header);
+	// Create Git blob header using .byteLength for accuracy
+	const header = `blob ${contentBytes.byteLength}\0`;
+	const headerBytes = encoder.encode(header);
 
-    // Combine using .byteLength to support all binary types safely
-    const finalBytes = new Uint8Array(headerBytes.byteLength + contentBytes.byteLength);
-    finalBytes.set(headerBytes);
-    finalBytes.set(contentBytes, headerBytes.byteLength);
+	// Combine using .byteLength to support all binary types safely
+	const finalBytes = new Uint8Array(headerBytes.byteLength + contentBytes.byteLength);
+	finalBytes.set(headerBytes);
+	finalBytes.set(contentBytes, headerBytes.byteLength);
 
-    // Generate SHA-256 hash
-    const hashBuffer = await crypto.subtle.digest('SHA-256', finalBytes);
+	// Generate SHA-256 hash
+	const hashBuffer = await crypto.subtle.digest('SHA-256', finalBytes);
 
-    // Convert ArrayBuffer to Hex string
-    return Array.from(new Uint8Array(hashBuffer))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+	// Convert ArrayBuffer to Hex string
+	return Array.from(new Uint8Array(hashBuffer))
+		.map(b => b.toString(16).padStart(2, '0'))
+		.join('');
 }
 
 async function getGitShaBrowser(content)
@@ -575,6 +575,11 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 		{
 			// Encode raw text to UTF-8 bytes
 			bytes = new TextEncoder().encode(jsonResponse.content || "");
+		}
+		if(bytes.length === 0 && jsonResponse.size > 0)
+		{
+			const response = await fetch(jsonResponse.download_url);
+			bytes = new Uint8Array(await response.arrayBuffer());
 		}
 
 

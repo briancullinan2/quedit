@@ -164,6 +164,11 @@ export async function cacheFileInternal(repoOwner: string, repoName: string, fil
 		{
 			bytes = new TextEncoder().encode(jsonResponse.content || "");
 		}
+		if(bytes.length === 0 && jsonResponse.size > 0)
+		{
+			const response = await fetch(jsonResponse.download_url);
+			bytes = new Uint8Array(await response.arrayBuffer());
+		}
 
 		FS.virtual[filePath] = {
 			timestamp: filesRepo[selected] ? filesRepo[selected][filePath].timestamp : undefined,
