@@ -85,7 +85,8 @@ export class AssetListWidget extends FileListWidget
 		const parts = folderId.split('/');
 		const database = `${parts[0]}/${parts[1]}`;
 		const baseDir = parts.slice(2).join('/');
-		const dirPath = baseDir.substring(0, baseDir.lastIndexOf('/'));
+		const basePath = this.loadedDatabases[database + '/' + baseDir].path;
+		const dirPath = basePath.substring(0, basePath.lastIndexOf('/'));
 		const parentDir = database + (dirPath.trim().length > 0 ? `/${dirPath}` : '');
 
 		try
@@ -102,10 +103,9 @@ export class AssetListWidget extends FileListWidget
 				window.filesRepo[database] = {};
 			}
 
-
 			// TODO: put github call here:
-			window.filesRepo[this.selector] = await window.loadGitHubTree(owner, repo, branch, dirPath);
-			const nodes = window.convertFlatToNested(Object.values(window.filesRepo[this.selector] ?? {}));
+			const result = await window.loadGitHubTree(owner, repo, branch, baseDir);
+			const nodes = window.convertFlatToNested(Object.values(result ?? {}));
 			for(const r of nodes)
 			{
 				window.filesRepo[database][r.path] = window.FS.virtual[r.path] = Object.assign(r, {
@@ -116,6 +116,7 @@ export class AssetListWidget extends FileListWidget
 
 			resultSet = Object.values(window.filesRepo[database]).reduce((acc: any, r: any) =>
 			{
+				r.path = basePath + '/' + r.path;
 				acc[r.path] = r;
 				return acc;
 			}, {});
@@ -125,11 +126,11 @@ export class AssetListWidget extends FileListWidget
 			// Isolate immediate children
 			const childrenKeys = resultKeys.filter(path =>
 			{
-				const firstMatch = baseDir === '/' || baseDir === '' || path.startsWith(`${baseDir}/`)
-					|| path.startsWith(`/${baseDir}/`);
+				const firstMatch = basePath === '/' || basePath === '' || path.startsWith(`${basePath}/`)
+					|| path.startsWith(`/${basePath}/`);
 				if(!firstMatch) return false;
 
-				const relativePath = path.replace(/^[\/\\]|[\/\\]$/gi, '').substring(baseDir.length + 1);
+				const relativePath = path.replace(/^[\/\\]|[\/\\]$/gi, '').substring(basePath.length + 1);
 				const slashIndex = relativePath.indexOf('/');
 				return slashIndex === -1 || slashIndex === relativePath.length - 1;
 			});
@@ -142,7 +143,7 @@ export class AssetListWidget extends FileListWidget
 				const name = path.split('/').pop() || path;
 
 				const newNode: NestedTreeNode = {
-					id: database + (path.length === 0 || path[0] === '/' ? '' : '/') + path,
+					id: database + '/' + node.id,
 					text: name,
 					path: path,
 					parent: activeTree.nodesById[folderId],
@@ -182,7 +183,7 @@ export class AssetListWidget extends FileListWidget
 
 		} catch(err: any)
 		{
-			console.error(`Failed to load tree node: ${err.message}`);
+			console.error(`Failed to load tree node: ${err.message}\n${err.stack ?? err.stacktrace}`);
 			this.loadedDatabases[folderId] = { text: 'Error loading files', id: 'err', path: 'err', status: 0, state: { open: false, expanded: false } } as NestedTreeNode;
 		}
 
@@ -223,7 +224,20 @@ export class AssetListWidget extends FileListWidget
 		{
 			// TODO: replace with call to loadGitHubTree(path = '/')
 			window.filesRepo[this.selector] = await window.loadGitHubTree(owner, repo, branch, '/');
+			if(!window.filesRepo[database])
+			{
+				window.filesRepo[database] = {};
+			}
 			const nodes = window.convertFlatToNested(Object.values(window.filesRepo[this.selector] ?? {}));
+			for(let n of nodes)
+			{
+				n.id = database + '/' + n.id;
+				const isDir = n.mode ? (n.mode >> 12) & window.ST_DIR : false;
+				n.children = isDir ? [{ text: 'Loading...', id: `${n.path}/loading`, path: `${n.path}/loading`, status: 0, state: { open: false, expanded: false } } as NestedTreeNode] : null;
+				window.filesRepo[database][n.path] = window.FS.virtual[n.path] = this.loadedDatabases[n.id] = Object.assign(n, {
+					mode: n.mode ?? window.FS_FILE,
+				});;
+			}
 			this.loadedDatabases[database] = {
 				id: database,
 				text: database,

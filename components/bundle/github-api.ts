@@ -171,7 +171,7 @@ export async function loadGitHubTree(repoOwner: string, repoName: string, branch
 	{
 		const database = `${repoOwner}/${repoName}`;
 		const treeData = (path?.replace(/^[\/\\]|[\/\\]$/ig, '') ?? '').length > 0
-			? await githubRequest(repoOwner, repoName, `git/trees/${branch}/${path}`)
+			? await githubRequest(repoOwner, repoName, `git/trees/${path}`)
 			: path ? await githubRequest(repoOwner, repoName, `git/trees/${branch}`)
 				: await githubRequest(repoOwner, repoName, `git/trees/${branch}?recursive=1`);
 		const commitData = await githubRequest(repoOwner, repoName, `commits/${branch}`);

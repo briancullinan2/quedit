@@ -310,7 +310,7 @@ export function convertFlatToNested(data: FlatFileNode[]): NestedTreeNode[]
 					},
 					path: item.path,
 					sha: item.sha,
-					mode: (parseInt('' + item.mode) >> 12) & ST_FILE ? FS_FILE : FS_DIR
+					mode: (parseInt('' + item.mode, 8) >> 12) & ST_FILE ? FS_FILE : FS_DIR
 				};
 
 				if(i < parts.length - 1 || item.type === 'tree')
