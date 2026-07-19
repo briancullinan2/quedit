@@ -1,7 +1,7 @@
 /*
  * q3shader.js - Parses Quake 3 shader files (.shader)
  */
- 
+
 /*
  * Copyright (c) 2009 Brandon Jones
  *
@@ -29,12 +29,12 @@
 // Shader Tokenizer
 //
 
-shaderTokenizer = function(src) {
+const shaderTokenizer = function(src) {
     // Strip out comments
     src = src.replace(/\/\/.*$/mg, ''); // C++ style (//...)
     src = src.replace(/\/\*[^*\/]*\*\//mg, ''); // C style (/*...*/) (Do the shaders even use these?)
     this.tokens = src.match(/[^\s\n\r\"]+/mg);
-    
+
     this.offset = 0;
 };
 
@@ -70,7 +70,7 @@ shaderTokenizer.prototype.prev = function() {
 // Shader Loading
 //
 
-q3shader = {};
+export const q3shader = {};
 
 q3shader.loadList = function(sources, onload) {
     for(var i = 0; i < sources.length; ++i) {
@@ -92,7 +92,7 @@ q3shader.load = async function(url, onload) {
         }
 
         const shaderText = await response.text();
-        
+
         // Execute the legacy callback handler seamlessly
         if (typeof onload === 'function') {
             q3shader.parse(url, shaderText, onload);
@@ -105,16 +105,16 @@ q3shader.load = async function(url, onload) {
 
 q3shader.parse = function(url, src, onload) {
     var shaders = [];
-    
+
     var tokens = new shaderTokenizer(src);
-    
+
     // Parse a shader
     while(!tokens.EOF()) {
         var name = tokens.next();
         var shader = q3shader.parseShader(name, tokens);
         if(shader) {
             shader.url = url;
-            
+
             if(shader.stages) {
                 for(var i = 0; i < shader.stages.length; ++i) {
                     // Build a WebGL shader program out of the stage parameters set here
@@ -124,7 +124,7 @@ q3shader.parse = function(url, src, onload) {
         }
         shaders.push(shader);
     }
-    
+
     // Send shaders to gl Thread
     onload(shaders);
 };
@@ -134,7 +134,7 @@ q3shader.parseShader = function(name, tokens) {
     if(brace != '{') {
         return null;
     }
-    
+
     var shader = {
         name: name,
         cull: 'back',
@@ -150,11 +150,11 @@ q3shader.parseShader = function(name, tokens) {
     while(!tokens.EOF()) {
         var token = tokens.next().toLowerCase();
         if(token == '}') { break; }
-        
+
         switch (token) {
             case '{': {
                 var stage = q3shader.parseStage(tokens);
-                
+
                 // I really really really don't like doing this, which basically just forces lightmaps to use the 'filter' blendmode
                 // but if I don't a lot of textures end up looking too bright. I'm sure I'm jsut missing something, and this shouldn't
                 // be needed.
@@ -162,7 +162,7 @@ q3shader.parseShader = function(name, tokens) {
                     stage.blendSrc = 'GL_DST_COLOR';
                     stage.blendDest = 'GL_ZERO';
                 }
-                
+
                 // I'm having a ton of trouble getting lightingSpecular to work properly,
                 // so this little hack gets it looking right till I can figure out the problem
                 if(stage.alphaGen == 'lightingspecular') {
@@ -172,21 +172,21 @@ q3shader.parseShader = function(name, tokens) {
                     stage.depthWrite = true;
                     shader.stages = [];
                 }
-                
+
                 if(stage.hasBlendFunc) { shader.blend = true; } else { shader.opaque = true; }
-                
+
                 shader.stages.push(stage);
             } break;
-            
+
             case 'cull':
                 shader.cull = tokens.next();
                 break;
-                
+
             case 'deformvertexes':
                 var deform = {
                     type: tokens.next().toLowerCase()
                 };
-                
+
                 switch(deform.type) {
                     case 'wave':
                         deform.spread = 1.0 / parseFloat(tokens.next());
@@ -194,10 +194,10 @@ q3shader.parseShader = function(name, tokens) {
                         break;
                     default: deform = null; break;
                 }
-                
+
                 if(deform) { shader.vertexDeforms.push(deform); }
                 break;
-                
+
             case 'sort':
                 var sort = tokens.next().toLowerCase();
                 switch(sort) {
@@ -208,13 +208,13 @@ q3shader.parseShader = function(name, tokens) {
                     case 'underwater': shader.sort = 8; break;
                     case 'additive': shader.sort = 9; break;
                     case 'nearest': shader.sort = 16; break;
-                    default: shader.sort = parseInt(sort); break; 
+                    default: shader.sort = parseInt(sort); break;
                 };
                 break;
-                
+
             case 'surfaceparm':
                 var param = tokens.next().toLowerCase();
-                
+
                 switch(param) {
                     case 'sky':
                         shader.sky = true;
@@ -222,15 +222,15 @@ q3shader.parseShader = function(name, tokens) {
                     default: break;
                 }
                 break;
-                
+
             default: break;
         }
     }
-    
+
     if(!shader.sort) {
         shader.sort = (shader.opaque ? 3 : 9);
     }
-    
+
     return shader;
 };
 
@@ -244,7 +244,7 @@ q3shader.parseStage = function(tokens) {
         alphaGen: '1.0',
         alphaFunc: null,
         alphaWaveform: null,
-        blendSrc: 'GL_ONE', 
+        blendSrc: 'GL_ONE',
         blendDest: 'GL_ZERO',
         hasBlendFunc: false,
         tcMods: [],
@@ -253,19 +253,19 @@ q3shader.parseStage = function(tokens) {
         depthFunc: 'lequal',
         depthWrite: true
     };
-    
+
     // Parse a shader
     while(!tokens.EOF()) {
         var token = tokens.next();
         if(token == '}') { break; }
-        
+
         switch(token.toLowerCase()) {
             case 'clampmap':
                 stage.clamp = true;
             case 'map':
                 stage.map = tokens.next().replace(/(\.jpg|\.tga)/, '.png');
                 break;
-                
+
             case 'animmap':
                 stage.map = 'anim';
                 stage.animFreq = parseFloat(tokens.next());
@@ -276,7 +276,7 @@ q3shader.parseStage = function(tokens) {
                 }
                 tokens.prev();
                 break;
-                
+
             case 'rgbgen':
                 stage.rgbGen = tokens.next().toLowerCase();;
                 switch(stage.rgbGen) {
@@ -286,7 +286,7 @@ q3shader.parseStage = function(tokens) {
                         break;
                 };
                 break;
-                
+
             case 'alphagen':
                 stage.alphaGen = tokens.next().toLowerCase();
                 switch(stage.alphaGen) {
@@ -297,11 +297,11 @@ q3shader.parseStage = function(tokens) {
                     default: break;
                 };
                 break;
-                
+
             case 'alphafunc':
                 stage.alphaFunc = tokens.next().toUpperCase();
                 break;
-                
+
             case 'blendfunc':
                 stage.blendSrc = tokens.next();
                 stage.hasBlendFunc = true;
@@ -313,38 +313,38 @@ q3shader.parseStage = function(tokens) {
                         stage.blendSrc = 'GL_ONE';
                         stage.blendDest = 'GL_ONE';
                         break;
-                        
+
                     case 'blend':
                         stage.blendSrc = 'GL_SRC_ALPHA';
                         stage.blendDest = 'GL_ONE_MINUS_SRC_ALPHA';
                         break;
-                        
+
                     case 'filter':
                         stage.blendSrc = 'GL_DST_COLOR';
                         stage.blendDest = 'GL_ZERO';
                         break;
-                        
+
                     default:
                         stage.blendDest = tokens.next();
                         break;
                 }
                 break;
-                
+
             case 'depthfunc':
                 stage.depthFunc = tokens.next().toLowerCase();
                 break;
-                
+
             case 'depthwrite':
                 stage.depthWrite = true;
                 stage.depthWriteOverride = true;
                 break;
-                
+
             case 'tcmod':
                 var tcMod = {
                     type: tokens.next().toLowerCase()
                 }
                 switch(tcMod.type) {
-                    case 'rotate': 
+                    case 'rotate':
                         tcMod.angle = parseFloat(tokens.next()) * (3.1415/180);
                         break;
                     case 'scale':
@@ -379,14 +379,14 @@ q3shader.parseStage = function(tokens) {
             default: break;
         }
     }
-    
+
     if(stage.blendSrc == 'GL_ONE' && stage.blendDest == 'GL_ZERO') {
         stage.hasBlendFunc = false;
         stage.depthWrite = true;
     }
-    
+
     stage.isLightmap = stage.map == '$lightmap'
-    
+
     return stage;
 };
 
@@ -416,49 +416,49 @@ q3shader.buildShaderSource = function(shader, stage) {
 
 q3shader.buildVertexShader = function(stageShader, stage) {
     var shader = new shaderBuilder();
-    
+
     shader.addAttribs({
         position: 'vec3',
         normal: 'vec3',
         color: 'vec4',
     });
-    
+
     shader.addVaryings({
         vTexCoord: 'vec2',
         vColor: 'vec4',
     });
-    
+
     shader.addUniforms({
         modelViewMat: 'mat4',
         projectionMat: 'mat4',
         time: 'float',
     });
-    
+
     if(stage.isLightmap) {
         shader.addAttribs({ lightCoord: 'vec2' });
     } else {
         shader.addAttribs({ texCoord: 'vec2' });
     }
-    
+
     shader.addLines(['vec3 defPosition = position;']);
-    
+
     for(var i = 0; i < stageShader.vertexDeforms.length; ++i) {
         var deform = stageShader.vertexDeforms[i];
-        
+
         switch(deform.type) {
             case 'wave':
                 var name = 'deform' + i;
                 var offName = 'deformOff' + i;
-                
+
                 shader.addLines([
                     'float ' + offName + ' = (position.x + position.y + position.z) * ' + deform.spread.toFixed(4) + ';'
                 ]);
-                
+
                 var phase = deform.waveform.phase;
                 deform.waveform.phase = phase.toFixed(4) + ' + ' + offName;
                 shader.addWaveform(name, deform.waveform);
                 deform.waveform.phase = phase;
-                
+
                 shader.addLines([
                     'defPosition += normal * ' + name + ';'
                 ]);
@@ -466,7 +466,7 @@ q3shader.buildVertexShader = function(stageShader, stage) {
             default: break;
         }
     }
-    
+
     shader.addLines(['vec4 worldPosition = modelViewMat * vec4(defPosition, 1.0);']);
     shader.addLines(['vColor = color;']);
 
@@ -485,7 +485,7 @@ q3shader.buildVertexShader = function(stageShader, stage) {
             shader.addLines(['vTexCoord = texCoord;']);
         }
     }
-    
+
     // tcMods
     for(var i = 0; i < stage.tcMods.length; ++i) {
         var tcMod = stage.tcMods[i];
@@ -527,38 +527,38 @@ q3shader.buildVertexShader = function(stageShader, stage) {
             default: break;
         }
     }
-    
+
     switch(stage.alphaGen) {
         case 'lightingspecular':
             shader.addAttribs({ lightCoord: 'vec2' });
             shader.addVaryings({ vLightCoord: 'vec2' });
             shader.addLines([ 'vLightCoord = lightCoord;' ]);
             break;
-        default: 
+        default:
             break;
     }
-    
+
     shader.addLines(['gl_Position = projectionMat * worldPosition;']);
-    
+
     return shader.getSource();
-    
+
 }
 
 q3shader.buildFragmentShader = function(stageShader, stage) {
     var shader = new shaderBuilder();
-    
+
     shader.addVaryings({
         vTexCoord: 'vec2',
         vColor: 'vec4',
     });
-    
+
     shader.addUniforms({
         texture: 'sampler2D',
         time: 'float',
     });
-    
+
     shader.addLines(['vec4 texColor = texture2D(texture, vTexCoord.st);']);
-    
+
     switch(stage.rgbGen) {
         case 'vertex':
             shader.addLines(['vec3 rgb = texColor.rgb * vColor.rgb;']);
@@ -571,7 +571,7 @@ q3shader.buildFragmentShader = function(stageShader, stage) {
             shader.addLines(['vec3 rgb = texColor.rgb;']);
             break;
     }
-    
+
     switch(stage.alphaGen) {
         case 'wave':
             shader.addWaveform('alpha', stage.alphaWaveform);
@@ -592,11 +592,11 @@ q3shader.buildFragmentShader = function(stageShader, stage) {
                 'float alpha = 1.0;'
             ]);
             break;
-        default: 
+        default:
             shader.addLines(['float alpha = texColor.a;']);
             break;
     }
-    
+
     if(stage.alphaFunc) {
         switch(stage.alphaFunc) {
             case 'GT0':
@@ -614,13 +614,13 @@ q3shader.buildFragmentShader = function(stageShader, stage) {
                     'if(alpha < 0.5) { discard; }'
                 ]);
                 break;
-            default: 
+            default:
                 break;
         }
     }
-    
+
     shader.addLines(['gl_FragColor = vec4(rgb, alpha);']);
-    
+
     return shader.getSource();
 }
 
@@ -628,13 +628,13 @@ q3shader.buildFragmentShader = function(stageShader, stage) {
 // WebGL Shader builder utility
 //
 
-shaderBuilder = function() {
+const shaderBuilder = function() {
     this.attrib = {};
     this.varying = {};
     this.uniform = {};
-    
+
     this.functions = {};
-    
+
     this.statements = [];
 }
 
@@ -671,53 +671,53 @@ shaderBuilder.prototype.getSource = function() {
 #ifdef GL_ES \n\
 precision highp float; \n\
 #endif \n';
-    
+
     for(var i in this.attrib) {
         src += this.attrib[i] + '\n';
     }
-    
+
     for(var i in this.varying) {
         src += this.varying[i] + '\n';
     }
-    
+
     for(var i in this.uniform) {
         src += this.uniform[i] + '\n';
     }
-    
+
     for(var i in this.functions) {
         src += this.functions[i] + '\n';
     }
-    
+
     src += 'void main(void) {\n\t';
     src += this.statements.join('\n\t');
     src += '\n}\n';
-    
+
     return src;
 }
 
 // q3-centric functions
 
 shaderBuilder.prototype.addWaveform = function(name, wf, timeVar) {
-    if(!wf) { 
+    if(!wf) {
         this.statements.push('float ' + name + ' = 0.0;');
-        return; 
+        return;
     }
-    
+
     if(!timeVar) { timeVar = 'time'; }
-    
+
     if(typeof(wf.phase) == "number") {
         wf.phase = wf.phase.toFixed(4)
     }
-    
+
     switch(wf.funcName) {
-        case 'sin':  
+        case 'sin':
             this.statements.push('float ' + name + ' = ' + wf.base.toFixed(4) + ' + sin((' + wf.phase + ' + ' + timeVar + ' * ' + wf.freq.toFixed(4) + ') * 6.283) * ' + wf.amp.toFixed(4) + ';');
             return;
         case 'square': funcName = 'square'; this.addSquareFunc(); break;
         case 'triangle': funcName = 'triangle'; this.addTriangleFunc(); break;
         case 'sawtooth': funcName = 'fract'; break;
         case 'inversesawtooth': funcName = '1.0 - fract'; break;
-        default: 
+        default:
             this.statements.push('float ' + name + ' = 0.0;');
             return;
     }

@@ -1,8 +1,11 @@
 import { Widget } from '@lumino/widgets';
-import { q3bsp } from './q3bsp.js';
 import stats from './util/stats.min.js';
 import WebXR from './util/webxr-polyfill.min.js';
 import matrix from './util/gl-matrix-min.js';
+import './basis/basis_transcoder.js';
+import './basis/basis-basics.js';
+import { q3glshader } from './q3glshader.js';
+import { q3bsp } from './q3bsp.js';
 import { FrameRater } from '../bundle/frame-rater';
 
 // --- External Prototype Global Declarations ---

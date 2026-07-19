@@ -1,4 +1,5 @@
 import { q3glshader } from './q3glshader.js';
+import { q3shader } from './q3shader.js';
 
 /*
  * q3bsp.js - Parses Quake 3 Maps (.bsp) for use in WebGL
