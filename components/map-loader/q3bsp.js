@@ -26,10 +26,10 @@
  */
 
 // Constants
-q3bsp_vertex_stride = 56;
-q3bsp_sky_vertex_stride = 20;
+const q3bsp_vertex_stride = 56;
+const q3bsp_sky_vertex_stride = 20;
 
-q3bsp_base_folder = 'https://quake.games/demoq3/pak0.pk3dir';
+const q3bsp_base_folder = 'https://quake.games/demoq3/pak0.pk3dir';
 
 let mapShaders = [
 	'scripts/base.shader', 'scripts/base_button.shader', 'scripts/base_floor.shader',
@@ -680,7 +680,7 @@ q3bsp.prototype.drawViews = function (views)
 //
 // BSP Tree Collision Detection
 //
-q3bsptree = function (bsp)
+export const q3bsptree = function (bsp)
 {
 	this.bsp = bsp;
 };

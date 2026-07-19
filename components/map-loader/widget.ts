@@ -1,5 +1,7 @@
 import { Widget } from '@lumino/widgets';
-import { q3bsp } from './q3bsp';
+import { q3bsp } from './q3bsp.js';
+import WebXR from './util/webxr-polyfill.min.js';
+import matrix from './util/gl-matrix-min.js';
 
 // --- External Prototype Global Declarations ---
 // These match the standard JS imports you will be referencing at the top of your module.
@@ -112,9 +114,12 @@ export class TojiWidget extends Widget
 	private lastMoveX: number = 0;
 	private lastMoveY: number = 0;
 
-	constructor()
+	constructor(titleStr: string)
 	{
 		super();
+		this.id = 'toji-panel';
+		this.title.label = titleStr;
+		this.title.closable = true;
 		this.addClass('q3-canvas-widget');
 
 		// Instantiate scratch matrices early
@@ -165,6 +170,8 @@ export class TojiWidget extends Widget
 	{
 		super.onAfterAttach(msg);
 		// Explicitly check for auto-trigger context if viewport-frame conditions require it
+		debugger;
+		console.error('god fucking damnit');
 		this.runTojiEngine();
 	}
 
