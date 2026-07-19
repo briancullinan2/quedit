@@ -22,7 +22,7 @@ declare global
 	interface Window
 	{
 		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
-		loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<any>;
+		loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
 		getBranches: (repoOwner: string | undefined, repoName: string | undefined) => Promise<GitHubBranch[]>;
 	}
 }
@@ -170,7 +170,10 @@ export async function loadGitHubTree(repoOwner: string, repoName: string, branch
 	try
 	{
 		const database = `${repoOwner}/${repoName}`;
-		const treeData = await githubRequest(repoOwner, repoName, `git/trees/${branch}?recursive=1`);
+		const treeData = (path?.replace(/^[\/\\]|[\/\\]$/ig, '') ?? '').length > 0
+			? await githubRequest(repoOwner, repoName, `git/trees/${branch}/${path}`)
+			: path ? await githubRequest(repoOwner, repoName, `git/trees/${branch}`)
+				: await githubRequest(repoOwner, repoName, `git/trees/${branch}?recursive=1`);
 		const commitData = await githubRequest(repoOwner, repoName, `commits/${branch}`);
 		const buildDate = new Date(commitData.commit.author.date);
 

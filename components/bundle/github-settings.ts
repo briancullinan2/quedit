@@ -15,6 +15,8 @@ declare global
 			items: Record<string, string> | Array<string | GitHubBranchLike>,
 			selectedValue: string
 		) => void;
+		addRepoIfNotExists(newRepo: string): void;
+		addOwnerIfNotExists(newOwner: string): void;
 	}
 }
 
@@ -39,6 +41,8 @@ export function addRepoIfNotExists(newRepo: string): void
 	}
 }
 
+window.addRepoIfNotExists = addRepoIfNotExists;
+
 export function addOwnerIfNotExists(newOwner: string): void
 {
 	if(newOwner.includes('Quake3e'))
@@ -60,6 +64,8 @@ export function addOwnerIfNotExists(newOwner: string): void
 		localStorage.setItem('owners', Array.from(RepositoryToolbar.owner?.children ?? []).map(c => (c as HTMLOptionElement).value).join(';'));
 	}
 }
+
+window.addOwnerIfNotExists = addOwnerIfNotExists;
 
 export function parseRepository(newRepo: string): [string | undefined, string | undefined]
 {

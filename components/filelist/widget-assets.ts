@@ -2,19 +2,24 @@ import { Message } from "@lumino/messaging";
 import type { FlatFileNode, NestedTreeNode } from "../bundle/github-tools";
 import { FileListWidget } from "./widget";
 import Tree from './tree.js';
+import type { GitHubFileTree } from "../bundle/github-types.js";
 
 
 declare global
 {
 	interface Window
 	{
-		loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<any>;
+		loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
+		ST_DIR: number;
+		ST_FILE: number;
+		FS_FILE: number;
+		FS_DIR: number;
 	}
 }
 
 
-export class DatabaseListWidget extends FileListWidget
+export class AssetListWidget extends FileListWidget
 {
 	private loadedDatabases: Record<string, NestedTreeNode | NestedTreeNode> = {};
 	private treeLoading = false;
@@ -74,6 +79,9 @@ export class DatabaseListWidget extends FileListWidget
 		const activeTree = window.trees[this.selector];
 		if(!activeTree || !activeTree.nodesById[folderId]) return;
 
+		const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement).value;
+		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement).value;
+		const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement).value;
 		const parts = folderId.split('/');
 		const database = `${parts[0]}/${parts[1]}`;
 		const baseDir = parts.slice(2).join('/');
@@ -96,7 +104,14 @@ export class DatabaseListWidget extends FileListWidget
 
 
 			// TODO: put github call here:
-
+			window.filesRepo[this.selector] = await window.loadGitHubTree(owner, repo, branch, dirPath);
+			const nodes = window.convertFlatToNested(Object.values(window.filesRepo[this.selector] ?? {}));
+			for(const r of nodes)
+			{
+				window.filesRepo[database][r.path] = window.FS.virtual[r.path] = Object.assign(r, {
+					mode: r.mode ?? window.FS_FILE,
+				});
+			}
 
 
 			resultSet = Object.values(window.filesRepo[database]).reduce((acc: any, r: any) =>
@@ -203,28 +218,33 @@ export class DatabaseListWidget extends FileListWidget
 		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement).value;
 		const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement).value;
 		const database = `${owner}/${repo}`;
-		const topDatabases: NestedTreeNode[] = [];
 
 		if(!this.loadedDatabases[database])
 		{
 			// TODO: replace with call to loadGitHubTree(path = '/')
-			window.filesRepo[this.selector] = await window.loadGitHubTree(owner, repo, branch);
-
+			window.filesRepo[this.selector] = await window.loadGitHubTree(owner, repo, branch, '/');
 			const nodes = window.convertFlatToNested(Object.values(window.filesRepo[this.selector] ?? {}));
+			this.loadedDatabases[database] = {
+				id: database,
+				text: database,
+				status: 0,
+				state: { open: false, expanded: false },
+				path: database,
+				children: nodes
+			};
 		}
-		topDatabases.push(this.loadedDatabases[database]);
 
 		const activeTree = window.trees[this.selector];
 		if(!activeTree)
 		{
 			window.trees[this.selector] = window.trees[database] = new Tree(this.selector, {
-				data: topDatabases,
+				data: this.loadedDatabases[database].children,
 				autoOpen: false,
 				closeDepth: null
 			});
 		} else if(folderId)
 		{
-			activeTree.options.data = topDatabases;
+			activeTree.options.data = this.loadedDatabases[database].children;
 			activeTree.renderPartial(folderId);
 		}
 	}

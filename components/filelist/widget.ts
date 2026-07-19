@@ -137,16 +137,17 @@ export class FileListWidget extends Widget
 
 		const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement);
 		const owners = window.SettingsManager.get('github', 'ownersList');
+		window.addOwnerIfNotExists(ownerName);
 		window.updateSelectOptions(owner, owners, ownerName);
 
 		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement);
 		const repositories = window.SettingsManager.get('github', 'repositoriesList');
+		window.addRepoIfNotExists(repoName);
 		window.updateSelectOptions(repo, repositories, repoName);
 
 		const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement);
 		const branches = await window.getBranches(ownerName, repoName);
 		window.updateSelectOptions(branch, branches, branches[0].name);
-
 	}
 
 	private bindDOMEvents(): void

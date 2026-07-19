@@ -8,7 +8,7 @@ const webpack = require('webpack');
 
 module.exports = {
 	mode: 'production',
-	//devtool: 'inline-source-map',
+	devtool: 'inline-source-map',
 	entry: [
 		'./components/bundle/lumino.ts',
 		'./components/bundle/lumino-files.ts'

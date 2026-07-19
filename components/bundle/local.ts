@@ -23,6 +23,8 @@ declare global
 		DB_STORE_NAME: string;
 		ST_DIR: number;
 		ST_FILE: number;
+		FS_FILE: number;
+		FS_DIR: number;
 	}
 }
 
@@ -50,11 +52,11 @@ export interface SetupDatabaseResult
 export interface FileRecord
 {
 	timestamp?: Date | null;
-	mode: any;
+	mode: number;
 	contents?: Uint8Array | ArrayBuffer | any;
 	path: string;
 	sha?: string;
-	parent: string | null;
+	parent?: string | null;
 }
 
 export interface SchemaIndexConfig
@@ -104,7 +106,9 @@ export const ST_DIR = 4;
 window.ST_DIR = ST_DIR;
 export const FS_DEFAULT = (6 << 3) + (6 << 6) + (6);
 export const FS_FILE = (ST_FILE << 12) + FS_DEFAULT;
+window.FS_FILE = FS_FILE;
 export const FS_DIR = (ST_DIR << 12) + FS_DEFAULT;
+window.FS_DIR = FS_DIR;
 
 export const DB_SCHEME: SchemaStoreConfig[] = [
 	{

@@ -7,7 +7,8 @@ import { config, dirs, FS, path } from "./global";
 import
 {
 	DB_STORE_NAME, debounceRecords
-	, FS_FILE, getRecord, putRecord
+	, FS_DIR, FS_FILE, getRecord, putRecord,
+	ST_FILE
 } from "./local";
 
 declare const api: any;
@@ -266,6 +267,7 @@ export interface FlatFileNode
 	path: string;
 	sha?: string;
 	type?: 'blob' | 'tree' | string;
+	mode?: number | string;
 	[key: string]: any;
 }
 
@@ -279,6 +281,7 @@ export interface NestedTreeNode
 		expanded: boolean;
 	};
 	path: string;
+	mode?: number;
 	parent?: string;
 	sha?: string;
 	children?: NestedTreeNode[] | null | undefined;
@@ -306,7 +309,8 @@ export function convertFlatToNested(data: FlatFileNode[]): NestedTreeNode[]
 						expanded: false
 					},
 					path: item.path,
-					sha: item.sha
+					sha: item.sha,
+					mode: (parseInt('' + item.mode) >> 12) & ST_FILE ? FS_FILE : FS_DIR
 				};
 
 				if(i < parts.length - 1 || item.type === 'tree')

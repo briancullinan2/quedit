@@ -1238,7 +1238,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/github-api.ts",
-    "size": 12300
+    "size": 12543
   },
   {
     "path": "/components/bundle/github-settings.ts",
@@ -1246,7 +1246,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/github-tools.ts",
-    "size": 9565
+    "size": 9702
   },
   {
     "path": "/components/bundle/github-types.ts",
@@ -1262,7 +1262,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/local.ts",
-    "size": 17038
+    "size": 17042
   },
   {
     "path": "/components/bundle/lumino-files.ts",
@@ -1578,7 +1578,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/filelist/widget-assets.ts",
-    "size": 4016
+    "size": 7484
   },
   {
     "path": "/components/filelist/widget-database.ts",
@@ -2738,7 +2738,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/service-worker.js",
-    "size": 31408
+    "size": 30923
   },
   {
     "path": "/tsconfig.json",
