@@ -1,5 +1,7 @@
 import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
+import type { GitHubBranchLike } from "./github-settings";
+import type { GitHubFileEntry, GitHubFileTree } from "./github-types";
 
 declare global
 {
@@ -7,6 +9,13 @@ declare global
 	{
 		engineToolbar: EngineToolbar;
 		EngineToolbar: typeof EngineToolbar;
+		updateSelectOptions: (
+			elementId: string | Element | undefined | null,
+			items: Record<string, string> | Array<string | GitHubBranchLike>,
+			selectedValue: string
+		) => void;
+		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
+		mapFiles: Record<string, string>;
 	}
 }
 
@@ -25,6 +34,7 @@ export class EngineToolbar extends Widget
 {
 	private static _instance: EngineToolbar | null = null;
 	private _commands: CommandRegistry | null = null;
+	triedGithub: boolean = false;
 
 	private constructor()
 	{
@@ -51,30 +61,77 @@ export class EngineToolbar extends Widget
 		return this;
 	}
 
+
+	public async tryGithubs()
+	{
+		if(this.triedGithub)
+		{
+			return;
+		}
+		this.triedGithub = true;
+		window.FileManager.getActiveRepositories().forEach(repoKey =>
+		{
+			const parts = repoKey.split('/');
+			const ownerName = parts.length === 2 ? parts[0] : window.owner?.value || '';
+			const repoName = parts.length === 2 ? parts[1] : (parts[0] || window.repository?.value || '');
+
+			window.FileManager.roots.forEach(async root =>
+			{
+				try
+				{
+					const jsonResponse = await window.githubRequest(ownerName, repoName, `contents/${root}`);
+					if(jsonResponse[0])
+					{
+						const hasMaps = jsonResponse.find((r: GitHubFileEntry) => r.name === 'maps');
+						if(hasMaps)
+						{
+							const treeData = await window.githubRequest(ownerName, repoName, `git/trees/${hasMaps.sha}?recursive=1`);
+							for(let a of treeData.tree)
+							{
+								if(a.path.toLowerCase().includes('.map') || a.path.toLowerCase().includes('.bsp'))
+								{
+									if(!window.mapFiles[root + '/' + a.path])
+									{
+										window.mapFiles[root + '/' + a.path] = a.path.split('/').pop() || '';
+									}
+								}
+							}
+						}
+					}
+				} catch(e: any)
+				{
+					console.warn('Couldn\'t find maps on: ' + repoKey + '/' + root + '\n' + e.message + '\n' + (e.stack ?? e.stacktrace));
+				}
+
+			});
+		});
+
+
+
+		if(Object.keys(window.mapFiles).length > 1)
+		{
+			window.updateSelectOptions('map', window.mapFiles, '');
+		}
+	}
+
+
 	// --- Dynamic Public API Setters ---
 	public updateSpawns(spawns: { value: string; label: string; selected?: boolean; }[]): void
 	{
-		this._populateSelect('spawn', 'Spawn point', spawns);
+		window.updateSelectOptions('spawn', spawns.reduce((obj, cur) =>
+		{
+			obj[cur.value] = cur.label;
+			return obj;
+		}, {}), spawns.find(s => s.selected)?.value ?? '');
 	}
 
 	public updateMaps(maps: { value: string; label: string; selected?: boolean; }[]): void
 	{
-		this._populateSelect('map', 'Current map', maps);
-	}
-
-	private _populateSelect(id: string, placeholder: string, items: { value: string; label: string; selected?: boolean; }[]): void
-	{
-		const select = this.node.querySelector(`#${id}`) as HTMLSelectElement;
-		if(!select) return;
-
-		// Maintain the initial disabled placeholder behavior if empty or reset
-		let html = `<option value="" disabled ${!items.some(i => i.selected) ? 'selected' : ''}>${placeholder}</option>`;
-
-		html += items.map(item =>
-			`<option value="${item.value}" ${item.selected ? 'selected' : ''}>${item.label}</option>`
-		).join('');
-
-		select.innerHTML = html;
+		window.updateSelectOptions('map', maps.reduce((obj, cur) =>
+		{
+			obj[cur.value] = cur.label;
+			return obj;
+		}, {}), maps.find(s => s.selected)?.value ?? '');
 	}
 
 	private _registerCommands(): void

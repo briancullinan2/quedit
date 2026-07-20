@@ -425,6 +425,9 @@ export function transpileTypescriptWidget(rawCode: string, baseRoute: string): a
 								} else if(moduleName === '@lumino/messaging')
 								{
 									path.replaceWithSourceString('window.Lumino.messaging');
+								} else if(moduleName === '@lumino/commands')
+								{
+									path.replaceWithSourceString('window.Lumino.commands');
 								} else if(moduleName === './tree.js')
 								{
 									path.replaceWithSourceString('window.Tree');

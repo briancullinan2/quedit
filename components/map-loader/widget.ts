@@ -1,5 +1,6 @@
 import { Widget } from '@lumino/widgets';
 import { FrameRater } from '../bundle/frame-rater';
+import type { EngineToolbar } from '../bundle/menu-engine';
 
 // --- External Prototype Global Declarations ---
 // These match the standard JS imports you will be referencing at the top of your module.
@@ -19,6 +20,7 @@ declare global
 	{
 		tojiFrameLimiter: FrameRater;
 		loadScript(src: string): Promise<any>;
+		engineToolbar: EngineToolbar;
 	}
 	interface Navigator
 	{
@@ -182,6 +184,7 @@ export class TojiWidget extends Widget
 			});
 		}
 
+		window.engineToolbar.tryGithubs();
 
 		this.startupPromise = (async () =>
 		{

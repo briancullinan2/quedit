@@ -8,8 +8,9 @@ export interface GitHubFileTree
 
 export interface GitHubFileEntry extends FileRecord
 {
+	name?: string;
 	type?: 'file' | 'dir';
-	size?: number | undefined
+	size?: number | undefined;
 }
 
 export interface GitHubBranch
@@ -82,6 +83,7 @@ export const defaultBranches: Record<string, string> = {};
 export const mapFiles: Record<string, string> = {
 	"": "Current map"
 };
+window.mapFiles = mapFiles;
 
 export const trees: Record<string, any> = {};
 export const filesRepo: Record<string, GitHubFileTree | undefined> = {};
@@ -93,6 +95,7 @@ declare global
 	{
 		trees: Record<string, any>;
 		filesRepo: Record<string, GitHubFileTree | undefined>;
+		mapFiles: Record<string, string>;
 	}
 }
 

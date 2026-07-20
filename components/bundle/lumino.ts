@@ -1,5 +1,5 @@
 import { BoxPanel, DockPanel, Widget, Menu, MenuBar } from '@lumino/widgets';
-import { CommandRegistry } from '@lumino/commands';
+import * as commands from '@lumino/commands';
 import * as widgets from '@lumino/widgets';
 import * as messaging from '@lumino/messaging';
 import { createTopBar, initializeMenus } from './menu';
@@ -17,13 +17,14 @@ declare global
 	{
 		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
 		Lumino?: {
-			widgets: any;  // Replace 'any' with the actual type of widgets if available
-			messaging: any; // Replace 'any' with the actual type of messaging if available
+			widgets: any;
+			messaging: any;
+			commands: any;
 		};
 		statusBar: StatusBarWidget;
 		envStatusNode: HTMLDivElement;
 		mainDock: DockPanel;
-		commandRegistry: CommandRegistry;
+		commandRegistry: commands.CommandRegistry;
 		workspaceBox: BoxPanel;
 		toolbarWidget: Widget;
 		resizeHandler: () => void;
@@ -33,7 +34,8 @@ declare global
 
 window.Lumino = {
 	widgets,
-	messaging
+	messaging,
+	commands
 };
 
 
@@ -43,10 +45,10 @@ console.log("Lumino Core injected into global window space.");
 function main(): void
 {
 	// Initialize the Command Registry
-	const commands = new CommandRegistry();
+	const commandRegistry = new commands.CommandRegistry();
 	// TODO: interesting, i actually meant to do this in the previous version
 	//   and now Gemini and Lumino combined forced me to set it up anyways.
-	window.commandRegistry = commands;
+	window.commandRegistry = commandRegistry;
 
 	// Create the central DockPanel target area
 	const mainDock = new DockPanel({
@@ -56,7 +58,7 @@ function main(): void
 	window.mainDock = mainDock;
 
 	// Generate the top application header structures using our unified layout export
-	const { headerRow, menuBar } = createTopBar(commands);
+	const { headerRow, menuBar } = createTopBar(commandRegistry);
 
 	// Build a manual sidebar widget for the left boundary (VSCode style)
 	const toolbar = new Widget();
@@ -65,7 +67,7 @@ function main(): void
 	toolbar.node.style.minWidth = '50px';
 
 	// Initialize remaining menus safely passing down the clean tracking components
-	initializeMenus(commands, menuBar, mainDock, toolbar.node);
+	initializeMenus(commandRegistry, menuBar, mainDock, toolbar.node);
 
 	const statusBar = new StatusBarWidget();
 	window.statusBar = statusBar;

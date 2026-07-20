@@ -65,7 +65,7 @@ declare global
 
 export class FileManager
 {
-	private static readonly roots: string[] = ['', 'demoq3/pak0.pk3dir', 'docs/demoq3/pak0.pk3dir'];
+	public static readonly roots: string[] = ['', 'demoq3/pak0.pk3dir', 'docs/demoq3/pak0.pk3dir'];
 
 	/**
 	 * High-level workspace resolver. Ingests raw window paths, hashes, or explicit links,
@@ -140,7 +140,7 @@ export class FileManager
 	/**
 	 * Extracts active repository strings from window context
 	 */
-	private static getActiveRepositories(): string[]
+	public static getActiveRepositories(): string[]
 	{
 		return [
 			window.engineRepository,
