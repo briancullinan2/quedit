@@ -1,4 +1,3 @@
-
 /*
  * q3glshader.js - Transforms a parsed Q3 shader definition into a set of WebGL compatible states
  */
@@ -30,7 +29,7 @@
 // Default Shaders
 //
 
-const q3bsp_default_vertex = '\
+q3bsp_default_vertex = '\
     #ifdef GL_ES \n\
     precision highp float; \n\
     #endif \n\
@@ -56,7 +55,7 @@ const q3bsp_default_vertex = '\
     } \n\
 ';
 
-const q3bsp_default_fragment = '\
+q3bsp_default_fragment = '\
     #ifdef GL_ES \n\
     precision highp float; \n\
     #endif \n\
@@ -72,7 +71,7 @@ const q3bsp_default_fragment = '\
     } \n\
 ';
 
-const q3bsp_model_fragment = '\
+q3bsp_model_fragment = '\
     #ifdef GL_ES \n\
     precision highp float; \n\
     #endif \n\
@@ -86,7 +85,7 @@ const q3bsp_model_fragment = '\
     } \n\
 ';
 
-export const q3glshader = {}
+var q3glshader = {}
 
 q3glshader.lightmap = null;
 q3glshader.white = null;
@@ -387,8 +386,8 @@ q3glshader.setShaderStage = function (gl, shader, shaderStage, time) {
     }
 
     if (stage.animFreq) {
-        // Texture animation seems like a natural place for setInterval, but that approach has proved error prone.
-        // It can easily get out of sync with other effects (like rgbGen pulses and whatnot) which can give a
+        // Texture animation seems like a natural place for setInterval, but that approach has proved error prone. 
+        // It can easily get out of sync with other effects (like rgbGen pulses and whatnot) which can give a 
         // jittery or flat out wrong appearance. Doing it this way ensures all effects are synced.
         var animFrame = Math.floor(time * stage.animFreq) % stage.animTexture.length;
         stage.texture = stage.animTexture[animFrame];

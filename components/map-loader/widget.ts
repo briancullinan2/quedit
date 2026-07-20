@@ -1,11 +1,4 @@
 import { Widget } from '@lumino/widgets';
-import stats from './util/stats.min.js';
-import WebXR from './util/webxr-polyfill.min.js';
-import matrix from './util/gl-matrix-min.js';
-import './basis/basis_transcoder.js';
-import './basis/basis-basics.js';
-import { q3glshader } from './q3glshader.js';
-import { q3bsp } from './q3bsp.js';
 import { FrameRater } from '../bundle/frame-rater';
 
 // --- External Prototype Global Declarations ---
@@ -14,6 +7,7 @@ declare const WebXRPolyfill: any;
 declare const mat4: any;
 declare const vec3: any;
 declare const quat: any;
+declare const q3bsp: any;
 declare const q3movement: any;
 declare const Stats: any;
 declare const XRWebGLLayer: any;
@@ -24,6 +18,7 @@ declare global
 	interface Window
 	{
 		tojiFrameLimiter: FrameRater;
+		loadScript(src: string): Promise<any>;
 	}
 	interface Navigator
 	{
@@ -51,7 +46,7 @@ export const DEFAULT_MAPNAME = 'maps/q3tourney2.bsp';
 export class TojiWidget extends Widget
 {
 	// Legacy Polyfill
-	private polyfill = new WebXRPolyfill();
+	private polyfill?: typeof WebXRPolyfill;
 
 	// Map Setup State
 	private mapName?: string;
@@ -125,6 +120,23 @@ export class TojiWidget extends Widget
 	private lastMoveX: number = 0;
 	private lastMoveY: number = 0;
 
+
+	private readonly SCRIPTS_TO_LOAD = [
+		'/components/map-loader/util/webxr-polyfill.min.js',
+		'/components/map-loader/util/game-shim.js',
+		'/components/map-loader/util/gl-matrix-min.js',
+		'/components/map-loader/util/stats.min.js',
+		'/components/map-loader/basis/basis-basics.js',
+
+		// WebGL Renderer Core & Engine Logic
+		'/components/map-loader/q3bsp.js',
+		'/components/map-loader/q3shader.js',
+		'/components/map-loader/q3glshader.js',
+		'/components/map-loader/q3movement.js'
+	];
+	startupPromise: Promise<void>;
+
+
 	constructor(titleStr: string)
 	{
 		super();
@@ -132,12 +144,6 @@ export class TojiWidget extends Widget
 		this.title.label = titleStr;
 		this.title.closable = true;
 		this.addClass('q3-canvas-widget');
-
-		// Instantiate scratch matrices early
-		this.poseMatrix = mat4.create();
-		this.cameraMat = mat4.create();
-		this.xrOrientation = quat.create();
-		this.xrEuler = vec3.create();
 
 		// Create container and DOM structure matching legacy IDs
 		this.viewportFrameElement = document.createElement('div');
@@ -175,11 +181,27 @@ export class TojiWidget extends Widget
 				if(mobileVrBtn) mobileVrBtn.style.display = "block";
 			});
 		}
+
+
+		this.startupPromise = (async () =>
+		{
+			for(let src of this.SCRIPTS_TO_LOAD)
+			{
+				await window.loadScript(src);
+			}
+			this.polyfill = new WebXRPolyfill();
+			// Instantiate scratch matrices early
+			this.poseMatrix = mat4.create();
+			this.cameraMat = mat4.create();
+			this.xrOrientation = quat.create();
+			this.xrEuler = vec3.create();
+		})();
 	}
 
-	protected override onAfterAttach(msg: any): void
+	protected override async onAfterAttach(msg: any): Promise<void>
 	{
 		super.onAfterAttach(msg);
+		await this.startupPromise;
 		this.runTojiEngine();
 	}
 

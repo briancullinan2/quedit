@@ -234,7 +234,7 @@ export class LayoutAdjuster
 	/**
 	 * Helper to look up an editor matching a specific project context
 	 */
-	private static _findBestEditorForProject(dockPanel: DockPanel, projectId: string): Widget | null
+	public static _findBestEditorForProject(dockPanel: DockPanel, projectId: string): Widget | null
 	{
 		if(window.lastInteractedWidget && window.lastInteractedWidget.isAttached)
 		{

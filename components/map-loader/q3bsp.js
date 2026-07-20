@@ -1,6 +1,3 @@
-import { q3glshader } from './q3glshader.js';
-import { q3shader } from './q3shader.js';
-
 /*
  * q3bsp.js - Parses Quake 3 Maps (.bsp) for use in WebGL
  */
@@ -29,10 +26,10 @@ import { q3shader } from './q3shader.js';
  */
 
 // Constants
-const q3bsp_vertex_stride = 56;
-const q3bsp_sky_vertex_stride = 20;
+q3bsp_vertex_stride = 56;
+q3bsp_sky_vertex_stride = 20;
 
-const q3bsp_base_folder = 'https://quake.games/demoq3/pak0.pk3dir';
+q3bsp_base_folder = 'https://quake.games/demoq3/pak0.pk3dir';
 
 let mapShaders = [
 	'scripts/base.shader', 'scripts/base_button.shader', 'scripts/base_floor.shader',
@@ -53,7 +50,7 @@ let mapShaders = [
  * q3bsp
  */
 
-export const q3bsp = function (gl)
+q3bsp = function (gl)
 {
 	// gl initialization
 	this.gl = gl;
@@ -683,7 +680,7 @@ q3bsp.prototype.drawViews = function (views)
 //
 // BSP Tree Collision Detection
 //
-export const q3bsptree = function (bsp)
+q3bsptree = function (bsp)
 {
 	this.bsp = bsp;
 };

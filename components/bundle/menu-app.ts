@@ -1,10 +1,11 @@
 import { CommandRegistry } from "@lumino/commands";
 import { DockPanel, Widget } from "@lumino/widgets";
 import { triggerPanelRoute } from "./menu";
-import type { FrameRater } from "../terminal/widget";
+import type { FrameRater } from "../bundle/frame-rater";
 import { SettingsManager } from "./settings";
 import type { AceEditorWidget } from "../editor/widget";
 import { loadAndInstantiate } from "./babel-compile";
+import { LayoutAdjuster } from "./lumino-widget";
 
 declare global
 {
@@ -13,7 +14,7 @@ declare global
 		appToolbar: ApplicationToolbar;
 		ApplicationToolbar: typeof ApplicationToolbar;
 		mainDock: DockPanel;
-		terminalFrameLimiter: typeof FrameRater;
+		terminalFrameLimiter: FrameRater;
 		AceEditorWidget: typeof AceEditorWidget;
 	}
 }
@@ -228,7 +229,7 @@ async function rotateLayout()
 	const nextIndex = (currentIndex + 1) % ALL_LAYOUTS.length;
 	const newLayoutClass = ALL_LAYOUTS[nextIndex].split(' ');
 
-	if(newLayoutClass.includes('layout-terminal') && typeof window.terminalFrameLimiter === 'undefined')
+	if(!LayoutAdjuster._findBestEditorForProject(window.mainDock, 'terminal'))
 	{
 		await triggerPanelRoute('terminal', window.mainDock);
 	}

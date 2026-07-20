@@ -3,7 +3,7 @@
 /**
  * FrameCallback defines the signature for processing batched ticks.
  */
-export type FrameCallback<T = any> = (data: T, elapsed: number, frameCount: number) => void;
+export type FrameCallback<T = any | undefined> = (data: T | undefined, elapsed: number, frameCount: number) => void;
 
 /**
  * FrameRater limits and batches update calls targeting a maximum frame rate.
@@ -14,12 +14,11 @@ export type FrameCallback<T = any> = (data: T, elapsed: number, frameCount: numb
 export class FrameRater<T = any>
 {
 	// Static private instance container reference holding the Singleton state
-	private static _instance: FrameRater<any> | null = null;
 
 	private callback!: FrameCallback<T> | null;
 	private startTime!: number;
 	private frameCount!: number;
-	private eventStack!: T[];
+	private eventStack!: (T | undefined)[];
 	private isFlushing!: boolean;
 	private intervalId!: ReturnType<typeof setInterval> | null;
 
@@ -31,24 +30,13 @@ export class FrameRater<T = any>
 	 * @method requestFrameUpdate
 	 * @param {T} data Data payload or event object to pass down to the frame processing callback.
 	 */
-	public requestFrameUpdate<T = any>(data?: T): void
+	public requestFrameUpdate(data?: T | undefined): void
 	{
-		if(!FrameRater._instance)
-		{
-			// Automatically initialize with default fallback values if called before instantiation
-			FrameRater._instance = new FrameRater<T>(60, null);
-		}
-		FrameRater._instance.push(data);
+		this.push(data);
 	}
 
 	constructor(targetFps: number = 60, callback: FrameCallback<T> | null = null)
 	{
-		// Enforce the Singleton instantiation pattern behavior constraints strictly
-		if(FrameRater._instance)
-		{
-			return FrameRater._instance as FrameRater<T>;
-		}
-
 		this.callback = callback;
 		this.startTime = performance.now();
 		this.frameCount = 0;
@@ -57,8 +45,6 @@ export class FrameRater<T = any>
 		this.intervalId = null;
 
 		this.setTargetFps(targetFps);
-
-		FrameRater._instance = this;
 	}
 
 	/**
@@ -140,7 +126,7 @@ export class FrameRater<T = any>
 	 * @method push
 	 * @param {T} data
 	 */
-	push(data: T): void
+	push(data?: T | undefined): void
 	{
 		this.eventStack.push(data);
 	}
@@ -168,9 +154,5 @@ export class FrameRater<T = any>
 	{
 		this.stop();
 		this.eventStack.length = 0;
-		if(FrameRater._instance === this)
-		{
-			FrameRater._instance = null;
-		}
 	}
 }

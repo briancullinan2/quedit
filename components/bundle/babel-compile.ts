@@ -13,6 +13,17 @@ import type { ComponentRoute } from './menu';
 const parseBabel = packages.parser.parse;
 const traverse = packages.traverse.default;
 
+
+declare global
+{
+	interface Window
+	{
+		loadScript(src: string): Promise<any>;
+		loadStyle(href: string): Promise<void>;
+	}
+}
+
+
 export const registry = new Map<string, Promise<void>>(
 	[...document.scripts]
 		.map((s: HTMLScriptElement) => s.getAttribute('src'))
@@ -172,6 +183,54 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 
 	console.log('Finishing bullshit: ' + JSON.stringify(dependenciesToFetch));
 }
+
+window.loadScript = loadScript;
+
+
+
+// Add this definition to your class properties:
+// private registry: Map<string, Promise<void>> = new Map();
+
+async function loadStyle(href: string): Promise<void>
+{
+	const absoluteUrl: string = new URL(href, window.location.origin).pathname;
+	const existingTheme: Element | null = document.querySelector('link[href*="/theme.css"]');
+
+	// ─── THE CONCURRENCY LOCK CHECK ───
+	const cachedPromise = registry.get(absoluteUrl);
+	if(cachedPromise)
+	{
+		return cachedPromise;
+	}
+
+	const stylePromise = new Promise<void>((resolve, reject) =>
+	{
+		const link: HTMLLinkElement = document.createElement('link');
+		link.rel = 'stylesheet';
+		link.href = href;
+
+		link.onload = () => resolve();
+		link.onerror = () =>
+		{
+			registry.delete(absoluteUrl); // Evict on failure
+			reject(new Error(`Failed stylesheet mounting: ${href}`));
+		};
+
+		if(existingTheme)
+		{
+			document.head.insertBefore(link, existingTheme);
+		} else
+		{
+			document.head.appendChild(link);
+		}
+	});
+
+	registry.set(absoluteUrl, stylePromise);
+	return stylePromise;
+}
+
+
+window.loadStyle = loadStyle;
 
 
 // Define the class property registry somewhere above this method in your class:
