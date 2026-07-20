@@ -254,15 +254,11 @@ async function fetchAsset(urlInput, key, selected)
 		await mkdirp(dirPath, selected);
 
 		console.log(`💾 [SW-DATABASE] Writing payload binary content into IndexedDB Store: "${DB_STORE_NAME}" -> Target Key: "${localKey}"`);
-		if(!localKey.includes('.'))
-		{
-			debugger;
-			console.error("WHAT THE FUCK IS WRONG WITH YOU? " + key);
-		}
 
 
 		const isGithubContents = urlString.includes('api.github.com') && urlString.includes('contents/');
 
+		// OFFLINE BULLSHIT
 		if(isGithubContents)
 		{
 			try
@@ -274,7 +270,29 @@ async function fetchAsset(urlInput, key, selected)
 				const contentsMarker = '/contents/';
 				const markerIndex = parsedUrl.pathname.indexOf(contentsMarker);
 
-				if(markerIndex !== -1)
+				let isDirectory = false;
+				let fileContent;
+				try
+				{
+					const jsonResponse = JSON.parse(new TextDecoder().decode(content));
+					if(jsonResponse.encoding === 'base64')
+					{
+						const binString = atob(jsonResponse.content.replace(/\s/g, ''));
+						fileContent = Uint8Array.from(binString, c => c.charCodeAt(0));
+					} else if(jsonResponse.size > 0)
+					{
+						fileContent = new TextEncoder().encode(jsonResponse.content || "");
+					} else if(jsonResponse instanceof Array)
+					{
+						isDirectory = true;
+						fileContent = new TextEncoder().encode(jsonResponse);
+					}
+				} catch(e)
+				{
+					console.warn('Could not extract file contents: ' + e.message + '\n' + (e.stack || e.stacktrace));
+				}
+
+				if(markerIndex !== -1 && fileContent)
 				{
 					// Extract everything following '/contents/'
 					// e.g., "/repos/owner/repo/contents/scripts/base.shader" -> "scripts/base.shader"
@@ -287,8 +305,8 @@ async function fetchAsset(urlInput, key, selected)
 					await putRecord(DB_STORE_NAME, {
 						path: repoRelativePath,
 						timestamp: new Date(),
-						mode: FS_FILE,
-						contents: new Uint8Array(content),
+						mode: isDirectory ? FS_DIR : FS_FILE,
+						contents: fileContent,
 						parent: repoRelativePath.substring(0, repoRelativePath.lastIndexOf('/')) || '/'
 					}, selected);
 
@@ -300,6 +318,19 @@ async function fetchAsset(urlInput, key, selected)
 			}
 		} else
 		{
+
+			if(localKey.includes('contents'))
+			{
+				console.error('yOU cAn\'T ProGrAm FoR SHIT');
+				debugger;
+			}
+			if(!localKey.includes('.'))
+			{
+				debugger;
+				console.error("WHAT THE FUCK IS WRONG WITH YOU? " + key);
+			}
+
+
 			// Standard baseline VFS handling for local framework queries
 			await putRecord(DB_STORE_NAME, {
 				path: localKey,

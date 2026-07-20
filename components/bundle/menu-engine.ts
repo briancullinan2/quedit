@@ -80,7 +80,7 @@ export class EngineToolbar extends Widget
 				try
 				{
 					const jsonResponse = await window.githubRequest(ownerName, repoName, `contents/${root}`);
-					if(jsonResponse[0])
+					if(jsonResponse instanceof Array)
 					{
 						const hasMaps = jsonResponse.find((r: GitHubFileEntry) => r.name === 'maps');
 						if(hasMaps)
