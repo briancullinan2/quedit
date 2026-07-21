@@ -43,7 +43,7 @@ export type ToolbarKey = 'repoToolbar' | 'scriptToolbar' | 'appToolbar' | 'fileT
 export const OUTLINE_WIDGET_TYPES = [
 	'FileListWidget', 'GameListWidget',
 	'DatabaseListWidget', 'AssetListWidget'
-]
+];
 
 
 /**
@@ -51,7 +51,7 @@ export const OUTLINE_WIDGET_TYPES = [
  */
 export const TOOLBAR_CONTEXT_MAP: Record<ToolbarKey, string[]> = {
 	appToolbar: [
-		'ConsoleWidget', 'AceEditorWidget', 'PaintWidget', 'NunuStudioWidget',
+		'TerminalWidget', 'AceEditorWidget', 'PaintWidget', 'NunuStudioWidget',
 		'TojiWidget', 'FileListWidget', 'GameListWidget',
 		'AssetListWidget', 'GithubWidget', 'SettingsWidget', 'SearchWidget', 'AudioEditorWidget'
 	],
@@ -59,7 +59,7 @@ export const TOOLBAR_CONTEXT_MAP: Record<ToolbarKey, string[]> = {
 		'AceEditorWidget', 'FileListWidget', 'GameListWidget', 'AssetListWidget'
 	],
 	scriptToolbar: [
-		'ConsoleWidget', 'AceEditorWidget'
+		'TerminalWidget', 'AceEditorWidget'
 	],
 	repoToolbar: [
 		'FileListWidget', 'GameListWidget', 'GithubWidget'
@@ -71,7 +71,7 @@ export const TOOLBAR_CONTEXT_MAP: Record<ToolbarKey, string[]> = {
 		'PaintWidget', 'NunuStudioWidget', 'AceEditorWidget', 'AudioEditorWidget'
 	],
 	settingsToolbar: [
-		'NunuStudioWidget', 'SettingsWidget'
+		'NunuStudioWidget', 'SettingsWidget', 'TerminalWidget'
 	]
 };
 

@@ -13,6 +13,12 @@ declare global
 		lastInteractedWidget: Widget | null;
 		previousInteractedWidget: Widget | null;
 		resizeHandler: () => void;
+		layoutState: {
+			panels: string,
+			order: string,
+			terminal: string,
+			mode: string;
+		};
 	}
 }
 
@@ -23,6 +29,7 @@ export interface LayoutOptions
 {
 	type: WidgetType;
 	projectId?: string;
+	activate?: boolean;
 }
 
 // Global tracking structures
@@ -75,6 +82,7 @@ export class LayoutAdjuster
 	{
 		const type = options.type;
 		const projectId = options.projectId || '';
+		const shouldActivate = options.activate !== false;
 
 		// Track interactions on the new widget moving forward
 		trackWidgetInteraction(newWidget);
@@ -87,19 +95,20 @@ export class LayoutAdjuster
 		// --- BRANCH 1: TERMINAL LAYOUT ---
 		if(type === 'terminal')
 		{
+			const existingTerminal = this._findBestEditorForProject(dockPanel, projectId, type);
 			const lastNonOutline = this._findNonOutline(dockPanel);
 			const isTallscreen = window.innerHeight >= TALLSCREEN;
-			if(lastNonOutline && isTallscreen)
+			if(lastNonOutline && isTallscreen && !existingTerminal)
 			{
 				dockPanel.addWidget(newWidget, {
 					mode: 'split-bottom',
 					ref: lastNonOutline ?? window.lastInteractedWidget ?? undefined
 				});
-			} else if(lastNonOutline)
+			} else if(lastNonOutline || existingTerminal)
 			{
 				dockPanel.addWidget(newWidget, {
 					mode: 'tab-after',
-					ref: lastNonOutline ?? window.lastInteractedWidget ?? undefined
+					ref: existingTerminal ?? lastNonOutline ?? window.lastInteractedWidget ?? undefined
 				});
 			} else
 			{
@@ -107,7 +116,10 @@ export class LayoutAdjuster
 					mode: 'split-right'
 				});
 			}
-			dockPanel.activateWidget(newWidget);
+			if(shouldActivate)
+			{
+				dockPanel.activateWidget(newWidget);
+			}
 			window.resizeHandler();
 			return;
 		}
@@ -126,7 +138,10 @@ export class LayoutAdjuster
 			{
 				dockPanel.addWidget(newWidget, { mode: 'split-left' });
 			}
-			dockPanel.activateWidget(newWidget);
+			if(shouldActivate)
+			{
+				dockPanel.activateWidget(newWidget);
+			}
 			window.resizeHandler();
 			return;
 		}
@@ -173,7 +188,10 @@ export class LayoutAdjuster
 				console.log('Opening tab-after');
 				dockPanel.addWidget(newWidget, { mode: 'tab-after' });
 			}
-			dockPanel.activateWidget(newWidget);
+			if(shouldActivate)
+			{
+				dockPanel.activateWidget(newWidget);
+			}
 			window.resizeHandler();
 			return;
 		}
@@ -183,7 +201,10 @@ export class LayoutAdjuster
 			mode: 'tab-after',
 			ref: window.lastInteractedWidget ?? undefined
 		});
-		dockPanel.activateWidget(newWidget);
+		if(shouldActivate)
+		{
+			dockPanel.activateWidget(newWidget);
+		}
 		window.resizeHandler();
 	}
 

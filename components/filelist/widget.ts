@@ -39,11 +39,12 @@ declare global
 	}
 }
 
+window.fileListWidgets = new Array<FileListWidget>();
+
 
 export class FileListWidget extends Widget
 {
 	protected treeContainerId: string;
-	public static fileListWidgets: Array<FileListWidget> = new Array<FileListWidget>();
 
 	protected get selector()
 	{
@@ -55,7 +56,10 @@ export class FileListWidget extends Widget
 		super();
 		this.id = 'filelist-panel';
 		this.title.label = titleStr;
-		FileListWidget.fileListWidgets[FileListWidget.fileListWidgets.length] = this;
+		if(window.fileListWidgets)
+		{
+			window.fileListWidgets[window.fileListWidgets.length] = this;
+		}
 		this.title.closable = true;
 		this.node.style.minWidth = '200px';
 		this.addClass('ide-file-tree-widget');
@@ -189,10 +193,6 @@ export class FileListWidget extends Widget
 		if(msg.height < 0 || msg.width < 0) return;
 	}
 }
-
-
-export const fileListWidgets = FileListWidget.fileListWidgets;
-window.fileListWidgets = fileListWidgets;
 
 
 async function treeHandler(selector: string, e: Event): Promise<void>

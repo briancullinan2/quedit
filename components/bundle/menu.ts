@@ -14,6 +14,7 @@ import type { FileListWidget } from '../filelist/widget';
 import { MenuConfig } from './menu-manager';
 import { loadAndInstantiate } from './babel-compile';
 import { OUTLINE_WIDGET_TYPES } from './lumino-resize';
+import type { TerminalWidget } from '../terminal/widget';
 
 
 export interface TopBarComponents
@@ -38,6 +39,7 @@ declare global
 		settingsToolbar: SettingsToolbar;
 		engineToolbar: EngineToolbar;
 		fileListWidgets?: Array<FileListWidget>;
+		terminalWidgets?: Array<TerminalWidget>;
 		globalMenuBar: MenuBar;
 	}
 }
@@ -83,33 +85,32 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 	{
 		const currentWidgets = Array.from(mainDock.widgets());
 		const existing = currentWidgets.filter(w => w.constructor.name === route.className);
+		const shouldCollapseInstead = (route.className && OUTLINE_WIDGET_TYPES.includes(route.className)
+			&& window.fileListWidgets && window.fileListWidgets.length > 0)
+			|| (route.className === 'TerminalWidget' && window.terminalWidgets && window.terminalWidgets.length > 0);
+
+
+		if(shouldCollapseInstead)
+		{
+			console.log('Panel route already loaded: ' + panelId);
+			if(existing.length > 0)
+			{
+				collapseWidgets(mainDock, true, route);
+			} else
+			{
+				collapseWidgets(mainDock, false, route);
+			}
+			return;
+		}
+
 		if(existing.length > 0)
 		{
 			console.log('Panel route already loaded: ' + panelId);
-			if(route.className && OUTLINE_WIDGET_TYPES.includes(route.className))
-			{
-				existing[0].hide();
-				existing[0].parent = null;
-				window.resizeHandler();
-				return;
-			}
-
 			existing[0].show();
 			existing[0].activate();
 			return;
 		}
 
-		// TODO: make this a global singleton list?
-		const currentFileList = window.fileListWidgets?.filter(f => f.title.label === route.label);
-		if(currentFileList && currentFileList.length > 0)
-		{
-			console.log('Panel singleton toggle: ' + panelId);
-			LayoutAdjuster.addOptimalWidgetLayout(mainDock, currentFileList[0], {
-				type: 'outline',
-				projectId: currentFileList[0].constructor.name
-			});
-			return;
-		}
 
 		const widgetInstance = await loadAndInstantiate(route);
 		if(widgetInstance.constructor.name === 'TerminalWidget')
@@ -210,27 +211,23 @@ function mainModuleHandler(mainDock: DockPanel, toolbarNode: HTMLElement, event:
 		if(panelId !== 'collapse')
 		{
 			anchor.classList.add('active');
-		}
-
-		if(panelId === 'collapse')
+		} else
 		{
-			if(window.fileListWidgets && window.fileListWidgets.length > 0)
+			const shouldCollapse = (window.fileListWidgets && window.fileListWidgets.length > 0)
+				|| (window.terminalWidgets && window.terminalWidgets.length > 0);
+			if(!shouldCollapse)
 			{
-				console.log('Panel singleton toggle: ' + panelId);
-				if(toolbarNode.classList.contains('collapsed'))
-				{
-					toolbarNode.classList.remove('collapsed');
-					LayoutAdjuster.addOptimalWidgetLayout(mainDock, window.fileListWidgets[0], {
-						type: 'outline',
-						projectId: window.fileListWidgets[0].constructor.name
-					});
-				} else
-				{
-					toolbarNode.classList.add('collapsed');
-					window.fileListWidgets[0].hide();
-					window.fileListWidgets[0].parent = null;
-					window.resizeHandler();
-				}
+				return;
+			}
+			console.log('Panel singleton toggle: ' + panelId);
+			if(toolbarNode.classList.contains('collapsed'))
+			{
+				toolbarNode.classList.remove('collapsed');
+				collapseWidgets(mainDock, false);
+			} else
+			{
+				toolbarNode.classList.add('collapsed');
+				collapseWidgets(mainDock, true);
 			}
 			return;
 		}
@@ -238,6 +235,67 @@ function mainModuleHandler(mainDock: DockPanel, toolbarNode: HTMLElement, event:
 		triggerPanelRoute(panelId, mainDock);
 	}
 }
+
+
+function collapseWidgets(mainDock: DockPanel, collapse: boolean, route?: ComponentRoute)
+{
+	if(window.fileListWidgets && window.fileListWidgets.length > 0
+		&& (!route || route.className && OUTLINE_WIDGET_TYPES.includes(route.className))
+	)
+	{
+		if(collapse)
+		{
+			for(let widget of window.fileListWidgets)
+			{
+				widget.hide();
+				widget.parent = null;
+			}
+		} else
+		{
+			for(let widget of window.fileListWidgets)
+			{
+				LayoutAdjuster.addOptimalWidgetLayout(mainDock, widget, {
+					type: 'outline',
+					projectId: widget.constructor.name
+				});
+			}
+		}
+	}
+
+	if(window.terminalWidgets && window.terminalWidgets.length > 0
+		&& (!route || route.className && route.className === 'TerminalWidget')
+	)
+	{
+		if(collapse)
+		{
+			for(let widget of window.terminalWidgets)
+			{
+				widget.hide();
+				widget.parent = null;
+			}
+		} else
+		{
+			for(let widget of window.terminalWidgets)
+			{
+				LayoutAdjuster.addOptimalWidgetLayout(mainDock, widget, {
+					type: 'terminal',
+					projectId: widget.constructor.name
+				});
+			}
+		}
+	}
+
+	window.requestAnimationFrame(() =>
+	{
+		window.resizeHandler();
+		setTimeout(() =>
+		{
+			window.resizeHandler();
+		}, 200);
+	});
+}
+
+
 
 
 

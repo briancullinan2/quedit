@@ -20,6 +20,7 @@ declare global
 		statusBar: StatusBarWidget;
 		terminalLog: TerminalLogEntry[];
 		TerminalWidget: typeof TerminalWidget;
+		terminalWidgets?: Array<TerminalWidget>;
 	}
 }
 
@@ -193,6 +194,9 @@ class TerminalPoolManager
 	}
 }
 
+
+window.terminalWidgets = new Array<TerminalWidget>();
+
 /**
  * Lumino Component displaying specialized logs driven by a centralized terminal context pool.
  */
@@ -222,6 +226,11 @@ export class TerminalWidget extends Widget
 			this.title.label = titleLabel;
 		}
 		this.title.closable = true;
+
+		if(window.terminalWidgets)
+		{
+			window.terminalWidgets[window.terminalWidgets.length] = this;
+		}
 
 		this.addClass('terminal-filter-widget');
 
