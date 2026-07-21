@@ -24,14 +24,6 @@ const IMPORT_SETTINGS = {
         }
     },
 
-    toji: {
-        preferredRenderer: {
-            key: 'renderer_preference',
-            default: 'toji',
-            description: 'Specific configuration preferences passed to the WebGL vertex array and custom shading target context.'
-        }
-    },
-
     nunu: {
         preferredRenderer: {
             key: 'renderer_preference',

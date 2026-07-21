@@ -209,7 +209,24 @@ function mainModuleHandler(mainDock: DockPanel, toolbarNode: HTMLElement, event:
 
 		if(panelId === 'collapse')
 		{
-			toolbarNode.classList.toggle('collapsed');
+			if(window.fileListWidgets && window.fileListWidgets.length > 0)
+			{
+				console.log('Panel singleton toggle: ' + panelId);
+				if(toolbarNode.classList.contains('collapsed'))
+				{
+					toolbarNode.classList.remove('collapsed');
+					LayoutAdjuster.addOptimalWidgetLayout(mainDock, window.fileListWidgets[0], {
+						type: 'outline',
+						projectId: window.fileListWidgets[0].constructor.name
+					});
+				} else
+				{
+					toolbarNode.classList.add('collapsed');
+					window.fileListWidgets[0].hide();
+					window.fileListWidgets[0].parent = null;
+					window.resizeHandler();
+				}
+			}
 			return;
 		}
 

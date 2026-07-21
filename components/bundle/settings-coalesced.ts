@@ -103,5 +103,27 @@ export const IMPORT_SETTINGS: Record<string, Record<string, SettingConfig>> = {
             "elementId": "keybinding",
             "description": "Defines the keyboard mapping protocol (e.g., standard, Vim, or Emacs configurations) utilized inside the script editor workspace."
         }
+    },
+    "terminal": {
+        "commandHistory": {
+            "key": "history",
+            "default": [],
+            "type": "array",
+            "description": "An indexed collection tracking sequential command strings typed into the text interface console for fast history scrolling."
+        },
+        "terminalLog": {
+            "key": "terminal_log",
+            "edit": false,
+            "default": [],
+            "type": "json",
+            "description": "Persistent text logging buffer retaining runtime system updates, build logs, and standard out/error print operations."
+        }
+    },
+    "toji": {
+        "preferredRenderer": {
+            "key": "renderer_preference",
+            "default": "toji",
+            "description": "Specific configuration preferences passed to the WebGL vertex array and custom shading target context."
+        }
     }
 };

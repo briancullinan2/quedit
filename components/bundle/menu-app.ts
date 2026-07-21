@@ -6,6 +6,7 @@ import { SettingsManager } from "./settings";
 import type { AceEditorWidget } from "../editor/widget";
 import { loadAndInstantiate } from "./babel-compile";
 import { LayoutAdjuster } from "./lumino-widget";
+import type { TerminalWidget } from "../terminal/widget";
 
 declare global
 {
@@ -16,6 +17,7 @@ declare global
 		mainDock: DockPanel;
 		terminalFrameLimiter: FrameRater;
 		AceEditorWidget: typeof AceEditorWidget;
+		TerminalWidget: typeof TerminalWidget;
 	}
 }
 
@@ -229,7 +231,7 @@ async function rotateLayout()
 	const nextIndex = (currentIndex + 1) % ALL_LAYOUTS.length;
 	const newLayoutClass = ALL_LAYOUTS[nextIndex].split(' ');
 
-	if(!LayoutAdjuster._findBestEditorForProject(window.mainDock, 'terminal'))
+	if(!LayoutAdjuster._findBestEditorForProject(window.mainDock, window.TerminalWidget.name, 'terminal'))
 	{
 		await triggerPanelRoute('terminal', window.mainDock);
 	}

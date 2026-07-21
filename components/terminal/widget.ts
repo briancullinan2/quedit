@@ -19,6 +19,7 @@ declare global
 		SettingsManager: Settings;
 		statusBar: StatusBarWidget;
 		terminalLog: TerminalLogEntry[];
+		TerminalWidget: typeof TerminalWidget;
 	}
 }
 
@@ -584,10 +585,11 @@ export class TerminalWidget extends Widget
 				window.mainDock.addWidget(widget, { mode: 'tab-before', ref: mainTerminal });
 			}
 		});
-
 	}
-
 }
+
+window.TerminalWidget = TerminalWidget;
+
 
 export interface TerminalFilter
 {

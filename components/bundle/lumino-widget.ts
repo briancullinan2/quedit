@@ -98,11 +98,11 @@ export class LayoutAdjuster
 		// --- BRANCH 2: OUTLINE VIEW ---
 		if(type === 'outline')
 		{
-			const targetRef = this._findBestEditorForProject(dockPanel, projectId);
+			const targetRef = this._findBestEditorForProject(dockPanel, projectId, type);
 			if(targetRef)
 			{
 				dockPanel.addWidget(newWidget, {
-					mode: 'split-left',
+					mode: 'tab-after',
 					ref: targetRef
 				});
 			} else
@@ -234,7 +234,7 @@ export class LayoutAdjuster
 	/**
 	 * Helper to look up an editor matching a specific project context
 	 */
-	public static _findBestEditorForProject(dockPanel: DockPanel, projectId: string): Widget | null
+	public static _findBestEditorForProject(dockPanel: DockPanel, projectId: string, type: string): Widget | null
 	{
 		if(window.lastInteractedWidget && window.lastInteractedWidget.isAttached)
 		{
@@ -245,6 +245,7 @@ export class LayoutAdjuster
 			}
 		}
 
+		let fallbackType = null;
 		const iterator = dockPanel.widgets();
 		let current = iterator.next();
 		while(current && current.value)
@@ -254,8 +255,18 @@ export class LayoutAdjuster
 			{
 				return current.value;
 			}
+			if(el.dataset?.type === type)
+			{
+				fallbackType = current.value;
+			}
 			current = iterator.next();
 		}
+
+		if(fallbackType)
+		{
+			return fallbackType;
+		}
+
 		return null;
 	}
 

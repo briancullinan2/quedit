@@ -289,6 +289,7 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 			description: 'The visual theme layout package used to style the interactive Ace code editor window background and syntax colors.',
 			set: setTheme
 		}
+		// TODO: add layout setting layoutState here
 	}
 };
 

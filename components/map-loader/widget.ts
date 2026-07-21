@@ -1,3 +1,4 @@
+import type { SettingConfig, Settings } from '../bundle/settings';
 import { Widget } from '@lumino/widgets';
 import { FrameRater } from '../bundle/frame-rater';
 import type { EngineToolbar } from '../bundle/menu-engine';
@@ -1188,3 +1189,33 @@ export type Q3EntityMap = {
 	light?: Q3LightEntity[];
 	[classname: string]: Q3Entity[] | undefined;
 };
+
+
+const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
+
+    toji: {
+        preferredRenderer: {
+            key: 'renderer_preference',
+            default: 'toji',
+            description: 'Specific configuration preferences passed to the WebGL vertex array and custom shading target context.'
+        }
+    },
+
+};
+
+
+if(!window.IMPORT_SETTINGS)
+{
+	window.IMPORT_SETTINGS = {};
+}
+
+for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
+{
+	window.IMPORT_SETTINGS[moduleKey] = {
+		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+		...configs
+	};
+}
+
+export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
+
