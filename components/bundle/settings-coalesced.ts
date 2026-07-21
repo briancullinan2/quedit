@@ -88,6 +88,12 @@ export const IMPORT_SETTINGS: Record<string, Record<string, SettingConfig>> = {
             "default": "ace/theme/monokai",
             "elementId": "theme",
             "description": "The visual theme layout package used to style the interactive Ace code editor window background and syntax colors."
+        },
+        "layoutState": {
+            "key": "layout",
+            "type": "json",
+            "default": "{\"panels\":\"left-hand-files\",\"order\":\"normal-order\",\"terminal\":\"terminal\",\"mode\":\"full-mode\"}",
+            "description": "The layout order for opening new panels and resizing the window, snaps back to this state when the environment changes."
         }
     },
     "editor": {

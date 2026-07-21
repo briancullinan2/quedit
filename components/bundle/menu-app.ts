@@ -18,6 +18,12 @@ declare global
 		terminalFrameLimiter: FrameRater;
 		AceEditorWidget: typeof AceEditorWidget;
 		TerminalWidget: typeof TerminalWidget;
+		layoutState: {
+			panels: string,
+			order: string,
+			terminal: string,
+			mode: string;
+		};
 	}
 }
 
@@ -196,7 +202,8 @@ const LAYOUT_AXES = {
 	mode: ['full-mode', 'focus-mode']
 };
 
-const layoutState = {
+
+window.layoutState = {
 	panels: 'left-hand-files',
 	order: 'normal-order',
 	terminal: 'terminal',
@@ -215,14 +222,14 @@ async function rotateLayout()
 		if(matchedClass)
 		{
 			// Update the state with the discovered active class
-			layoutState[axis] = matchedClass;
+			window.layoutState[axis] = matchedClass;
 
 			// Strip the old atomic layout class from the DOM token list
 			document.body.classList.remove(`layout-${matchedClass}`);
 		}
 	});
 
-	const currentLayoutClass = `layout-${layoutState.panels} layout-${layoutState.order} layout-${layoutState.terminal} layout-${layoutState.mode}`;
+	const currentLayoutClass = `layout-${window.layoutState.panels} layout-${window.layoutState.order} layout-${window.layoutState.terminal} layout-${window.layoutState.mode}`;
 
 	// Find where it lives in your 16-element permutation list
 	const currentIndex = ALL_LAYOUTS.indexOf(currentLayoutClass);
@@ -254,3 +261,88 @@ const ALL_LAYOUTS = Object.values(LAYOUT_AXES).reduce((combinations, currentAxis
 	);
 }, []).map(combinedString => `layout-${combinedString}`);
 
+
+/**
+ * Normalizes, validates, and orders layout inputs into body class names.
+ * Accepts strings (e.g. "layout-focus-mode reverse-order"), arrays, or objects.
+ *
+ * @param {string|string[]|Object} rawInput - The unvalidated input to resolve.
+ * @returns {string[]} Formatted class names ordered matching LAYOUT_AXES.
+ */
+function getValidatedLayoutClassNames(rawInput)
+{
+	const resolvedState = { ...window.layoutState };
+
+	if(typeof rawInput === 'string')
+	{
+		const tokens = rawInput.trim().split(/\s+/);
+		tokens.forEach(token => processToken(token, resolvedState));
+	} else if(Array.isArray(rawInput))
+	{
+		rawInput.forEach(token =>
+		{
+			if(typeof token === 'string')
+			{
+				processToken(token, resolvedState);
+			}
+		});
+	} else if(rawInput && typeof rawInput === 'object')
+	{
+		Object.keys(LAYOUT_AXES).forEach(axis =>
+		{
+			if(typeof rawInput[axis] === 'string')
+			{
+				const cleanValue = rawInput[axis].replace(/^layout-/, '');
+				if(LAYOUT_AXES[axis].includes(cleanValue))
+				{
+					resolvedState[axis] = cleanValue;
+				}
+			}
+		});
+	}
+
+	// Return mapped array preserving strict order: panels -> order -> terminal -> mode
+	return Object.keys(LAYOUT_AXES).map(axis => `layout-${resolvedState[axis]}`);
+}
+
+/**
+ * Helper to match a single string token against valid LAYOUT_AXES options.
+ */
+function processToken(token, targetState)
+{
+	const cleanToken = token.replace(/^layout-/, '');
+
+	Object.keys(LAYOUT_AXES).forEach(axis =>
+	{
+		if(LAYOUT_AXES[axis].includes(cleanToken))
+		{
+			targetState[axis] = cleanToken;
+		}
+	});
+}
+
+export function applyInitialLayout(storedInput)
+{
+	// 1. Get validated class list in the exact required order
+	const validatedClasses = getValidatedLayoutClassNames(storedInput);
+
+	// 2. Update window.layoutState from validated output
+	Object.keys(LAYOUT_AXES).forEach((axis, index) =>
+	{
+		window.layoutState[axis] = validatedClasses[index].replace('layout-', '');
+	});
+
+	// 3. Remove any existing layout-* classes from body to avoid collisions
+	const existingLayoutClasses = Array.from(document.body.classList)
+		.filter(className => className.startsWith('layout-'));
+
+	if(existingLayoutClasses.length > 0)
+	{
+		document.body.classList.remove(...existingLayoutClasses);
+	}
+
+	// 4. Inject clean layout classes onto body
+	document.body.classList.add(...validatedClasses);
+
+	return validatedClasses;
+}

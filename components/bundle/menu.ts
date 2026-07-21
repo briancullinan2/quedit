@@ -108,13 +108,18 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 				type: 'outline',
 				projectId: currentFileList[0].constructor.name
 			});
-			//currentFileList[0].show();
-			//currentFileList[0].activate();
 			return;
 		}
 
 		const widgetInstance = await loadAndInstantiate(route);
-		if(OUTLINE_WIDGET_TYPES.includes(widgetInstance.constructor.name))
+		if(widgetInstance.constructor.name === 'TerminalWidget')
+		{
+			LayoutAdjuster.addOptimalWidgetLayout(mainDock, widgetInstance, {
+				type: 'terminal',
+				projectId: widgetInstance.constructor.name
+			});
+		}
+		else if(OUTLINE_WIDGET_TYPES.includes(widgetInstance.constructor.name))
 		{
 			LayoutAdjuster.addOptimalWidgetLayout(mainDock, widgetInstance, {
 				type: 'outline',

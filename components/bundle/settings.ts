@@ -32,6 +32,7 @@ declare global
 		AceEditorWidget: typeof AceEditorWidget;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
 		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
+		[key: string]: any;
 	}
 }
 
@@ -123,23 +124,51 @@ export class Settings
 			for(const [camelKey, config] of Object.entries(groupConfig))
 			{
 				config.windowName = camelKey;
-				const raw = localStorage.getItem(config.key);
+				let raw: any = localStorage.getItem(config.key);
 				let finalValue: any = raw;
 
 				if(raw === null)
 				{
-					finalValue = config.default;
-				} else if(config.type === 'boolean')
+					raw = config.default;
+				}
+
+				if(config.type === 'boolean')
 				{
-					finalValue = raw === 'true';
-				} else if(config.type === 'json' || config.type === 'array')
+					finalValue = raw === true || raw?.toLowerCase() === 'true';
+				} else if(config.type === 'json')
 				{
 					try
 					{
-						finalValue = JSON.parse(raw);
-						if(config.type === 'array' && !Array.isArray(finalValue))
+						if(typeof raw === 'string')
 						{
-							debugger;
+							finalValue = JSON.parse(raw);
+						} else
+						{
+							finalValue = raw;
+						}
+					} catch(e)
+					{
+						debugger;
+						console.error(e);
+						finalValue = config.default;
+					}
+				} else if(config.type === 'array')
+				{
+					try
+					{
+						if(typeof raw === 'string')
+						{
+							finalValue = JSON.parse(raw);
+						}
+						else if(raw instanceof Array)
+						{
+							finalValue = raw;
+						} else
+						{
+							finalValue = Array.from(raw);
+						}
+						if(!Array.isArray(finalValue))
+						{
 							finalValue = [];
 						}
 					} catch(e)
@@ -150,7 +179,7 @@ export class Settings
 					}
 				} else if(config.type === 'csv')
 				{
-					finalValue = raw.split(';').filter(Boolean);
+					finalValue = raw instanceof Array ? raw : raw?.split(';').filter(Boolean);
 				}
 
 				this.applyValue(config, finalValue);
@@ -193,7 +222,7 @@ export class Settings
 
 		if(targetConfig.windowName)
 		{
-			(window as any)[targetConfig.windowName] = finalValue;
+			window[targetConfig.windowName] = finalValue;
 		}
 
 		if(typeof targetConfig.set === 'function')
@@ -385,7 +414,8 @@ export class Settings
 	{
 		if(config.type === 'array')
 		{
-			localStorage.setItem(config.key, JSON.stringify(value));
+			if(!Array.isArray(value)) localStorage.setItem(config.key, JSON.stringify([value]));
+			else localStorage.setItem(config.key, JSON.stringify(value));
 		} else if(config.type === 'csv')
 		{
 			if(typeof value === 'string') localStorage.setItem(config.key, value);
@@ -393,8 +423,7 @@ export class Settings
 			else localStorage.setItem(config.key, value.toString());
 		} else if(config.type === 'json' || Array.isArray(value))
 		{
-			if(!Array.isArray(value)) localStorage.setItem(config.key, JSON.stringify([value]));
-			else localStorage.setItem(config.key, JSON.stringify(value));
+			localStorage.setItem(config.key, JSON.stringify(value));
 		} else
 		{
 			localStorage.setItem(config.key, value);

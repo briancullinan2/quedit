@@ -9,6 +9,7 @@ import { SettingConfig, SettingsManager } from './settings';
 import { isDevToolsOpen, OUTLINE_WIDGET_TYPES, ResponsiveManager } from './lumino-resize';
 
 import '@lumino/widgets/style/index.css';
+import { applyInitialLayout } from './menu-app';
 
 
 declare global
@@ -270,6 +271,8 @@ function setTheme(theme: string)
 	document.body.classList.add(`theme-${themeName.replace(/_/g, '-')}`);
 }
 
+
+
 const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 	core: {
 		workspaceDefault: {
@@ -288,8 +291,14 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 			elementId: 'theme',
 			description: 'The visual theme layout package used to style the interactive Ace code editor window background and syntax colors.',
 			set: setTheme
+		},
+		layoutState: {
+			key: 'layout',
+			type: 'json',
+			default: '{"panels":"left-hand-files","order":"normal-order","terminal":"terminal","mode":"full-mode"}',
+			description: 'The layout order for opening new panels and resizing the window, snaps back to this state when the environment changes.',
+			set: applyInitialLayout
 		}
-		// TODO: add layout setting layoutState here
 	}
 };
 

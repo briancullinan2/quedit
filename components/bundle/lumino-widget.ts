@@ -3,6 +3,7 @@ import { OUTLINE_WIDGET_TYPES } from './lumino-resize';
 
 export const WIDESCREEN = 1200;
 export const MOBILEMODE = 600;
+export const TALLSCREEN = 700;
 
 declare global
 {
@@ -86,10 +87,26 @@ export class LayoutAdjuster
 		// --- BRANCH 1: TERMINAL LAYOUT ---
 		if(type === 'terminal')
 		{
-			dockPanel.addWidget(newWidget, {
-				mode: 'split-bottom',
-				ref: window.lastInteractedWidget ?? undefined
-			});
+			const lastNonOutline = this._findNonOutline(dockPanel);
+			const isTallscreen = window.innerHeight >= TALLSCREEN;
+			if(lastNonOutline && isTallscreen)
+			{
+				dockPanel.addWidget(newWidget, {
+					mode: 'split-bottom',
+					ref: lastNonOutline ?? window.lastInteractedWidget ?? undefined
+				});
+			} else if(lastNonOutline)
+			{
+				dockPanel.addWidget(newWidget, {
+					mode: 'tab-after',
+					ref: lastNonOutline ?? window.lastInteractedWidget ?? undefined
+				});
+			} else
+			{
+				dockPanel.addWidget(newWidget, {
+					mode: 'split-right'
+				});
+			}
 			dockPanel.activateWidget(newWidget);
 			window.resizeHandler();
 			return;
@@ -118,6 +135,7 @@ export class LayoutAdjuster
 		if(type === 'editor')
 		{
 			const isWidescreen = window.innerWidth >= WIDESCREEN;
+			const isTallscreen = window.innerHeight >= TALLSCREEN;
 			if(isWidescreen)
 			{
 				HTMLElement.dataset.layoutGroup = 'split-column';
@@ -128,7 +146,15 @@ export class LayoutAdjuster
 
 			const bestRef = this._findRankedReference(dockPanel, projectId);
 
-			if(bestRef)
+			if(bestRef && bestRef.dataset?.type === 'terminal')
+			{
+				const shouldSplit = (isTallscreen && bestRef.dataset.projectId !== projectId);
+				dockPanel.addWidget(newWidget, {
+					mode: shouldSplit ? 'split-top' : 'tab-after',
+					ref: bestRef
+				});
+			}
+			else if(bestRef)
 			{
 				const refHTMLElement = bestRef.node as HTMLElement;
 				const shouldSplit = (isWidescreen && refHTMLElement.dataset.projectId !== projectId)
@@ -160,6 +186,25 @@ export class LayoutAdjuster
 		dockPanel.activateWidget(newWidget);
 		window.resizeHandler();
 	}
+
+
+	private static _findNonOutline(dockPanel: DockPanel): Widget | null
+	{
+
+		const iterator = dockPanel.widgets();
+		let current = iterator.next();
+		while(current && current.value)
+		{
+			const el = current.value.node as HTMLElement;
+			if(!OUTLINE_WIDGET_TYPES.includes(el.dataset?.projectId ?? current.value.constructor.name))
+			{
+				return current.value;
+			}
+			current = iterator.next();
+		}
+		return null;
+	}
+
 
 	/**
 	 * Ranks existing widgets to find the optimal reference sibling.
@@ -234,8 +279,9 @@ export class LayoutAdjuster
 	/**
 	 * Helper to look up an editor matching a specific project context
 	 */
-	public static _findBestEditorForProject(dockPanel: DockPanel, projectId: string, type: string): Widget | null
+	public static _findBestEditorForProject(dockPanel: DockPanel, projectId: string | null | undefined, type: string): Widget | null
 	{
+		let fallbackType: Widget | null = null;
 		if(window.lastInteractedWidget && window.lastInteractedWidget.isAttached)
 		{
 			const lastEl = window.lastInteractedWidget.node as HTMLElement;
@@ -243,9 +289,12 @@ export class LayoutAdjuster
 			{
 				return window.lastInteractedWidget;
 			}
+			if(lastEl.dataset?.type === type)
+			{
+				fallbackType = window.lastInteractedWidget;
+			}
 		}
 
-		let fallbackType = null;
 		const iterator = dockPanel.widgets();
 		let current = iterator.next();
 		while(current && current.value)

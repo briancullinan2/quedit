@@ -1,5 +1,5 @@
 import { BoxPanel, DockPanel, FocusTracker, MenuBar, Panel, Widget } from "@lumino/widgets";
-import { LayoutAdjuster, MOBILEMODE, WIDESCREEN } from "./lumino-widget";
+import { LayoutAdjuster, MOBILEMODE, WIDESCREEN, TALLSCREEN } from "./lumino-widget";
 import type { RepositoryToolbar } from "./menu-repos";
 import type { ScriptToolbar } from "./menu-script";
 import type { ApplicationToolbar } from "./menu-app";
@@ -138,7 +138,7 @@ export class ResponsiveManager
 		const isWidescreen = window.innerWidth >= WIDESCREEN;
 		const isNormal = window.innerWidth >= MOBILEMODE && window.innerWidth < WIDESCREEN;
 		const isMobile = window.innerWidth < MOBILEMODE;
-		const isToolbarScrollable = window.innerHeight < 700;
+		const isToolbarScrollable = window.innerHeight < TALLSCREEN;
 
 		// 1. ORIGINAL TOOLBAR PARAMETER LOGIC (UNTOUCHED)
 		if(isToolbarScrollable)
