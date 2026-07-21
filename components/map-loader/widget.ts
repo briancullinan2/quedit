@@ -21,6 +21,7 @@ declare global
 		tojiFrameLimiter: FrameRater;
 		loadScript(src: string): Promise<any>;
 		engineToolbar: EngineToolbar;
+		TojiWidget: typeof TojiWidget;
 	}
 	interface Navigator
 	{
@@ -138,6 +139,8 @@ export class TojiWidget extends Widget
 	];
 	startupPromise: Promise<void>;
 	tryLoadingMapsPromise: Promise<void>;
+	enginePromise: Promise<unknown>;
+	engineResolve?: (value?: unknown) => void;
 
 
 	constructor(titleStr: string)
@@ -200,6 +203,11 @@ export class TojiWidget extends Widget
 			this.xrOrientation = quat.create();
 			this.xrEuler = vec3.create();
 		})();
+
+		this.enginePromise = new Promise(resolve =>
+		{
+			this.engineResolve = resolve;
+		});
 	}
 
 	protected override async onAfterAttach(msg: any): Promise<void>
@@ -373,33 +381,62 @@ export class TojiWidget extends Widget
 		this.respawnPlayer(0);
 		this.viewportElement.style.display = 'block';
 		this.handleResize();
+		if(this.engineResolve)
+			this.engineResolve();
 	}
 
-	public respawnPlayer(index: number): void
+	public respawnPlayer(index: number | Q3Vector3): void
 	{
-		if(this.map.entities && this.playerMover)
+		let spawnPoint;
+		if(!this.map.entities)
 		{
-			if(index === -1)
-			{
-				index = (this.lastIndex + 1) % this.map.entities.info_player_deathmatch.length;
-			}
-			this.lastIndex = index;
-
-			let spawnPoint = this.map.entities.info_player_deathmatch[index];
-			this.playerMover.position = [
-				spawnPoint.origin[0],
-				spawnPoint.origin[1],
-				spawnPoint.origin[2] + 30 // Start a little ways above the floor
-			];
-
-			const spawnSelector = document.querySelector('#spawn') as HTMLSelectElement;
-			spawnSelector.value = spawnPoint.origin[0] + ' ' + spawnPoint.origin[1] + ' ' + spawnPoint.origin[2];
-
-			this.playerMover.velocity = [0, 0, 0];
-
-			this.zAngle = -(spawnPoint.angle || 0) * (3.1415 / 180) + (3.1415 * 0.5); // Negative angle in radians + 90 degrees
-			this.xAngle = 0;
+			return;
 		}
+
+		if(index === -1)
+		{
+			index = (this.lastIndex + 1) % this.map.entities.info_player_deathmatch.length;
+		}
+
+		if(typeof index === 'number')
+		{
+			this.lastIndex = index;
+			spawnPoint = this.map.entities.info_player_deathmatch[index];
+		}
+
+		if(typeof index === 'string')
+		{
+			spawnPoint = {
+				origin: index.split(' ').map(n => parseInt(n))
+			};
+		}
+
+		if(index instanceof Array)
+		{
+			spawnPoint = {
+				origin: index
+			};
+		}
+
+		if(!this.playerMover)
+		{
+			return;
+		}
+
+		this.playerMover.position = [
+			spawnPoint.origin[0],
+			spawnPoint.origin[1],
+			spawnPoint.origin[2] + 30 // Start a little ways above the floor
+		];
+
+		const spawnSelector = document.querySelector('#spawn') as HTMLSelectElement;
+		spawnSelector.value = spawnPoint.origin[0] + ' ' + spawnPoint.origin[1] + ' ' + spawnPoint.origin[2];
+
+		this.playerMover.velocity = [0, 0, 0];
+
+		this.zAngle = -(spawnPoint.angle || 0) * (3.1415 / 180) + (3.1415 * 0.5); // Negative angle in radians + 90 degrees
+		this.xAngle = 0;
+
 	}
 
 	private eulerFromQuaternion(out: number[], q: number[], order: string): void
@@ -961,6 +998,10 @@ export class TojiWidget extends Widget
 		}
 	}
 }
+
+
+window.TojiWidget = TojiWidget;
+
 
 /**
  * 3D vector coordinates [X, Y, Z] in Quake world units.

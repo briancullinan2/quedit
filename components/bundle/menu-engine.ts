@@ -2,6 +2,7 @@ import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
 import type { GitHubBranchLike } from "./github-settings";
 import type { GitHubFileEntry, GitHubFileTree } from "./github-types";
+import type { TojiWidget } from '../map-loader/widget';
 
 declare global
 {
@@ -17,6 +18,7 @@ declare global
 		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
 		mapFiles: Record<string, string>;
 		spawnPoints: Record<string, string>;
+		TojiWidget: typeof TojiWidget;
 	}
 }
 
@@ -151,8 +153,16 @@ export class EngineToolbar extends Widget
 			{
 				this._commands!.addCommand(commandId, {
 					label: `Update Engine ${control.placeholder}`,
-					execute: (args: any) =>
+					execute: async (args: any) =>
 					{
+						const currentWidget = Array.from(window.mainDock.widgets()).find(w => w instanceof window.TojiWidget) as TojiWidget;
+						if(!currentWidget) return;
+
+						if(control.id === 'spawn')
+						{
+							await currentWidget.enginePromise;
+							currentWidget.respawnPlayer(args.value);
+						}
 						console.log(`Engine setting [${control.id}] updated to: ${args.value}`);
 					}
 				});
