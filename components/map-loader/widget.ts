@@ -137,6 +137,7 @@ export class TojiWidget extends Widget
 		'/components/map-loader/q3movement.js'
 	];
 	startupPromise: Promise<void>;
+	tryLoadingMapsPromise: Promise<void>;
 
 
 	constructor(titleStr: string)
@@ -184,7 +185,7 @@ export class TojiWidget extends Widget
 			});
 		}
 
-		window.engineToolbar.tryGithubs();
+		this.tryLoadingMapsPromise = window.engineToolbar.tryGithubs();
 
 		this.startupPromise = (async () =>
 		{
@@ -302,8 +303,67 @@ export class TojiWidget extends Widget
 		this.maploadDebouncer = null;
 	}
 
-	private initMapEntities(entities: any): void
+	private initMapEntities(entities: Q3EntityMap): void
 	{
+		(async () =>
+		{
+			await this.tryLoadingMapsPromise;
+			const mapFile = this.mapName?.split('/').pop();
+			const mapSelector = document.querySelector('#map') as HTMLSelectElement;
+			const mapValue = (mapSelector.querySelector(`option[value*="${mapFile}"]`) as HTMLOptionElement)?.value;
+			mapSelector.value = mapValue;
+		})();
+
+		console.log(entities);
+		if(entities.worldspawn && entities.worldspawn[0] && entities.worldspawn[0].message)
+		{
+			this.title.label = entities.worldspawn[0].message;
+		}
+
+		const allEntities = Object.values(entities).flat();
+		const entitiesWithOrigin = allEntities.filter(e => e?.origin);
+		for(let ent of entitiesWithOrigin)
+		{
+			if(!ent) continue;
+
+			// 1. Normalize origin into standard string format "X Y Z" or "X,Y,Z"
+			const rawOrigin = Array.isArray(ent.origin) ? ent.origin.join(' ') : String(ent.origin);
+
+			// 2. Derive readable entity name based on classname and properties
+			let title = '';
+
+			if(ent.classname === 'target_location' && ent.message)
+			{
+				// Room Name locations in Q3
+				title = `📍 Room: ${ent.message}`;
+			} else if(ent.classname === 'misc_model' && ent.model)
+			{
+				// Fall back to filename if model path exists
+				const filename = ent.model.split('/').pop() || ent.model;
+				title = `misc_model (${filename})`;
+			} else if(ent.message)
+			{
+				// General messages (worldspawn, triggers, info_player_start)
+				title = `${ent.classname} ("${ent.message}")`;
+			} else if(ent.targetname)
+			{
+				// Named targets
+				title = `${ent.classname} [#${ent.targetname}]`;
+			} else
+			{
+				// Base fallback: classname + origin coordinates
+				title = `${ent.classname} [${rawOrigin}]`;
+			}
+
+			// 3. Store as value: title mapping
+			window.spawnPoints[rawOrigin] = title;
+		}
+
+		if(Object.keys(window.spawnPoints).length > 1)
+		{
+			window.updateSelectOptions('spawn', window.spawnPoints, '');
+		}
+
 		this.respawnPlayer(0);
 	}
 
@@ -315,7 +375,7 @@ export class TojiWidget extends Widget
 		this.handleResize();
 	}
 
-	private respawnPlayer(index: number): void
+	public respawnPlayer(index: number): void
 	{
 		if(this.map.entities && this.playerMover)
 		{
@@ -331,6 +391,9 @@ export class TojiWidget extends Widget
 				spawnPoint.origin[1],
 				spawnPoint.origin[2] + 30 // Start a little ways above the floor
 			];
+
+			const spawnSelector = document.querySelector('#spawn') as HTMLSelectElement;
+			spawnSelector.value = spawnPoint.origin[0] + ' ' + spawnPoint.origin[1] + ' ' + spawnPoint.origin[2];
 
 			this.playerMover.velocity = [0, 0, 0];
 
@@ -899,3 +962,188 @@ export class TojiWidget extends Widget
 	}
 }
 
+/**
+ * 3D vector coordinates [X, Y, Z] in Quake world units.
+ */
+export type Q3Vector3 = [number, number, number] | string;
+
+/**
+ * Common Q3 Entity Classnames grouped by entity type.
+ */
+export type Q3Classname =
+	| 'worldspawn'
+	| 'info_player_deathmatch'
+	| 'info_player_intermission'
+	| 'info_player_start'
+	| 'info_teleport_destination'
+	| 'light'
+	| 'light_spot'
+	| 'target_speaker'
+	| 'target_location'
+	| 'target_position'
+	| 'target_push'
+	| 'target_teleporter'
+	| 'target_give'
+	| 'target_remove_powerups'
+	| 'target_delay'
+	| 'target_score'
+	| 'target_print'
+	| 'trigger_always'
+	| 'trigger_multiple'
+	| 'trigger_once'
+	| 'trigger_push'
+	| 'trigger_teleport'
+	| 'trigger_hurt'
+	| 'func_door'
+	| 'func_plat'
+	| 'func_button'
+	| 'func_train'
+	| 'func_static'
+	| 'func_rotating'
+	| 'func_bobbing'
+	| 'func_pendulum'
+	| 'func_timer'
+	| 'path_corner'
+	| (string & {}); // Fallback for custom mod entity classnames
+
+/**
+ * Global map-wide properties set on the `worldspawn` entity.
+ */
+export interface Q3WorldspawnEntity
+{
+	classname: 'worldspawn';
+	message?: string;          // Map name displayed on load screen
+	music?: string;            // Path to background music (e.g., "music/sonic5.wav")
+	ambient?: number | string;  // Global ambient light level
+	_color?: Q3Vector3;        // World light color (RGB 0.0 - 1.0 or 0 - 255)
+	gridsize?: Q3Vector3;      // Light grid sizing
+	[key: string]: any;
+}
+
+/**
+ * Ambient or positional sound source.
+ */
+export interface Q3TargetSpeakerEntity
+{
+	classname: 'target_speaker';
+	origin?: Q3Vector3;
+	noise?: string;             // Sound sample path (e.g., "sound/world/suck1.wav")
+	targetname?: string;        // If present, requires a trigger to play
+	spawnflags?: number | string; // Bit flags: 1 = Loop, 2 = Global, 4 = Activator only
+	wait?: number | string;     // Delay between loops/triggers
+	random?: number | string;   // Random delay variance
+	[key: string]: any;
+}
+
+/**
+ * Light sources (point and spotlights).
+ */
+export interface Q3LightEntity
+{
+	classname: 'light' | 'light_spot';
+	origin: Q3Vector3;
+	light?: number | string;    // Intensity / brightness (default ~300)
+	_color?: Q3Vector3;        // Light color (RGB normalized or 0-255)
+	target?: string;           // Target entity for spotlight direction
+	radius?: number | string;   // Light falloff radius
+	scale?: number | string;    // Light intensity scale modifier
+	[key: string]: any;
+}
+
+/**
+ * Interactive brush movers (doors, lifts, buttons, platforms).
+ */
+export interface Q3FuncEntity
+{
+	classname: Extract<Q3Classname, `func_${string}`>;
+	origin?: Q3Vector3;
+	target?: string;           // Entity to activate when triggered/used
+	targetname?: string;        // Trigger identifier
+	angle?: number | string;    // Direction of movement (-1 = UP, -2 = DOWN, or 0-360 deg)
+	speed?: number | string;    // Units per second movement speed
+	wait?: number | string;     // Delay before resetting position (-1 = stay open)
+	lip?: number | string;      // Lip remaining at end of move distance
+	height?: number | string;   // Height travel distance for func_plat
+	dmg?: number | string;      // Damage inflicted on player if blocked
+	health?: number | string;   // Health required to break or trigger
+	team?: string;              // Links multiple doors/movers to open in sync
+	spawnflags?: number | string;
+	[key: string]: any;
+}
+
+/**
+ * Triggers and level script logic objects.
+ */
+export interface Q3TriggerEntity
+{
+	classname: Extract<Q3Classname, `trigger_${string}` | `target_${string}`>;
+	origin?: Q3Vector3;
+	target?: string;           // Entity targetname to fire
+	targetname?: string;        // Self trigger ID
+	wait?: number | string;     // Repeat wait time (default 0.2s)
+	delay?: number | string;    // Delay in seconds before triggering target
+	count?: number | string;    // Number of times trigger can be activated
+	message?: string;          // On-screen message when triggered
+	spawnflags?: number | string;
+	[key: string]: any;
+}
+
+/**
+ * Generic Base interface for all Quake 3 entities.
+ */
+export interface Q3GenericEntity
+{
+	// Common identity & spatial keys
+	classname: Q3Classname;
+	origin?: Q3Vector3;
+	angles?: Q3Vector3;         // Pitch, Yaw, Roll [P, Y, R]
+	angle?: number | string;    // Yaw orientation (0 to 360 deg)
+	targetname?: string;        // Named handle for trigger networks
+	target?: string;           // Target entity to fire
+	target2?: string;          // Secondary target
+	target3?: string;          // Tertiary target
+	target4?: string;          // Quaternary target
+	spawnflags?: number | string; // Bitmask flags
+
+	// Media & sound resources
+	noise?: string;             // Primary wav/ogg sound resource
+	music?: string;             // Music track path
+	model?: string;             // Custom .md3 model or inline brush model (*1, *2, etc.)
+	model2?: string;            // Additional model attachment
+	audio?: any;                // Runtime DOM/WebAudio audio instance handle
+
+	// Gameplay parameters
+	health?: number | string;
+	dmg?: number | string;
+	wait?: number | string;
+	random?: number | string;
+	delay?: number | string;
+	speed?: number | string;
+	team?: string;
+	gametype?: string;          // Filter entity by gametype (e.g., "ctf", "ffa")
+
+	// Flexible dictionary index signature for non-standard key-values
+	[key: string]: any;
+}
+
+/**
+ * Discriminated union of typed Quake 3 entities.
+ */
+export type Q3Entity =
+	| Q3WorldspawnEntity
+	| Q3TargetSpeakerEntity
+	| Q3LightEntity
+	| Q3FuncEntity
+	| Q3TriggerEntity
+	| Q3GenericEntity;
+
+/**
+ * Parsed container map for all entities in a BSP map.
+ * Keys correlate to classnames (e.g., `entities.worldspawn[0]`, `entities.target_speaker`).
+ */
+export type Q3EntityMap = {
+	worldspawn?: [Q3WorldspawnEntity];
+	target_speaker?: Q3TargetSpeakerEntity[];
+	light?: Q3LightEntity[];
+	[classname: string]: Q3Entity[] | undefined;
+};

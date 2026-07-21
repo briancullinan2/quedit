@@ -210,7 +210,6 @@ q3bsp.prototype.loadShaders = function (sources)
 		map.buildShaders(shaders);
 	});
 };
-
 q3bsp.prototype.processEntities = function (entities)
 {
 	if(this.onentitiesloaded)
@@ -218,24 +217,115 @@ q3bsp.prototype.processEntities = function (entities)
 		this.onentitiesloaded(entities);
 	}
 
-	// Background music
-	/*if(entities.worldspawn[0].music) {
-		this.bgMusic = new Audio(q3bsp_base_folder + '/' + entities.worldspawn[0].music.replace('.wav', '.ogg'));
-		// TODO: When can we change this to simply setting the 'loop' property?
-		this.bgMusic.addEventListener('ended', function(){
-			this.currentTime = 0;
-		}, false);
-		this.bgMusic.play();
-	}*/
+	// 1. Background Music Implementation
+	if(entities.worldspawn && entities.worldspawn[0] && entities.worldspawn[0].music)
+	{
+		// Quake 3 BSP music paths usually end in .wav or .mp3, swap for browser-compatible file
+		var musicPath = entities.worldspawn[0].music.replace(/\.(wav|mp3)$/i, '.ogg');
 
-	// It would be relatively easy to do some ambient sound processing here, but I don't really feel like
-	// HTML5 audio is up to the task. For example, lack of reliable gapless looping makes them sound terrible!
-	// Look into this more when browsers get with the program.
-	/*var speakers = entities.target_speaker;
-	for(var i = 0; i < 1; ++i) {
-		var speaker = speakers[i];
-		q3bspCreateSpeaker(speaker);
-	}*/
+		this.bgMusic = new Audio(q3bsp_base_folder + '/' + musicPath);
+		this.bgMusic.loop = true; // Native HTML5 loop support is robust across modern browsers
+
+		// Handle autoplay restrictions gracefully
+		var playPromise = this.bgMusic.play();
+		if(playPromise !== undefined)
+		{
+			playPromise.catch(function (error)
+			{
+				console.warn('Background music playback blocked or failed:', error);
+			});
+		}
+	}
+
+	// 2. Ambient Sound Speakers (Web Audio API for gapless looping & 3D spatialization)
+	if(entities.target_speaker && entities.target_speaker.length > 0)
+	{
+		var speakers = entities.target_speaker;
+		for(var i = 0; i < speakers.length; ++i)
+		{
+			var speaker = speakers[i];
+
+			// Invoke creation helper if it exists, or build Web Audio node pipeline
+			if(typeof q3bspCreateSpeaker === 'function')
+			{
+				q3bspCreateSpeaker(speaker);
+			}
+			else
+			{
+				this.createAmbientSpeaker(speaker);
+			}
+		}
+	}
+};
+
+/**
+ * Web Audio API implementation for target_speaker entities
+ * Solves gapless looping and provides 3D positional audio.
+ */
+q3bsp.prototype.createAmbientSpeaker = function (speaker)
+{
+	if(!speaker.noise) return;
+
+	// Initialize shared AudioContext on the q3bsp instance if not present
+	if(!this.audioCtx)
+	{
+		var AudioCtx = window.AudioContext || window.webkitAudioContext;
+		if(!AudioCtx) return; // Web Audio not supported
+		this.audioCtx = new AudioCtx();
+	}
+
+	var self = this;
+	var soundUrl = q3bsp_base_folder + '/' + speaker.noise.replace(/\.(wav|mp3)$/i, '.ogg');
+
+	fetch(soundUrl)
+		.then(function (response) { return response.arrayBuffer(); })
+		.then(function (data) { return self.audioCtx.decodeAudioData(data); })
+		.then(function (buffer)
+		{
+			var source = self.audioCtx.createBufferSource();
+			source.buffer = buffer;
+			source.loop = true; // Web Audio API guarantees seamless, gapless looping
+
+			// If the entity has an origin, apply 3D panning relative to the listener
+			if(speaker.origin)
+			{
+				var coords = speaker.origin.split(' ').map(parseFloat);
+				var panner = self.audioCtx.createPanner();
+
+				panner.panningModel = 'HRTF';
+				panner.distanceModel = 'inverse';
+				panner.refDistance = 100;
+				panner.maxDistance = 10000;
+				panner.rolloffFactor = 1;
+
+				// Quake coordinates (X, Y, Z) to Web Audio 3D space
+				if(panner.positionX)
+				{
+					panner.positionX.value = coords[0] || 0;
+					panner.positionY.value = coords[2] || 0; // Swap Z/Y for Web Audio vertical axis
+					panner.positionZ.value = -(coords[1] || 0);
+				}
+				else
+				{
+					// Fallback for older PannerNode spec
+					panner.setPosition(coords[0] || 0, coords[2] || 0, -(coords[1] || 0));
+				}
+
+				source.connect(panner);
+				panner.connect(self.audioCtx.destination);
+			}
+			else
+			{
+				// Non-positional ambient sound
+				source.connect(self.audioCtx.destination);
+			}
+
+			source.start(0);
+		})
+		.catch(function (err)
+		{
+			console.warn('Failed to load or play speaker sound:', soundUrl, err);
+		});
 };
 
 function q3bspCreateSpeaker(speaker)

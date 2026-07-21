@@ -32,7 +32,7 @@ declare global
 export async function githubRequest(ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: false): Promise<any>;
 export async function githubRequest(ownerName: string, repoName: string, url: string, authorize: boolean, buffer?: true): Promise<ArrayBuffer>;
 export async function githubRequest(ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean): Promise<any | ArrayBuffer>;
-export async function githubRequest(ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean): Promise<any>
+export async function githubRequest(ownerName: string, repoName: string, url: string, authorize: boolean = true, buffer?: boolean): Promise<any>
 {
 	if(typeof SettingsManager !== 'undefined' && typeof api != 'undefined')
 	{

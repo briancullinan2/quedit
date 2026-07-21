@@ -190,6 +190,8 @@ export function updateSelectOptions(
 		return true;
 	});
 
+	normalizedItems.sort((a, b) => a.text.localeCompare(b.text, undefined, { sensitivity: 'base' }));
+
 	// 3. Create and append normalized entries
 	normalizedItems.forEach(item =>
 	{

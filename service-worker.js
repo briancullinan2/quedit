@@ -745,7 +745,7 @@ self.addEventListener('message', async (event) =>
 		console.log('✉️ [SW-MESSAGE] Command route identified: GET_VERSION parameter data report request.');
 		SHUTUP = !!event.data.shutup;
 
-		if(!localVersion || !api.environmentRepository)
+		//if(!localVersion || !api.environmentRepository)
 		{
 			await lookupLocalVersion();
 		}

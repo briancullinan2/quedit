@@ -16,6 +16,7 @@ declare global
 		) => void;
 		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
 		mapFiles: Record<string, string>;
+		spawnPoints: Record<string, string>;
 	}
 }
 
@@ -29,6 +30,11 @@ const ENGINE_CONTROLS: EngineControl[] = [
 	{ id: 'spawn', placeholder: 'Spawn Point', name: 'spawn' },
 	{ id: 'map', placeholder: 'Current Map', name: 'map' }
 ];
+
+export const spawnPoints: Record<string, string> = {
+	"": "Spawn point"
+};
+window.spawnPoints = spawnPoints;
 
 export class EngineToolbar extends Widget
 {
@@ -69,13 +75,13 @@ export class EngineToolbar extends Widget
 			return;
 		}
 		this.triedGithub = true;
-		await Promise.all(window.FileManager.getActiveRepositories().map(repoKey =>
+		const promises = window.FileManager.getActiveRepositories().map(repoKey =>
 		{
 			const parts = repoKey.split('/');
 			const ownerName = parts.length === 2 ? parts[0] : window.owner?.value || '';
 			const repoName = parts.length === 2 ? parts[1] : (parts[0] || window.repository?.value || '');
 
-			return Promise.all(window.FileManager.roots.map(async root =>
+			const promises = window.FileManager.roots.map(async root =>
 			{
 				try
 				{
@@ -102,11 +108,11 @@ export class EngineToolbar extends Widget
 				{
 					console.warn('Couldn\'t find maps on: ' + repoKey + '/' + root + '\n' + e.message + '\n' + (e.stack ?? e.stacktrace));
 				}
+			});
+			return promises;
+		}).flat();
 
-			}));
-		}));
-
-
+		await Promise.all(promises);
 
 		if(Object.keys(window.mapFiles).length > 1)
 		{
