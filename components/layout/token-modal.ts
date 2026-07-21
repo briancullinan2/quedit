@@ -203,17 +203,14 @@ export class TokenModal
 		const tokenValue = this.tokenInput.value.trim();
 		localStorage.setItem('github_token', tokenValue);
 
-		if(window.api && window.api.github_token !== undefined)
+		this.tokenInput.value = '';
+		alert('Token saved to local storage.');
+		setTimeout(() =>
 		{
-			this.tokenInput.value = '';
-			alert('Token saved to local storage.');
-			setTimeout(() =>
-			{
-				if(this.modal)
-					this.container?.removeChild(this.modal);
-				this.modal?.classList.add('hidden');
-			}, 200);
-		}
+			if(this.modal)
+				this.container?.removeChild(this.modal);
+			this.modal?.classList.add('hidden');
+		}, 200);
 	}
 
 	public clearToken(): void

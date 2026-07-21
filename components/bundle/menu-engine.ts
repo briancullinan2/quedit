@@ -69,13 +69,13 @@ export class EngineToolbar extends Widget
 			return;
 		}
 		this.triedGithub = true;
-		window.FileManager.getActiveRepositories().forEach(repoKey =>
+		await Promise.all(window.FileManager.getActiveRepositories().map(repoKey =>
 		{
 			const parts = repoKey.split('/');
 			const ownerName = parts.length === 2 ? parts[0] : window.owner?.value || '';
 			const repoName = parts.length === 2 ? parts[1] : (parts[0] || window.repository?.value || '');
 
-			window.FileManager.roots.forEach(async root =>
+			return Promise.all(window.FileManager.roots.map(async root =>
 			{
 				try
 				{
@@ -103,8 +103,8 @@ export class EngineToolbar extends Widget
 					console.warn('Couldn\'t find maps on: ' + repoKey + '/' + root + '\n' + e.message + '\n' + (e.stack ?? e.stacktrace));
 				}
 
-			});
-		});
+			}));
+		}));
 
 
 
