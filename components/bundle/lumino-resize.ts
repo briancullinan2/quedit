@@ -171,11 +171,16 @@ export class ResponsiveManager
 			if(allWidgets.length === 0) return;
 
 			// 3. Single container collapse: combine into one single tab group
-			const primaryWidget = allWidgets[0];
+			const nonOutline = LayoutAdjuster._findNonOutline(mainDock);
+			const primaryWidget = nonOutline ?? allWidgets[0];
 
 			// Re-add all other widgets to primary tab container
-			allWidgets.slice(1).forEach((widget) =>
+			allWidgets.forEach((widget) =>
 			{
+				if(widget === primaryWidget)
+				{
+					return;
+				}
 				if(!isWidthMobile && OUTLINE_WIDGET_TYPES.includes(widget.constructor.name))
 				{
 					return;

@@ -209,7 +209,7 @@ export class LayoutAdjuster
 	}
 
 
-	private static _findNonOutline(dockPanel: DockPanel): Widget | null
+	public static _findNonOutline(dockPanel: DockPanel): Widget | null
 	{
 
 		const iterator = dockPanel.widgets();
