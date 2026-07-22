@@ -208,6 +208,7 @@ export class TerminalWidget extends Widget
 	public searchInput!: HTMLInputElement;
 	private searchObserver?: ResizeObserver;
 	private parentTabBar?: HTMLElement;
+	terminalLoadComplete: boolean = false;
 
 	constructor(filterId: string, titleLabel: string)
 	{
@@ -226,6 +227,7 @@ export class TerminalWidget extends Widget
 			this.title.label = titleLabel;
 		}
 		this.title.closable = true;
+		this.dataset.type = 'terminal';
 
 		if(window.terminalWidgets)
 		{
@@ -450,6 +452,12 @@ export class TerminalWidget extends Widget
 		// Attach terminal DOM structure to this Lumino widget node
 		this.node.appendChild(this.currentTerminalCtx.container);
 
+		//if(this.currentTerminalCtx.events?.terminalStartupBegun)
+		if(this.terminalLoadComplete)
+		{
+			//this.syncTerminalState();
+		}
+
 		// Recalculate dimensions for the newly attached node viewport
 		manager.fitTerminalLayout(this.currentTerminalCtx);
 
@@ -495,6 +503,7 @@ export class TerminalWidget extends Widget
 			{
 				(window as any).captureRenderToTerminalCorner(term);
 			}
+			this.terminalLoadComplete = true;
 			return;
 		}
 
@@ -519,6 +528,8 @@ export class TerminalWidget extends Widget
 		{
 			core._cursorBlinkContext.restartInterval();
 		}
+
+		this.terminalLoadComplete = true;
 	}
 
 
@@ -589,7 +600,9 @@ export class TerminalWidget extends Widget
 				window.mainDock.addWidget(widget);
 			} else
 			{
-				const mainTerminal = Array.from(window.mainDock.widgets()).find(w => w.id === 'terminal-panel-all');
+				const existingTerminals = Array.from(window.mainDock.widgets()); // incase the closed something
+				const mainTerminal = existingTerminals.find(w => w.id === 'terminal-panel-all')
+					?? existingTerminals.find(w => w.dataset.type === 'terminal');
 				// Dock as tab items inside the same workspace panel grouping setup by default
 				window.mainDock.addWidget(widget, { mode: 'tab-before', ref: mainTerminal });
 			}

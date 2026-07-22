@@ -98,14 +98,14 @@ export class ResponsiveManager
 	/**
 	 * Single Entry Chain Controller
 	 */
-	public handleResize(
+	public async handleResize(
 		windowRoot: BoxPanel,
 		workspaceBox: BoxPanel,
 		headerRow: Panel,
 		menuBar: MenuBar,
 		toolbar: Widget,
 		mainDock: DockPanel
-	): void
+	): Promise<void>
 	{
 		const currentWidgets = Array.from(mainDock.widgets());
 
@@ -114,7 +114,7 @@ export class ResponsiveManager
 
 		// 2. Measure wrapped DOM layout sizes & update Lumino layout limits
 		this._recalculateToolbarHeight(headerRow);
-		this._recalculateDockTabHeights(mainDock);
+		await this._recalculateDockTabHeights(mainDock);
 
 		// 3. Process layout constraints if widget viewport configurations change
 		this._adjustDockPanelLayout(mainDock, currentWidgets);
@@ -217,10 +217,10 @@ export class ResponsiveManager
 	}
 
 	/**
- * Utility 2: Dynamic Scroll Height Profiler (Fixes the wrapping clipping bug)
- * Iterates through all tab bars inside the DockPanel and dynamically scales heights.
- */
-	private _recalculateDockTabHeights(dockPanel: DockPanel): void
+	 * Utility 2: Dynamic Scroll Height Profiler (Fixes the wrapping clipping bug)
+	 * Iterates through all tab bars inside the DockPanel and dynamically scales heights.
+	 */
+	private async _recalculateDockTabHeights(dockPanel: DockPanel): Promise<void>
 	{
 		// Find all active tab bar elements within the entire dock panel workspace
 		const tabBars = dockPanel.node.querySelectorAll('.lm-TabBar');
@@ -236,20 +236,31 @@ export class ResponsiveManager
 
 			// 1. Clear old inline style overrides to permit clean multi-row rendering calculations
 			tabBarContent.style.minHeight = '';
-			tabBarContent.style.height = '';
-
-			// 2. Measure the true vertical space occupied by the wrapped tab list
-			const currentNeededHeight = tabBarContent.scrollHeight;
-
-			// 3. Enforce the new height constraints on the node surface
-			// Adding a small padding buffer helps prevent sub-pixel layout tremors
-			tabBarContent.style.minHeight = `${currentNeededHeight + 4}px`;
-			tabBarNode.style.minHeight = `${currentNeededHeight + 4}px`;
+			tabBarContent.style.height = 'auto';
+			tabBarNode.style.minHeight = '';
+			tabBarNode.style.height = 'auto';
 		});
 
-		// 4. Force Lumino to recalculate and distribute the absolute coordinates
-		// of the sub-panels based on the updated DOM heights
-		dockPanel.update();
+
+		await new Promise<void>(resolve =>
+		{
+			window.requestAnimationFrame(() =>
+			{
+				tabBars.forEach((tabBarElement) =>
+				{
+					const tabBarNode = tabBarElement as HTMLElement;
+					const tabBarContent = tabBarElement.querySelector('.lm-TabBar-content') as HTMLElement;
+					const naturalHeight = Math.ceil(tabBarContent.getBoundingClientRect().height);
+					tabBarContent.style.minHeight = `${naturalHeight}px`;
+					tabBarNode.style.minHeight = `${naturalHeight}px`;
+				});
+
+				// 4. Force Lumino to recalculate and distribute the absolute coordinates
+				// of the sub-panels based on the updated DOM heights
+				dockPanel.update();
+				resolve();
+			});
+		});
 	}
 
 

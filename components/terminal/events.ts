@@ -65,7 +65,7 @@ export class TerminalEventManager
 	private renderWidth = 20; // Default spatial placeholder bounds
 	private renderMoved = false;
 	private isTERMINATED = false;
-	private terminalStartupBegun = false;
+	public terminalStartupBegun = false;
 
 	// Event cleanup references
 	private listeners: IDisposable[] = [];

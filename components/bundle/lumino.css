@@ -68,6 +68,8 @@ html {
 	flex-shrink: 1;
 	flex-grow: 0;
 	overflow: hidden;
+	margin: 0;
+	box-sizing: border-box;
 }
 
 .lm-TabBar-tab:hover {
@@ -89,16 +91,13 @@ html {
 }
 
 .lm-TabBar-content {
-	overflow-x: auto;
-	overflow-y: hidden;
-	display: flex;
-	flex-wrap: wrap;
-	white-space: nowrap;
-
-	/* Optional: Hide the scrollbar track for a cleaner UI footprint */
-	scrollbar-width: none;
-	justify-content: stretch;
-	/* Firefox */
+	margin: 0 !important;
+	padding: 0 !important;
+	display: flex !important;
+	flex-wrap: wrap !important;
+	align-content: flex-start;
+	/* Keeps wrapped lines tightly stacked */
+	box-sizing: border-box;
 }
 
 .lm-TabBar-content::-webkit-scrollbar {
