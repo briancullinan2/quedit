@@ -17,7 +17,20 @@ export interface LuminoLayoutNode
 	sizes?: number[];
 }
 
+export interface SafeLayoutNode
+{
+	type: 'split-area' | 'tab-area';
+	orientation?: 'horizontal' | 'vertical';
+	sizes?: number[];
+	currentIndex?: number;
+	children?: SafeLayoutNode[];
+	widgets?: string[]; // Store widget IDs instead of live Widget objects
+}
 
+export interface SafeDockLayoutConfig
+{
+	main: SafeLayoutNode | null;
+}
 
 declare global
 {
@@ -84,6 +97,9 @@ export class ResponsiveManager
 	private static _instance: ResponsiveManager | null = null;
 	private _prevWidgetCount: number = 0;
 
+	private _savedLayoutState: DockPanel.ILayoutConfig | null = null;
+	private _isMobileCollapsed: boolean = false;
+
 	private constructor() { }
 
 	public static getInstance(): ResponsiveManager
@@ -109,6 +125,9 @@ export class ResponsiveManager
 	{
 		const currentWidgets = Array.from(mainDock.widgets());
 
+		// 0. Pre-check screen dimensions & collapse tabs/panels if on mobile screens
+		this._handleResponsiveCollapse(mainDock);
+
 		// 1. Process responsive visibility rules & directions
 		this._updateVisibility(workspaceBox, toolbar);
 
@@ -129,6 +148,57 @@ export class ResponsiveManager
 		});
 	}
 
+
+	/**
+	 * Utility 0: Handle Screen Dimension Collapsing (< 700px check)
+	 * Keeps memory cache of multi-pane layout to expand back seamlessly.
+	 */
+	private _handleResponsiveCollapse(mainDock: DockPanel): void
+	{
+		const isWidthMobile = window.innerWidth < MOBILEMODE;
+		const isHeightMobile = window.innerHeight < TALLSCREEN;
+		const isMobileMode = isWidthMobile || isHeightMobile;
+
+		// Transitioning into Mobile Mode (< 700px)
+		if(isMobileMode && !this._isMobileCollapsed)
+		{
+			// 1. Preserve current expanded layout state in memory
+			this._savedLayoutState = mainDock.saveLayout();
+			localStorage.setItem('layout_config', JSON.stringify(serializeDockLayout(this._savedLayoutState)));
+
+			// 2. Gather all active widgets
+			const allWidgets = Array.from(mainDock.widgets());
+			if(allWidgets.length === 0) return;
+
+			// 3. Single container collapse: combine into one single tab group
+			const primaryWidget = allWidgets[0];
+
+			// Re-add all other widgets to primary tab container
+			allWidgets.slice(1).forEach((widget) =>
+			{
+				if(!isWidthMobile && OUTLINE_WIDGET_TYPES.includes(widget.constructor.name))
+				{
+					return;
+				}
+				mainDock.activateWidget(widget);
+				// Insert alongside primary widget in same tab area
+				mainDock.addWidget(widget, { mode: 'tab-after', ref: primaryWidget });
+			});
+
+			this._isMobileCollapsed = true;
+		}
+		// Transitioning back out of Mobile Mode (>= 700px)
+		else if(!isMobileMode && this._isMobileCollapsed)
+		{
+			if(this._savedLayoutState)
+			{
+				// Restore multi-panel tree from in-memory snapshot
+				mainDock.restoreLayout(this._savedLayoutState);
+				this._savedLayoutState = null;
+			}
+			this._isMobileCollapsed = false;
+		}
+	}
 
 	/**
 	 * Utility 1: Handle UI Visibility, State and Mobile Adaptations
@@ -449,3 +519,85 @@ export function isDevToolsOpen(): boolean
 
 	return debuggerIsOpen;
 }
+
+
+export function serializeDockLayout(config: any): SafeDockLayoutConfig
+{
+	if(!config) return { main: null };
+
+	const cleanNode = (node: any): SafeLayoutNode =>
+	{
+		const copy: SafeLayoutNode = { type: node.type };
+
+		if(node.orientation) copy.orientation = node.orientation;
+		if(node.sizes) copy.sizes = [...node.sizes];
+		if(typeof node.currentIndex === 'number') copy.currentIndex = node.currentIndex;
+
+		if(node.children && Array.isArray(node.children))
+		{
+			copy.children = node.children.map(cleanNode);
+		}
+
+		if(node.widgets && Array.isArray(node.widgets))
+		{
+			copy.widgets = node.widgets.map((w: any) =>
+			{
+				// Extract unique string ID from Widget object or fallback string
+				return typeof w === 'string' ? w : w.id;
+			});
+		}
+
+		return copy;
+	};
+
+	return {
+		main: config.main ? cleanNode(config.main) : null
+	};
+}
+
+/**
+ * Re-hydrates string IDs back into live Widget instances from the active DockPanel
+ */
+export function deserializeDockLayout(
+	safeConfig: SafeDockLayoutConfig,
+	activeWidgets: any[]
+): any
+{
+	if(!safeConfig || !safeConfig.main) return null;
+
+	// Map active widgets by ID for quick lookup
+	const widgetMap = new Map<string, any>();
+	activeWidgets.forEach(w =>
+	{
+		if(w && w.id) widgetMap.set(w.id, w);
+	});
+
+	const restoreNode = (node: SafeLayoutNode): any =>
+	{
+		const restored: any = { type: node.type };
+
+		if(node.orientation) restored.orientation = node.orientation;
+		if(node.sizes) restored.sizes = [...node.sizes];
+		if(typeof node.currentIndex === 'number') restored.currentIndex = node.currentIndex;
+
+		if(node.children)
+		{
+			restored.children = node.children.map(restoreNode);
+		}
+
+		if(node.widgets)
+		{
+			// Convert string IDs back to actual live Widget instances
+			restored.widgets = node.widgets
+				.map(id => widgetMap.get(id))
+				.filter(Boolean); // Drop missing/disposed widgets
+		}
+
+		return restored;
+	};
+
+	return {
+		main: restoreNode(safeConfig.main)
+	};
+}
+

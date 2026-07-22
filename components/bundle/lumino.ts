@@ -298,6 +298,12 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 			default: '{"panels":"left-hand-files","order":"normal-order","terminal":"terminal","mode":"full-mode"}',
 			description: 'The layout order for opening new panels and resizing the window, snaps back to this state when the environment changes.',
 			set: applyInitialLayout
+		},
+		layoutConfiguration: {
+			key: 'layout_config',
+			type: 'json',
+			default: null,
+			description: 'Lumino layout configuration according to how tabs are arranged.'
 		}
 	}
 };
