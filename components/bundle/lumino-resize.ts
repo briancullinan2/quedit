@@ -1,5 +1,5 @@
 import { BoxPanel, DockPanel, FocusTracker, MenuBar, Panel, Widget } from "@lumino/widgets";
-import { LayoutAdjuster, MOBILEMODE, WIDESCREEN, TALLSCREEN } from "./lumino-widget";
+import { LayoutAdjuster, MOBILEMODE, WIDESCREEN, TALLSCREEN, WidgetType } from "./lumino-widget";
 import type { RepositoryToolbar } from "./menu-repos";
 import type { ScriptToolbar } from "./menu-script";
 import type { ApplicationToolbar } from "./menu-app";
@@ -98,7 +98,8 @@ export class ResponsiveManager
 	private _prevWidgetCount: number = 0;
 
 	private _savedLayoutState: DockPanel.ILayoutConfig | null = null;
-	private _isMobileCollapsed: boolean = false;
+	private _isMobileCollapsed?: boolean = undefined;
+	private _isWidescreenSplit?: boolean = undefined;
 
 	private constructor() { }
 
@@ -158,9 +159,11 @@ export class ResponsiveManager
 		const isWidthMobile = window.innerWidth < MOBILEMODE;
 		const isHeightMobile = window.innerHeight < TALLSCREEN;
 		const isMobileMode = isWidthMobile || isHeightMobile;
+		const isWidescreen = window.innerWidth >= WIDESCREEN;
+		const isNormal = window.innerWidth >= MOBILEMODE && window.innerWidth < WIDESCREEN;
 
 		// Transitioning into Mobile Mode (< 700px)
-		if(isMobileMode && !this._isMobileCollapsed)
+		if(isMobileMode && this._isMobileCollapsed !== true)
 		{
 			// 1. Preserve current expanded layout state in memory
 			this._savedLayoutState = mainDock.saveLayout();
@@ -192,8 +195,9 @@ export class ResponsiveManager
 
 			this._isMobileCollapsed = true;
 		}
+
 		// Transitioning back out of Mobile Mode (>= 700px)
-		else if(!isMobileMode && this._isMobileCollapsed)
+		else if(!isMobileMode && this._isMobileCollapsed !== false)
 		{
 			if(this._savedLayoutState)
 			{
@@ -202,6 +206,174 @@ export class ResponsiveManager
 				this._savedLayoutState = null;
 			}
 			this._isMobileCollapsed = false;
+		}
+
+
+		if(isWidescreen && this._isWidescreenSplit !== true)
+		{
+			const allWidgets = Array.from(mainDock.widgets());
+
+			if(allWidgets.length > 1)
+			{
+				// 1. Resolve the primary center editor using project/type target matching
+				const primaryWidget = LayoutAdjuster._findNonOutline(mainDock)
+					?? allWidgets[0];
+				const widgetTypes: Record<string, number> = {};
+
+				allWidgets.forEach(widget =>
+				{
+					const widgetName = widget.constructor.name;
+					const isOutline = OUTLINE_WIDGET_TYPES.includes(widgetName);
+					if(isOutline)
+					{
+						widgetTypes[widget.dataset.type ?? 'outline']++;
+					} else
+					{
+						widgetTypes[widget.constructor.name]++;
+					}
+				});
+
+				// 2. Reference trackers for grouped type splitting
+				let firstOutlineWidget: Widget | null = null;
+				let firstTerminalWidget: Widget | null = null;
+				let firstPaintWidget: Widget | null = null;
+
+				allWidgets.forEach(widget =>
+				{
+					if(widget === primaryWidget) return;
+
+					const widgetName = widget.constructor.name;
+					const isOutline = OUTLINE_WIDGET_TYPES.includes(widgetName);
+
+					if(isOutline)
+					{
+						if(!firstOutlineWidget)
+						{
+							// First file tree / outline splits left relative to main editor
+							firstOutlineWidget = widget;
+							mainDock.addWidget(widget, { mode: 'split-left', ref: primaryWidget });
+						}
+						else
+						{
+							// Subsequent file trees group as tabs in the outline panel
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstOutlineWidget });
+						}
+					}
+					else if(widgetName === 'TerminalWidget')
+					{
+						if(!firstTerminalWidget && Object.keys(widgetTypes).length <= 3)
+						{
+							// First terminal splits bottom relative to the primary editor
+							firstTerminalWidget = widget;
+							mainDock.addWidget(widget, { mode: 'split-right', ref: primaryWidget });
+						}
+						else if(!firstTerminalWidget && !isHeightMobile)
+						{
+							firstTerminalWidget = widget;
+							mainDock.addWidget(widget, { mode: 'split-bottom', ref: primaryWidget });
+						}
+						else
+						{
+							// All subsequent terminals dock as tabs next to the first terminal
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstTerminalWidget ?? primaryWidget });
+						}
+					}
+					else if(widgetName === 'PaintWidget' || widgetName === 'TojiWidget')
+					{
+						if(!firstPaintWidget)
+						{
+							// First paint/canvas widget splits right relative to the main editor
+							firstPaintWidget = widget;
+							mainDock.addWidget(widget, { mode: 'split-right', ref: primaryWidget });
+						}
+						else
+						{
+							// Subsequent paint tools group together in the paint split zone
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstPaintWidget });
+						}
+					}
+					else
+					{
+						// Standard Ace Editors or general documents stay tabbed with the primary editor
+						mainDock.addWidget(widget, { mode: 'tab-after', ref: primaryWidget });
+					}
+				});
+
+				// 3. Re-balance fractional sizes across horizontal split areas (20% Outline, 50% Primary, 30% Secondary)
+				const layout = mainDock.saveLayout() as unknown as { main: LuminoLayoutNode | null; };
+				if(layout?.main?.type === 'split-area' && layout.main.children)
+				{
+					const count = layout.main.children.length;
+					if(count === 2)
+					{
+						layout.main.sizes = [0.25, 0.75];
+					}
+					else if(count === 3)
+					{
+						layout.main.sizes = [0.20, 0.50, 0.30];
+					}
+					mainDock.restoreLayout(layout as any);
+				}
+			}
+
+			this._isWidescreenSplit = true;
+		}
+		else if(isNormal && this._isWidescreenSplit !== false)
+		{
+			const allWidgets = Array.from(mainDock.widgets());
+			if(allWidgets.length > 1)
+			{
+				const primaryWidget = LayoutAdjuster._findNonOutline(mainDock)
+					?? allWidgets[0];
+
+				const isMobileHeight = window.innerHeight < 700;
+				let firstNormalTerminalWidget: Widget | null = null;
+
+				allWidgets.forEach(widget =>
+				{
+					if(widget === primaryWidget) return;
+
+					mainDock.activateWidget(widget);
+					const widgetName = widget.constructor.name;
+
+					if(widgetName === 'TerminalWidget')
+					{
+						// Terminal splitting logic: bottom split if enough height, else collapse to primary tab group
+						if(!isMobileHeight)
+						{
+							const nonTerminal = LayoutAdjuster._findNonOutlineOrTerminal(mainDock) ?? primaryWidget;
+
+							if(!firstNormalTerminalWidget)
+							{
+								// First terminal splits below the primary editor / non-terminal container
+								firstNormalTerminalWidget = widget;
+								mainDock.addWidget(widget, { mode: 'split-bottom', ref: nonTerminal });
+							}
+							else
+							{
+								// Subsequent terminals dock as tabs alongside the first terminal
+								mainDock.addWidget(widget, { mode: 'tab-after', ref: firstNormalTerminalWidget });
+							}
+						}
+						else
+						{
+							// Height under 700px: collapse terminal directly into primary top tab group
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: primaryWidget });
+						}
+					}
+					else
+					{
+						// All other widgets (File lists, Paint tools, Editors) collapse into the primary tab container
+						LayoutAdjuster.addOptimalWidgetLayout(mainDock, widget, {
+							type: (widget.dataset?.type as WidgetType) ?? 'editor',
+							projectId: widgetName,
+							resize: false
+						});
+					}
+				});
+			}
+
+			this._isWidescreenSplit = false;
 		}
 	}
 

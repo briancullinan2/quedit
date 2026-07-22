@@ -35,6 +35,9 @@ export interface IPooledTerminal
 	resizeObserver: ResizeObserver;
 	activeOwner: TerminalWidget | null;
 	events?: TerminalEventManager;
+	searchContainer?: HTMLDivElement;
+	searchInput?: HTMLInputElement;
+	searchObserver?: ResizeObserver;
 }
 
 export interface TerminalLogEntry
@@ -204,9 +207,6 @@ export class TerminalWidget extends Widget
 {
 	public filterId: string;
 	private currentTerminalCtx: IPooledTerminal | null = null;
-	public searchContainer!: HTMLDivElement;
-	public searchInput!: HTMLInputElement;
-	private searchObserver?: ResizeObserver;
 	private parentTabBar?: HTMLElement;
 	terminalLoadComplete: boolean = false;
 
@@ -242,18 +242,22 @@ export class TerminalWidget extends Widget
 
 	private createSearchElement(): void
 	{
-		this.searchContainer = document.createElement('div');
-		this.searchContainer.className = 'lumino-tab-search-wrapper';
+		if(!this.currentTerminalCtx || this.currentTerminalCtx.searchContainer)
+		{
+			return;
+		}
+		this.currentTerminalCtx.searchContainer = document.createElement('div');
+		this.currentTerminalCtx.searchContainer.className = 'lumino-tab-search-wrapper';
 		// Start hidden until onAfterShow fires
-		this.searchContainer.style.display = 'none';
+		this.currentTerminalCtx.searchContainer.style.display = 'none';
 
-		this.searchInput = document.createElement('input');
-		this.searchInput.type = 'search';
-		this.searchInput.id = 'search-terminal';
-		this.searchInput.placeholder = 'Search...';
-		this.searchInput.autocomplete = 'off';
+		this.currentTerminalCtx.searchInput = document.createElement('input');
+		this.currentTerminalCtx.searchInput.type = 'search';
+		this.currentTerminalCtx.searchInput.id = 'search-terminal';
+		this.currentTerminalCtx.searchInput.placeholder = 'Search...';
+		this.currentTerminalCtx.searchInput.autocomplete = 'off';
 
-		this.searchInput.addEventListener('keypress', event =>
+		this.currentTerminalCtx.searchInput.addEventListener('keypress', event =>
 		{
 			if(event.key === 'Enter')
 			{
@@ -267,8 +271,8 @@ export class TerminalWidget extends Widget
 
 			SearchTerminal.executeFindQuery(this.currentTerminalCtx, event);
 		});
-		this.searchContainer.appendChild(this.searchInput);
-		this.searchObserver = new ResizeObserver((entries) =>
+		this.currentTerminalCtx.searchContainer.appendChild(this.currentTerminalCtx.searchInput);
+		this.currentTerminalCtx.searchObserver = new ResizeObserver((entries) =>
 		{
 			//for(const entry of entries)
 			//{
@@ -276,7 +280,7 @@ export class TerminalWidget extends Widget
 			//}
 			this.resizeSearchContainer();
 		});
-		this.searchObserver.observe(this.node);
+		this.currentTerminalCtx.searchObserver.observe(this.node);
 	}
 
 
@@ -287,6 +291,7 @@ export class TerminalWidget extends Widget
 	{
 		super.onAfterShow(msg);
 		this.claimAndRenderSession();
+		this.createSearchElement();
 		window.requestAnimationFrame(() =>
 		{
 			this.showSearchBar();
@@ -297,22 +302,24 @@ export class TerminalWidget extends Widget
 	{
 		const parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector(`.lm-TabBar:has(li.${this.id})`) as HTMLElement;
 
-		console.log('search bar: ', parentTabBar, this.searchContainer, this.searchContainer.style.display);
+		//console.log('search bar: ', parentTabBar, this.searchContainer, this.searchContainer.style.display);
 
-		if(!parentTabBar || !this.searchContainer || this.searchContainer.style.display === 'none')
+		if(!parentTabBar || !this.currentTerminalCtx
+			|| !this.currentTerminalCtx.searchContainer
+			|| this.currentTerminalCtx.searchContainer.style.display === 'none')
 		{
 			return;
 		}
 		if(parentTabBar !== this.parentTabBar)
 		{
 			this.parentTabBar = parentTabBar;
-			this.parentTabBar?.appendChild(this.searchContainer);
+			this.parentTabBar?.appendChild(this.currentTerminalCtx.searchContainer);
 		}
 
 
 		// Ensure searchContainer doesn't push the tab bar layout around
-		this.searchContainer.style.position = 'absolute';
-		this.searchContainer.style.right = '0px';
+		this.currentTerminalCtx.searchContainer.style.position = 'absolute';
+		this.currentTerminalCtx.searchContainer.style.right = '0px';
 
 		const totalWidth = parentTabBar.getBoundingClientRect().width;
 		let occupiedWidth = 0;
@@ -358,17 +365,17 @@ export class TerminalWidget extends Widget
 
 		// Set max-width based on the remaining space on the final row line
 		const remainingSpace = Math.max(0, totalWidth - occupiedWidth - 15);
-		this.searchContainer.style.maxWidth = `${remainingSpace}px`;
+		this.currentTerminalCtx.searchContainer.style.maxWidth = `${remainingSpace}px`;
 	};
 
 	private showSearchBar()
 	{
 		this.parentTabBar = this.node.closest('.lm-DockPanel, .lm-TabPanel')?.querySelector(`.lm-TabBar:has(li.${this.id})`) as HTMLElement;
 
-		if(this.parentTabBar && this.searchContainer)
+		if(this.parentTabBar && this.currentTerminalCtx && this.currentTerminalCtx.searchContainer)
 		{
-			this.parentTabBar.appendChild(this.searchContainer);
-			this.searchContainer.style.display = 'flex';
+			this.parentTabBar.appendChild(this.currentTerminalCtx.searchContainer);
+			this.currentTerminalCtx.searchContainer.style.display = 'flex';
 
 			// Calculate initial width
 			window.requestAnimationFrame(() =>
@@ -379,7 +386,7 @@ export class TerminalWidget extends Widget
 			// Listen for window resizing to keep the width updated
 			window.removeEventListener('resize', this.resizeSearchContainer);
 			window.addEventListener('resize', this.resizeSearchContainer);
-			this.searchObserver?.observe(this.node);
+			this.currentTerminalCtx.searchObserver?.observe(this.node);
 		}
 	}
 
@@ -391,24 +398,24 @@ export class TerminalWidget extends Widget
 		super.onAfterHide(msg);
 		this.releaseSession();
 
-		if(this.searchContainer)
+		if(this.currentTerminalCtx && this.currentTerminalCtx.searchContainer)
 		{
-			if(this.searchContainer.parentNode)
+			if(this.currentTerminalCtx.searchContainer.parentNode)
 			{
-				this.searchContainer.parentNode.removeChild(this.searchContainer);
+				this.currentTerminalCtx.searchContainer.parentNode.removeChild(this.currentTerminalCtx.searchContainer);
 			}
-			this.searchContainer.style.display = 'none';
+			this.currentTerminalCtx.searchContainer.style.display = 'none';
 			window.removeEventListener('resize', this.resizeSearchContainer);
-			this.searchObserver?.unobserve(this.node);
+			this.currentTerminalCtx.searchObserver?.unobserve(this.node);
 		}
 	}
 
 	protected onAfterAttach(msg: any): void
 	{
-		this.createSearchElement();
 		if(this.isVisible)
 		{
 			this.claimAndRenderSession();
+			this.createSearchElement();
 			window.requestAnimationFrame(() =>
 			{
 				this.showSearchBar();
@@ -420,11 +427,12 @@ export class TerminalWidget extends Widget
 	protected onBeforeDetach(msg: any): void
 	{
 		this.releaseSession();
-		if(this.searchContainer && this.searchContainer.parentNode)
+		if(this.currentTerminalCtx && this.currentTerminalCtx.searchContainer
+			&& this.currentTerminalCtx.searchContainer.parentNode)
 		{
-			this.searchContainer.parentNode.removeChild(this.searchContainer);
+			this.currentTerminalCtx.searchContainer.parentNode.removeChild(this.currentTerminalCtx.searchContainer);
 		}
-		this.searchObserver?.disconnect();
+		this.currentTerminalCtx?.searchObserver?.disconnect();
 		super.onBeforeDetach(msg);
 	}
 

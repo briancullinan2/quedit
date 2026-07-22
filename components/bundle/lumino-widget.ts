@@ -1,5 +1,6 @@
 import { DockPanel, Widget } from '@lumino/widgets';
 import { OUTLINE_WIDGET_TYPES } from './lumino-resize';
+import { LayoutState } from './menu-app';
 
 export const WIDESCREEN = 1200;
 export const MOBILEMODE = 600;
@@ -13,12 +14,7 @@ declare global
 		lastInteractedWidget: Widget | null;
 		previousInteractedWidget: Widget | null;
 		resizeHandler: () => void;
-		layoutState: {
-			panels: string,
-			order: string,
-			terminal: string,
-			mode: string;
-		};
+		layoutState: LayoutState;
 	}
 }
 
@@ -30,6 +26,7 @@ export interface LayoutOptions
 	type: WidgetType;
 	projectId?: string;
 	activate?: boolean;
+	resize?: boolean;
 }
 
 // Global tracking structures
@@ -83,6 +80,7 @@ export class LayoutAdjuster
 		const type = options.type;
 		const projectId = options.projectId || '';
 		const shouldActivate = options.activate !== false;
+		const shouldResize = options.resize !== false;
 
 		// Track interactions on the new widget moving forward
 		trackWidgetInteraction(newWidget);
@@ -120,7 +118,10 @@ export class LayoutAdjuster
 			{
 				dockPanel.activateWidget(newWidget);
 			}
-			window.resizeHandler();
+			if(shouldResize)
+			{
+				window.resizeHandler();
+			}
 			return;
 		}
 
@@ -142,7 +143,10 @@ export class LayoutAdjuster
 			{
 				dockPanel.activateWidget(newWidget);
 			}
-			window.resizeHandler();
+			if(shouldResize)
+			{
+				window.resizeHandler();
+			}
 			return;
 		}
 
@@ -192,7 +196,10 @@ export class LayoutAdjuster
 			{
 				dockPanel.activateWidget(newWidget);
 			}
-			window.resizeHandler();
+			if(shouldResize)
+			{
+				window.resizeHandler();
+			}
 			return;
 		}
 
@@ -205,7 +212,10 @@ export class LayoutAdjuster
 		{
 			dockPanel.activateWidget(newWidget);
 		}
-		window.resizeHandler();
+		if(shouldResize)
+		{
+			window.resizeHandler();
+		}
 	}
 
 
@@ -226,6 +236,23 @@ export class LayoutAdjuster
 		return null;
 	}
 
+	public static _findNonOutlineOrTerminal(dockPanel: DockPanel): Widget | null
+	{
+
+		const iterator = dockPanel.widgets();
+		let current = iterator.next();
+		while(current && current.value)
+		{
+			const el = current.value.node as HTMLElement;
+			if(!OUTLINE_WIDGET_TYPES.includes(el.dataset?.projectId ?? current.value.constructor.name)
+				&& current.value.constructor.name !== 'TerminalWidget')
+			{
+				return current.value;
+			}
+			current = iterator.next();
+		}
+		return null;
+	}
 
 	/**
 	 * Ranks existing widgets to find the optimal reference sibling.

@@ -7,6 +7,16 @@ import type { AceEditorWidget } from "../editor/widget";
 import { loadAndInstantiate } from "./babel-compile";
 import { LayoutAdjuster } from "./lumino-widget";
 import type { TerminalWidget } from "../terminal/widget";
+import type { FileListWidget } from "../filelist/widget";
+
+
+export type LayoutState = {
+	panels: string,
+	order: string,
+	terminal: string,
+	mode: string;
+};
+
 
 declare global
 {
@@ -18,12 +28,8 @@ declare global
 		terminalFrameLimiter: FrameRater;
 		AceEditorWidget: typeof AceEditorWidget;
 		TerminalWidget: typeof TerminalWidget;
-		layoutState: {
-			panels: string,
-			order: string,
-			terminal: string,
-			mode: string;
-		};
+		layoutState: LayoutState;
+		fileListWidgets?: Array<FileListWidget>;
 	}
 }
 
@@ -211,9 +217,8 @@ window.layoutState = {
 };
 
 
-async function rotateLayout()
+function rotateLayout()
 {
-
 	Object.keys(LAYOUT_AXES).forEach(axis =>
 	{
 		// Find which variant inside this specific axis array is currently on the element
@@ -229,6 +234,8 @@ async function rotateLayout()
 		}
 	});
 
+	const oldState = Object.assign({}, window.layoutState);
+
 	const currentLayoutClass = `layout-${window.layoutState.panels} layout-${window.layoutState.order} layout-${window.layoutState.terminal} layout-${window.layoutState.mode}`;
 
 	// Find where it lives in your 16-element permutation list
@@ -238,17 +245,61 @@ async function rotateLayout()
 	const nextIndex = (currentIndex + 1) % ALL_LAYOUTS.length;
 	const newLayoutClass = ALL_LAYOUTS[nextIndex].split(' ');
 
-	if(!LayoutAdjuster._findBestEditorForProject(window.mainDock, window.TerminalWidget.name, 'terminal'))
-	{
-		await triggerPanelRoute('terminal', window.mainDock);
-	}
-
 	// 5. Inject it back onto the target DOM node element
 	document.body.classList.add(...newLayoutClass);
-
 	console.log(`🔄 Layout rotated from [${currentLayoutClass || 'None'}] ➡️ [${newLayoutClass}] (Index: ${nextIndex})`);
+
+	// 6. Rearrange panels based on layout controls
+	rearrangePanels(window.layoutState, oldState);
+
 	return newLayoutClass;
 }
+
+
+async function rearrangePanels(state: LayoutState, oldState: LayoutState)
+{
+
+	if(state.terminal === 'terminal' && oldState.terminal === 'no-terminal')
+	{
+		if(!LayoutAdjuster._findBestEditorForProject(window.mainDock, window.TerminalWidget.name, 'terminal'))
+		{
+			await triggerPanelRoute('terminal', window.mainDock);
+		}
+
+		if(window.terminalWidgets)
+		{
+			for(let widget of window.terminalWidgets)
+			{
+				LayoutAdjuster.addOptimalWidgetLayout(window.mainDock, widget, {
+					type: 'terminal',
+					projectId: widget.constructor.name
+				});
+			}
+		}
+	} else if(state.terminal === 'no-terminal' && oldState.terminal === 'terminal')
+	{
+		if(window.terminalWidgets)
+		{
+			for(let widget of window.terminalWidgets)
+			{
+				widget.hide();
+				widget.parent = null;
+			}
+		}
+	}
+
+	if(window.fileListWidgets && state.panels !== oldState.panels)
+	{
+		for(let widget of window.fileListWidgets)
+		{
+			LayoutAdjuster.addOptimalWidgetLayout(window.mainDock, widget, {
+				type: 'outline',
+				projectId: widget.constructor.name
+			});
+		}
+	}
+}
+
 
 const ALL_LAYOUTS = Object.values(LAYOUT_AXES).reduce((combinations, currentAxisVariants) =>
 {
