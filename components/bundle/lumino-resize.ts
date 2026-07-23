@@ -389,7 +389,12 @@ export class ResponsiveManager
 						// Terminal splitting logic: bottom split if enough height, else collapse to primary tab group
 						const nonTerminal = LayoutAdjuster._findNonOutlineOrTerminal(mainDock) ?? primaryWidget;
 
-						if(!firstRefWidget[widgetName] && !isMobileHeight)
+						if(!firstRefWidget[widgetName] && OUTLINE_WIDGET_TYPES.includes(primaryWidget.constructor.name))
+						{
+							firstRefWidget[widgetName] = widget;
+							mainDock.addWidget(widget, { mode: 'split-right', ref: nonTerminal ?? primaryWidget });
+						}
+						else if(!firstRefWidget[widgetName] && !isMobileHeight)
 						{
 							// First terminal splits below the primary editor / non-terminal container
 							firstRefWidget[widgetName] = widget;
@@ -397,8 +402,7 @@ export class ResponsiveManager
 						}
 						else
 						{
-							// Subsequent terminals dock as tabs alongside the first terminal
-							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstRefWidget[widgetName] ?? primaryWidget });
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstRefWidget[widgetName] ?? nonTerminal });
 						}
 					}
 					else

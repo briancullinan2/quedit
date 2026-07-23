@@ -8,6 +8,7 @@ import { loadAndInstantiate } from "./babel-compile";
 import { LayoutAdjuster } from "./lumino-widget";
 import type { TerminalWidget } from "../terminal/widget";
 import type { FileListWidget } from "../filelist/widget";
+import { LuminoLayoutNode } from "./lumino-resize";
 
 
 export type LayoutState = {
@@ -248,6 +249,15 @@ function rotateLayout()
 	// 5. Inject it back onto the target DOM node element
 	document.body.classList.add(...newLayoutClass);
 	console.log(`🔄 Layout rotated from [${currentLayoutClass || 'None'}] ➡️ [${newLayoutClass}] (Index: ${nextIndex})`);
+	Object.keys(LAYOUT_AXES).forEach(axis =>
+	{
+		const matchedClass = LAYOUT_AXES[axis].find(variant => document.body.classList.contains(`layout-${variant}`));
+
+		if(matchedClass)
+		{
+			window.layoutState[axis] = matchedClass;
+		}
+	});
 
 	// 6. Rearrange panels based on layout controls
 	rearrangePanels(window.layoutState, oldState);
@@ -256,49 +266,215 @@ function rotateLayout()
 }
 
 
-async function rearrangePanels(state: LayoutState, oldState: LayoutState)
+async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promise<void>
 {
+	const dockPanel = window.mainDock;
+	if(!dockPanel) return;
 
+	// ---------------------------------------------------------------------
+	// 1. TERMINAL AXIS: Show/Hide Terminals
+	// ---------------------------------------------------------------------
 	if(state.terminal === 'terminal' && oldState.terminal === 'no-terminal')
 	{
-		if(!LayoutAdjuster._findBestEditorForProject(window.mainDock, window.TerminalWidget.name, 'terminal'))
+		if(!LayoutAdjuster._findBestEditorForProject(dockPanel, window.TerminalWidget?.name, 'terminal'))
 		{
-			await triggerPanelRoute('terminal', window.mainDock);
+			await triggerPanelRoute('terminal', dockPanel);
 		}
 
 		if(window.terminalWidgets)
 		{
 			for(let widget of window.terminalWidgets)
 			{
-				LayoutAdjuster.addOptimalWidgetLayout(window.mainDock, widget, {
+				widget.show();
+				LayoutAdjuster.addOptimalWidgetLayout(dockPanel, widget, {
 					type: 'terminal',
 					projectId: widget.constructor.name
 				});
 			}
 		}
-	} else if(state.terminal === 'no-terminal' && oldState.terminal === 'terminal')
+	}
+	else if(state.terminal === 'no-terminal' && oldState.terminal === 'terminal')
 	{
 		if(window.terminalWidgets)
 		{
 			for(let widget of window.terminalWidgets)
 			{
 				widget.hide();
-				widget.parent = null;
+				widget.parent = null; // Detaches cleanly from the Lumino tree
 			}
 		}
 	}
 
+	// ---------------------------------------------------------------------
+	// 2. PANELS AXIS: Move File Trees / Outlines (Left <-> Right)
+	// ---------------------------------------------------------------------
 	if(window.fileListWidgets && state.panels !== oldState.panels)
 	{
+		const isRightHand = state.panels === 'right-hand-files';
+		const targetSide = isRightHand ? 'right' : 'left';
+		const splitMode = isRightHand ? 'split-right' : 'split-left';
+
+		// 1. Find the outermost widget on the target side (e.g. far-right paint tool or far-left outline)
+		const outermostTarget = findOutermostWidget(dockPanel, targetSide)
+			?? LayoutAdjuster._findNonOutline(dockPanel);
+
+		let firstOutline: Widget | null = null;
+
 		for(let widget of window.fileListWidgets)
 		{
-			LayoutAdjuster.addOptimalWidgetLayout(window.mainDock, widget, {
-				type: 'outline',
-				projectId: widget.constructor.name
-			});
+			if(!firstOutline)
+			{
+				firstOutline = widget;
+				if(outermostTarget && outermostTarget !== widget)
+				{
+					// Dock directly on the outermost edge relative to the boundary widget
+					dockPanel.addWidget(widget, { mode: splitMode, ref: outermostTarget });
+				}
+				else
+				{
+					// Fallback: omit 'ref' to split relative to the root dock container
+					dockPanel.addWidget(widget, { mode: splitMode });
+				}
+			}
+			else
+			{
+				// Stack any additional file list widgets as tabs inside the newly placed file panel
+				dockPanel.addWidget(widget, { mode: 'tab-after', ref: firstOutline });
+			}
 		}
 	}
+
+	// ---------------------------------------------------------------------
+	// 3. ORDER AXIS: Invert Editor & Terminal Vertical Split (Normal <-> Reverse)
+	// ---------------------------------------------------------------------
+	if(state.order !== oldState.order)
+	{
+		const primaryEditor = LayoutAdjuster._findNonOutlineOrTerminal(dockPanel);
+		const terminals = window.terminalWidgets?.filter(w => w.isVisible && w.isAttached) || [];
+
+		if(primaryEditor && terminals.length > 0)
+		{
+			const firstTerminal = terminals[0];
+
+			if(state.order === 'reverse-order')
+			{
+				// Terminal on TOP, Editor on BOTTOM
+				dockPanel.addWidget(firstTerminal, { mode: 'split-top', ref: primaryEditor });
+			}
+			else
+			{
+				// Normal order: Terminal on BOTTOM, Editor on TOP
+				dockPanel.addWidget(firstTerminal, { mode: 'split-bottom', ref: primaryEditor });
+			}
+
+			// Stack remaining terminals inside the primary terminal's tab group
+			for(let i = 1; i < terminals.length; i++)
+			{
+				dockPanel.addWidget(terminals[i], { mode: 'tab-after', ref: firstTerminal });
+			}
+		}
+	}
+
+	// ---------------------------------------------------------------------
+	// 4. MODE AXIS: Focus Mode vs Full Mode
+	// ---------------------------------------------------------------------
+	if(state.mode !== oldState.mode)
+	{
+		if(state.mode === 'focus-mode')
+		{
+			// HIDE all File Lists
+			if(window.fileListWidgets)
+			{
+				for(let widget of window.fileListWidgets)
+				{
+					widget.hide();
+				}
+			}
+
+			// HIDE all Terminals
+			if(window.terminalWidgets)
+			{
+				for(let widget of window.terminalWidgets)
+				{
+					widget.hide();
+				}
+			}
+		}
+		else if(state.mode === 'full-mode')
+		{
+			// RESTORE File Lists
+			if(window.fileListWidgets)
+			{
+				for(let widget of window.fileListWidgets)
+				{
+					widget.show();
+					LayoutAdjuster.addOptimalWidgetLayout(dockPanel, widget, {
+						type: 'outline',
+						projectId: widget.constructor.name
+					});
+				}
+			}
+
+			// RESTORE Terminals (only if state allows)
+			if(state.terminal === 'terminal' && window.terminalWidgets)
+			{
+				for(let widget of window.terminalWidgets)
+				{
+					widget.show();
+					LayoutAdjuster.addOptimalWidgetLayout(dockPanel, widget, {
+						type: 'terminal',
+						projectId: widget.constructor.name
+					});
+				}
+			}
+		}
+	}
+
+	// Force Lumino to compute the updated DOM geometry across all splits
+	dockPanel.update();
 }
+
+
+
+/**
+ * Traverses the Lumino layout tree to find the outermost leaf widget on the left or right edge.
+ */
+function findOutermostWidget(dockPanel: DockPanel, edge: 'left' | 'right'): Widget | null
+{
+	const layout = dockPanel.saveLayout() as unknown as { main: LuminoLayoutNode | null; };
+	if(!layout || !layout.main) return null;
+
+	let currentNode: LuminoLayoutNode | null = layout.main;
+
+	while(currentNode)
+	{
+		if(currentNode.type === 'tab-area' && currentNode.widgets && currentNode.widgets.length > 0)
+		{
+			const firstRef = currentNode.widgets[0];
+			const widgetId = typeof firstRef === 'string' ? firstRef : firstRef.id;
+
+			// Resolve the live Widget instance from the dock panel
+			return Array.from(dockPanel.widgets()).find(w => w.id === widgetId) || null;
+		}
+
+		if(currentNode.type === 'split-area' && currentNode.children && currentNode.children.length > 0)
+		{
+			// Pick the first child for 'left', or last child for 'right'
+			const targetIndex = edge === 'left' ? 0 : currentNode.children.length - 1;
+			currentNode = currentNode.children[targetIndex];
+		} else if(currentNode.children && currentNode.children.length > 0)
+		{
+			const targetIndex = edge === 'left' ? 0 : currentNode.children.length - 1;
+			currentNode = currentNode.children[targetIndex];
+		} else
+		{
+			break;
+		}
+	}
+
+	return null;
+}
+
 
 
 const ALL_LAYOUTS = Object.values(LAYOUT_AXES).reduce((combinations, currentAxisVariants) =>
