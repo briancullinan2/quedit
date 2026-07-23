@@ -499,7 +499,6 @@ class AceEditorPool
 		return 'temp' + (++window.tempCount) + '.c';
 	}
 
-
 	public static get keybinding(): HTMLSelectElement | null
 	{
 		return document.querySelector('top-bar-sel-keybinding');
@@ -530,6 +529,7 @@ export class AceEditorWidget extends Widget
 
 		// TODO: so it starts with .c
 		this._fileId = AceEditorPool.getNextTempName();
+		this.id = `ace-editor-${this.fileId.replace(/[^a-z0-9]/ig, '_')}`;
 		this._initialContent = initialContent || AceEditorWidget._defaultContent;
 		this._eventManager = new AceEventManager(this);
 

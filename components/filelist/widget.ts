@@ -45,6 +45,7 @@ window.fileListWidgets = new Array<FileListWidget>();
 export class FileListWidget extends Widget
 {
 	protected treeContainerId: string;
+	container?: HTMLDivElement;
 
 	protected get selector()
 	{
@@ -54,7 +55,7 @@ export class FileListWidget extends Widget
 	constructor(titleStr: string)
 	{
 		super();
-		this.id = 'filelist-panel';
+		this.id = `filelist-panel-${++window.tempCount}`;
 		this.title.label = titleStr;
 		if(window.fileListWidgets)
 		{
@@ -65,13 +66,6 @@ export class FileListWidget extends Widget
 		this.addClass('ide-file-tree-widget');
 
 		this.treeContainerId = `tree-${Date.now()}`;
-		this.renderLayout().then(() =>
-		{
-			requestAnimationFrame(() => this.initializeFiletrees());
-		});
-		this.bindDOMEvents();
-
-		// Defer file tree checking until element is mounted to layout viewport
 	}
 
 	public processMessage(msg: Message): void
@@ -107,34 +101,37 @@ export class FileListWidget extends Widget
 	 */
 	private async renderLayout(): Promise<void>
 	{
-		this.node.innerHTML = `
-      <div class="filelist-wrapper">
-        <ul class="toolbar">
-          <li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
-          <li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
-		  <li><a alt="Google Drive" href="#new-gdrive" class="bx bxl bx-google-cloud"></a></li>
-          <li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
-          <li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
-          <li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
-          <li class="setting" data-placeholder="Owner">
-            <select name="owner" class="filelist-owner">
-            </select>
-          </li>
-          <li class="setting" data-placeholder="Repository">
-            <select name="repository" class="filelist-repository">
-            </select>
-          </li>
-          <li class="setting" data-placeholder="Branch">
-            <select name="branch" class="filelist-branch">
-            </select>
-          </li>
-        </ul>
-        <div class="search-box">
-          <input type="text" id="search" name="search" placeholder="Search many..." />
-        </div>
-        <div id="${this.treeContainerId}" class="treejs-render-target"></div>
-      </div>
-    `;
+		if(this.node.innerHTML === '')
+		{
+			this.node.innerHTML = `
+			<div class="filelist-wrapper">
+				<ul class="toolbar">
+				<li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
+				<li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
+				<li><a alt="Google Drive" href="#new-gdrive" class="bx bxl bx-google-cloud"></a></li>
+				<li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
+				<li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
+				<li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
+				<li class="setting" data-placeholder="Owner">
+					<select name="owner" class="filelist-owner">
+					</select>
+				</li>
+				<li class="setting" data-placeholder="Repository">
+					<select name="repository" class="filelist-repository">
+					</select>
+				</li>
+				<li class="setting" data-placeholder="Branch">
+					<select name="branch" class="filelist-branch">
+					</select>
+				</li>
+				</ul>
+				<div class="search-box">
+				<input type="text" id="search" name="search" placeholder="Search many..." />
+				</div>
+				<div id="${this.treeContainerId}" class="treejs-render-target"></div>
+			</div>
+			`;
+		}
 		const parts = this.defaultRepository.split('/');
 		const ownerName = parts.length === 2 ? parts[0] : window.RepositoryToolbar.owner?.value;
 		const repoName = parts.length === 2 ? parts[1] : parts[0] || window.RepositoryToolbar.repository?.value;
@@ -154,16 +151,30 @@ export class FileListWidget extends Widget
 		window.updateSelectOptions(branch, branches, branches[0].name);
 	}
 
+	protected override onAfterAttach(msg: Message): void
+	{
+		this.renderLayout().then(() =>
+		{
+			this.bindDOMEvents();
+			requestAnimationFrame(() => this.initializeFiletrees());
+		});
+	}
+
 	private bindDOMEvents(): void
 	{
 		// Handle select mutations
 		this.node.querySelector('.filelist-repository')?.addEventListener('change', () => this.onRepositoryChanged());
 		this.node.querySelector('.filelist-branch')?.addEventListener('change', () => this.onRepositoryChanged());
-		this.node.querySelector(`#${this.treeContainerId}`)?.addEventListener('click', treeHandler.bind(this, this.selector));
+		this.container = this.node.querySelector(this.selector) as HTMLDivElement;
+		this.container?.addEventListener('click', treeHandler.bind(this, this.selector));
 	}
 
 	protected async initializeFiletrees(): Promise<void>
 	{
+		if(this.container && this.container.innerHTML !== '')
+		{
+			return;
+		}
 		const repoSelect = this.node.querySelector('.filelist-repository') as HTMLSelectElement;
 		const pathRepo = window.location.pathname?.trim().replace(/\/$|^\//, '');
 
@@ -180,9 +191,8 @@ export class FileListWidget extends Widget
 		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement).value;
 		const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement).value;
 
-		const targetTreeElement = document.getElementById(this.treeContainerId);
-		if(!targetTreeElement) return;
-		targetTreeElement.innerHTML = '';
+		if(!this.container) return;
+		this.container.innerHTML = '';
 
 		await window.loadFileTree(owner, repo, branch, this.selector);
 	}

@@ -128,6 +128,7 @@ export class MenuManager
 				{
 					subMenu = new Menu({ commands: window.commandRegistry });
 					subMenu.title.label = item.name || '';
+					subMenu.title.iconClass = item.iconClass || '';
 					const addedItem = targetMenu.addItem({ type: 'submenu', submenu: subMenu }) as TrackedMenuItem;
 					addedItem.ownerId = ownerId;
 				}
@@ -218,10 +219,12 @@ export class MenuManager
 		return window.globalMenuBar.menus.find((m) => m.title.label === label) || null;
 	}
 
-	private static _findSubMenuByLabel(parentMenu: Menu, label: string): Menu | null
+	public static _findSubMenuByLabel(parentMenu: Menu, label: string): Menu | null
 	{
 		const foundItem = parentMenu.items.find(
-			(item) => item.type === 'submenu' && item.submenu?.title.label === label
+			(item) => item.type === 'submenu' && (item.submenu?.title.label === label
+				|| item.submenu?.id === label
+			)
 		);
 		return foundItem ? foundItem.submenu : null;
 	}
@@ -285,7 +288,7 @@ export class MenuManager
 					window.commandRegistry.addKeyBinding({
 						command: commandId,
 						keys: keybindingSequence,
-						selector: 'lm-miniPaintPanel'
+						selector: '.lm-miniPaintPanel'
 					});
 				}
 			}

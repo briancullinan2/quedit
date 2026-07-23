@@ -1,4 +1,4 @@
-import { DockPanel, Widget } from '@lumino/widgets';
+import { DockPanel, Menu, Widget } from '@lumino/widgets';
 import { OUTLINE_WIDGET_TYPES } from './lumino-resize';
 import { LayoutState } from './menu-app';
 
@@ -15,6 +15,7 @@ declare global
 		previousInteractedWidget: Widget | null;
 		resizeHandler: () => void;
 		layoutState: LayoutState;
+		tabsMenu: Menu;
 	}
 }
 
@@ -90,6 +91,16 @@ export class LayoutAdjuster
 		HTMLElement.dataset.projectId = projectId;
 		HTMLElement.dataset.type = type;
 
+		const menuExists = window.tabsMenu.items.some(
+			(existing) => existing.args[0] === newWidget.id
+		);
+		if(!menuExists)
+		{
+			const insertedMenuItem = window.tabsMenu.insertItem(0, {
+				command: 'select-tab', args: { value: newWidget.id, label: newWidget.title.label }
+			});
+		}
+
 		// --- BRANCH 1: TERMINAL LAYOUT ---
 		if(type === 'terminal')
 		{
@@ -99,7 +110,7 @@ export class LayoutAdjuster
 			if(lastNonOutline && isTallscreen && !existingTerminal)
 			{
 				dockPanel.addWidget(newWidget, {
-					mode: 'split-bottom',
+					mode: window.layoutState.order === 'normal-order' ? 'split-bottom' : 'split-top',
 					ref: lastNonOutline ?? window.lastInteractedWidget ?? undefined
 				});
 			} else if(lastNonOutline || existingTerminal)
@@ -111,7 +122,7 @@ export class LayoutAdjuster
 			} else
 			{
 				dockPanel.addWidget(newWidget, {
-					mode: 'split-right'
+					mode: window.layoutState.panels === 'left-hand-files' ? 'split-right' : 'split-left'
 				});
 			}
 			if(shouldActivate)
@@ -137,7 +148,7 @@ export class LayoutAdjuster
 				});
 			} else
 			{
-				dockPanel.addWidget(newWidget, { mode: 'split-left' });
+				dockPanel.addWidget(newWidget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-left' : 'split-right' });
 			}
 			if(shouldActivate)
 			{
@@ -164,12 +175,14 @@ export class LayoutAdjuster
 			}
 
 			const bestRef = this._findRankedReference(dockPanel, projectId);
+			const splitOrder = window.layoutState.order === 'normal-order' ? 'split-top' : 'split-bottom';
+			const splitFiles = window.layoutState.panels === 'left-hand-files' ? 'split-right' : 'split-left';
 
 			if(bestRef && bestRef.dataset?.type === 'terminal')
 			{
 				const shouldSplit = (isTallscreen && bestRef.dataset.projectId !== projectId);
 				dockPanel.addWidget(newWidget, {
-					mode: shouldSplit ? 'split-top' : 'tab-after',
+					mode: shouldSplit ? splitOrder : 'tab-after',
 					ref: bestRef
 				});
 			}
@@ -178,15 +191,15 @@ export class LayoutAdjuster
 				const refHTMLElement = bestRef.node as HTMLElement;
 				const shouldSplit = (isWidescreen && refHTMLElement.dataset.projectId !== projectId)
 					|| refHTMLElement.dataset.type === 'outline';
-				console.log('Opening tab:' + newWidget.constructor.name + ' ' + (shouldSplit ? 'split-right' : 'tab-after') + ' ' + bestRef.constructor.name);
+				console.log('Opening tab:' + newWidget.constructor.name + ' ' + (shouldSplit ? splitFiles : 'tab-after') + ' ' + bestRef.constructor.name);
 				dockPanel.addWidget(newWidget, {
-					mode: shouldSplit ? 'split-right' : 'tab-after',
+					mode: shouldSplit ? splitFiles : 'tab-after',
 					ref: bestRef
 				});
 			} else if(isWidescreen)
 			{
 				console.log('Opening tab split-right');
-				dockPanel.addWidget(newWidget, { mode: 'split-right' });
+				dockPanel.addWidget(newWidget, { mode: splitFiles });
 			} else
 			{
 				console.log('Opening tab-after');

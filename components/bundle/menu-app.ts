@@ -8,15 +8,7 @@ import { loadAndInstantiate } from "./babel-compile";
 import { LayoutAdjuster } from "./lumino-widget";
 import type { TerminalWidget } from "../terminal/widget";
 import type { FileListWidget } from "../filelist/widget";
-import { LuminoLayoutNode } from "./lumino-resize";
-
-
-export type LayoutState = {
-	panels: string,
-	order: string,
-	terminal: string,
-	mode: string;
-};
+import { LuminoLayoutNode, serializeDockLayout } from "./lumino-resize";
 
 
 declare global
@@ -202,6 +194,14 @@ window.ApplicationToolbar = ApplicationToolbar;
 
 // TODO: lumino-resize and lumino-widget will adjust their behavior based on the selected layout
 //   switching split-left and split-right
+
+export type LayoutState = {
+	panels: 'left-hand-files' | 'right-hand-files',
+	order: 'normal-order' | 'reverse-order',
+	terminal: 'terminal' | 'no-terminal',
+	mode: 'full-mode' | 'focus-mode';
+};
+
 const LAYOUT_AXES = {
 	panels: ['left-hand-files', 'right-hand-files'],
 	order: ['normal-order', 'reverse-order'],
@@ -209,13 +209,6 @@ const LAYOUT_AXES = {
 	mode: ['full-mode', 'focus-mode']
 };
 
-
-window.layoutState = {
-	panels: 'left-hand-files',
-	order: 'normal-order',
-	terminal: 'terminal',
-	mode: 'full-mode'
-};
 
 
 function rotateLayout()
@@ -259,6 +252,7 @@ function rotateLayout()
 		}
 	});
 
+	localStorage.setItem('layout', JSON.stringify(window.layoutState));
 	// 6. Rearrange panels based on layout controls
 	rearrangePanels(window.layoutState, oldState);
 
@@ -315,7 +309,7 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 		const splitMode = isRightHand ? 'split-right' : 'split-left';
 
 		// 1. Find the outermost widget on the target side (e.g. far-right paint tool or far-left outline)
-		const outermostTarget = findOutermostWidget(dockPanel, targetSide)
+		const outermostTarget = findOutermostWidget(dockPanel, targetSide)?.widget
 			?? LayoutAdjuster._findNonOutline(dockPanel);
 
 		let firstOutline: Widget | null = null;
@@ -325,12 +319,12 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 			if(!firstOutline)
 			{
 				firstOutline = widget;
-				if(outermostTarget && outermostTarget !== widget)
+				/*if(outermostTarget && outermostTarget !== widget)
 				{
 					// Dock directly on the outermost edge relative to the boundary widget
 					dockPanel.addWidget(widget, { mode: splitMode, ref: outermostTarget });
 				}
-				else
+				else*/
 				{
 					// Fallback: omit 'ref' to split relative to the root dock container
 					dockPanel.addWidget(widget, { mode: splitMode });
@@ -388,6 +382,7 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 				for(let widget of window.fileListWidgets)
 				{
 					widget.hide();
+					widget.parent = null;
 				}
 			}
 
@@ -397,6 +392,7 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 				for(let widget of window.terminalWidgets)
 				{
 					widget.hide();
+					widget.parent = null;
 				}
 			}
 		}
@@ -432,19 +428,44 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 
 	// Force Lumino to compute the updated DOM geometry across all splits
 	dockPanel.update();
+
+	window.requestAnimationFrame(() =>
+	{
+		window.resizeHandler();
+		const layout = window.mainDock.saveLayout();
+		localStorage.setItem('layout_config', JSON.stringify(serializeDockLayout(layout)));
+
+		setTimeout(() =>
+		{
+			window.resizeHandler();
+		}, 200);
+	});
 }
 
-
+export interface BoundaryTarget
+{
+	/** Outermost leaf widget at the specified boundary */
+	widget: Widget;
+	/** The parent split-area node containing the boundary */
+	parentSplit: LuminoLayoutNode | null;
+	/** Total number of sibling splits in this boundary branch */
+	siblingCount: number;
+}
 
 /**
- * Traverses the Lumino layout tree to find the outermost leaf widget on the left or right edge.
+ * Traverses the Lumino layout tree to find the outermost leaf widget and its
+ * parent split-area container across any boundary edge ('left' | 'right' | 'top' | 'bottom').
  */
-function findOutermostWidget(dockPanel: DockPanel, edge: 'left' | 'right'): Widget | null
+function findOutermostWidget(
+	dockPanel: DockPanel,
+	edge: 'left' | 'right' | 'top' | 'bottom'
+): BoundaryTarget | null
 {
 	const layout = dockPanel.saveLayout() as unknown as { main: LuminoLayoutNode | null; };
 	if(!layout || !layout.main) return null;
 
 	let currentNode: LuminoLayoutNode | null = layout.main;
+	let parentSplit: LuminoLayoutNode | null = null;
 
 	while(currentNode)
 	{
@@ -453,18 +474,32 @@ function findOutermostWidget(dockPanel: DockPanel, edge: 'left' | 'right'): Widg
 			const firstRef = currentNode.widgets[0];
 			const widgetId = typeof firstRef === 'string' ? firstRef : firstRef.id;
 
-			// Resolve the live Widget instance from the dock panel
-			return Array.from(dockPanel.widgets()).find(w => w.id === widgetId) || null;
+			const targetWidget = Array.from(dockPanel.widgets()).find(w => w.id === widgetId) || null;
+
+			if(targetWidget)
+			{
+				return {
+					widget: targetWidget,
+					parentSplit: parentSplit,
+					siblingCount: parentSplit?.children?.length || 1
+				};
+			}
+			return null;
 		}
 
 		if(currentNode.type === 'split-area' && currentNode.children && currentNode.children.length > 0)
 		{
-			// Pick the first child for 'left', or last child for 'right'
-			const targetIndex = edge === 'left' ? 0 : currentNode.children.length - 1;
+			parentSplit = currentNode; // Track parent split node
+
+			const isFirst = edge === 'left' || edge === 'top';
+			const targetIndex = isFirst ? 0 : currentNode.children.length - 1;
+
 			currentNode = currentNode.children[targetIndex];
 		} else if(currentNode.children && currentNode.children.length > 0)
 		{
-			const targetIndex = edge === 'left' ? 0 : currentNode.children.length - 1;
+			const isFirst = edge === 'left' || edge === 'top';
+			const targetIndex = isFirst ? 0 : currentNode.children.length - 1;
+
 			currentNode = currentNode.children[targetIndex];
 		} else
 		{
@@ -474,8 +509,6 @@ function findOutermostWidget(dockPanel: DockPanel, edge: 'left' | 'right'): Widg
 
 	return null;
 }
-
-
 
 const ALL_LAYOUTS = Object.values(LAYOUT_AXES).reduce((combinations, currentAxisVariants) =>
 {

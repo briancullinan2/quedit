@@ -41,6 +41,7 @@ declare global
 		fileListWidgets?: Array<FileListWidget>;
 		terminalWidgets?: Array<TerminalWidget>;
 		globalMenuBar: MenuBar;
+		tabsMenu: Menu;
 	}
 }
 
@@ -147,13 +148,130 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 
 window.triggerPanelRoute = triggerPanelRoute;
 
+
 /**
  * System Context Initialization
  */
 export function initializeMenus(commands: CommandRegistry, menuBar: MenuBar, mainDock: DockPanel, toolbarNode: HTMLElement): void
 {
+	document.addEventListener('keydown', (event: KeyboardEvent) =>
+	{
+		commands.processKeydownEvent(event);
+	}, true);
+
 	const viewMenu = new Menu({ commands });
 	viewMenu.title.label = 'Window';
+
+	// 0. setup tabs menu
+	commands.addCommand('select-tab', {
+		iconClass: 'bx bx-tabs',
+		label: (args) =>
+		{
+			return Array.from(mainDock.widgets()).find(w =>
+			{
+				return w.id === args.value;
+			})?.title.label
+				?? (args.label as string) ?? 'Select Tab';
+		},
+		execute: (args: any) =>
+		{
+			Array.from(mainDock.widgets()).forEach(w =>
+			{
+				if(w.id === args.value)
+				{
+					mainDock.activateWidget(w);
+					w.activate();
+				}
+			});
+		}
+	});
+
+	commands.addCommand('next-tab', {
+		label: 'Next Tab',
+		iconClass: 'bx bx-chevron-right-square',
+		isEnabled: () =>
+		{
+			return true;
+			// Optional: don't switch tabs if the user is typing in a text field
+			//const active = document.activeElement;
+			//const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+			//return !isTyping;
+		},
+		execute: () =>
+		{
+			if(!window.lastInteractedWidget)
+			{
+				return;
+			}
+			const widgets = Array.from(mainDock.widgets());
+			const currentWidgetIndex = widgets.indexOf(window.lastInteractedWidget);
+			if(currentWidgetIndex === widgets.length - 1)
+			{
+				window.lastInteractedWidget = widgets[0];
+				mainDock.activateWidget(widgets[0]);
+				widgets[0].activate();
+			} else
+			{
+				window.lastInteractedWidget = widgets[currentWidgetIndex + 1];
+				mainDock.activateWidget(widgets[currentWidgetIndex + 1]);
+				widgets[currentWidgetIndex + 1].activate();
+			}
+			return false;
+		}
+	});
+	commands.addCommand('previous-tab', {
+		label: 'Previous Tab',
+		iconClass: 'bx bx-chevron-left-square',
+		isEnabled: () =>
+		{
+			return true;
+			//const active = document.activeElement;
+			//const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+			//return !isTyping;
+		},
+		execute: () =>
+		{
+			if(!window.lastInteractedWidget)
+			{
+				return;
+			}
+			const widgets = Array.from(mainDock.widgets());
+			const currentWidgetIndex = widgets.indexOf(window.lastInteractedWidget);
+			if(currentWidgetIndex === 0)
+			{
+				window.lastInteractedWidget = widgets[widgets.length - 1];
+				mainDock.activateWidget(widgets[widgets.length - 1]);
+				widgets[widgets.length - 1].activate();
+			} else
+			{
+				window.lastInteractedWidget = widgets[currentWidgetIndex - 1];
+				mainDock.activateWidget(widgets[currentWidgetIndex - 1]);
+				widgets[currentWidgetIndex - 1].activate();
+			}
+		}
+	});
+
+	commands.addKeyBinding({
+		command: 'previous-tab',
+		keys: ['Alt N'],
+		selector: '*'
+	});
+	commands.addKeyBinding({
+		command: 'next-tab',
+		keys: ['Alt M'],
+		selector: '*'
+	});
+
+	const tabsMenu = new Menu({ commands });
+	tabsMenu.title.label = 'Open Tabs';
+	tabsMenu.title.iconClass = 'bx bx-tabs';
+	window.tabsMenu = tabsMenu;
+	viewMenu.addItem({ type: 'submenu', submenu: tabsMenu });
+	viewMenu.addItem({ type: 'separator' });
+	tabsMenu.addItem({ type: 'separator' });
+	tabsMenu.addItem({ command: 'next-tab' });
+	tabsMenu.addItem({ command: 'previous-tab' });
+
 
 	// 1. Render the HTML list structural tree directly inside the left toolbar container node
 	const ul = document.createElement('ul');
