@@ -34,11 +34,6 @@ declare global
 
 export class DatabaseListWidget extends FileListWidget
 {
-	private loadedDatabases: Record<string, NestedTreeNode> = {};
-	private treeLoading = false;
-	private refreshTreeTimer: any = null;
-	private observer!: MutationObserver;
-
 	constructor(titleStr: string)
 	{
 		super(titleStr);
@@ -52,38 +47,9 @@ export class DatabaseListWidget extends FileListWidget
 	}
 
 	/**
-	 * Sets up MutationObserver to intercept class toggles on folder expansion.
-	 */
-	private bindMutationObserver(): void
-	{
-		this.observer = new MutationObserver((mutations) =>
-		{
-			mutations.forEach(async (mutation) =>
-			{
-				if(mutation.type === 'attributes' && mutation.attributeName === 'class')
-				{
-					const target = mutation.target as HTMLElement;
-					const folderId = target.getAttribute('data-id');
-
-					if(folderId && target.classList.contains('treejs-node__open'))
-					{
-						await this.expandDatabaseTree(target, folderId);
-					}
-				}
-			});
-		});
-
-		this.observer.observe(this.node, {
-			attributes: true,
-			subtree: true,
-			attributeFilter: ['class']
-		});
-	}
-
-	/**
 	 * Lazy load folders and render structural updates
 	 */
-	private async expandDatabaseTree(target: HTMLElement, folderId: string): Promise<void>
+	protected override async expandDatabaseTree(target: HTMLElement, folderId: string): Promise<void>
 	{
 		if(this.treeLoading) return;
 		if(folderId.endsWith('[Recursive]')) return;
@@ -289,12 +255,4 @@ export class DatabaseListWidget extends FileListWidget
 		}
 	}
 
-	protected override onBeforeDetach(msg: Message): void
-	{
-		if(this.observer)
-		{
-			this.observer.disconnect();
-		}
-		super.onBeforeDetach(msg);
-	}
 }

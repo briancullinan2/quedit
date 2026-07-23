@@ -16,7 +16,7 @@ export interface SettingConfig
 	elementId?: string;
 	edit?: boolean;
 	currentValue?: any;
-	set?(value: any): void;
+	set?(value: any, config?: SettingConfig): void;
 	get?(storedValue: string | null, defaultValue: any, config: SettingConfig): any;
 }
 
@@ -227,7 +227,7 @@ export class Settings
 
 		if(typeof targetConfig.set === 'function')
 		{
-			targetConfig.set(finalValue);
+			targetConfig.set(finalValue, targetConfig);
 		}
 		else if(targetConfig.elementId)
 		{

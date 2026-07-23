@@ -21,6 +21,7 @@ declare global
 			noBounce?: boolean
 		): Promise<FileRecord[]>;
 		putRecord(storeName: string, record: FileRecord, dbName: string | null, noBounce?: boolean): Promise<any>;
+		getRecord(storeName: string, record: string, dbName: string | null, dbVersion?: number, noBounce?: boolean): Promise<FileRecord | null>;
 		DB_STORE_NAME: string;
 		ST_DIR: number;
 		ST_FILE: number;
@@ -426,6 +427,8 @@ export async function getRecord(storeName: string, record: string, dbName: strin
 {
 	return await debounceRecords(storeName, 'path', record, dbVersion, null, dbName, 'get', noBounce);
 }
+
+window.getRecord = getRecord;
 
 export async function queryIndex(
 	storeName: string,

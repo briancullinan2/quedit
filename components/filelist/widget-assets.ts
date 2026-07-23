@@ -21,14 +21,9 @@ declare global
 
 export class AssetListWidget extends FileListWidget
 {
-	private loadedDatabases: Record<string, NestedTreeNode | NestedTreeNode> = {};
-	private treeLoading = false;
-	private refreshTreeTimer: any = null;
-	private observer!: MutationObserver;
-
 	protected override async initializeFiletrees(): Promise<void>
 	{
-		await this.showDatabases();
+		await this.showGitRoot();
 		this.bindMutationObserver();
 	}
 
@@ -40,38 +35,9 @@ export class AssetListWidget extends FileListWidget
 
 
 	/**
-	 * Sets up MutationObserver to intercept class toggles on folder expansion.
-	 */
-	private bindMutationObserver(): void
-	{
-		this.observer = new MutationObserver((mutations) =>
-		{
-			mutations.forEach(async (mutation) =>
-			{
-				if(mutation.type === 'attributes' && mutation.attributeName === 'class')
-				{
-					const target = mutation.target as HTMLElement;
-					const folderId = target.getAttribute('data-id');
-
-					if(folderId && target.classList.contains('treejs-node__open'))
-					{
-						await this.expandDatabaseTree(target, folderId);
-					}
-				}
-			});
-		});
-
-		this.observer.observe(this.node, {
-			attributes: true,
-			subtree: true,
-			attributeFilter: ['class']
-		});
-	}
-
-	/**
 	 * Lazy load folders and render structural updates
 	 */
-	private async expandDatabaseTree(target: HTMLElement, folderId: string): Promise<void>
+	protected override async expandDatabaseTree(target: HTMLElement, folderId: string): Promise<void>
 	{
 		if(this.treeLoading) return;
 		if(folderId.endsWith('[Recursive]')) return;
@@ -187,7 +153,7 @@ export class AssetListWidget extends FileListWidget
 			this.loadedDatabases[folderId] = { text: 'Error loading files', id: 'err', path: 'err', status: 0, state: { open: false, expanded: false } } as NestedTreeNode;
 		}
 
-		await this.showDatabases(folderId);
+		await this.showGitRoot(folderId);
 
 		if(this.refreshTreeTimer)
 		{
@@ -213,7 +179,7 @@ export class AssetListWidget extends FileListWidget
 	/**
 	 * Re-evaluates metadata and patches the TreeJS instance
 	 */
-	private async showDatabases(folderId?: string): Promise<void>
+	private async showGitRoot(folderId?: string): Promise<void>
 	{
 		const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement).value;
 		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement).value;
@@ -261,15 +227,6 @@ export class AssetListWidget extends FileListWidget
 			activeTree.options.data = this.loadedDatabases[database].children;
 			activeTree.renderPartial(folderId);
 		}
-	}
-
-	protected override onBeforeDetach(msg: Message): void
-	{
-		if(this.observer)
-		{
-			this.observer.disconnect();
-		}
-		super.onBeforeDetach(msg);
 	}
 
 }
