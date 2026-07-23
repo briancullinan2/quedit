@@ -306,7 +306,7 @@ export function convertFlatToNested(data: FlatFileNode[]): NestedTreeNode[]
 			if(!existingPath)
 			{
 				existingPath = {
-					id: `${item.sha}`,
+					id: `${item.sha ?? item.path}`,
 					text: part,
 					status: 0,
 					state: {
@@ -315,7 +315,9 @@ export function convertFlatToNested(data: FlatFileNode[]): NestedTreeNode[]
 					},
 					path: item.path,
 					sha: item.sha,
-					mode: (parseInt('' + item.mode, 8) >> 12) & ST_FILE ? FS_FILE : FS_DIR
+					mode: ((typeof item.mode === 'string'
+						? parseInt('' + item.mode, 8) : item.mode ?? 8) >> 12) & ST_FILE
+						? FS_FILE : FS_DIR
 				};
 
 				if(i < parts.length - 1 || item.type === 'tree')
@@ -340,25 +342,49 @@ export function convertFlatToNested(data: FlatFileNode[]): NestedTreeNode[]
 
 window.convertFlatToNested = convertFlatToNested;
 
+
 export function sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[]
 {
 	nodes.sort((a, b) =>
 	{
-		const aHasChildren = Array.isArray(a.children);
-		const bHasChildren = Array.isArray(b.children);
+		const isDirectory = (node: NestedTreeNode): boolean =>
+		{
+			// 1. Bitmask check if mode is present
+			if(typeof node.mode === 'number')
+			{
+				if(typeof window.ST_FILE === 'number' && ((node.mode >> 12) & window.ST_FILE))
+				{
+					return false;
+				}
+				if(typeof window.ST_DIR === 'number' && ((node.mode >> 12) & window.ST_DIR))
+				{
+					return true;
+				}
+			}
 
-		// 1. Sort by "Folder-ness" (directories up front)
-		if(aHasChildren && !bHasChildren) return -1;
-		if(!aHasChildren && bHasChildren) return 1;
+			// 2. Check if children array or lazy-loading placeholder exists
+			if(node.children !== null && node.children !== undefined)
+			{
+				return true;
+			}
+			return false;
+		};
 
-		// 2. Then sort alphabetically by text
-		return a.text.localeCompare(b.text);
+		const aIsDir = isDirectory(a);
+		const bIsDir = isDirectory(b);
+
+		// 1. Directories up top, files below
+		if(aIsDir && !bIsDir) return -1;
+		if(!aIsDir && bIsDir) return 1;
+
+		// 2. Natural case-insensitive alphabetical sort
+		return a.text.localeCompare(b.text, undefined, { numeric: true, sensitivity: 'base' });
 	});
 
-	// 3. Recurse into children
+	// 3. Recurse into valid child arrays
 	nodes.forEach(node =>
 	{
-		if(node.children)
+		if(Array.isArray(node.children) && node.children.length > 0)
 		{
 			sortNodes(node.children);
 		}
@@ -366,5 +392,6 @@ export function sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[]
 
 	return nodes;
 }
+
 
 window.sortNodes = sortNodes;

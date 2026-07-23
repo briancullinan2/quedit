@@ -1,6 +1,6 @@
 import { getDefaultBranch, loadGitHubTree } from "./github-api";
 import { cacheFile } from "./github-tools";
-import { filesRepo, trees } from "./github-types";
+import { filesRepo, GitHubFileEntry, trees } from "./github-types";
 import { FS } from "./global";
 import { DB_STORE_NAME, FileRecord, getDatabaseMetadata, getRecord } from "./local";
 import type { HistoryToolbar } from "./menu-history";
@@ -58,6 +58,10 @@ declare global
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
 		mainDock: DockPanel;
 		AceEditorWidget: typeof AceEditorWidget;
+		resolveDirectoryHandle(
+			rootHandle: FileSystemDirectoryHandle,
+			pathSegments: string[]
+		): Promise<FileSystemDirectoryHandle>;
 	}
 }
 
@@ -87,12 +91,11 @@ export class FileManager
 		{
 			const currentPath = item.testPath;
 
-			// LAYER A: Check Memory-Cached Repositories
-			const memoryResult = await this.checkMemoryRepositories(currentPath, activeRepositories);
-			if(memoryResult)
+			const localResult = await this.checkFilesystemHandles(currentPath);
+			if(localResult)
 			{
-				console.log(`[VFS Resolved Memory] File: ${currentPath} | Line: ${item.line}`);
-				return [currentPath, memoryResult.repoKey, memoryResult.fileNode, item.line];
+				console.log(`[VFS Resolved IndexedDB] File: ${currentPath} | Line: ${item.line}`);
+				return [currentPath, localResult.dbKey, localResult.fileNode, item.line];
 			}
 
 			// LAYER B: Check Client IndexedDB Database Contexts
@@ -102,6 +105,15 @@ export class FileManager
 				console.log(`[VFS Resolved IndexedDB] File: ${currentPath} | Line: ${item.line}`);
 				return [currentPath, dbResult.dbKey, dbResult.fileNode, item.line];
 			}
+
+			// LAYER A: Check Memory-Cached Repositories
+			const memoryResult = await this.checkMemoryRepositories(currentPath, activeRepositories);
+			if(memoryResult)
+			{
+				console.log(`[VFS Resolved Memory] File: ${currentPath} | Line: ${item.line}`);
+				return [currentPath, memoryResult.repoKey, memoryResult.fileNode, item.line];
+			}
+
 		}
 
 		console.log(`[VFS Lookup Failed] File: ${hintPath}\nTried:\n${candidates.map(c => c.testPath).join('\n')}\n${activeRepositories.join('\n')}`);
@@ -152,6 +164,8 @@ export class FileManager
 		].filter((repo): repo is string => typeof repo === 'string' && repo.length > 0);
 	}
 
+
+
 	/**
 	 * Evaluates Layer A (In-memory / Github Tree layers)
 	 */
@@ -160,28 +174,77 @@ export class FileManager
 		repositories: string[]
 	): Promise<{ repoKey: string; fileNode: FileRecord; } | null>
 	{
+		// Clean leading slashes for consistent path lookups
+		const cleanPath = currentPath.replace(/^\/+/, '');
+		const pathParts = cleanPath.split('/');
+		const targetFileName = pathParts.pop() || '';
+		const parentFolder = pathParts.join('/');
+
 		for(const repoKey of repositories)
 		{
-			if(!filesRepo[repoKey])
+			// 1. Memory cache hit check
+			if(filesRepo[repoKey]?.[cleanPath])
 			{
-				const parts = repoKey.split('/');
-				const ownerName = parts.length === 2 ? parts[0] : window.owner?.value || '';
-				const repoName = parts.length === 2 ? parts[1] : (parts[0] || window.repository?.value || '');
+				const fileNode = filesRepo[repoKey][cleanPath];
+				if(trees[repoKey])
+				{
+					trees[repoKey].values = fileNode.sha ? [fileNode.sha] : [];
+				}
+				return { repoKey, fileNode };
+			}
 
+			// 2. Partial fetch targeting only the parent directory
+			const parts = repoKey.split('/');
+			const ownerName = parts.length === 2 ? parts[0] : window.owner?.value || '';
+			const repoName = parts.length === 2 ? parts[1] : (parts[0] || window.repository?.value || '');
+
+			try
+			{
+				// Request contents specifically for the target parent directory
+				const endpoint = parentFolder ? `contents/${parentFolder}` : 'contents';
+				const jsonResponse = await window.githubRequest(ownerName, repoName, endpoint);
+
+				if(Array.isArray(jsonResponse))
+				{
+					if(!filesRepo[repoKey])
+					{
+						filesRepo[repoKey] = {};
+					}
+
+					// Populate filesRepo with the shallow contents returned
+					for(const item of jsonResponse as GitHubFileEntry[])
+					{
+						const itemPath = (parentFolder ? `${parentFolder}/${item.path ?? item.name}` : item.path ?? item.name);
+						const isDir = item.type === 'dir';
+
+						filesRepo[repoKey][itemPath] = window.FS.virtual[itemPath] = {
+							...item,
+							path: itemPath,
+							mode: item.mode ?? (isDir ? (0o040000 | 0o755) : (0o100000 | 0o644)),
+						} as FileRecord;
+					}
+				}
+			} catch(err)
+			{
+				// Fallback: If partial contents call fails, fall back to loadGitHubTree for parentFolder
 				try
 				{
-					const branch = await getDefaultBranch(ownerName, repoName);
-					await loadGitHubTree(ownerName, repoName, branch);
-				} catch(err)
+					if(typeof window.loadGitHubTree === 'function')
+					{
+						const branch = await getDefaultBranch(ownerName, repoName);
+						await window.loadGitHubTree(ownerName, repoName, branch, parentFolder);
+					}
+				} catch(fallbackErr)
 				{
-					console.warn(`Dynamic tree resolve failure for: ${repoKey}`, err);
+					console.warn(`Dynamic tree resolve failure for: ${repoKey}/${cleanPath}`, fallbackErr);
 					continue;
 				}
 			}
 
-			if(filesRepo[repoKey] && filesRepo[repoKey][currentPath])
+			// 3. Post-fetch evaluation
+			if(filesRepo[repoKey]?.[cleanPath])
 			{
-				const fileNode = filesRepo[repoKey][currentPath];
+				const fileNode = filesRepo[repoKey][cleanPath];
 				if(trees[repoKey])
 				{
 					trees[repoKey].values = fileNode.sha ? [fileNode.sha] : [];
@@ -189,8 +252,11 @@ export class FileManager
 				return { repoKey, fileNode };
 			}
 		}
+
 		return null;
 	}
+
+
 
 	/**
 	 * Evaluates Layer B (IndexedDB fallback storage context)
@@ -237,6 +303,108 @@ export class FileManager
 		}
 		return null;
 	}
+
+
+	static async resolveDirectoryHandle(
+		rootHandle: FileSystemDirectoryHandle,
+		pathSegments: string[]
+	): Promise<FileSystemDirectoryHandle>
+	{
+		let current = rootHandle;
+		for(const segment of pathSegments)
+		{
+			if(!segment) continue;
+			current = await current.getDirectoryHandle(segment);
+		}
+		return current;
+	}
+
+	/**
+	 * Searches open FileListWidget directory handles for the target file path.
+	 */
+	static async checkFilesystemHandles(
+		currentPath: string
+	): Promise<{ dbKey: string; fileNode: FileRecord; } | null>
+	{
+		if(!window.mainDock) return null;
+
+		const cleanPath = currentPath.replace(/^\/+/, '');
+		const pathSegments = cleanPath.split('/');
+		const targetFileName = pathSegments.pop();
+
+		if(!targetFileName) return null;
+
+		// Get all widgets from mainDock
+		const widgets = typeof window.mainDock.widgets === 'function'
+			? Array.from(window.mainDock.widgets())
+			: [];
+
+		for(const widget of widgets as any[])
+		{
+			// Check if the widget has an active FileSystemDirectoryHandle
+			const rootHandle: FileSystemDirectoryHandle = widget?.handle;
+			const dbKey: string = widget?.defaultRepository ?? widget?.handleKey ?? widget?.id ?? 'local_fs';
+
+			if(!rootHandle || typeof rootHandle.getDirectoryHandle !== 'function')
+			{
+				continue;
+			}
+
+			try
+			{
+				// 1. Resolve subfolder directory handle down to the target file's parent
+				const parentDirHandle = await this.resolveDirectoryHandle(rootHandle, pathSegments);
+
+				// 2. Attempt to fetch the target file handle
+				const fileHandle = await parentDirHandle.getFileHandle(targetFileName);
+
+				if(fileHandle)
+				{
+					let size: number | undefined;
+					let timestamp: Date | null = null;
+
+					try
+					{
+						const file = await fileHandle.getFile();
+						size = file.size;
+						timestamp = new Date(file.lastModified);
+					} catch
+					{
+						// Fall back gracefully if temporary file read lock occurs
+					}
+
+					// Standard bitmask mode for regular file (0100644)
+					const MODE_FILE = 0o100000 | 0o644;
+
+					const fileNode: GitHubFileEntry = {
+						name: targetFileName,
+						path: cleanPath,
+						mode: MODE_FILE,
+						size: size,
+						timestamp: timestamp,
+						contents: await (await fileHandle.getFile()).arrayBuffer(),
+						parent: pathSegments.join('/') || null
+					};
+
+					// Sync with virtual filesystem cache
+					if(!window.filesRepo[dbKey])
+					{
+						window.filesRepo[dbKey] = {};
+					}
+					window.filesRepo[dbKey][cleanPath] = window.FS.virtual[cleanPath] = fileNode;
+
+					return { dbKey, fileNode };
+				}
+			} catch
+			{
+				// Path or file doesn't exist under this handle, continue to next widget
+				continue;
+			}
+		}
+
+		return null;
+	}
+
 
 	/**
 	 * Cleaned secondary update mutation for application engine side-effects
@@ -431,4 +599,4 @@ export class FileManager
 }
 
 window.FileManager = FileManager;
-
+window.resolveDirectoryHandle = FileManager.resolveDirectoryHandle;

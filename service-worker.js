@@ -256,7 +256,7 @@ async function fetchAsset(urlInput, key, selected)
 		console.log(`💾 [SW-DATABASE] Writing payload binary content into IndexedDB Store: "${DB_STORE_NAME}" -> Target Key: "${localKey}"`);
 
 
-		const isGithubContents = urlString.includes('api.github.com') && urlString.includes('contents/');
+		const isGithubContents = urlString.includes('api.github.com') && urlString.match(/contents\/|\/contents($|[\?])$/ig);
 
 		// OFFLINE BULLSHIT
 		if(isGithubContents)

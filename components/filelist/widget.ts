@@ -44,6 +44,10 @@ declare global
 		DB_STORE_NAME: string;
 		FS_FILE: number;
 		ensureDatabaseContainer(database: string): Promise<void>;
+		resolveDirectoryHandle(
+			rootHandle: FileSystemDirectoryHandle,
+			pathSegments: string[]
+		): Promise<FileSystemDirectoryHandle>;
 	}
 }
 
@@ -360,7 +364,7 @@ export class FileListWidget extends Widget
 		const parts = folderId.split('/');
 
 		// Strip the database handle prefix to isolate the relative folder path
-		const relativeSegments = parts.slice(1);
+		const relativeSegments = parts.slice(2);
 		const baseDir = relativeSegments.join('/');
 
 		const targetNode = this.loadedDatabases[folderId];
@@ -378,7 +382,7 @@ export class FileListWidget extends Widget
 			}
 
 			// Resolve sub-directory handle and list its children
-			const targetDirHandle = await resolveDirectoryHandle(this.handle, relativeSegments);
+			const targetDirHandle = await window.resolveDirectoryHandle(this.handle, relativeSegments);
 			const result = await listDirectory(targetDirHandle, baseDir);
 
 			const nodes = window.convertFlatToNested(Object.values(result ?? {}));
@@ -458,7 +462,13 @@ export class FileListWidget extends Widget
 		} catch(err: any)
 		{
 			console.error(`Failed to load local filesystem node: ${err.message}\n${err.stack ?? err.stacktrace}`);
-			this.loadedDatabases[folderId] = { text: 'Error loading files', id: 'err', path: 'err', status: 0, state: { open: false, expanded: false } } as NestedTreeNode;
+			this.loadedDatabases[folderId] = {
+				text: 'Error loading files',
+				id: 'err',
+				path: 'err',
+				status: 0,
+				state: { open: false, expanded: false }
+			} as NestedTreeNode;
 		}
 
 		await this.showLocalFilesystem(folderId);
@@ -719,7 +729,6 @@ async function treeHandler(selector: string, e: Event): Promise<void>
 
 			window.AceEditorWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
 		}
-
 	}
 }
 
@@ -810,21 +819,6 @@ async function listDirectory(
 	}
 
 	return records;
-}
-
-
-async function resolveDirectoryHandle(
-	rootHandle: FileSystemDirectoryHandle,
-	pathSegments: string[]
-): Promise<FileSystemDirectoryHandle>
-{
-	let current = rootHandle;
-	for(const segment of pathSegments)
-	{
-		if(!segment) continue;
-		current = await current.getDirectoryHandle(segment);
-	}
-	return current;
 }
 
 
