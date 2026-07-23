@@ -11,6 +11,7 @@ import { AssetInspector, hasSequentialBinaryRegex, hexDump } from '../rosetta/bi
 import type { AceEditorWidget } from '../editor/widget';
 import type { PaintWidget } from '../paint/widget';
 import type { GitHubBranchLike } from '../bundle/github-settings';
+import type { FileRecord } from '../bundle/local';
 
 declare global
 {
@@ -38,6 +39,10 @@ declare global
 		PaintWidget: typeof PaintWidget;
 		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
 		getRegistryIdFromWidget(widget: string | HTMLElement | FileListWidget): string | null | undefined | void;
+		putRecord(storeName: string, record: FileRecord, dbName: string | null, noBounce?: boolean): Promise<any>;
+		DB_STORE_NAME: string;
+		FS_FILE: number;
+		ensureDatabaseContainer(database: string): Promise<void>;
 	}
 }
 
@@ -176,9 +181,18 @@ export class FileListWidget extends Widget
 		});
 		this.node.querySelector('[href="#new-folder"]')?.addEventListener('click', async () =>
 		{
-			const handle: FileSystemDirectoryHandle = await window.showDirectoryPicker({
-				mode: 'readwrite'
-			});
+			let handle: FileSystemDirectoryHandle;
+			try
+			{
+				handle = await window.showDirectoryPicker({
+					mode: 'readwrite'
+				});
+			}
+			catch(e)
+			{
+				console.error(e);
+				return;
+			}
 			const widgetHandle = getRegistryIdFromWidget(this);
 			let settingKey: string | undefined;
 			if(widgetHandle === 'filelist')
@@ -197,7 +211,15 @@ export class FileListWidget extends Widget
 			{
 				settingKey = 'default_location';
 			}
-			localStorage.setItem(settingKey, handle);
+			const database = window.SettingsManager.get('github', 'environmentRepository');
+			await window.ensureDatabaseContainer(database);
+			await window.putRecord(window.DB_STORE_NAME, {
+				timestamp: new Date(),
+				mode: window.FS_FILE,
+				contents: handle,
+				path: '/' + settingKey,
+				parent: '/'
+			}, database);
 		});
 		this.container = this.node.querySelector(this.selector) as HTMLDivElement;
 		this.container?.addEventListener('click', treeHandler.bind(this, this.selector));

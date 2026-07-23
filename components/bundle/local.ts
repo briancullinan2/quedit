@@ -20,6 +20,7 @@ declare global
 			dbName: string | null,
 			noBounce?: boolean
 		): Promise<FileRecord[]>;
+		putRecord(storeName: string, record: FileRecord, dbName: string | null, noBounce?: boolean): Promise<any>;
 		DB_STORE_NAME: string;
 		ST_DIR: number;
 		ST_FILE: number;
@@ -53,7 +54,7 @@ export interface FileRecord
 {
 	timestamp?: Date | null;
 	mode: number;
-	contents?: Uint8Array | ArrayBuffer | any;
+	contents?: Uint8Array | ArrayBuffer | FileSystemDirectoryHandle | any;
 	path: string;
 	sha?: string;
 	parent?: string | null;
@@ -284,7 +285,7 @@ async function putRecordInternal(storeName: string, record: FileRecord, dbName: 
 	const newRecord: FileRecord = {
 		timestamp: record.timestamp,
 		mode: record.mode,
-		contents: typeof FS !== 'undefined' ? (record.contents = FS.virtual[record.path]?.contents || record.contents?.slice(0)) : record.contents?.slice(0),
+		contents: record.contents instanceof FileSystemDirectoryHandle ? record.contents : typeof FS !== 'undefined' ? (record.contents = FS.virtual[record.path]?.contents || record.contents?.slice(0)) : record.contents?.slice(0),
 		path: record.path,
 		sha: record.sha,
 		parent: record.parent
@@ -414,10 +415,12 @@ async function queryIndexInternal(
 
 // --- Public Anti-Throttling Debounce Intermediaries ---
 
-export async function putRecord(storeName: string, record: FileRecord, dbName: string | null = null, noBounce = false): Promise<any>
+export async function putRecord(storeName: string, record: FileRecord, dbName: string | null = null, noBounce: boolean = false): Promise<any>
 {
 	return await debounceRecords(storeName, 'path', record, null, null, dbName, 'put', noBounce);
 }
+
+window.putRecord = putRecord;
 
 export async function getRecord(storeName: string, record: string, dbName: string | null = null, dbVersion = 1, noBounce = false): Promise<FileRecord | null>
 {

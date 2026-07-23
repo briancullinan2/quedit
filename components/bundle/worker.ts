@@ -12,6 +12,16 @@ import
 } from "./local";
 import { SettingsManager } from "./settings";
 
+
+declare global
+{
+	interface Window
+	{
+		ensureDatabaseContainer(database: string): Promise<void>;
+	}
+}
+
+
 export class ServiceWorkerManager
 {
 	private readonly defaultOwner = 'briancullinan2';
@@ -69,7 +79,7 @@ export class ServiceWorkerManager
 		const [ownerName, repoName] = database.split('/');
 
 		await this.updateEnvironmentVersionSetting(ownerName, repoName);
-		await this.ensureDatabaseContainer(database);
+		await ServiceWorkerManager.ensureDatabaseContainer(database);
 		await this.writeVirtualAssetSettings(database);
 	}
 
@@ -92,7 +102,7 @@ export class ServiceWorkerManager
 	/**
 	 * Micro-function: Handles structural creation, validation, and layout installation for IndexDB profiles
 	 */
-	private async ensureDatabaseContainer(database: string): Promise<void>
+	public static async ensureDatabaseContainer(database: string): Promise<void>
 	{
 		const databases = await getDatabaseMetadata();
 		const shouldInstall = (await needsInstall(database, DB_SCHEME)).item3;
@@ -201,3 +211,5 @@ export class ServiceWorkerManager
 		}
 	}
 }
+
+window.ensureDatabaseContainer = ServiceWorkerManager.ensureDatabaseContainer;
