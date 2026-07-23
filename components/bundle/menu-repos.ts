@@ -89,8 +89,11 @@ export class RepositoryToolbar extends Widget
                 <option value="repo-b">Repository B</option>
             </select>
 			<select required id="top-bar-sel-branch">
-				<option value="" selected disabled>Current branch</option>
+				<option value="" selected disabled>Current Branch</option>
 				<option value="main">main</option>
+			</select>
+			<select required id="top-bar-sel-locations">
+				<option value="" selected disabled>Local Folders</option>
 			</select>
         `;
 
@@ -124,6 +127,11 @@ export class RepositoryToolbar extends Widget
 	public static get branch(): HTMLSelectElement | null
 	{
 		return RepositoryToolbar.getInstance().node.querySelector('#top-bar-sel-branch');
+	}
+
+	public static get locations(): HTMLSelectElement | null
+	{
+		return RepositoryToolbar.getInstance().node.querySelector('#top-bar-sel-locations');
 	}
 }
 

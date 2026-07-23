@@ -33,7 +33,7 @@ export class AssetListWidget extends FileListWidget
 	}
 
 
-	protected override get defaultRepository()
+	public override get defaultRepository()
 	{
 		return window.SettingsManager.get('github', 'assetRepository');
 	}

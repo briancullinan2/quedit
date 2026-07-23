@@ -3,7 +3,7 @@ import { Widget, DockPanel } from '@lumino/widgets';
 import type { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
 import type { GitHubBranch, GitHubFileEntry, GitHubFileTree } from '../bundle/github-types';
 import type { RepositoryToolbar } from '../bundle/menu-repos';
-import type { Settings } from '../bundle/settings';
+import type { SettingConfig, Settings } from '../bundle/settings';
 import type { FileManager } from '../bundle/lumino-files';
 import { Message, MessageLoop } from '@lumino/messaging';
 import Tree from './tree.js';
@@ -36,6 +36,8 @@ declare global
 		fileListWidgets?: Array<FileListWidget>;
 		AceEditorWidget: typeof AceEditorWidget;
 		PaintWidget: typeof PaintWidget;
+		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
+		getRegistryIdFromWidget(widget: string | HTMLElement | FileListWidget): string | null | undefined | void;
 	}
 }
 
@@ -90,7 +92,7 @@ export class FileListWidget extends Widget
 	}
 
 
-	protected get defaultRepository()
+	public get defaultRepository()
 	{
 		return window.SettingsManager.get('github', 'engineRepository');
 	}
@@ -165,6 +167,38 @@ export class FileListWidget extends Widget
 		// Handle select mutations
 		this.node.querySelector('.filelist-repository')?.addEventListener('change', () => this.onRepositoryChanged());
 		this.node.querySelector('.filelist-branch')?.addEventListener('change', () => this.onRepositoryChanged());
+		this.node.querySelector('[href="#link"]')?.addEventListener('click', () =>
+		{
+			const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement).value;
+			const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement).value;
+			const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement).value;
+			window.open('https://github.com/' + owner + '/' + repo + '/tree/' + branch);
+		});
+		this.node.querySelector('[href="#new-folder"]')?.addEventListener('click', async () =>
+		{
+			const handle: FileSystemDirectoryHandle = await window.showDirectoryPicker({
+				mode: 'readwrite'
+			});
+			const widgetHandle = getRegistryIdFromWidget(this);
+			let settingKey: string | undefined;
+			if(widgetHandle === 'filelist')
+			{
+				settingKey = 'engine_location';
+			}
+			else if(widgetHandle === 'gamelist')
+			{
+				settingKey = 'game_location';
+			}
+			else if(widgetHandle === 'assetlist')
+			{
+				settingKey = 'asset_location';
+			}
+			else
+			{
+				settingKey = 'default_location';
+			}
+			localStorage.setItem(settingKey, handle);
+		});
 		this.container = this.node.querySelector(this.selector) as HTMLDivElement;
 		this.container?.addEventListener('click', treeHandler.bind(this, this.selector));
 	}
@@ -205,6 +239,84 @@ export class FileListWidget extends Widget
 }
 
 
+function getRegistryIdFromWidget(widget: string | HTMLElement | FileListWidget): string | null | undefined | void
+{
+	let selectedRespository: string | undefined;
+	if(widget instanceof HTMLElement)
+	{
+		widget = (Array.from(window.mainDock.widgets()).find(w =>
+			w.node === widget || (widget as HTMLElement).closest('.lm-Widget') === w.node
+		) as FileListWidget);
+	}
+
+	if(widget instanceof FileListWidget)
+	{
+		if(widget instanceof GameListWidget)
+		{
+			return 'gamelist';
+		}
+		else if(widget.constructor.name === 'AssetListWidget')
+		{
+			return 'assetlist';
+		}
+		else if(widget.constructor.name === 'FileListWidget')
+		{
+			return 'filelist';
+		}
+		else if(widget.constructor.name === 'DatabaseListWidget')
+		{
+			return 'database';
+		}
+		else
+		{
+			selectedRespository = widget.defaultRepository;
+		}
+	}
+	else if(typeof widget === 'string')
+	{
+		const entry = Object.entries(window.IMPORT_SETTINGS?.github ?? {})
+			.find(([propName, config]) =>
+			{
+				if(propName === widget)
+				{
+					return true;
+				} else if(window.SettingsManager.get('github', propName) === widget)
+				{
+					return true;
+				}
+			});
+		if(entry)
+		{
+			selectedRespository = entry[0];
+		}
+	}
+
+	if(!selectedRespository)
+	{
+		return;
+	}
+
+	if(selectedRespository === window.SettingsManager.get('github', 'engineRepository'))
+	{
+		return 'filelist';
+	}
+
+	if(selectedRespository === window.SettingsManager.get('github', 'gameRepository'))
+	{
+		return 'gamelist';
+	}
+
+	if(selectedRespository === window.SettingsManager.get('github', 'assetRepository'))
+	{
+		return 'assetlist';
+	}
+
+}
+
+
+window.getRegistryIdFromWidget = getRegistryIdFromWidget;
+
+
 async function treeHandler(selector: string, e: Event): Promise<void>
 {
 	const target = e.target as HTMLElement | null;
@@ -228,42 +340,6 @@ async function treeHandler(selector: string, e: Event): Promise<void>
 		if(!tree || !tree.nodesById[fileId]) return;
 
 		const filePath = tree.nodesById[fileId].path;
-
-		let selected = window.RepositoryToolbar.owner?.value + '/' + window.RepositoryToolbar.repository?.value;
-		let nodeDB: string | null;
-
-		if(nodeDB = node.getAttribute('data-database'))
-		{
-			selected = nodeDB;
-		}
-		if(node.closest('#filelist'))
-		{
-			selected = window.SettingsManager.get('github', 'engineRepository');
-		}
-		if(node.closest('#gamelist'))
-		{
-			selected = window.SettingsManager.get('github', 'gameRepository');
-		}
-		if(node.closest('#assetRepo'))
-		{
-			selected = window.SettingsManager.get('github', 'assetRepository');
-		}
-		if(node.closest('#database'))
-		{
-			const parent = node.closest('#database > div > ul > li[data-id]') as HTMLElement | null;
-			if(parent && (nodeDB = parent.getAttribute('data-id')))
-			{
-				selected = nodeDB;
-			}
-		}
-		if(node.closest('#github'))
-		{
-			const parent = node.closest('#github > div > ul > li[data-id]') as HTMLElement | null;
-			if(parent && (nodeDB = parent.getAttribute('data-id')))
-			{
-				selected = nodeDB;
-			}
-		}
 
 		const [realFilePath, selectedGithub, dbFile, lineNumber] = await window.FileManager.findFileTestPath(filePath);
 		console.warn('openFile: ' + filePath + ' length: ' + dbFile?.contents?.length + ' from: ' + selectedGithub);
@@ -312,9 +388,124 @@ async function treeHandler(selector: string, e: Event): Promise<void>
 
 export class GameListWidget extends FileListWidget
 {
-	protected override get defaultRepository()
+	public override get defaultRepository()
 	{
 		return window.SettingsManager.get('github', 'gameRepository');
 	}
 }
+
+
+export function configureFileHandle(newLocation: FileSystemDirectoryHandle): void
+{
+	if(!newLocation || newLocation.name.includes('briancullinan2'))
+	{
+		console.error('Assertion local folder name is briancullinan2');
+		debugger;
+		return;
+	}
+
+	if(newLocation.name.trim().length > 0 && !window.RepositoryToolbar.locations?.querySelector(`option[value="${newLocation}"]`))
+	{
+		const option = document.createElement('option');
+
+		option.value = `file-handle-${++window.tempCount}`;
+		option.textContent = newLocation.name;
+
+		window.RepositoryToolbar.locations?.appendChild(option);
+	}
+}
+
+
+async function listDirectory(dirHandle: FileSystemDirectoryHandle): Promise<void>
+{
+	for await(const entry of dirHandle.values())
+	{
+		if(entry.kind === 'file')
+		{
+			const fileHandle = entry as FileSystemFileHandle;
+			console.log(`[File] ${fileHandle.name}`);
+		} else if(entry.kind === 'directory')
+		{
+			const subDirHandle = entry as FileSystemDirectoryHandle;
+			console.log(`[Directory] ${subDirHandle.name}`);
+		}
+	}
+}
+
+
+
+const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
+	filelist: {
+		defaultLocation: {
+			key: 'default_location',
+			default: '',
+			elementId: window.RepositoryToolbar.locations?.id,
+			description: 'The fallback or preferred primary repository string formatted as "owner/repo" used when loading the workspace workspace initial state.',
+			get: (storage: string | null, defaultLocation: string): string =>
+			{
+				return window.RepositoryToolbar.locations?.value
+					? window.RepositoryToolbar.locations?.value
+					: (storage || defaultLocation);
+			},
+			set: configureFileHandle
+		},
+		engineLocation: {
+			key: 'engine_location',
+			default: '',
+			description: 'The specific local folder designated for compiling the core Quake 3 WebAssembly engine architecture.',
+			set: configureFileHandle
+		},
+		gameLocation: {
+			key: 'game_location',
+			default: '',
+			description: 'The local folder source housing the game logic mod components, including cgame, game, and ui modules.',
+			set: configureFileHandle
+		},
+		assetLocation: {
+			key: 'asset_location',
+			default: '',
+			description: 'Optional local folder dedicated to static game assets, maps, texturing bundles, or audio assets required to run the game.',
+			set: configureFileHandle
+		},
+		toolsLocation: {
+			key: 'tools_location',
+			default: '',
+			description: 'Primary compiler tooling local folder containing components such as q3lcc (the Quake 3 ANSI C compiler targeting virtual machine bytecode).',
+			set: configureFileHandle
+		},
+		tools2Location: {
+			key: 'tools_location',
+			default: '',
+			description: 'Secondary toolchain local folder hosting utilities like q3asm to assemble the intermediate bytecode files into final .qvm files.',
+			set: configureFileHandle
+		},
+		rendererLocation: {
+			key: 'renderer_location',
+			default: '',
+			description: 'Local folder handling the graphical subsystems and pipeline routines tasked with translating engine calculations to browser contexts.',
+			set: configureFileHandle
+		},
+		environmentLocation: {
+			key: 'environment_location',
+			default: '',
+			description: 'Local folder for this workspace, the entire IDE, code editor and engine runner, for editing the environment inside the workspace.',
+			set: configureFileHandle
+		},
+	}
+};
+
+if(!window.IMPORT_SETTINGS)
+{
+	window.IMPORT_SETTINGS = {};
+}
+
+for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
+{
+	window.IMPORT_SETTINGS[moduleKey] = {
+		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+		...configs
+	};
+}
+
+export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
 
