@@ -328,9 +328,9 @@ export class TerminalEventManager
 
 		this.debounceTerminalMouse = setTimeout(() =>
 		{
-			if(this.pooledCtx.activeOwner?.searchInput)
+			if(this.pooledCtx.searchInput)
 			{
-				SearchTerminal.scanVisibleViewport(this.pooledCtx, this.pooledCtx.activeOwner?.searchInput?.value);
+				SearchTerminal.scanVisibleViewport(this.pooledCtx, this.pooledCtx.searchInput.value);
 			}
 
 			if(!this.previousUpdate && !event)

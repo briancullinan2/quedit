@@ -253,13 +253,13 @@ export class TerminalSearchManager
 	public executeFindQuery(pooledCtx: IPooledTerminal, event?: KeyboardEvent | null): void
 	{
 		const state = this.getState(pooledCtx.term);
-		if(!pooledCtx.activeOwner?.searchInput) return;
+		if(!pooledCtx.searchInput) return;
 
 		if(state.debounceTimeout) clearTimeout(state.debounceTimeout);
 
 		state.debounceTimeout = setTimeout(() =>
 		{
-			const queryValue = pooledCtx.activeOwner?.searchInput?.value ?? '';
+			const queryValue = pooledCtx.searchInput?.value ?? '';
 
 			if(queryValue.length > 2)
 			{
@@ -290,7 +290,7 @@ export class TerminalSearchManager
 				this.clearSearch(pooledCtx.term);
 			}
 
-			this.updateSearchTerminalPlaceholder(pooledCtx.activeOwner?.searchInput, state);
+			this.updateSearchTerminalPlaceholder(pooledCtx.searchInput, state);
 			state.debounceTimeout = null;
 		}, 250);
 	}

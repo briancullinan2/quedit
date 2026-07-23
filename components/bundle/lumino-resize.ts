@@ -226,17 +226,29 @@ export class ResponsiveManager
 					const isOutline = OUTLINE_WIDGET_TYPES.includes(widgetName);
 					if(isOutline)
 					{
-						widgetTypes[widget.dataset.type ?? 'outline']++;
+						if(!widgetTypes[widget.dataset.type ?? 'outline'])
+						{
+							widgetTypes[widget.dataset.type ?? 'outline'] = 1;
+						} else
+						{
+							widgetTypes[widget.dataset.type ?? 'outline']++;
+						}
 					} else
 					{
-						widgetTypes[widget.constructor.name]++;
+						if(!widgetTypes[widgetName])
+						{
+							widgetTypes[widgetName] = 1;
+						} else
+						{
+							widgetTypes[widgetName]++;
+						}
 					}
 				});
 
 				// 2. Reference trackers for grouped type splitting
-				let firstOutlineWidget: Widget | null = null;
-				let firstTerminalWidget: Widget | null = null;
-				let firstPaintWidget: Widget | null = null;
+				const firstRefWidget: Record<string, Widget | null> = {
+
+				};
 
 				allWidgets.forEach(widget =>
 				{
@@ -247,55 +259,50 @@ export class ResponsiveManager
 
 					if(isOutline)
 					{
-						if(!firstOutlineWidget)
+						if(!firstRefWidget['outline'])
 						{
 							// First file tree / outline splits left relative to main editor
-							firstOutlineWidget = widget;
+							firstRefWidget['outline'] = widget;
 							mainDock.addWidget(widget, { mode: 'split-left', ref: primaryWidget });
 						}
 						else
 						{
 							// Subsequent file trees group as tabs in the outline panel
-							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstOutlineWidget });
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstRefWidget['outline'] });
 						}
 					}
 					else if(widgetName === 'TerminalWidget')
 					{
-						if(!firstTerminalWidget && Object.keys(widgetTypes).length <= 3)
+						if(!firstRefWidget[widgetName] && Object.keys(widgetTypes).length <= 3)
 						{
 							// First terminal splits bottom relative to the primary editor
-							firstTerminalWidget = widget;
+							firstRefWidget[widgetName] = widget;
 							mainDock.addWidget(widget, { mode: 'split-right', ref: primaryWidget });
 						}
-						else if(!firstTerminalWidget && !isHeightMobile)
+						else if(!firstRefWidget[widgetName] && !isHeightMobile)
 						{
-							firstTerminalWidget = widget;
+							firstRefWidget[widgetName] = widget;
 							mainDock.addWidget(widget, { mode: 'split-bottom', ref: primaryWidget });
 						}
 						else
 						{
 							// All subsequent terminals dock as tabs next to the first terminal
-							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstTerminalWidget ?? primaryWidget });
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstRefWidget[widgetName] ?? primaryWidget });
 						}
 					}
-					else if(widgetName === 'PaintWidget' || widgetName === 'TojiWidget')
+					else
 					{
-						if(!firstPaintWidget)
+						if(!firstRefWidget[widgetName] && (Object.keys(widgetTypes).length <= 2 || Object.keys(firstRefWidget).length < 3))
 						{
 							// First paint/canvas widget splits right relative to the main editor
-							firstPaintWidget = widget;
+							firstRefWidget[widgetName] = widget;
 							mainDock.addWidget(widget, { mode: 'split-right', ref: primaryWidget });
 						}
 						else
 						{
 							// Subsequent paint tools group together in the paint split zone
-							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstPaintWidget });
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstRefWidget[widgetName] ?? primaryWidget });
 						}
-					}
-					else
-					{
-						// Standard Ace Editors or general documents stay tabbed with the primary editor
-						mainDock.addWidget(widget, { mode: 'tab-after', ref: primaryWidget });
 					}
 				});
 
@@ -304,13 +311,22 @@ export class ResponsiveManager
 				if(layout?.main?.type === 'split-area' && layout.main.children)
 				{
 					const count = layout.main.children.length;
-					if(count === 2)
+					if(widgetTypes['outline'])
 					{
-						layout.main.sizes = [0.25, 0.75];
-					}
-					else if(count === 3)
+						if(count === 2)
+						{
+							layout.main.sizes = [0.25, 0.75];
+						}
+						else if(count === 3)
+						{
+							layout.main.sizes = [0.20, 0.40, 0.40];
+						}
+					} else
 					{
-						layout.main.sizes = [0.20, 0.50, 0.30];
+						if(count > 1)
+						{
+							layout.main.sizes = [0.50, 0.50];
+						}
 					}
 					mainDock.restoreLayout(layout as any);
 				}
@@ -327,7 +343,39 @@ export class ResponsiveManager
 					?? allWidgets[0];
 
 				const isMobileHeight = window.innerHeight < 700;
-				let firstNormalTerminalWidget: Widget | null = null;
+
+				const widgetTypes: Record<string, number> = {};
+
+				allWidgets.forEach(widget =>
+				{
+					const widgetName = widget.constructor.name;
+					const isOutline = OUTLINE_WIDGET_TYPES.includes(widgetName);
+					if(isOutline)
+					{
+						if(!widgetTypes[widget.dataset.type ?? 'outline'])
+						{
+							widgetTypes[widget.dataset.type ?? 'outline'] = 1;
+						} else
+						{
+							widgetTypes[widget.dataset.type ?? 'outline']++;
+						}
+					} else
+					{
+						if(!widgetTypes[widgetName])
+						{
+							widgetTypes[widgetName] = 1;
+						} else
+						{
+							widgetTypes[widgetName]++;
+						}
+					}
+				});
+
+
+				const firstRefWidget: Record<string, Widget | null> = {
+
+				};
+
 
 				allWidgets.forEach(widget =>
 				{
@@ -339,38 +387,54 @@ export class ResponsiveManager
 					if(widgetName === 'TerminalWidget')
 					{
 						// Terminal splitting logic: bottom split if enough height, else collapse to primary tab group
-						if(!isMobileHeight)
-						{
-							const nonTerminal = LayoutAdjuster._findNonOutlineOrTerminal(mainDock) ?? primaryWidget;
+						const nonTerminal = LayoutAdjuster._findNonOutlineOrTerminal(mainDock) ?? primaryWidget;
 
-							if(!firstNormalTerminalWidget)
-							{
-								// First terminal splits below the primary editor / non-terminal container
-								firstNormalTerminalWidget = widget;
-								mainDock.addWidget(widget, { mode: 'split-bottom', ref: nonTerminal });
-							}
-							else
-							{
-								// Subsequent terminals dock as tabs alongside the first terminal
-								mainDock.addWidget(widget, { mode: 'tab-after', ref: firstNormalTerminalWidget });
-							}
+						if(!firstRefWidget[widgetName] && !isMobileHeight)
+						{
+							// First terminal splits below the primary editor / non-terminal container
+							firstRefWidget[widgetName] = widget;
+							mainDock.addWidget(widget, { mode: 'split-bottom', ref: nonTerminal });
 						}
 						else
 						{
-							// Height under 700px: collapse terminal directly into primary top tab group
-							mainDock.addWidget(widget, { mode: 'tab-after', ref: primaryWidget });
+							// Subsequent terminals dock as tabs alongside the first terminal
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstRefWidget[widgetName] ?? primaryWidget });
 						}
 					}
 					else
 					{
 						// All other widgets (File lists, Paint tools, Editors) collapse into the primary tab container
-						LayoutAdjuster.addOptimalWidgetLayout(mainDock, widget, {
-							type: (widget.dataset?.type as WidgetType) ?? 'editor',
-							projectId: widgetName,
-							resize: false
-						});
+						const nonTerminal = LayoutAdjuster._findNonOutlineOrTerminal(mainDock);
+						if(OUTLINE_WIDGET_TYPES.includes(widget.constructor.name) && nonTerminal)
+						{
+							mainDock.addWidget(widget, { mode: 'split-left', ref: nonTerminal });
+						} else if(nonTerminal)
+						{
+							firstRefWidget[widgetName] = widget;
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: nonTerminal ?? primaryWidget });
+						} else if(firstRefWidget['TerminalWidget'])
+						{
+							mainDock.addWidget(widget, { mode: 'split-top', ref: firstRefWidget['TerminalWidget'] });
+						} else if(OUTLINE_WIDGET_TYPES.includes(primaryWidget.constructor.name))
+						{
+							mainDock.addWidget(widget, { mode: 'split-right', ref: firstRefWidget['outline'] });
+						} else
+						{
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: primaryWidget });
+						}
 					}
 				});
+
+				const layout = mainDock.saveLayout() as unknown as { main: LuminoLayoutNode | null; };
+				if(layout?.main?.type === 'split-area' && layout.main.children)
+				{
+					//const count = layout.main.children.length;
+					if(widgetTypes['outline'])
+					{
+						layout.main.sizes = [0.25, 0.75];
+					}
+					mainDock.restoreLayout(layout as any);
+				}
 			}
 
 			this._isWidescreenSplit = false;

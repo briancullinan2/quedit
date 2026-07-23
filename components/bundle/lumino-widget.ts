@@ -178,7 +178,7 @@ export class LayoutAdjuster
 				const refHTMLElement = bestRef.node as HTMLElement;
 				const shouldSplit = (isWidescreen && refHTMLElement.dataset.projectId !== projectId)
 					|| refHTMLElement.dataset.type === 'outline';
-				console.log('Opening tab ' + (shouldSplit ? 'split-right' : 'tab-after') + ' ' + bestRef.constructor.name);
+				console.log('Opening tab:' + newWidget.constructor.name + ' ' + (shouldSplit ? 'split-right' : 'tab-after') + ' ' + bestRef.constructor.name);
 				dockPanel.addWidget(newWidget, {
 					mode: shouldSplit ? 'split-right' : 'tab-after',
 					ref: bestRef

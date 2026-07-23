@@ -1,5 +1,5 @@
 import type { Terminal, IDecoration } from 'xterm';
-import { FrameRater } from './widget';
+import { FrameRater } from '../bundle/frame-rater';
 import { DockPanel } from '@lumino/widgets';
 
 // --- Ambient Structural Declarations ---
@@ -19,6 +19,7 @@ declare global
 	{
 		mainDock: DockPanel;
 		terminalFrameLimiter: typeof FrameRater;
+		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
 	}
 }
 
