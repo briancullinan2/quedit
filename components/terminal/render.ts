@@ -19,7 +19,7 @@ declare global
 	{
 		mainDock: DockPanel;
 		terminalFrameLimiter: typeof FrameRater;
-		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
+		triggerPanelRoute: (panelId: string, mainDock: DockPanel, noHide?: boolean) => Promise<void>;
 	}
 }
 

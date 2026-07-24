@@ -7,6 +7,7 @@ import type { HistoryToolbar } from "./menu-history";
 import { AssetInspector, hasSequentialBinaryRegex, hexDump } from "../rosetta/binary.mjs";
 import type { DockPanel } from "@lumino/widgets";
 import type { AceEditorWidget } from "../editor/widget";
+import { triggerPanelRoute } from "./menu";
 
 
 export interface DatabaseMetadata
@@ -55,7 +56,6 @@ declare global
 		FileManager: typeof FileManager;
 		resizeHandler: () => void;
 		historyToolbar: HistoryToolbar;
-		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
 		mainDock: DockPanel;
 		AceEditorWidget: typeof AceEditorWidget;
 		resolveDirectoryHandle(
@@ -571,12 +571,12 @@ export class FileManager
 	{
 		if(payload.isImageFile)
 		{
-			await window.triggerPanelRoute('paint', window.mainDock);
+			await triggerPanelRoute('paint', window.mainDock);
 
 			// TODO: openImage(payload.content, filePath);
 		} else
 		{
-			await window.triggerPanelRoute('editor', window.mainDock);
+			await triggerPanelRoute('editor', window.mainDock);
 		}
 	}
 

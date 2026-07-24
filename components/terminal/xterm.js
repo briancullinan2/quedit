@@ -665,7 +665,7 @@
                     this._register(this.onResize(( () => this._renderService.handleResize(this.cols, this.rows)))),
                     this._register(this.onBlur(( () => this._renderService.handleBlur()))),
                     this._register(this.onFocus(( () => this._renderService.handleFocus()))),
-                    this._viewport = this._register(this._instantiationService.createInstance(o.Viewport, this.element, this.screenElement)),
+                    this._viewport = this._register(this._instantiationService.createInstance(o.Viewport, this.element, this.screenElement, e)),
                     this._register(this._viewport.onRequestScrollLines((e => {
                         super.scrollLines(e, !1),
                         this.refresh(0, this.rows - 1),
@@ -1625,7 +1625,7 @@
               , c = i(802)
               , d = i(9881);
             let u = class extends o.Disposable {
-                constructor(e, t, i, s, r, n, a, u) {
+                constructor(e, t, v, i, s, r, n, a, u) {
                     super(),
                     this._bufferService = i,
                     this._optionsService = a,
@@ -1651,7 +1651,7 @@
                         useShadows: !1,
                         mouseWheelSmoothScroll: !0,
                         ...this._getChangeOptions()
-                    },_)),
+                    },_,v)),
                     this._register(this._optionsService.onMultipleOptionChange(["scrollSensitivity", "fastScrollSensitivity", "overviewRuler"], ( () => this._scrollableElement.updateOptions(this._getChangeOptions())))),
                     this._register(r.onProtocolChange((e => {
                         this._scrollableElement.updateOptions({
@@ -1745,7 +1745,7 @@
             }
             ;
             t.Viewport = u,
-            t.Viewport = u = s([r(2, a.IBufferService), r(3, n.ICoreBrowserService), r(4, a.ICoreMouseService), r(5, n.IThemeService), r(6, a.IOptionsService), r(7, n.IRenderService)], u)
+            t.Viewport = u = s([r(3, a.IBufferService), r(4, n.ICoreBrowserService), r(5, a.ICoreMouseService), r(6, n.IThemeService), r(7, a.IOptionsService), r(8, n.IRenderService)], u)
         },
         4196: function(e, t, i) {
             var s = this && this.__decorate || function(e, t, i, s) {
@@ -14053,7 +14053,7 @@
                 get options() {
                     return this._options
                 }
-                constructor(e, t, i) {
+                constructor(e, t, i, v) {
                     super(),
                     this._onScroll = this._register(new f.Emitter),
                     this.onScroll = this._onScroll.event,
@@ -14109,8 +14109,8 @@
                     this._domNode.setAttribute("role", "presentation"),
                     this._domNode.style.position = "relative",
                     this._domNode.appendChild(e),
-                    this._domNode.appendChild(this._horizontalScrollbar.domNode.domNode),
-                    document.getElementById('terminal-panel-all').appendChild(this._verticalScrollbar.domNode.domNode),
+                    this._domNode.appendChild(this._horizontalScrollbar.domNode.domNode);
+                    v.appendChild(this._verticalScrollbar.domNode.domNode),
                     this._options.useShadows ? (this._leftShadowDomNode = (0,
                     l.createFastDomNode)(document.createElement("div")),
                     this._leftShadowDomNode.setClassName("shadow"),
@@ -14314,8 +14314,8 @@
             }
             ,
             t.SmoothScrollableElement = class extends b {
-                constructor(e, t, i) {
-                    super(e, t, i)
+                constructor(e, t, i, v) {
+                    super(e, t, i, v)
                 }
                 setScrollPosition(e) {
                     e.reuseAnimation ? this._scrollable.setScrollPositionSmooth(e, e.reuseAnimation) : this._scrollable.setScrollPositionNow(e)

@@ -216,7 +216,7 @@ export class FileListWidget extends Widget
 			const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement).value;
 			const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement).value;
 			const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement).value;
-			window.open('https://github.com/' + owner + '/' + repo + '/tree/' + branch);
+			window.open('https://github.com/' + owner + '/' + repo + '/tree/' + branch, '_blank');
 		});
 		this.node.querySelector('[href="#new-folder"]')?.addEventListener('click', async (event) =>
 		{

@@ -30,7 +30,7 @@ declare global
 	interface Window
 	{
 		resizeHandler: () => void;
-		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
+		triggerPanelRoute: (panelId: string, mainDock: DockPanel, noHide?: boolean) => Promise<void>;
 		registerAllCommands: (menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry) => void;
 		repoToolbar: RepositoryToolbar;
 		scriptToolbar: ScriptToolbar;

@@ -3,6 +3,7 @@ import { Widget } from "@lumino/widgets";
 import { MenuConfig, MenuManager } from "./menu-manager";
 import type { PaintWidget } from '../paint/widget';
 import type { AceEditorWidget } from "../editor/widget";
+import { triggerPanelRoute } from "./menu";
 
 declare global
 {
@@ -179,10 +180,6 @@ const EDIT_MENU: MenuConfig = {
 	}, {
 		divider: true
 	}, {
-		name: "Copy Selection",
-		target: "layer/new.new_selection",
-		iconClass: "bx bx-copy"
-	}, {
 		name: "Copy to Clipboard",
 		shortcut: "Ctrl+C",
 		target: "edit/copy.copy_to_clipboard",
@@ -205,17 +202,17 @@ const EDIT_MENU: MenuConfig = {
 	}, {
 		name: "Find",
 		shortcut: "Ctrl+F",
-		target: "ace_edit.find",
+		target: "edit/find.find",
 		iconClass: "bx bx-search"
 	}, {
 		name: "Find In Files",
 		shortcut: "Ctrl+Shift+F",
-		target: "ace_edit.find_all",
+		target: "edit/find.find_all",
 		iconClass: "bx bx-folder-search"
 	}, {
 		name: "Replace",
 		shortcut: "Ctrl+H",
-		target: "ace_edit.replace",
+		target: "edit/replace.replace",
 		iconClass: "bx bx-find-replace"
 	}, {
 		name: "Search Images",
@@ -467,97 +464,101 @@ if(!window.globalModules)
 	window.globalModules = {};
 }
 
-if(!window.globalModules['file/exit'])
-{
-	window.globalModules['file/exit'] = {
-		exit: FileToolbar.closeApp
-	};
-	window.globalModules['file/open'] = {
-		open_file: function ()
+window.globalModules['file/exit'] = {
+	exit: FileToolbar.closeApp
+};
+window.globalModules['file/open'] = {
+	open_file: function ()
+	{
+		var _this = this;
+
+		if(window.lastInteractedWidget?.constructor.name === 'PaintWidget'
+			&& (window.lastInteractedWidget as PaintWidget)._instance
+			&& (window.lastInteractedWidget as PaintWidget)._instance?.alertify
+		)
 		{
-			var _this = this;
-
-			if(window.lastInteractedWidget?.constructor.name === 'PaintWidget'
-				&& (window.lastInteractedWidget as PaintWidget)._instance
-				&& (window.lastInteractedWidget as PaintWidget)._instance?.alertify
-			)
-			{
-				const alertify = (window.lastInteractedWidget as PaintWidget)._instance!.alertify;
-				alertify.success('You can also drag and drop items into browser.');
-			}
-
-			const temp = document.getElementById("tmp");
-			if(temp)
-			{
-				temp.innerHTML = '';
-				var a = document.createElement('input');
-				a.setAttribute("id", "file_open");
-				a.setAttribute('accept', targetAcceptString);
-				a.type = 'file';
-				a.multiple = true;
-				temp.appendChild(a);
-				a.addEventListener('change', function (event: any)
-				{
-					const files = event.target?.files || event.dataTransfer?.files;
-
-					if(files && files.length > 0)
-					{
-					}
-					/* TODO:
-					_this.open_handler(e);
-					const isQuakeAsset = filename.endsWith('.bsp') ||
-						filename.endsWith('.aas') ||
-						filename.endsWith('.qvm') ||
-						filename.endsWith('.md3') ||
-						filename.endsWith('.dat');
-
-					if (isQuakeAsset) {
-						console.log(`Intercepted Quake 3 asset by extension: ${file.name}. Routing to custom engine...`);
-						routeFileToQuakeEditor(file);
-						return; // Stop execution here. miniPaint never touches it!
-					}
-					*/
-
-				}, false);
-				//force click
-				a.click();
-			}
+			const alertify = (window.lastInteractedWidget as PaintWidget)._instance!.alertify;
+			alertify.success('You can also drag and drop items into browser.');
 		}
-	};
 
-	window.globalModules['file/new'] = {
-		new: function ()
+		const temp = document.getElementById("tmp");
+		if(temp)
 		{
-			const candidateTypes = ['AceEditorWidget', 'PaintWidget'];
-			// TODO: scan widgets for open editors and create a new file inside that editor
-			//   if there is none, make a new ace editor file
-			const editorCandidates: string[] = [];
-			if(window.lastInteractedWidget
-				&& candidateTypes.includes(window.lastInteractedWidget.constructor.name))
+			temp.innerHTML = '';
+			var a = document.createElement('input');
+			a.setAttribute("id", "file_open");
+			a.setAttribute('accept', targetAcceptString);
+			a.type = 'file';
+			a.multiple = true;
+			temp.appendChild(a);
+			a.addEventListener('change', function (event: any)
 			{
-				editorCandidates.push(window.lastInteractedWidget.constructor.name);
-			}
-			if(window.previousInteractedWidget
-				&& candidateTypes.includes(window.previousInteractedWidget.constructor.name))
-			{
-				editorCandidates.push(window.previousInteractedWidget.constructor.name);
-			}
-			for(let panel in window.mainDock.widgets())
-			{
-				if(candidateTypes.includes(panel.constructor.name))
+				const files = event.target?.files || event.dataTransfer?.files;
+
+				if(files && files.length > 0)
 				{
-					editorCandidates.push(panel.constructor.name);
 				}
-			}
-			if(editorCandidates[0] === 'AceEditorWidget')
-			{
-				window.AceEditorWidget.openFileInNewTab('new-file-' + (++window.tempCount), 'New File', '');
-			} else if(editorCandidates[0] === 'PaintWidget')
-			{
+				/* TODO:
+				_this.open_handler(e);
+				const isQuakeAsset = filename.endsWith('.bsp') ||
+					filename.endsWith('.aas') ||
+					filename.endsWith('.qvm') ||
+					filename.endsWith('.md3') ||
+					filename.endsWith('.dat');
 
+				if (isQuakeAsset) {
+					console.log(`Intercepted Quake 3 asset by extension: ${file.name}. Routing to custom engine...`);
+					routeFileToQuakeEditor(file);
+					return; // Stop execution here. miniPaint never touches it!
+				}
+				*/
+
+			}, false);
+			//force click
+			a.click();
+		}
+	}
+};
+
+window.globalModules['file/new'] = {
+	new: function ()
+	{
+		const candidateTypes = ['AceEditorWidget', 'PaintWidget'];
+		// TODO: scan widgets for open editors and create a new file inside that editor
+		//   if there is none, make a new ace editor file
+		const editorCandidates: string[] = [];
+		if(window.lastInteractedWidget
+			&& candidateTypes.includes(window.lastInteractedWidget.constructor.name))
+		{
+			editorCandidates.push(window.lastInteractedWidget.constructor.name);
+		}
+		if(window.previousInteractedWidget
+			&& candidateTypes.includes(window.previousInteractedWidget.constructor.name))
+		{
+			editorCandidates.push(window.previousInteractedWidget.constructor.name);
+		}
+		for(let panel in window.mainDock.widgets())
+		{
+			if(candidateTypes.includes(panel.constructor.name))
+			{
+				editorCandidates.push(panel.constructor.name);
 			}
 		}
+		if(editorCandidates[0] === 'AceEditorWidget')
+		{
+			window.AceEditorWidget.openFileInNewTab('new-file-' + (++window.tempCount), 'New File', '');
+		} else if(editorCandidates[0] === 'PaintWidget')
+		{
 
-	};
-}
+		}
+	}
 
+};
+
+
+window.globalModules['edit/find'] = {
+	find_all: async function ()
+	{
+		await triggerPanelRoute('search', window.mainDock, true);
+	}
+};

@@ -24,7 +24,7 @@ declare global
 		AceEditorWidget: typeof AceEditorWidget;
 		PaintWidget: typeof PaintWidget;
 		FileManager: typeof FileManager;
-		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
+		triggerPanelRoute: (panelId: string, mainDock: DockPanel, noHide?: boolean) => Promise<void>;
 		mainDock: DockPanel;
 		getRegistryIdFromWidget(widget: string | HTMLElement | FileListWidget): string | null | undefined | void;
 

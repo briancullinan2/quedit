@@ -224,13 +224,12 @@ export class TerminalWidget extends Widget
 		}
 		this.title.closable = true;
 		this.dataset.type = 'terminal';
+		this.addClass('terminal-filter-widget');
 
 		if(window.terminalWidgets)
 		{
 			window.terminalWidgets[window.terminalWidgets.length] = this;
 		}
-
-		this.addClass('terminal-filter-widget');
 
 		window.SettingsManager.hydrateAll(LOCAL_SETTINGS.editor);
 	}

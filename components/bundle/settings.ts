@@ -30,7 +30,6 @@ declare global
 		SettingsManager: Settings;
 		engineRepository?: string | undefined | null;
 		AceEditorWidget: typeof AceEditorWidget;
-		triggerPanelRoute: (panelId: string, mainDock: DockPanel) => Promise<void>;
 		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
 		[key: string]: any;
 	}

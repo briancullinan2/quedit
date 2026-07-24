@@ -311,10 +311,9 @@ ACE_MODULES['ace_file'] = {
 	},
 	open_keybindings: function (_: any, widget: AceEditorWidget)
 	{
-		const editor = widget._editor;
-		if(editor)
+		if(widget._editor && typeof widget._editor.showKeyboardShortcuts === 'function')
 		{
-			editor.execCommand('showKeyboardShortcuts');
+			widget._editor.showKeyboardShortcuts();
 		}
 	},
 	change_theme: function (themeName: string | undefined, widget: AceEditorWidget)
@@ -383,15 +382,32 @@ ACE_MODULES['edit/paste'] = {
 	}
 };
 
-ACE_MODULES['ace_edit'] = {
+
+ACE_MODULES['edit/find'] = {
 	find: function (_: any, widget: AceEditorWidget)
 	{
 		widget._editor?.execCommand('find');
-	},
+	}
+};
+
+
+ACE_MODULES['edit/replace'] = {
 	replace: function (_: any, widget: AceEditorWidget)
 	{
 		widget._editor?.execCommand('replace');
-	},
+	}
+};
+
+
+ACE_MODULES['edit/selection'] = {
+	select_all: function (_: any, widget: AceEditorWidget)
+	{
+		widget._editor?.selectAll();
+	}
+};
+
+
+ACE_MODULES['ace_edit'] = {
 	toggle_line_comment: function (_: any, widget: AceEditorWidget)
 	{
 		widget._editor?.toggleCommentLines();
@@ -465,12 +481,9 @@ ACE_MODULES['ace_selection'] = {
 	}
 };
 
-ACE_MODULES['ace_view'] = {
-	command_palette: function (_: any, widget: AceEditorWidget)
-	{
-		widget._editor?.execCommand('openCommandPallete');
-	},
-	zoom_in: function (_: any, widget: AceEditorWidget)
+
+ACE_MODULES['view/zoom'] = {
+	in: function (_: any, widget: AceEditorWidget)
 	{
 		const editor = widget._editor;
 		if(editor)
@@ -480,7 +493,7 @@ ACE_MODULES['ace_view'] = {
 			editor.setFontSize(size + 2);
 		}
 	},
-	zoom_out: function (_: any, widget: AceEditorWidget)
+	out: function (_: any, widget: AceEditorWidget)
 	{
 		const editor = widget._editor;
 		if(editor)
@@ -490,9 +503,18 @@ ACE_MODULES['ace_view'] = {
 			editor.setFontSize(size);
 		}
 	},
-	reset_zoom: function (_: any, widget: AceEditorWidget)
+	original: function (_: any, widget: AceEditorWidget)
 	{
 		widget._editor?.setFontSize(12);
+	}
+};
+
+
+
+ACE_MODULES['ace_view'] = {
+	command_palette: function (_: any, widget: AceEditorWidget)
+	{
+		widget._editor?.execCommand('openCommandPallete');
 	},
 	toggle_word_wrap: function (_: any, widget: AceEditorWidget)
 	{
@@ -574,10 +596,17 @@ ACE_MODULES['ace_go'] = {
 ACE_MODULES['ace_help'] = {
 	show_keybindings: function (_: any, widget: AceEditorWidget)
 	{
-		widget._editor?.execCommand('showKeyboardShortcuts');
-	},
+		if(widget._editor && typeof widget._editor.showKeyboardShortcuts === 'function')
+		{
+			widget._editor.showKeyboardShortcuts();
+		}
+	}
+};
+
+
+ACE_MODULES['help/about'] = {
 	about: function (_: any, widget: AceEditorWidget)
 	{
-		alert('Ace Editor Integration with VS Code style Menu Injector');
+		window.open('https://github.com/ajaxorg/ace',);
 	}
 };

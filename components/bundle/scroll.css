@@ -1,10 +1,9 @@
-
-#terminal .xterm .xterm-scrollable-element>.scrollbar.horizontal {
+.terminal-filter-widget .xterm-scrollable-element>.scrollbar.horizontal {
 	width: 100%;
 }
 
-#terminal .xterm .xterm-scrollable-element>.scrollbar>.slider,
-#terminal .xterm .xterm-scrollable-element>.scrollbar {
+.terminal-filter-widget .xterm-scrollable-element>.scrollbar>.slider,
+.terminal-filter-widget .xterm-scrollable-element>.scrollbar {
 	z-index: 1000;
 	opacity: 1;
 	pointer-events: all;
@@ -15,7 +14,7 @@
 .xterm-viewport ::-webkit-scrollbar,
 .xterm-scrollable-element::-webkit-scrollbar,
 .ace_editor ::-webkit-scrollbar,
-.xterm .xterm-scrollable-element>.scrollbar {
+.terminal-filter-widget .xterm-scrollable-element>.scrollbar {
 	width: 10px !important;
 	height: 10px !important;
 	background-color: transparent !important;
@@ -32,7 +31,7 @@
 .ace_editor ::-webkit-scrollbar-track,
 .ace_scrollbar::-webkit-scrollbar-track,
 .ace_editor .ace_scrollbar-h::-webkit-scrollbar-track,
-.xterm .xterm-scrollable-element>.scrollbar {
+.terminal-filter-widget .xterm-scrollable-element>.scrollbar {
 	background: transparent !important;
 }
 
@@ -49,9 +48,9 @@
 ::-webkit-scrollbar-thumb,
 .xterm-scrollable-element::-webkit-scrollbar-thumb,
 .xterm-viewport ::-webkit-scrollbar-thumb,
-.xterm .xterm-scrollable-element>.scrollbar>.slider,
-#terminal-container .scrollbar>.slider,
-#terminal-container .xterm-viewport::-webkit-scrollbar-thumb,
+.terminal-filter-widget .xterm-scrollable-element>.scrollbar>.slider,
+.terminal-filter-widget .scrollbar>.slider,
+.terminal-filter-widget .xterm-viewport::-webkit-scrollbar-thumb,
 .ace_editor ::-webkit-scrollbar-thumb {
 	width: 10px !important;
 
