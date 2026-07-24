@@ -48,7 +48,13 @@ declare global
 		LayoutAdjuster: typeof LayoutAdjuster;
 		mainDock: DockPanel;
 		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
-		compilerDiagnostics?: any;
+		compilerDiagnostics?: {
+			log: (msg: string) => void;
+			clear: () => void;
+			getBridge: () => {
+				refreshActiveEditorView: (session: AceSession) => void;
+			};
+		};
 		diagnosticsBridge: any;
 		AceEditorWidget: typeof AceEditorWidget;
 		historyToolbar: HistoryToolbar;

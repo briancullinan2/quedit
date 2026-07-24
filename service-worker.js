@@ -35,10 +35,6 @@ self.console.info = (...args) =>
 	if(!SHUTUP && typeof originalConsole != 'undefined') originalConsole.info(...args);
 };
 
-
-const ERROR_PREAMBLE = '\x1b[38;5;196m[ERROR]\x1b[0m ';       // Intense Crimson Red
-const GITHUB_PREAMBLE = '\x1b[38;5;27m[GITHUB]\x1b[0m ';      // Deep Brand Blue
-
 console.log('🔴 [SW-TRACE] Initial script execution block started.');
 
 // Helper to load a script from IDB VFS and evaluate it in the worker context

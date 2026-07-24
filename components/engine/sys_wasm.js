@@ -104,10 +104,10 @@ function updateEnvironment(program, ENV) {
     updateGlobalFunctions(ENV.exports)
     updateGlobalBufferAndViews()
     // THIS IS ALSO STILL KIND OF A TEST THAT WINDOW INIT WORKS
-    //   STDLIB WOULD ALLOC AS THE LIBRARY LOADS, 
+    //   STDLIB WOULD ALLOC AS THE LIBRARY LOADS,
     //   THIS IS KIND OF LIKE SHELL SPACE ALLOC
     // reserve some memory at the beginning for passing shit back and forth with JS
-    //   not to use a complex HEAP, just loop around on bytes[b % 128] and if 
+    //   not to use a complex HEAP, just loop around on bytes[b % 128] and if
     //   something isn't cleared out, crash
     // store some strings and crap
     /*
@@ -158,8 +158,6 @@ async function initEngine(program) {
     Module.environment = {
         USER: 'brian'
     }
-
-    PREAMBLE = ENGINE_PREAMBLE
 
     await readPreFS()
     if (!program) {
@@ -338,11 +336,11 @@ async function readPreFS() {
     thinking about how deep I want to go on this:
     I had a plan to repackage assets as they are requested from inside the server code
     so that the same process could be used for UDP downloads.
-  
+
     But now I'm wondering if there's any reason not to do the same thing from the proxy server.
-  
+
     Where do I get this list from normally? I has a plan to transfer pk3_cache databases from the server. That would store a list of pk3s per mod.
-  
+
     How do I make the engine automatically pick a mod? #define BASEGAME in q_shared.h
     but FS_GetCurrentGameDir() is not available before the engine loads.
     */

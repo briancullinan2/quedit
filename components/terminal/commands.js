@@ -251,7 +251,7 @@ const COMMAND_SCHEMA = {
 		args: [
 			{
 				name: "module",
-				type: Object.keys(IMPORT_MODULES),
+				type: ['terminal', 'editor', 'build', 'quake3e', 'q3', 'audio', 'toji', 'paint', 'nunu', 'audio-editor', 'map-editor', 'map-loader'],
 				description: "Load the specified module by name"
 			}
 		],
@@ -405,10 +405,10 @@ function writeCommandHelp(targetCommand, argv)
 }
 
 
-async function loadCommand(argv)
+async function loadCommand(argv, database, commandName)
 {
 
-	let moduleToLoad = argv[0];
+	let moduleToLoad = argv[0] || commandName;
 	if(!argv[0] || argv[0].trim().length === 0
 		|| argv === 'q3'
 		// TODO: remove conflict down below by running engine and dedicated in a worker
@@ -457,7 +457,7 @@ async function loadCommand(argv)
 }
 
 
-async function help(argv)
+async function help(argv, database, commandName, term)
 {
 	const targetCommand = argv[0];
 
@@ -511,6 +511,23 @@ async function help(argv)
 
 
 
+function tokenize(input)
+{
+	// Regex matches words, or strings inside single/double quotes
+	const regex = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
+	const tokens = [];
+	let match;
+
+	while((match = regex.exec(input)) !== null)
+	{
+		// match[1] is double-quoted content, match[2] is single-quoted
+		// match[0] is the unquoted word
+		tokens.push(match[1] || match[2] || match[0]);
+	}
+	return tokens;
+}
+
+
 
 const CWD = '';
 const HISTORY = [];
@@ -518,13 +535,15 @@ const HISTORY = [];
 
 window.runningCommand = false;
 let detachedConsole = false;
-async function handleCommand(input)
+async function handleCommand(input, term)
 {
-	const database = owner.value + '/' + repository.value;
+	const database = window.RepositoryToolbar.owner?.value + '/' + window.RepositoryToolbar.repository?.value;
 	const tokens = tokenize(input.trim());
 
 	if(window.api)
+	{
 		api.configuration = configuration.value === 'debug' ? 'debug' : 'release';
+	}
 
 	if(tokens.length === 0) return;
 
@@ -560,7 +579,7 @@ async function handleCommand(input)
 
 		try
 		{
-			await targetExecutionRoute(args, database, commandName);
+			await targetExecutionRoute(args, database, commandName, term);
 		} catch(execError)
 		{
 			if(typeof originalConsole !== 'undefined')
@@ -601,13 +620,13 @@ async function error(argv)
 }
 
 
-function reset()
+function reset(argv, database, commandName, term)
 {
 	term.reset();
 	triggerIncrementalSave();
 }
 
-function clear()
+function clear(argv, database, commandName, term)
 {
 	term.clear();
 	triggerIncrementalSave();

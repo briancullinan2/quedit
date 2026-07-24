@@ -6,8 +6,6 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
 	if(typeof SettingsManager != 'undefined' && window.api)
 		window.api.github_token = SettingsManager.get('core', 'githubToken');
 
-	PREAMBLE = GITHUB_PREAMBLE;
-
 	const fullUrl = `https://api.github.com/repos/${ownerName}/${repoName}`
 		+ (url.startsWith('/') || url.trim().length == 0 ? '' : '/') + url + (url.includes('?') ? '&' : '?') + `t=${Date.now()}`;
 	try
@@ -59,7 +57,6 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
 		} else if(up.message === 'UNAUTHORIZED_ACCESS')
 		{
 		}
-		PREAMBLE = ERROR_PREAMBLE;
 		console.error("Failed to github: " + fullUrl, up);
 		throw up;
 	}
@@ -634,8 +631,6 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null)
 	if(!database)
 		database = owner + '/' + repo;
 
-	PREAMBLE = FETCH_PREAMBLE;
-
 	try
 	{
 		console.info(`Requesting archive from ${owner}/${repo}...`);
@@ -687,7 +682,6 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null)
 
 	} catch(err)
 	{
-		PREAMBLE = ERROR_PREAMBLE;
 		console.error(`Failed to download repo: ${err.message}`);
 	}
 }
@@ -714,7 +708,6 @@ async function listReleases(owner, repo)
 		return releases;
 	} catch(err)
 	{
-		PREAMBLE = ERROR_PREAMBLE;
 		console.error("Failed to list releases: " + err);
 	}
 }
@@ -723,10 +716,6 @@ async function getAuthenticatedUser()
 {
 	const token = SettingsManager.get('core', 'githubToken');
 	if(!token) return null;
-
-
-	PREAMBLE = GITHUB_PREAMBLE;
-
 
 	try
 	{
@@ -750,7 +739,6 @@ async function getAuthenticatedUser()
 		return userData;
 	} catch(err)
 	{
-		PREAMBLE = ERROR_PREAMBLE;
 		console.error("Failed to fetch user data: " + err);
 	}
 }

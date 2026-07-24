@@ -1,8 +1,9 @@
-import type { IDisposable } from '@xterm/xterm';
+import type { IDisposable, Terminal } from '@xterm/xterm';
 import { TerminalHistoryManager } from './history'; // Adjust path accordingly
 import type { StatusBarWidget } from '../bundle/status';
 import type { IPooledTerminal } from './widget';
 import { FILE_NAME_REGEX, SearchTerminal } from './search';
+import type { terminalWrite } from '../bundle/logging';
 
 // --- Types & Structural Interfaces ---
 export interface ExtractedFile
@@ -42,6 +43,8 @@ declare global
 		triggerIncrementalSave?: () => void;
 		updateModifierPressed?: (arg: any) => void;
 		lastNewLine?: boolean;
+		handleCommand: (command: string, term: Terminal) => Promise<void>;
+		terminalWrite?: typeof terminalWrite;
 	}
 }
 
@@ -549,9 +552,9 @@ export class TerminalEventManager
 				{
 					committedCommand = this.historyManager.commitLine(this.pooledCtx.term, state.currentLine);
 
-					if(typeof (window as any).terminalWrite === 'function')
+					if(typeof window.terminalWrite === 'function')
 					{
-						(window as any).terminalWrite(committedCommand + '\n\r', 'user-input', true);
+						window.terminalWrite(committedCommand + '\n\r', 'user-input', true);
 					}
 				} else
 				{
@@ -568,15 +571,15 @@ export class TerminalEventManager
 					window.lastNewLine = true;
 					this.pooledCtx.term.write('\n\r');
 
-					if(typeof (window as any).handleCommand === 'function')
+					if(typeof window.handleCommand === 'function')
 					{
-						await (window as any).handleCommand(committedCommand);
+						await window.handleCommand(committedCommand, this.pooledCtx.term);
 					}
 				} catch(e: any)
 				{
-					if(typeof (window as any).terminalWrite === 'function')
+					if(typeof window.terminalWrite === 'function')
 					{
-						(window as any).terminalWrite(e.toString() + '\r\n' + (e.stack || e.stacktrace || '') + '\r\n');
+						window.terminalWrite(e.toString() + '\r\n' + (e.stack || e.stacktrace || '') + '\r\n');
 					}
 				}
 

@@ -346,7 +346,7 @@ async function header(argv, database)
 
 
 
-async function compileWorker(argv, database)
+async function compileWorker(argv, database, commandName, term)
 {
 	let file = argv[0] || currentSession();
 	let selected = argv[1] || engineRepository || database;
@@ -604,7 +604,7 @@ rm /tmp/lcc420.i
 }
 
 
-async function clang(argv, database)
+async function clang(argv, database, commandName, term)
 {
 
 	let CONFIGURATION = api.configuration === 'release'

@@ -25,7 +25,7 @@ surrounding it. I think if all of these things were done, this could be the firs
 11. **Isolated File Tree Selection:** Fix file highlighting in the sidebar. Disable the default [TreeJS Selection Overrides](https://www.google.com/search?q=https://cloudfour.com/thinks/a-guarded-defense-of-the-tree-view/) that automatically highlight every single sub-file when a parent folder expands. Restructure the selection handlers so clicking a folder only targets that specific folder, keeping the "Add File" and "Rename" buttons working properly.
 12. DONE: **OFFLINE MODE!** I have a worker in quake3e-portals branch and in Atrium that I did more work on from the portals branchs originally. This has a special caveate that the whole environment is also editable and needs to upgrade itself.
 13. **Load local environment javascripts** like core/ (anything other than module.js) off of the IDB store instead of from the webserver. Should install itself into IDB and offline mode first time the page loads.
-14. **FileSystemAccess API** for loading game assets directory or github stores directly off the file system, so we aren't copying those files twice into the IDB.
+14. DONE: **FileSystemAccess API** for loading game assets directory or github stores directly off the file system, so we aren't copying those files twice into the IDB.
 
 
 ---
@@ -39,7 +39,7 @@ surrounding it. I think if all of these things were done, this could be the firs
 5. **Back/Next Navigation:** Wire up the browser's back and forward buttons to navigate through your open code files. Merge this with a unified undo/redo system for both text editing and texture painting.
 6. DONE: **Fix miniPaint Shortcuts:** Stop the [miniPaint](https://github.com/viliusle/miniPaint) drawing tool from stealing keyboard shortcuts when you are working in a different code tab. Only listen to it when its specific tab is open.
 7. **Scratchpad File Interception:** Block miniPaint's default "Open File" popups. Route any uploaded files into a temporary sandbox folder (`idb://scratchpad`) so they don't mess up your active workspace until you hit save.
-8. **Zen Mode Layouts:** Build absolute layout stylesheets that hide all distracting panels, creating a clean full-screen look for editing code, painting textures, or viewing the engine.
+8. DONE: **Zen Mode Layouts:** Build absolute layout stylesheets that hide all distracting panels, creating a clean full-screen look for editing code, painting textures, or viewing the engine.
 
 9. **Smart Toolbar and Function Jump:** Hook up the toolbar buttons so you can easily add, save, or upload whole folders. Fix the back and forward buttons so they let you step through your file history and undo or redo actions. Populate the current filename dropdown so clicking it switches files, and make it even cooler by listing individual code blocks and functions inside that file.
 

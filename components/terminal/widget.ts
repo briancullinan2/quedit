@@ -21,6 +21,7 @@ declare global
 		terminalLog: TerminalLogEntry[];
 		TerminalWidget: typeof TerminalWidget;
 		terminalWidgets?: Array<TerminalWidget>;
+		terminalLoaded?: boolean;
 	}
 }
 
@@ -65,8 +66,25 @@ class TerminalPoolManager
 	private pool: Map<string, IPooledTerminal> = new Map();
 	private instanceCounter = 0;
 
+	private readonly SCRIPTS_TO_LOAD = [
+		'/components/terminal/commands-build.js',
+		'/components/terminal/commands-files.js',
+		'/components/terminal/commands-git.js',
+		'/components/terminal/commands-quake3.js',
+		'/components/terminal/commands.js',
+	];
+	startupPromise: Promise<void>;
+
 	private constructor()
 	{
+
+		this.startupPromise = (async () =>
+		{
+			for(let src of this.SCRIPTS_TO_LOAD)
+			{
+				await window.loadScript(src);
+			}
+		})();
 		window.addEventListener('beforeunload', () =>
 		{
 			for(const pooled of this.pool.values())
@@ -208,9 +226,8 @@ if(!window.terminalWidgets)
 export class TerminalWidget extends Widget
 {
 	public filterId: string;
-	private currentTerminalCtx: IPooledTerminal | null = null;
+	public currentTerminalCtx: IPooledTerminal | null = null;
 	private parentTabBar?: HTMLElement;
-	terminalLoadComplete: boolean = false;
 
 	constructor(filterId: string, titleLabel: string)
 	{
@@ -463,7 +480,7 @@ export class TerminalWidget extends Widget
 		this.node.appendChild(this.currentTerminalCtx.container);
 
 		//if(this.currentTerminalCtx.events?.terminalStartupBegun)
-		if(this.terminalLoadComplete)
+		if(window.terminalLoaded)
 		{
 			//this.syncTerminalState();
 		}
@@ -513,7 +530,7 @@ export class TerminalWidget extends Widget
 			{
 				(window as any).captureRenderToTerminalCorner(term);
 			}
-			this.terminalLoadComplete = true;
+			window.terminalLoaded = true;
 			return;
 		}
 
@@ -522,7 +539,7 @@ export class TerminalWidget extends Widget
 		const filteredBuffer = sharedLogs
 			.filter((log: any) =>
 			{
-				const text = log.text || log || '';
+				//const text = log.text || log || '';
 				if(this.filterId === 'all') return true;
 				return log.source === this.filterId || log.source?.includes(this.filterId);
 			})
@@ -539,7 +556,7 @@ export class TerminalWidget extends Widget
 			core._cursorBlinkContext.restartInterval();
 		}
 
-		this.terminalLoadComplete = true;
+		window.terminalLoaded = true;
 	}
 
 

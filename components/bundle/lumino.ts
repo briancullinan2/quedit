@@ -1,3 +1,4 @@
+import './logging';
 import { BoxPanel, DockPanel, Widget, Menu, MenuBar } from '@lumino/widgets';
 import * as commands from '@lumino/commands';
 import * as widgets from '@lumino/widgets';

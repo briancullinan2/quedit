@@ -1,0 +1,564 @@
+import type { Terminal } from "@xterm/xterm";
+import type { AceSession } from "../editor/widget";
+import type { TerminalLogEntry, TerminalWidget } from "../terminal/widget";
+import { DockPanel, Widget } from "@lumino/widgets";
+
+// --- GLOBAL TYPE DECLARATIONS ---
+declare global
+{
+	interface Window
+	{
+		mainDock: DockPanel;
+		lastInteractedWidget: Widget | null;
+		lineCount: number;
+		terminalLog: TerminalLogEntry[];
+		compilerDiagnostics?: {
+			log: (msg: string) => void;
+			clear: () => void;
+			getBridge: () => {
+				refreshActiveEditorView: (session: AceSession) => void;
+			};
+		};
+		terminalLoaded?: boolean;
+		terminalWrite?: typeof terminalWrite;
+		runningCommand?: boolean;
+		detachedConsole?: boolean;
+		alreadyWroteDetached?: boolean;
+	}
+
+	const api: {
+		hostWrite?: (formatted: string, source: SourceMetadata) => void;
+		worker?: boolean;
+	} | undefined;
+
+}
+
+export const LINES_TO_SAVE = 1000;
+
+
+// --- TYPES & INTERFACES ---
+export type LogLevel = 'log' | 'warn' | 'error' | 'info';
+
+export type SourceMetadata = [
+	category: string,
+	...trailingFilesAndFunc: string[],
+	rawFileName: string,
+	rawFilePath: string
+];
+
+export interface ParsedStackFrame
+{
+	func: string;
+	file: string;
+}
+
+export type CalleeInfo = [
+	func: string,
+	trailingFiles: string[],
+	category: string,
+	rawFile: string
+];
+
+// --- CONSTANTS & CONFIGURATION ---
+const colors: Record<string, string> = {
+	reset: "\x1b[0m",
+	log: "\x1b[32m",   // Green
+	warn: "\x1b[33m",  // Yellow
+	error: "\x1b[31m", // Red
+	info: "\x1b[36m",  // Cyan
+	gray: "\x1b[90m"   // Gray for timestamps/meta
+};
+
+export const TOOLS_PREAMBLE = `${colors.info}[TOOLS]${colors.reset} `;
+export const WARN_PREAMBLE = `${colors.warn}[DETACHED]${colors.reset} `;
+
+let PREAMBLE = TOOLS_PREAMBLE;
+let lineCount = 0;
+let lastPartialLine = '';
+
+const PIPELINE_CATEGORIES: Record<string, string> = {
+	'make': 'build',
+	'compiler': 'build',
+	'linker': 'build',
+	'github': 'network',
+	'p2p': 'network',
+	'worker': 'worker',
+	'shared': 'build'
+};
+
+const originalConsole = {
+	log: console.log.bind(console),
+	warn: console.warn.bind(console),
+	error: console.error.bind(console),
+	info: console.info.bind(console)
+};
+
+// --- CORE UTILITIES ---
+
+/**
+ * Safely inspects and extracts properties from complex engine objects,
+ * walking up prototype chains without invoking dangerous getters.
+ */
+export function rebuildComplexObjectAsText(
+	obj: unknown,
+	maxDepth: number = 3,
+	currentDepth: number = 0,
+	cache: Set<unknown> = new Set()
+): string
+{
+	if(obj === null || obj === undefined) return String(obj);
+	if(typeof obj !== 'object' && typeof obj !== 'function') return String(obj);
+
+	// Prevent infinite cyclic loops
+	if(cache.has(obj)) return '[Circular]';
+	cache.add(obj);
+
+	if(currentDepth >= maxDepth) return '[Max Depth Reached]';
+
+	// Handle array configurations immediately
+	if(Array.isArray(obj))
+	{
+		if(obj.length === 0) return '[]';
+		return '[' + obj.map(item => rebuildComplexObjectAsText(item, maxDepth, currentDepth + 1, cache)).join(', ') + ']';
+	}
+
+	const lines: string[] = [];
+	const targetObj = obj as Record<string, unknown>;
+	const className = targetObj.constructor ? targetObj.constructor.name : 'Object';
+
+	let currentTarget: object | null = targetObj;
+	const visitedProps = new Set<string>();
+
+	while(currentTarget && currentTarget !== Object.prototype)
+	{
+		const props = Object.getOwnPropertyNames(currentTarget);
+
+		for(const prop of props)
+		{
+			if(visitedProps.has(prop)) continue;
+			visitedProps.add(prop);
+
+			try
+			{
+				const descriptor = Object.getOwnPropertyDescriptor(currentTarget, prop);
+
+				// CRITICAL: If it's an active getter, do NOT invoke it
+				if(descriptor && descriptor.get && !descriptor.value)
+				{
+					lines.push(`${'  '.repeat(currentDepth + 1)}${prop}: [Getter]`);
+					continue;
+				}
+
+				const val = targetObj[prop];
+
+				if(typeof val === 'function')
+				{
+					// Omit functions cleanly
+				} else if(typeof val === 'object' && val !== null)
+				{
+					lines.push(`${'  '.repeat(currentDepth + 1)}${prop}: ${rebuildComplexObjectAsText(val, maxDepth, currentDepth + 1, cache)}`);
+				} else
+				{
+					lines.push(`${'  '.repeat(currentDepth + 1)}${prop}: ${String(val)}`);
+				}
+			} catch(e)
+			{
+				const errMessage = e instanceof Error ? e.message : String(e);
+				lines.push(`${'  '.repeat(currentDepth + 1)}${prop}: [Unreadable Property: ${errMessage}]`);
+			}
+		}
+		currentTarget = Object.getPrototypeOf(currentTarget);
+	}
+
+	cache.delete(obj);
+
+	if(lines.length === 0) return `${className} {}`;
+	return `${className} {\n${lines.join('\n')}\n${'  '.repeat(currentDepth)}}`;
+}
+
+export function formatMessageItem(arg: unknown): string
+{
+	if(typeof arg === 'string')
+	{
+		return arg.trim();
+	}
+
+	if(arg instanceof Error)
+	{
+		return `${arg.name}: ${arg.message}\n\r${arg.stack || ''}\n\r[Context State Dump]:\n\r${rebuildComplexObjectAsText(arg)}`;
+	}
+
+	if(typeof arg === 'object' && arg !== null)
+	{
+		const obj = arg as Record<string, unknown>;
+		if(Object.keys(obj).length === 0)
+		{
+			return ((obj.name as string) || obj.constructor.name || typeof arg) + ' {empty}';
+		}
+
+		try
+		{
+			const stringifyCache = new Set<unknown>();
+			return ((obj.name as string) || obj.constructor.name || typeof arg) + ' ' + JSON.stringify(arg, (key, value) =>
+			{
+				if(typeof value === 'object' && value !== null)
+				{
+					if(stringifyCache.has(value)) return '[Circular]';
+					stringifyCache.add(value);
+				}
+				return value;
+			}, 4);
+		} catch(jsonCrash)
+		{
+			const errMessage = jsonCrash instanceof Error ? jsonCrash.message : String(jsonCrash);
+			return `[Rebuilt Object Asset Dump due to serialization crash: ${errMessage}]\n` + rebuildComplexObjectAsText(arg);
+		}
+	}
+
+	return String(arg);
+}
+
+export const formatMessage = (level: string, args: unknown[]): string =>
+{
+	const timestamp = new Date().toLocaleTimeString();
+	const LOCAL_PREAMBLE = level.includes('\x1b')
+		? level
+		: `${colors[level] || colors.gray}[${level.toUpperCase()}]${colors.reset} `;
+	const prefix = `${colors.gray}[${timestamp}]${LOCAL_PREAMBLE}${colors.reset}`;
+
+	const processed = args.map(formatMessageItem);
+	return `${prefix}${processed.join('\n\r')}\r\n`;
+};
+
+export function getCalleeInfoFromStackTrace(): CalleeInfo
+{
+	try
+	{
+		throw new Error();
+	} catch(error)
+	{
+		const err = error as Error;
+		if(!err.stack) return ['unknown', [], 'unknown', 'unknown'];
+		const stackLines = err.stack.split('\n');
+
+		const parseLine = (line: string): ParsedStackFrame | null =>
+		{
+			let match = line.match(/at\s+([^\s(]+)\s+\((.+):[0-9]+:[0-9]+\)/);
+			if(match) return { func: match[1], file: match[2] };
+
+			match = line.match(/at\s+(.+):[0-9]+:[0-9]+/);
+			if(match) return { func: 'global', file: match[1] };
+
+			return null;
+		};
+
+		let currentFile: string | null = null;
+		for(let i = 0; i < stackLines.length; i++)
+		{
+			const parsed = parseLine(stackLines[i]);
+			if(parsed)
+			{
+				currentFile = parsed.file;
+				break;
+			}
+		}
+
+		let immediateCalleeFunc: string | null = null;
+		let immediateCalleeFile: string | null = null;
+		const trailingFiles: string[] = [];
+		const uniqueNames = new Set<string>();
+
+		for(let i = 0; i < stackLines.length; i++)
+		{
+			const parsed = parseLine(stackLines[i]);
+			if(!parsed) continue;
+
+			if(parsed.file === currentFile) continue;
+
+			if(!immediateCalleeFunc)
+			{
+				immediateCalleeFunc = parsed.func;
+				immediateCalleeFile = parsed.file;
+			}
+
+			const rawFileName = parsed.file.split('/').pop() || '';
+			const scriptName = rawFileName.replace('.js', '').replace('.ts', '');
+
+			if(!uniqueNames.has(scriptName))
+			{
+				uniqueNames.add(scriptName);
+				trailingFiles.push(scriptName);
+			}
+		}
+
+		let matchedCategory = 'unknown';
+		for(const name of trailingFiles)
+		{
+			if(PIPELINE_CATEGORIES[name])
+			{
+				matchedCategory = PIPELINE_CATEGORIES[name];
+				break;
+			}
+		}
+
+		return [
+			immediateCalleeFunc || 'global',
+			trailingFiles,
+			matchedCategory,
+			immediateCalleeFile || 'unknown'
+		];
+	}
+}
+
+export function forceLineWrap(text: string, maxCharsPerRow: number = 80): string
+{
+	const rows: string[] = [];
+	let currentLine = '';
+	let visibleCount = 0;
+
+	const tokenRegex = /(\x1b\[[0-9;]*[a-zA-Z])|([\s\S])/g;
+	let match: RegExpExecArray | null;
+
+	while((match = tokenRegex.exec(text)) !== null)
+	{
+		const [, ansiCode, printableChar] = match;
+
+		if(ansiCode)
+		{
+			currentLine += ansiCode;
+		} else
+		{
+			if(printableChar === '\n')
+			{
+				rows.push(currentLine);
+				currentLine = '';
+				visibleCount = 0;
+			} else
+			{
+				currentLine += printableChar;
+				visibleCount++;
+
+				if(visibleCount >= maxCharsPerRow)
+				{
+					rows.push(currentLine);
+					currentLine = '';
+					visibleCount = 0;
+				}
+			}
+		}
+	}
+
+	if(currentLine.length > 0)
+	{
+		rows.push(currentLine);
+	}
+
+	return rows.join('\n\r');
+}
+
+// --- LOGGING WRITERS ---
+
+export function writeLog(msg: string, ...args: unknown[]): void
+{
+	let skipTerminal = false;
+	if(msg.includes('Assertion failed: lookup.node'))
+	{
+		debugger;
+		skipTerminal = true;
+	}
+	if(msg.includes && msg.includes('TypeError:')) debugger;
+
+	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+	const rawFileName = rawFile.split('/').pop()?.replace(/\.(js|ts)$/, '') || '';
+
+	const source: SourceMetadata = [
+		category,
+		...trailingFiles,
+		func,
+		rawFileName,
+		rawFile
+	];
+
+	if(trailingFiles.includes('github'))
+	{
+		// network tracing intercept block hook...
+	}
+
+	const formatted = formatMessage(PREAMBLE, [msg, ...args]);
+
+	if(typeof window !== 'undefined' && typeof window.terminalWrite !== 'undefined' && !skipTerminal)
+	{
+		window.terminalWrite(formatted, source);
+	}
+	if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker)
+	{
+		api.hostWrite(formatted, source);
+	}
+
+	if(msg.includes('Error'))
+	{
+		originalConsole.error(msg, source, ...args);
+	} else
+	{
+		originalConsole.log(msg, source, ...args);
+	}
+}
+
+export function terminalWrite(message: string, source?: SourceMetadata | string, skipActualWrite: boolean = false): void
+{
+	if(!message) return;
+	if(message.includes('Array "[Circular]"')) debugger;
+
+	let render = message;
+	if(!message.endsWith('\n\r') && !message.endsWith('\n'))
+	{
+		const parts = message.split(/\n\r*/);
+		lastPartialLine = parts.pop() || '';
+		render = parts.join('\n\r');
+	}
+
+	if(lastPartialLine)
+	{
+		render = lastPartialLine + render;
+		lastPartialLine = '';
+	}
+
+	if(typeof window !== 'undefined')
+	{
+		window.lineCount = (window.lineCount || 0) + (message.match(/\n/g) || []).length;
+
+		if(window.compilerDiagnostics)
+		{
+			window.compilerDiagnostics.log(message);
+		}
+
+		if(!source || typeof source === 'string')
+		{
+			const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+			const rawFileName = rawFile.split('/').pop()?.replace(/\.(js|ts)$/, '') || '';
+			source = [category, source ?? 'log', ...trailingFiles, func, rawFileName, rawFile];
+		}
+
+		if(window.terminalLog)
+		{
+			window.terminalLog.push({
+				render: render.includes('\n') ? forceLineWrap(render, 120) : '',
+				source: source,
+				text: message,
+				index: window.terminalLog.length,
+				line: lineCount
+			});
+
+			const logs = window.terminalLog.slice(-LINES_TO_SAVE);
+			localStorage.setItem('terminal_log', JSON.stringify(logs));
+		}
+
+		if(!window.terminalLoaded) return;
+	}
+
+	const terms = Array.from(window.mainDock.widgets()).filter(w => w.constructor.name === 'TerminalWidget') as TerminalWidget[];
+	if(terms.length > 0 && !skipActualWrite)
+	{
+		terms.forEach(term =>
+		{
+			if(window.lastInteractedWidget === term
+				|| term.filterId === source || source?.includes(term.filterId))
+			{
+				term.currentTerminalCtx?.term.write(message);
+			}
+		});
+	}
+}
+
+window.terminalWrite = terminalWrite;
+
+export function specialWrite(msg: string, source: SourceMetadata): void
+{
+	if(!msg) return;
+
+	if(msg.includes('Array "[Circular]"')) debugger;
+
+	if(msg.includes('q3lcc -v') && typeof window !== 'undefined' && window.compilerDiagnostics)
+	{
+		window.compilerDiagnostics.clear();
+	}
+
+	if(typeof window !== 'undefined' && !window.runningCommand)
+	{
+		window.runningCommand = true;
+		if(!window.detachedConsole && !window.alreadyWroteDetached)
+		{
+			window.detachedConsole = true;
+			PREAMBLE = WARN_PREAMBLE;
+			debugger;
+			console.warn('\n\rDetached console, awaiting terminate...');
+		}
+	}
+
+	let skipTerminal = false;
+	if(msg.includes('Assertion failed: lookup.node'))
+	{
+		skipTerminal = true;
+	}
+	if(!skipTerminal && typeof window !== 'undefined' && window.terminalWrite)
+	{
+		window.terminalWrite(msg, source);
+	}
+}
+
+// --- CONSOLE INTERCEPTION INITIALIZER ---
+
+export function initConsoleIntercept(): void
+{
+	const globalTarget = typeof self !== 'undefined' ? self : window;
+
+	globalTarget.console.log = (...args: unknown[]) =>
+	{
+		const formatted = formatMessage('log', args);
+		const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+		const rawFileName = rawFile.split('/').pop()?.replace(/\.(js|ts)$/, '') || '';
+		const source: SourceMetadata = [category, 'log', ...trailingFiles, func, rawFileName, rawFile];
+
+		if(typeof window !== 'undefined' && window.terminalWrite) window.terminalWrite(formatted, source);
+		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
+		originalConsole.log(...args);
+	};
+
+	globalTarget.console.warn = (...args: unknown[]) =>
+	{
+		const formatted = formatMessage('warn', args);
+		const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+		const rawFileName = rawFile.split('/').pop()?.replace(/\.(js|ts)$/, '') || '';
+		const source: SourceMetadata = [category, 'warn', ...trailingFiles, func, rawFileName, rawFile];
+
+		if(typeof window !== 'undefined' && window.terminalWrite) window.terminalWrite(formatted, source);
+		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
+		originalConsole.warn(...args);
+	};
+
+	globalTarget.console.error = (...args: unknown[]) =>
+	{
+		const formatted = formatMessage('error', args);
+		const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+		const rawFileName = rawFile.split('/').pop()?.replace(/\.(js|ts)$/, '') || '';
+		const source: SourceMetadata = [category, 'error', ...trailingFiles, func, rawFileName, rawFile];
+
+		if(typeof window !== 'undefined' && window.terminalWrite) window.terminalWrite(formatted, source);
+		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
+		originalConsole.error(...args);
+	};
+
+	globalTarget.console.info = (...args: unknown[]) =>
+	{
+		const formatted = formatMessage('info', args);
+		const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+		const rawFileName = rawFile.split('/').pop()?.replace(/\.(js|ts)$/, '') || '';
+		const source: SourceMetadata = [category, 'info', ...trailingFiles, func, rawFileName, rawFile];
+
+		if(typeof window !== 'undefined' && window.terminalWrite) window.terminalWrite(formatted, source);
+		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
+		originalConsole.info(...args);
+	};
+}
+
+
