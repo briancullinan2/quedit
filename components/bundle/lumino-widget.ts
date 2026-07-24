@@ -92,7 +92,7 @@ export class LayoutAdjuster
 		HTMLElement.dataset.type = type;
 
 		const menuExists = window.tabsMenu.items.some(
-			(existing) => existing.args[0] === newWidget.id
+			(existing) => existing.args.value === newWidget.id
 		);
 		if(!menuExists)
 		{

@@ -83,22 +83,6 @@ export const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 	}
 };
 
-if(!window.IMPORT_SETTINGS)
-{
-	window.IMPORT_SETTINGS = {};
-}
-
-for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
-{
-	window.IMPORT_SETTINGS[moduleKey] = {
-		...(window.IMPORT_SETTINGS[moduleKey] || {}),
-		...configs
-	};
-}
-
-export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
-
-
 
 export async function verifyPermission(
 	fileHandle: FileSystemDirectoryHandle,
