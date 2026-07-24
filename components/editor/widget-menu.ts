@@ -328,15 +328,23 @@ ACE_MODULES['ace_file'] = {
 	}
 };
 
-ACE_MODULES['ace_edit'] = {
+ACE_MODULES['edit/undo'] = {
 	undo: function (_: any, widget: AceEditorWidget)
 	{
 		widget._editor?.undo();
-	},
+	}
+};
+
+
+ACE_MODULES['edit/redo'] = {
 	redo: function (_: any, widget: AceEditorWidget)
 	{
 		widget._editor?.redo();
-	},
+	}
+};
+
+
+ACE_MODULES['edit/cut'] = {
 	cut: function (_: any, widget: AceEditorWidget)
 	{
 		const editor = widget._editor;
@@ -346,8 +354,12 @@ ACE_MODULES['ace_edit'] = {
 			navigator.clipboard?.writeText(text);
 			editor.insert('');
 		}
-	},
-	copy: function (_: any, widget: AceEditorWidget)
+	}
+};
+
+
+ACE_MODULES['edit/copy'] = {
+	copy_to_clipboard: function (_: any, widget: AceEditorWidget)
 	{
 		const editor = widget._editor;
 		if(editor)
@@ -355,7 +367,11 @@ ACE_MODULES['ace_edit'] = {
 			const text = editor.getCopyText();
 			navigator.clipboard?.writeText(text);
 		}
-	},
+	}
+};
+
+
+ACE_MODULES['edit/paste'] = {
 	paste: async function (_: any, widget: AceEditorWidget)
 	{
 		const editor = widget._editor;
@@ -364,7 +380,10 @@ ACE_MODULES['ace_edit'] = {
 			const text = await navigator.clipboard.readText();
 			editor.insert(text);
 		}
-	},
+	}
+};
+
+ACE_MODULES['ace_edit'] = {
 	find: function (_: any, widget: AceEditorWidget)
 	{
 		widget._editor?.execCommand('find');

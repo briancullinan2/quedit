@@ -179,11 +179,6 @@ const EDIT_MENU: MenuConfig = {
 	}, {
 		divider: true
 	}, {
-		name: "Delete Selection",
-		shortcut: "Del",
-		target: "edit/selection.delete",
-		iconClass: "bx bx-trash"
-	}, {
 		name: "Copy Selection",
 		target: "layer/new.new_selection",
 		iconClass: "bx bx-copy"
@@ -194,7 +189,7 @@ const EDIT_MENU: MenuConfig = {
 		iconClass: "bx bx-copy"
 	}, {
 		name: "Cut",
-		target: "edit/cut",
+		target: "edit/cut.cut",
 		iconClass: "bx bx-cut"
 	}, {
 		name: "Paste",
@@ -202,8 +197,8 @@ const EDIT_MENU: MenuConfig = {
 		target: "edit/paste.paste",
 		iconClass: "bx bx-paste"
 	}, {
-		name: "Delete",
-		target: "edit/delete",
+		name: "Delete Selection",
+		target: "edit/selection.delete",
 		iconClass: "bx bx-trash"
 	}, {
 		divider: true
@@ -212,8 +207,12 @@ const EDIT_MENU: MenuConfig = {
 		shortcut: "Ctrl+F",
 		target: "ace_edit.find",
 		iconClass: "bx bx-search"
-	},
-	{
+	}, {
+		name: "Find In Files",
+		shortcut: "Ctrl+Shift+F",
+		target: "ace_edit.find_all",
+		iconClass: "bx bx-folder-search"
+	}, {
 		name: "Replace",
 		shortcut: "Ctrl+H",
 		target: "ace_edit.replace",
@@ -223,11 +222,9 @@ const EDIT_MENU: MenuConfig = {
 		ellipsis: true,
 		target: "file/open.search",
 		iconClass: "bx bx-search-alt"
-	},
-	{
+	}, {
 		divider: true
-	},
-	{
+	}, {
 		name: "Select All",
 		shortcut: "Ctrl+A",
 		target: "edit/selection.select_all",
