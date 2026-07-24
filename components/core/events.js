@@ -212,32 +212,6 @@ function resizeDebouncer() {
 window.addEventListener('resize', resizeDebouncer);
 
 
-
-function updateModifierPressed(e) {
-    window.isModifierPressed = e.ctrlKey || e.metaKey;
-    window.isShiftPressed = e.shiftKey;
-
-    const hasClass = document.body.classList.contains('modifier')
-
-    // TODO: set engine to 1 FPS if debugger is open, not only because it runs
-    //   slower but the nature of debugging is seeing the frames
-    if (!window.isModifierPressed && hasClass)
-        document.body.classList.remove('modifier')
-    if (window.isModifierPressed && !hasClass)
-        document.body.classList.add('modifier')
-
-
-    const hasShift = document.body.classList.contains('shift')
-    if (!window.isShiftPressed && hasShift)
-        document.body.classList.remove('shift')
-    if (window.isShiftPressed && !hasShift)
-        document.body.classList.add('shift')
-
-
-    isDevToolsOpen()
-}
-
-
 window.addEventListener('keydown', async (e) => {
     if (e.altKey && e.key === 'ArrowLeft') NavHistory.back();
     if (e.altKey && e.key === 'ArrowRight') NavHistory.forward();

@@ -56,7 +56,7 @@ export class TerminalHistoryManager
 	/**
 	 * Retrieves or initializes unique ephemeral input states for an attached terminal instance.
 	 */
-	private getState(term: Terminal): TerminalState
+	public getState(term: Terminal): TerminalState
 	{
 		let state = this.states.get(term);
 		if(!state)

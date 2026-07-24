@@ -1,9 +1,10 @@
 import type { IDisposable, Terminal } from '@xterm/xterm';
 import { TerminalHistoryManager } from './history'; // Adjust path accordingly
 import type { StatusBarWidget } from '../bundle/status';
-import type { IPooledTerminal, TerminalLogEntry } from './widget';
+import type { IPooledTerminal, TerminalLogEntry } from './widget-types';
 import { FILE_NAME_REGEX, SearchTerminal } from './search';
 import type { terminalWrite } from '../bundle/logging';
+import { handleTabAutocomplete } from './commands-complete';
 
 // --- Types & Structural Interfaces ---
 export interface ExtractedFile
@@ -41,7 +42,7 @@ declare global
 		isModifierPressed?: boolean;
 		moveLookLocked?: (mx: number, my: number) => void;
 		playerMover?: { jump: () => void; };
-		updateModifierPressed?: (arg: any) => void;
+		updateModifierPressed: (arg: KeyboardEvent) => void;
 		lastNewLine?: boolean;
 		handleCommand: (command: string, term: Terminal) => Promise<void>;
 		terminalWrite?: typeof terminalWrite;
@@ -56,7 +57,7 @@ export class TerminalEventManager
 	private pooledCtx: IPooledTerminal;
 	private container: HTMLElement;
 	private statusBar: StatusBarWidget;
-	private historyManager: TerminalHistoryManager;
+	public historyManager: TerminalHistoryManager;
 
 	// Ephemeral instance trackers
 	private debounceTerminalMouse: ReturnType<typeof setTimeout> | null = null;
@@ -426,7 +427,13 @@ export class TerminalEventManager
 
 		if(arg.type === "keydown")
 		{
-			const state = (this.historyManager as any).getState(this.pooledCtx.term);
+
+			const state = this.historyManager.getState(this.pooledCtx.term);
+
+			if(arg.key === "Tab")
+			{
+				return handleTabAutocomplete(arg, state.currentLine, this.pooledCtx);
+			}
 
 			// --- Ctrl+F: Focus Search Box ---
 			if(window.isModifierPressed && arg.code === "KeyF")

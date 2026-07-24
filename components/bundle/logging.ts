@@ -1,6 +1,7 @@
 import type { Terminal } from "@xterm/xterm";
 import type { AceSession } from "../editor/widget";
-import type { TerminalLogEntry, TerminalWidget } from "../terminal/widget";
+import type { TerminalLogEntry, } from "../terminal/widget-types";
+import type { TerminalWidget } from '../terminal/widget';
 import { DockPanel, Widget } from "@lumino/widgets";
 
 // --- GLOBAL TYPE DECLARATIONS ---
