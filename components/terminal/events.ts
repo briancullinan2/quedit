@@ -1,7 +1,7 @@
 import type { IDisposable, Terminal } from '@xterm/xterm';
 import { TerminalHistoryManager } from './history'; // Adjust path accordingly
 import type { StatusBarWidget } from '../bundle/status';
-import type { IPooledTerminal } from './widget';
+import type { IPooledTerminal, TerminalLogEntry } from './widget';
 import { FILE_NAME_REGEX, SearchTerminal } from './search';
 import type { terminalWrite } from '../bundle/logging';
 
@@ -37,16 +37,18 @@ declare global
 {
 	interface Window
 	{
+		terminalLog: TerminalLogEntry[];
 		isModifierPressed?: boolean;
 		moveLookLocked?: (mx: number, my: number) => void;
 		playerMover?: { jump: () => void; };
-		triggerIncrementalSave?: () => void;
 		updateModifierPressed?: (arg: any) => void;
 		lastNewLine?: boolean;
 		handleCommand: (command: string, term: Terminal) => Promise<void>;
 		terminalWrite?: typeof terminalWrite;
 	}
 }
+
+export const LINES_TO_SAVE = 1000;
 
 
 export class TerminalEventManager
@@ -561,9 +563,10 @@ export class TerminalEventManager
 					this.historyManager.commitLine(this.pooledCtx.term, '');
 				}
 
-				if(typeof window.triggerIncrementalSave === 'function')
+				if(typeof window.terminalLog !== 'undefined')
 				{
-					window.triggerIncrementalSave();
+					const logs = window.terminalLog.slice(-LINES_TO_SAVE);
+					localStorage.setItem('terminal_log', JSON.stringify(logs));
 				}
 
 				try

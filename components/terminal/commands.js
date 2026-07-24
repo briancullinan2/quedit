@@ -1,4 +1,6 @@
 
+const LINES_TO_SAVE = 1000;
+
 // Definitive Semantic Autocomplete Types
 const ARG_TYPES = {
 	FILE: 'file',          // Local file path validation/completion
@@ -591,7 +593,11 @@ async function handleCommand(input, term)
 		terminalWrite(`Command not found: ${commandName}\n\r`);
 	}
 
-	triggerIncrementalSave();
+	if(typeof window.terminalLog !== 'undefined')
+	{
+		const logs = window.terminalLog.slice(-LINES_TO_SAVE);
+		localStorage.setItem('terminal_log', JSON.stringify(logs));
+	}
 
 	// TODO: undetach the console by reporting "done" from the worker
 	if(!window.detachedConsole)
@@ -623,13 +629,11 @@ async function error(argv)
 function reset(argv, database, commandName, term)
 {
 	term.reset();
-	triggerIncrementalSave();
 }
 
 function clear(argv, database, commandName, term)
 {
 	term.clear();
-	triggerIncrementalSave();
 }
 
 
