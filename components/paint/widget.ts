@@ -854,6 +854,7 @@ export class PaintWidget extends Widget implements MenuModules
 	protected onBeforeHide(msg: Message): void
 	{
 		window.removeMenus(PaintWidget.name);
+		super.onBeforeHide(msg);
 	}
 
 

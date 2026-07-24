@@ -84,12 +84,10 @@ const FILE_MENU: MenuConfig = {
 		iconClass: "bx bx-folder-open"
 	}, {
 		divider: true
-	},
-	{
-		name: "Search Images",
-		ellipsis: true,
-		target: "file/open.search",
-		iconClass: "bx bx-search-alt"
+	}, {
+		name: "Auto Save",
+		target: "ace_file.toggle_auto_save",
+		iconClass: "bx bx-refresh"
 	}, {
 		divider: true
 	}, {
@@ -210,6 +208,26 @@ const EDIT_MENU: MenuConfig = {
 	}, {
 		divider: true
 	}, {
+		name: "Find",
+		shortcut: "Ctrl+F",
+		target: "ace_edit.find",
+		iconClass: "bx bx-search"
+	},
+	{
+		name: "Replace",
+		shortcut: "Ctrl+H",
+		target: "ace_edit.replace",
+		iconClass: "bx bx-find-replace"
+	}, {
+		name: "Search Images",
+		ellipsis: true,
+		target: "file/open.search",
+		iconClass: "bx bx-search-alt"
+	},
+	{
+		divider: true
+	},
+	{
 		name: "Select All",
 		shortcut: "Ctrl+A",
 		target: "edit/selection.select_all",
@@ -481,9 +499,28 @@ if(!window.globalModules['file/exit'])
 				a.type = 'file';
 				a.multiple = true;
 				temp.appendChild(a);
-				a.addEventListener('change', function (e)
+				a.addEventListener('change', function (event: any)
 				{
+					const files = event.target?.files || event.dataTransfer?.files;
+
+					if(files && files.length > 0)
+					{
+					}
+					/* TODO:
 					_this.open_handler(e);
+					const isQuakeAsset = filename.endsWith('.bsp') ||
+						filename.endsWith('.aas') ||
+						filename.endsWith('.qvm') ||
+						filename.endsWith('.md3') ||
+						filename.endsWith('.dat');
+
+					if (isQuakeAsset) {
+						console.log(`Intercepted Quake 3 asset by extension: ${file.name}. Routing to custom engine...`);
+						routeFileToQuakeEditor(file);
+						return; // Stop execution here. miniPaint never touches it!
+					}
+					*/
+
 				}, false);
 				//force click
 				a.click();

@@ -224,18 +224,8 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel, no
 window.triggerPanelRoute = triggerPanelRoute;
 
 
-/**
- * System Context Initialization
- */
-export function initializeMenus(commands: CommandRegistry, menuBar: MenuBar, mainDock: DockPanel, toolbarNode: HTMLElement): void
+function initializeTabsMenu(commands: CommandRegistry, mainDock: DockPanel, viewMenu: Menu)
 {
-	document.addEventListener('keydown', (event: KeyboardEvent) =>
-	{
-		commands.processKeydownEvent(event);
-	}, true);
-
-	const viewMenu = new Menu({ commands });
-	viewMenu.title.label = 'Window';
 
 	// 0. setup tabs menu
 	commands.addCommand('select-tab', {
@@ -347,6 +337,26 @@ export function initializeMenus(commands: CommandRegistry, menuBar: MenuBar, mai
 	tabsMenu.addItem({ command: 'next-tab' });
 	tabsMenu.addItem({ command: 'previous-tab' });
 
+
+}
+
+
+
+
+/**
+ * System Context Initialization
+ */
+export function initializeMenus(commands: CommandRegistry, menuBar: MenuBar, mainDock: DockPanel, toolbarNode: HTMLElement): void
+{
+	document.addEventListener('keydown', (event: KeyboardEvent) =>
+	{
+		commands.processKeydownEvent(event);
+	}, true);
+
+	const viewMenu = new Menu({ commands });
+	viewMenu.title.label = 'Window';
+
+	initializeTabsMenu(commands, mainDock, viewMenu);
 
 	// 1. Render the HTML list structural tree directly inside the left toolbar container node
 	const ul = document.createElement('ul');

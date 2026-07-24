@@ -326,7 +326,7 @@ export class MenuManager
 			console.warn(`Cannot execute command ${object.name} - ${object.target} - module function not found: ${module}.${function_name}`);
 			return;
 		}
-		return modules[module][function_name].apply(modules[module], [param]);
+		return modules[module][function_name].apply(modules[module], [param, window.lastInteractedWidget]);
 	}
 
 
