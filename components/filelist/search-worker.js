@@ -6,7 +6,6 @@ const api = {
 
 // search-worker.js
 importScripts('/components/core/preambles.js');
-importScripts('/components/core/logging.js');
 importScripts('/components/core/local.js');
 importScripts('/components/engine/sys_fs.js');
 importScripts('/components/filelist/github.js');
@@ -77,7 +76,7 @@ self.onmessage = async function (e) {
     for (const file of localFiles) {
         regex.lastIndex = 0;
 
-        // If it's a glob, we match the *entire* path string. 
+        // If it's a glob, we match the *entire* path string.
         // If it's a regular search query, we perform a standard substring test.
         const isMatch = isGlobPattern ? regex.test(file.path) : regex.test(file.path);
 

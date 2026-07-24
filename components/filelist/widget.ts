@@ -137,24 +137,24 @@ export class FileListWidget extends Widget
 			this.node.innerHTML = `
 			<div class="filelist-wrapper">
 				<ul class="toolbar">
-				<li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
-				<li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
-				<li><a alt="Google Drive" href="#new-gdrive" class="bx bxl bx-google-cloud"></a></li>
-				<li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
-				<li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
-				<li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
-				<li class="setting" data-placeholder="Owner">
-					<select name="owner" class="filelist-owner">
-					</select>
-				</li>
-				<li class="setting" data-placeholder="Repository">
-					<select name="repository" class="filelist-repository">
-					</select>
-				</li>
-				<li class="setting" data-placeholder="Branch">
-					<select name="branch" class="filelist-branch">
-					</select>
-				</li>
+					<li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
+					<li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
+					<li><a alt="Google Drive" href="#new-gdrive" class="bx bxl bx-google-cloud"></a></li>
+					<li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
+					<li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
+					<li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
+					<li class="setting" data-placeholder="Owner">
+						<select name="owner" class="filelist-owner">
+						</select>
+					</li>
+					<li class="setting" data-placeholder="Repository">
+						<select name="repository" class="filelist-repository">
+						</select>
+					</li>
+					<li class="setting" data-placeholder="Branch">
+						<select name="branch" class="filelist-branch">
+						</select>
+					</li>
 				</ul>
 				<div class="search-box">
 				<input type="text" id="search" name="search" placeholder="Search many..." />

@@ -1182,7 +1182,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/app.bundle.js",
-    "size": 14660735
+    "size": 14673205
   },
   {
     "path": "/babel.min.js",
@@ -1278,11 +1278,11 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/lumino-files.ts",
-    "size": 17107
+    "size": 17059
   },
   {
     "path": "/components/bundle/lumino-resize.ts",
-    "size": 27573
+    "size": 27615
   },
   {
     "path": "/components/bundle/lumino-widget.ts",
@@ -1306,7 +1306,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/menu-file.ts",
-    "size": 12488
+    "size": 13433
   },
   {
     "path": "/components/bundle/menu-history.ts",
@@ -1314,7 +1314,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/menu-manager.ts",
-    "size": 9742
+    "size": 9771
   },
   {
     "path": "/components/bundle/menu-repos.ts",
@@ -1334,7 +1334,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/menu.ts",
-    "size": 16003
+    "size": 19710
   },
   {
     "path": "/components/bundle/paint.css",
@@ -1342,7 +1342,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/scroll.css",
-    "size": 1981
+    "size": 2059
   },
   {
     "path": "/components/bundle/settings-coalesced.ts",
@@ -1354,7 +1354,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/settings.ts",
-    "size": 12227
+    "size": 12148
   },
   {
     "path": "/components/bundle/status.css",
@@ -1466,11 +1466,19 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/editor/events.ts",
-    "size": 12185
+    "size": 13204
+  },
+  {
+    "path": "/components/editor/widget-menu.ts",
+    "size": 13542
+  },
+  {
+    "path": "/components/editor/widget-modes.ts",
+    "size": 5524
   },
   {
     "path": "/components/editor/widget.ts",
-    "size": 21298
+    "size": 16574
   },
   {
     "path": "/components/engine/checksum.js",
@@ -1541,12 +1549,16 @@ self.__assetsManifest = [
     "size": 97642
   },
   {
-    "path": "/components/filelist/layout.js",
-    "size": 12726
-  },
-  {
     "path": "/components/filelist/load-media.js",
     "size": 10644
+  },
+  {
+    "path": "/components/filelist/save-dialog.css",
+    "size": 5464
+  },
+  {
+    "path": "/components/filelist/save-dialog.ts",
+    "size": 11178
   },
   {
     "path": "/components/filelist/search-worker.js",
@@ -1555,10 +1567,6 @@ self.__assetsManifest = [
   {
     "path": "/components/filelist/search.css",
     "size": 2066
-  },
-  {
-    "path": "/components/filelist/search.js",
-    "size": 14287
   },
   {
     "path": "/components/filelist/tree.css",
@@ -1598,15 +1606,15 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/filelist/widget-local.ts",
-    "size": 9662
+    "size": 9680
   },
   {
     "path": "/components/filelist/widget-search.ts",
-    "size": 13663
+    "size": 13618
   },
   {
     "path": "/components/filelist/widget.ts",
-    "size": 17900
+    "size": 17910
   },
   {
     "path": "/components/layout/components.css",
@@ -2542,7 +2550,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/paint/widget.ts",
-    "size": 31545
+    "size": 31572
   },
   {
     "path": "/components/proxy/checksum.js",
@@ -2634,7 +2642,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/terminal/render.ts",
-    "size": 12631
+    "size": 12649
   },
   {
     "path": "/components/terminal/search.ts",
@@ -2642,7 +2650,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/terminal/terminal.css",
-    "size": 4290
+    "size": 9998
   },
   {
     "path": "/components/terminal/widget-types.ts",
@@ -2650,7 +2658,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/terminal/widget.ts",
-    "size": 19801
+    "size": 19066
   },
   {
     "path": "/components/terminal/xterm-addon-fit.js",
@@ -2662,7 +2670,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/terminal/xterm.js",
-    "size": 977194
+    "size": 977167
   },
   {
     "path": "/components/theme/boxicons-brands.min.css",
@@ -2702,7 +2710,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/theme/theme-elements.css",
-    "size": 19606
+    "size": 12184
   },
   {
     "path": "/components/theme/theme.css",
@@ -2750,7 +2758,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/index.html",
-    "size": 1781
+    "size": 1944
   },
   {
     "path": "/index.old.html",

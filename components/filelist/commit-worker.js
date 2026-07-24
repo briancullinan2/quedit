@@ -4,7 +4,6 @@ const api = {
 }
 
 importScripts('/components/core/preambles.js');
-importScripts('/components/core/logging.js');
 importScripts('/components/core/local.js');
 importScripts('/components/engine/sys_fs.js');
 importScripts('/components/filelist/github.js');
@@ -157,7 +156,7 @@ function getGitHubHeaders() {
 
 
 /**
- * Compares IndexedDB local storage data against the remote tree cache 
+ * Compares IndexedDB local storage data against the remote tree cache
  * to calculate unstaged modifications, new additions, or deletions.
  * Dynamically loads and respects a root-level .gitignore file via glob matching.
  */

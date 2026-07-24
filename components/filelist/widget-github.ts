@@ -34,6 +34,31 @@ export class GithubListWidget extends FileListWidget
 		this.githubWorker.onmessage = this.handleWorkerMessage.bind(this);
 	}
 
+	/**
+	 * Minimal Layout Override: Search Box + Results Render Container (No Toolbar/Repo Selects)
+	 */
+	protected override async renderLayout(): Promise<void>
+	{
+		if(this.node.innerHTML === '')
+		{
+			this.node.innerHTML = `
+            <div class="filelist-wrapper search-widget-wrapper">
+				<ul class="toolbar">
+					<li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
+					<li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
+					<li><a alt="Google Drive" href="#new-gdrive" class="bx bxl bx-google-cloud"></a></li>
+					<li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
+					<li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
+					<li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
+				</ul>
+                <div class="search-box">
+                    <input type="text" id="search-${this.id}" class="search-input-field" name="search" placeholder="Search files or contents..." />
+                </div>
+                <div id="${this.treeContainerId}" class="treejs-render-target"></div>
+            </div>
+            `;
+		}
+	}
 	protected override async initializeFiletrees(): Promise<void>
 	{
 		await this.showGithubTree();
