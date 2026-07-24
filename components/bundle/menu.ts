@@ -84,31 +84,72 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 
 	try
 	{
-		const currentWidgets = Array.from(mainDock.widgets());
-		const existing = currentWidgets.filter(w => w.constructor.name === route.className);
-		const shouldCollapseInstead = (route.className && OUTLINE_WIDGET_TYPES.includes(route.className)
-			&& window.fileListWidgets && window.fileListWidgets.length > 0)
-			|| (route.className === 'TerminalWidget' && window.terminalWidgets && window.terminalWidgets.length > 0);
+		// 1. Gather active DOM widgets
+		const currentDOMWidgets = Array.from(mainDock.widgets());
 
+		// 2. Identify target instances stored in memory
+		let targetMemoryWidgets: Widget[] = [];
 
-		if(shouldCollapseInstead)
+		if(route.className === 'TerminalWidget')
 		{
-			console.log('Panel route already loaded: ' + panelId);
-			if(existing.length > 0)
-			{
-				collapseWidgets(mainDock, true, route);
-			} else
-			{
-				collapseWidgets(mainDock, false, route);
-			}
-			return;
+			targetMemoryWidgets = (window as any).terminalWidgets || [];
+		} else if(route.className && OUTLINE_WIDGET_TYPES.includes(route.className))
+		{
+			targetMemoryWidgets = ((window as any).fileListWidgets || []).filter(
+				(w: any) => w.constructor.name === route.className
+			);
 		}
 
-		if(existing.length > 0)
+		// 3. Handle toggling and activation
+		if(targetMemoryWidgets.length > 0)
 		{
-			console.log('Panel route already loaded: ' + panelId);
-			existing[0].show();
-			existing[0].activate();
+			console.log('Panel route already loaded in memory: ' + panelId);
+
+			// Find if a matching widget is mounted in the DOM dock
+			const matchingDOMWidget = currentDOMWidgets.find(
+				domWidget => domWidget.constructor.name === route.className
+			);
+
+			if(matchingDOMWidget)
+			{
+				// Lumino check: Widget is active on top if it's currently selected in its dock tab area
+				// and its root node isn't hidden by display: none
+				const selectedWidgets = typeof (mainDock as any).selectedWidgets === 'function'
+					? Array.from((mainDock as any).selectedWidgets())
+					: [];
+
+				const isTabSelectedOnTop = selectedWidgets.includes(matchingDOMWidget) ||
+					(matchingDOMWidget.isVisible && matchingDOMWidget.node.style.display !== 'none');
+
+				if(isTabSelectedOnTop)
+				{
+					// Already active and visible on top -> Collapse/Hide
+					collapseWidgets(mainDock, true, route);
+				} else
+				{
+					// Mounted in DOM, but hidden behind another tab -> Activate & bring to top
+					mainDock.activateWidget(matchingDOMWidget);
+					if(typeof matchingDOMWidget.activate === 'function')
+					{
+						matchingDOMWidget.activate();
+					}
+				}
+			} else
+			{
+				// Exists in memory but completely removed/detached from DOM -> Expand/Restore
+				collapseWidgets(mainDock, false, route);
+
+				targetMemoryWidgets.forEach(w =>
+				{
+					if(typeof w.show === 'function') w.show();
+				});
+
+				mainDock.activateWidget(targetMemoryWidgets[0]);
+				if(typeof targetMemoryWidgets[0].activate === 'function')
+				{
+					targetMemoryWidgets[0].activate();
+				}
+			}
 			return;
 		}
 

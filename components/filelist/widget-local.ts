@@ -44,49 +44,41 @@ export const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 					? window.RepositoryToolbar.locations?.value
 					: (storage || defaultLocation);
 			},
-			set: configureFileHandle
 		},
 		engineLocation: {
 			key: 'engine_location',
 			default: '',
 			description: 'The specific local folder designated for compiling the core Quake 3 WebAssembly engine architecture.',
-			set: configureFileHandle
 		},
 		gameLocation: {
 			key: 'game_location',
 			default: '',
 			description: 'The local folder source housing the game logic mod components, including cgame, game, and ui modules.',
-			set: configureFileHandle
 		},
 		assetLocation: {
 			key: 'asset_location',
 			default: '',
 			description: 'Optional local folder dedicated to static game assets, maps, texturing bundles, or audio assets required to run the game.',
-			set: configureFileHandle
 		},
 		toolsLocation: {
 			key: 'tools_location',
 			default: '',
 			description: 'Primary compiler tooling local folder containing components such as q3lcc (the Quake 3 ANSI C compiler targeting virtual machine bytecode).',
-			set: configureFileHandle
 		},
 		tools2Location: {
 			key: 'tools_location',
 			default: '',
 			description: 'Secondary toolchain local folder hosting utilities like q3asm to assemble the intermediate bytecode files into final .qvm files.',
-			set: configureFileHandle
 		},
 		rendererLocation: {
 			key: 'renderer_location',
 			default: '',
 			description: 'Local folder handling the graphical subsystems and pipeline routines tasked with translating engine calculations to browser contexts.',
-			set: configureFileHandle
 		},
 		environmentLocation: {
 			key: 'environment_location',
 			default: '',
 			description: 'Local folder for this workspace, the entire IDE, code editor and engine runner, for editing the environment inside the workspace.',
-			set: configureFileHandle
 		},
 	}
 };
@@ -302,10 +294,8 @@ export async function treeHandler(selector: string, e: Event): Promise<void>
 
 export function configureFileHandle(newLocation: FileSystemDirectoryHandle, config?: SettingConfig): string | undefined
 {
-	if(!newLocation || newLocation.name.includes('briancullinan2'))
+	if(!newLocation || typeof newLocation === 'string' || newLocation.name.includes('briancullinan2'))
 	{
-		console.error('Assertion local folder name is briancullinan2');
-		debugger;
 		return;
 	}
 

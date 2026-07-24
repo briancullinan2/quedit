@@ -61,8 +61,10 @@ declare global
 	}
 }
 
-
-window.fileListWidgets = new Array<FileListWidget>();
+if(!window.fileListWidgets)
+{
+	window.fileListWidgets = new Array<FileListWidget>();
+}
 
 
 export class FileListWidget extends Widget
@@ -191,7 +193,7 @@ export class FileListWidget extends Widget
 				const settingKey: string = getSettingFromRegistryId(widgetHandle);
 				const database = window.SettingsManager.get('github', 'environmentRepository');
 				const handle: FileSystemDirectoryHandle = (await window.getRecord(window.DB_STORE_NAME, '/' + settingKey, database))?.contents;
-				if(await verifyPermission(handle))
+				if(handle && await verifyPermission(handle))
 				{
 					this.handle = handle;
 					const settingsConfig = Object.values(LOCAL_SETTINGS.filelist).find(s => s.key === settingKey);

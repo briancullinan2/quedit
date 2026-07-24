@@ -197,8 +197,10 @@ class TerminalPoolManager
 	}
 }
 
-
-window.terminalWidgets = new Array<TerminalWidget>();
+if(!window.terminalWidgets)
+{
+	window.terminalWidgets = new Array<TerminalWidget>();
+}
 
 /**
  * Lumino Component displaying specialized logs driven by a centralized terminal context pool.
