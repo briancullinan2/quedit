@@ -6,6 +6,7 @@ import type { StatusBarWidget } from '../bundle/status';
 import { SearchTerminal } from './search';
 import { FrameRater } from '../bundle/frame-rater';
 import type { IPooledTerminal, TerminalLogEntry } from './widget-types';
+import type { TerminalFilter } from '../bundle/menu';
 
 const LINES_TO_SCROLLBACK = 5000;
 
@@ -22,6 +23,7 @@ declare global
 		TerminalWidget: typeof TerminalWidget;
 		terminalWidgets?: Array<TerminalWidget>;
 		terminalLoaded?: boolean;
+		TERMINAL_REGISTRY: TerminalFilter[];
 	}
 }
 
@@ -209,10 +211,10 @@ export class TerminalWidget extends Widget
 		super();
 		if(filterId === 'Show Console')
 		{
-			this.filterId = terminalFilters[0].id;
+			this.filterId = window.TERMINAL_REGISTRY[0].id;
 			this.id = `terminal-panel-${this.filterId}`;
 			this.title.className = this.id;
-			this.title.label = terminalFilters[0].label;
+			this.title.label = window.TERMINAL_REGISTRY[0].label;
 		} else
 		{
 			this.filterId = filterId;
@@ -588,7 +590,7 @@ export class TerminalWidget extends Widget
 	{
 
 		// Mount all widgets into the unified layout terminal area stack
-		terminalFilters.forEach((filter, index) =>
+		window.TERMINAL_REGISTRY.forEach((filter, index) =>
 		{
 			if(document.querySelector(`#terminal-panel-${filter.id}`))
 			{
@@ -613,32 +615,6 @@ export class TerminalWidget extends Widget
 }
 
 window.TerminalWidget = TerminalWidget;
-
-
-export interface TerminalFilter
-{
-	id: string;
-	label: string;
-}
-
-
-export const terminalFilters: TerminalFilter[] = [
-	// Log Levels & Diagnostics
-	{ id: 'all', label: 'All Logs' },
-	{ id: 'error', label: 'Errors' },
-	{ id: 'warn', label: 'Warnings' },
-
-	// Core UI & Systems
-	{ id: 'soft', label: 'CLI Render' },    // Matches your custom terminal viewport / frame limiter
-	{ id: 'build', label: 'Build' },        // Compiler, AST parsers, build chains
-	{ id: 'runtime', label: 'Runtime Dev' }, // Main loop, tasks, orchestration
-
-	// Network & Background
-	{ id: 'network', label: 'Network' },    // Custom meshes, P2P syncing, OAuth channels
-	{ id: 'console', label: 'Console' },    // Standard fallback stdout / logging intercepts
-	{ id: 'ai', label: 'AI Integration' }   // Local models, WebGPU memory, inference steps
-];
-
 
 
 const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {

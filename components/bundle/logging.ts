@@ -1,4 +1,3 @@
-import type { Terminal } from "@xterm/xterm";
 import type { AceSession } from "../editor/widget";
 import type { TerminalLogEntry, } from "../terminal/widget-types";
 import type { TerminalWidget } from '../terminal/widget';

@@ -15,6 +15,7 @@ import { MenuConfig } from './menu-manager';
 import { loadAndInstantiate } from './babel-compile';
 import { OUTLINE_WIDGET_TYPES } from './lumino-resize';
 import type { TerminalWidget } from '../terminal/widget';
+import { FileManager } from './lumino-files';
 
 
 export interface TopBarComponents
@@ -42,7 +43,16 @@ declare global
 		terminalWidgets?: Array<TerminalWidget>;
 		globalMenuBar: MenuBar;
 		tabsMenu: Menu;
+		MODULE_REGISTRY: Record<string, ComponentRoute>;
+		TERMINAL_REGISTRY: TerminalFilter[];
 	}
+}
+
+
+export interface TerminalFilter
+{
+	id: string;
+	label: string;
 }
 
 
@@ -56,24 +66,48 @@ export interface ComponentRoute
 }
 
 // 1. Unified metadata tree tracking every panel type and icon token
-const MODULE_REGISTRY: Record<string, ComponentRoute> = {
+export const MODULE_REGISTRY: Record<string, ComponentRoute> = {
 	'collapse': { label: 'Collapse', iconClass: 'bx bx-arrow-in-left-square-half' },
 	'editor': { label: 'Code Editor', url: './components/editor/widget.ts', className: 'AceEditorWidget', iconClass: 'bx bx-code' },
 	'paint': { label: 'miniPaint', url: './components/paint/widget.ts', className: 'PaintWidget', iconClass: 'bx bx-palette' },
 	'nunu': { label: 'nunuStudio', url: './components/NunuStudioWidget.ts', className: 'NunuStudioWidget', iconClass: 'bx bx-vector-triangle' },
 	'audio-editor': { label: 'AudioMass', url: './components/AudioEditorWidget.ts', className: 'AudioEditorWidget', iconClass: 'bx bx-sine-wave' },
-	'searchlist': { label: 'Search Files', url: './components/SearchWidget.ts', className: 'SearchWidget', iconClass: 'bx bx-search' },
+	'searchlist': { label: 'Search Files', url: './components/filelist/widget-search.ts', className: 'SearchListWidget', iconClass: 'bx bx-search' },
 	'filelist': { label: 'Engine Files', url: './components/filelist/widget.ts', className: 'FileListWidget', iconClass: 'bx bx-folder-code' },
 	'gamelist': { label: 'Game Files', url: './components/filelist/widget.ts', className: 'GameListWidget', iconClass: 'bx bx-handheld-alt' },
 	'assetlist': { label: 'Assets', url: './components/filelist/widget-assets.ts', className: 'AssetListWidget', iconClass: 'bx bx-treasure-chest' },
 	'database': { label: 'Local Database', url: './components/filelist/widget-database.ts', className: 'DatabaseListWidget', iconClass: 'bx bx-database' },
-	'github': { label: 'Github Commit', url: './components/GithubWidget.ts', className: 'GithubWidget', iconClass: 'bx bx-git-repo-forked' },
+	'github': { label: 'Github Commit', url: './components/filelist/widget-github.ts', className: 'GithubListWidget', iconClass: 'bx bx-git-repo-forked' },
 	'settings': { label: 'Edit Settings', url: './components/editor/widget.ts', className: 'SettingsWidget', iconClass: 'bx bx-gear' },
 	'viewport-frame': { label: '3D Viewport', url: './components/map-loader/widget.ts', className: 'TojiWidget', iconClass: 'bx bx-joystick' },
 	'terminal-container': { label: 'Show Console', url: './components/terminal/widget.ts', className: 'TerminalWidget', iconClass: 'bx bx-terminal' },
 };
 
-export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): Promise<void>
+window.MODULE_REGISTRY = MODULE_REGISTRY;
+
+
+export const TERMINAL_REGISTRY: TerminalFilter[] = [
+	// Log Levels & Diagnostics
+	{ id: 'all', label: 'All Logs' },
+	{ id: 'error', label: 'Errors' },
+	{ id: 'warn', label: 'Warnings' },
+
+	// Core UI & Systems
+	{ id: 'soft', label: 'CLI Render' },    // Matches your custom terminal viewport / frame limiter
+	{ id: 'build', label: 'Build' },        // Compiler, AST parsers, build chains
+	{ id: 'runtime', label: 'Runtime Dev' }, // Main loop, tasks, orchestration
+
+	// Network & Background
+	{ id: 'network', label: 'Network' },    // Custom meshes, P2P syncing, OAuth channels
+	{ id: 'console', label: 'Console' },    // Standard fallback stdout / logging intercepts
+	{ id: 'ai', label: 'AI Integration' }   // Local models, WebGPU memory, inference steps
+];
+
+
+window.TERMINAL_REGISTRY = TERMINAL_REGISTRY;
+
+
+export async function triggerPanelRoute(panelId: string, mainDock: DockPanel, noHide: boolean = false): Promise<void>
 {
 	const route = MODULE_REGISTRY[panelId];
 	if(!route || !route.url)
@@ -110,7 +144,7 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel): P
 				domWidget => domWidget.constructor.name === route.className
 			);
 
-			if(matchingDOMWidget)
+			if(matchingDOMWidget && !noHide)
 			{
 				// Lumino check: Widget is active on top if it's currently selected in its dock tab area
 				// and its root node isn't hidden by display: none
@@ -504,4 +538,90 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 	return { headerRow, menuBar };
 }
 
+
+let hashDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Parses and dispatches hash navigation routes.
+ */
+export async function renderHashCommand(targetHashName: string, noBounce: boolean = false): Promise<void>
+{
+	const rawTarget = (targetHashName || '').trim().replace(/^#/, '');
+
+	// 1. Debounce rapid hash changes
+	if(hashDebounceTimer)
+	{
+		clearTimeout(hashDebounceTimer);
+		hashDebounceTimer = null;
+	}
+
+	if(!noBounce)
+	{
+		hashDebounceTimer = setTimeout(() =>
+		{
+			renderHashCommand(rawTarget, true);
+		}, 100);
+		return;
+	}
+
+	if(!rawTarget) return;
+
+	// 2. CHECK MODULE REGISTRY MATCH FIRST
+	const matchedRoute = MODULE_REGISTRY[rawTarget];
+	if(matchedRoute)
+	{
+		// Activate registered panel/widget via your main dock panel router
+		await triggerPanelRoute(rawTarget, window.mainDock, true);
+		return;
+	}
+
+	const matchedTerminal = TERMINAL_REGISTRY[rawTarget];
+	if(matchedTerminal)
+	{
+		await triggerPanelRoute('terminal-container', window.mainDock, true);
+
+		const currentDOMWidgets = Array.from(window.mainDock.widgets());
+
+		// Locate any active TerminalWidget whose filterId or DOM element ID matches target
+		const existingTerminalWidget = currentDOMWidgets.find((w: any) =>
+			w.constructor?.name === 'TerminalWidget' &&
+			(w.filterId === rawTarget || w.id === `terminal-panel-${rawTarget}` || w.id === rawTarget)
+		);
+
+		if(existingTerminalWidget)
+		{
+			// Activate and bring tab to front immediately
+			window.mainDock.activateWidget(existingTerminalWidget);
+			existingTerminalWidget.activate();
+			return;
+		}
+	}
+
+	// 4. FILE PATH RESOLUTION FALLBACK
+	try
+	{
+		const [filePath, selected, dbFile, lineNumber] = await FileManager.findFileTestPath(rawTarget);
+
+		(window as any).previousHashLineNumber = lineNumber;
+
+		const targetPath = filePath || selected;
+		if(targetPath && typeof (window as any).navigateFile === 'function')
+		{
+			(window as any).navigateFile(targetPath, lineNumber, true, false, false);
+		}
+	} catch(err)
+	{
+		console.error(`[HashRouter] Failed to resolve target file path for hash #${rawTarget}:`, err);
+	}
+}
+
+// ─── POPSTATE LISTENER BINDING ───
+if(typeof window !== 'undefined')
+{
+	window.addEventListener('popstate', () =>
+	{
+		const activeHash = window.location.hash.substring(1);
+		renderHashCommand(activeHash);
+	});
+}
 

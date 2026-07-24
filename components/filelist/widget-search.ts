@@ -1,0 +1,475 @@
+import { Message } from '@lumino/messaging';
+import { FileListWidget } from './widget';
+
+export interface SearchMatchItem
+{
+	path: string;
+	repoSource: string;
+	isRemote?: boolean;
+	line?: number;
+	matchText: string;
+	matchIndex?: number;
+	matchLength?: number;
+	sha?: string;
+}
+
+export interface GroupedSearchResult
+{
+	path: string;
+	repo: string;
+	localMatches: SearchMatchItem[];
+	remoteMatches: SearchMatchItem[];
+}
+
+export interface SearchTransactionState
+{
+	paths: SearchMatchItem[];
+	contents: SearchMatchItem[];
+	github: SearchMatchItem[];
+}
+
+export interface HistorySnapshot
+{
+	query: string;
+	resultsSnapshot: GroupedSearchResult[];
+}
+
+export class SearchListWidget extends FileListWidget
+{
+	private searchWorker: Worker;
+	private activeSearchTransactions = new Map<string, SearchTransactionState>();
+	private searchHistoryStack: HistorySnapshot[] = [];
+	private federatedSearchTimer: ReturnType<typeof setTimeout> | null = null;
+	private latestQueryVal: string | null = null;
+	private lastExecutedQueryVal: string | null = null;
+	private debounceSearchClickTimer: ReturnType<typeof setTimeout> | null = null;
+
+	private cachedFilePathEl: HTMLElement | null = null;
+	private cachedMatchRowEl: HTMLElement | null = null;
+
+	constructor(titleStr: string = 'Search Workspace')
+	{
+		super(titleStr);
+		this.id = `search-list-panel-${++window.tempCount}`;
+		this.addClass('ide-search-list-widget');
+
+		// Spin up isolated worker thread for this widget
+		this.searchWorker = new Worker('/components/filelist/search-worker.js');
+		this.searchWorker.onmessage = this.handleWorkerMessage.bind(this);
+	}
+
+	/**
+	 * Minimal Layout Override: Search Box + Results Render Container (No Toolbar/Repo Selects)
+	 */
+	protected override async renderLayout(): Promise<void>
+	{
+		if(this.node.innerHTML === '')
+		{
+			this.node.innerHTML = `
+            <div class="filelist-wrapper search-widget-wrapper">
+                <div class="search-box">
+                    <input type="text" id="search-${this.id}" class="search-input-field" name="search" placeholder="Search files or contents..." />
+                </div>
+                <div id="${this.treeContainerId}" class="search-results-target"></div>
+            </div>
+            `;
+		}
+	}
+
+	protected override onAfterAttach(msg: Message): void
+	{
+		requestAnimationFrame(() =>
+		{
+			this.renderLayout().then(() =>
+			{
+				this.bindSearchEvents();
+			});
+		});
+	}
+
+	/**
+	 * DOM Event Binding for Search Input & Results List
+	 */
+	private bindSearchEvents(): void
+	{
+		const input = this.node.querySelector<HTMLInputElement>(`.search-input-field`);
+		const resultsContainer = this.node.querySelector<HTMLDivElement>(`#${this.treeContainerId}`);
+
+		if(input)
+		{
+			input.addEventListener('keydown', (e: KeyboardEvent) => this.handleSearchKeyDown(e, input));
+		}
+
+		if(resultsContainer)
+		{
+			resultsContainer.addEventListener('click', (e: MouseEvent) => this.handleSearchResultsClick(e));
+		}
+	}
+
+	// ─── SEARCH WORKER TRANSACTION ROUTING ───
+
+	private handleWorkerMessage(e: MessageEvent): void
+	{
+		const { type, results, callbackId, query } = e.data;
+
+		if(type === 'clear')
+		{
+			this.activeSearchTransactions.delete(callbackId);
+			this.handleSearchWorkerResponse([], query);
+			return;
+		}
+
+		if(!this.activeSearchTransactions.has(callbackId))
+		{
+			this.activeSearchTransactions.set(callbackId, { paths: [], contents: [], github: [] });
+		}
+
+		const txn = this.activeSearchTransactions.get(callbackId)!;
+		(txn as any)[type] = results;
+
+		const flatCombined = [...txn.paths, ...txn.contents, ...txn.github];
+
+		// Group matches by unique file path
+		const groupedMap = new Map<string, GroupedSearchResult>();
+		flatCombined.forEach(item =>
+		{
+			const key = `${item.repoSource}:${item.path}`;
+			if(!groupedMap.has(key))
+			{
+				groupedMap.set(key, {
+					path: item.path,
+					repo: item.repoSource,
+					localMatches: [],
+					remoteMatches: []
+				});
+			}
+
+			const group = groupedMap.get(key)!;
+			if(item.isRemote)
+			{
+				group.remoteMatches.push(item);
+			} else if(!group.localMatches.some(l => l.line === item.line && l.matchText === item.matchText))
+			{
+				group.localMatches.push(item);
+			}
+		});
+
+		const finalGroupedArray = Array.from(groupedMap.values());
+		this.handleSearchWorkerResponse(finalGroupedArray, query);
+	}
+
+	private handleSearchWorkerResponse(incomingGroupedResults: GroupedSearchResult[], rawQueryUsed: string): void
+	{
+		const input = this.node.querySelector<HTMLInputElement>('.search-input-field');
+
+		if(incomingGroupedResults.length > 0)
+		{
+			this.searchHistoryStack = this.searchHistoryStack.filter(h => h.query !== rawQueryUsed);
+			this.searchHistoryStack.push({
+				query: rawQueryUsed,
+				resultsSnapshot: incomingGroupedResults
+			});
+
+			if(this.searchHistoryStack.length > 10)
+			{
+				this.searchHistoryStack.shift();
+			}
+
+			if(input) input.placeholder = `${incomingGroupedResults.length} matches for: "${rawQueryUsed}"`;
+			this.renderSearchResults(incomingGroupedResults);
+			this.buildTreeNodesFromSearch(incomingGroupedResults);
+			return;
+		}
+
+		// Handle empty results or historical fallback state
+		const lastValidState = this.searchHistoryStack[this.searchHistoryStack.length - 1];
+		if(lastValidState)
+		{
+			if(input) input.placeholder = `❌ 0 results found for "${rawQueryUsed}"`;
+			this.renderSearchResults(lastValidState.resultsSnapshot, lastValidState.query);
+		} else
+		{
+			if(input) input.placeholder = `❌ 0 search results found for "${rawQueryUsed}"`;
+			const container = this.node.querySelector(`#${this.treeContainerId}`);
+			if(container)
+			{
+				container.innerHTML = `<div class="empty-placeholder">No assets matching workspace parameters.</div>`;
+			}
+		}
+	}
+
+	// ─── EXECUTION / THROTTLING GATES ───
+
+	private handleSearchKeyDown(e: KeyboardEvent, input: HTMLInputElement): void
+	{
+		if(e.key === 'Enter')
+		{
+			e.preventDefault();
+			const currentQuery = input.value.trim();
+			if(currentQuery.length >= 2)
+			{
+				if(this.federatedSearchTimer)
+				{
+					clearTimeout(this.federatedSearchTimer);
+					this.federatedSearchTimer = null;
+				}
+				this.executeWorkerQuery(currentQuery);
+			}
+			return;
+		}
+
+		setTimeout(() =>
+		{
+			const currentQuery = input.value.trim();
+			const lastHistoryState = this.searchHistoryStack[this.searchHistoryStack.length - 1];
+			const activeResultCount = lastHistoryState?.resultsSnapshot?.length || 0;
+
+			if(activeResultCount === 0 || currentQuery.length < 2)
+			{
+				this.triggerFederatedSearch(currentQuery);
+			}
+		}, 0);
+	}
+
+	private triggerFederatedSearch(queryVal: string): void
+	{
+		this.latestQueryVal = queryVal;
+		if(this.federatedSearchTimer) return;
+		this.runLockingCycle();
+	}
+
+	private runLockingCycle(): void
+	{
+		this.federatedSearchTimer = setTimeout(() =>
+		{
+			if(!this.latestQueryVal || this.latestQueryVal.trim().length < 2)
+			{
+				this.federatedSearchTimer = null;
+				return;
+			}
+
+			if(this.latestQueryVal === this.lastExecutedQueryVal)
+			{
+				this.federatedSearchTimer = null;
+				return;
+			}
+
+			this.lastExecutedQueryVal = this.latestQueryVal;
+			this.executeWorkerQuery(this.latestQueryVal);
+			this.federatedSearchTimer = null;
+
+			if(this.latestQueryVal !== this.lastExecutedQueryVal)
+			{
+				this.runLockingCycle();
+			}
+		}, 300);
+	}
+
+	private executeWorkerQuery(query: string): void
+	{
+		this.searchWorker.postMessage({
+			callbackId: `search-widget-${this.id}`,
+			query: query,
+			caseSensitive: false,
+			gitHubToken: localStorage.getItem('github_token') || (window as any).api?.github_token,
+			activeRepositories: [
+				window.engineRepository,
+				window.gameRepository,
+				window.assetRepository,
+				window.toolsRepository,
+				window.tools2Repository
+			].filter(Boolean)
+		});
+	}
+
+	// ─── DOM RENDERING PASS ───
+
+	private renderSearchResults(groupedItems: GroupedSearchResult[], lastValidQuery?: string): void
+	{
+		const container = this.node.querySelector(`#${this.treeContainerId}`);
+		if(!container) return;
+
+		container.innerHTML = '';
+
+		if(lastValidQuery)
+		{
+			const breadcrumb = document.createElement('div');
+			breadcrumb.className = 'search-history-fallback-breadcrumb';
+			breadcrumb.innerHTML = `Showing last valid state for: <strong>"${this.escapeHtml(lastValidQuery)}"</strong>`;
+			container.appendChild(breadcrumb);
+		}
+
+		groupedItems.forEach(group =>
+		{
+			const card = document.createElement('div');
+			card.className = 'search-card';
+
+			const filename = group.path.split('/').pop() || '';
+			const [owner, repoName = ''] = group.repo.split('/');
+			const firstSha = group.localMatches[0]?.sha || '';
+
+			const header = document.createElement('div');
+			header.className = 'search-card-header';
+			header.innerHTML = `
+                <span class="search-file-path"
+                      data-owner="${this.escapeHtml(owner)}"
+                      data-repo-name="${this.escapeHtml(repoName)}"
+                      data-path="${this.escapeHtml(group.path)}"
+                      data-sha="${this.escapeHtml(firstSha)}">${this.escapeHtml(group.path)}</span>
+                <span class="search-repo-badge">${this.escapeHtml(group.repo)}</span>
+            `;
+			card.appendChild(header);
+
+			const body = document.createElement('div');
+			body.className = 'search-card-body';
+
+			const allMatches = [...group.localMatches, ...group.remoteMatches];
+			allMatches.forEach(match =>
+			{
+				const row = document.createElement('div');
+				row.className = 'search-match-row';
+				row.dataset.owner = owner;
+				row.dataset.repoName = repoName;
+				row.dataset.path = group.path;
+				row.dataset.sha = match.sha || '';
+				row.dataset.line = String(match.line || 0);
+
+				const isFilenameHit = match.matchText.startsWith('[Filename Match]');
+				row.dataset.isFilenameHit = String(isFilenameHit);
+
+				let displayCode = '';
+				if(isFilenameHit)
+				{
+					displayCode = `<span class="filename-match-tag">📄 Filename match: "${this.escapeHtml(filename)}"</span>`;
+				} else if(match.matchIndex !== undefined)
+				{
+					let startText = match.matchText.substring(0, match.matchIndex);
+					const highlightedToken = match.matchText.substring(match.matchIndex, match.matchIndex + (match.matchLength || 0));
+					const endText = match.matchText.substring(match.matchIndex + (match.matchLength || 0));
+
+					if(startText.length > 25)
+					{
+						startText = '…' + startText.substring(startText.length - 25);
+					}
+
+					displayCode = `${this.escapeHtml(startText)}<mark class="search-highlight">${this.escapeHtml(highlightedToken)}</mark>${this.escapeHtml(endText)}`;
+				} else
+				{
+					displayCode = this.escapeHtml(match.matchText);
+				}
+
+				row.innerHTML = `
+                    <div class="search-line-number">${isFilenameHit ? '—' : match.line}</div>
+                    <div class="search-match-text">${displayCode}</div>
+                `;
+
+				body.appendChild(row);
+			});
+
+			card.appendChild(body);
+			container.appendChild(card);
+		});
+	}
+
+	// ─── CLICK INTERACTION DELEGATION ───
+
+	private async handleSearchResultsClick(event: MouseEvent, noBounce: boolean = false): Promise<void>
+	{
+		const target = event.target as HTMLElement;
+		this.cachedFilePathEl ||= target.closest('.search-file-path');
+		this.cachedMatchRowEl ||= target.closest('.search-match-row');
+
+		if(!this.cachedFilePathEl && !this.cachedMatchRowEl) return;
+		if(!noBounce && this.debounceSearchClickTimer) return;
+
+		if(!this.debounceSearchClickTimer)
+		{
+			this.debounceSearchClickTimer = setTimeout(() =>
+			{
+				this.handleSearchResultsClick(event, true);
+				this.debounceSearchClickTimer = null;
+				this.cachedFilePathEl = null;
+				this.cachedMatchRowEl = null;
+			}, 400);
+			return;
+		}
+
+		if(this.cachedFilePathEl)
+		{
+			(window as any).clickFile?.(
+				this.cachedFilePathEl.dataset.owner,
+				this.cachedFilePathEl.dataset.repoName,
+				this.cachedFilePathEl.dataset.path,
+				this.cachedFilePathEl.dataset.sha,
+				true
+			);
+			return;
+		}
+
+		if(this.cachedMatchRowEl)
+		{
+			const isFilenameHit = this.cachedMatchRowEl.dataset.isFilenameHit === 'true';
+			const lineNum = parseInt(this.cachedMatchRowEl.dataset.line || '0', 10);
+
+			await (window as any).openFile?.(
+				this.cachedMatchRowEl.dataset.owner,
+				this.cachedMatchRowEl.dataset.repoName,
+				this.cachedMatchRowEl.dataset.path,
+				this.cachedMatchRowEl.dataset.sha,
+				true, true, true
+			);
+
+			if(!isFilenameHit && (window as any).aceEditor)
+			{
+				setTimeout(() =>
+				{
+					(window as any).aceEditor.gotoLine(lineNum, 0, true);
+				}, 200);
+			}
+		}
+	}
+
+	/**
+	 * Stores search results in loadedDatabases as a virtual tree
+	 */
+	private buildTreeNodesFromSearch(groupedItems: GroupedSearchResult[]): void
+	{
+		const searchDbKey = `search-db-${this.id}`;
+		const flatItems = groupedItems.map(g => ({
+			id: g.path,
+			path: g.path,
+			text: g.path.split('/').pop() || g.path,
+			mode: (window as any).FS_FILE || 33188
+		}));
+
+		const nodes = (window as any).convertFlatToNested?.(flatItems) || [];
+
+		this.loadedDatabases[searchDbKey] = {
+			id: searchDbKey,
+			text: 'Search Results',
+			status: 0,
+			state: { open: true, expanded: true },
+			path: searchDbKey,
+			children: nodes
+		} as any;
+	}
+
+	private escapeHtml(str: string): string
+	{
+		if(typeof str !== 'string') return '';
+		return str
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#039;');
+	}
+
+	protected override onBeforeDetach(msg: Message): void
+	{
+		this.searchWorker.terminate();
+		if(this.federatedSearchTimer) clearTimeout(this.federatedSearchTimer);
+		super.onBeforeDetach(msg);
+	}
+}
+

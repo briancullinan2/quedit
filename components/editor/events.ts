@@ -393,10 +393,7 @@ export function onBlockTrackerCursorChange(session: AceSession, aceEditor: Ace.E
 			}
 		}
 
-		if(typeof window.updateEditorLineIds === "function")
-		{
-			window.updateEditorLineIds();
-		}
+		updateEditorLineIds(session, aceEditor);
 
 		// Strongly type the hidden multi-layered Web Worker client inside Ace
 		const activeWorker = (session.$worker as any)?.$worker;
@@ -427,5 +424,57 @@ export function bindBlockTrackerToSession(session: Ace.EditSession, editor: Ace.
 
 	// Bind the execution frame cleanly
 	session.selection.on("changeCursor", onBlockTrackerCursorChange.bind(null, session, editor));
+}
+
+
+
+export function updateEditorLineIds(session: AceSession, aceEditor: Ace.Editor)
+{
+
+	for(let cn of document.body.classList)
+	{
+		if(cn.startsWith('line-'))
+		{
+			document.body.classList.remove(cn);
+		}
+	}
+
+	for(let cn of document.body.classList)
+	{
+		if(cn.startsWith('error-')
+			|| cn.startsWith('warning-')
+		)
+		{
+			document.body.classList.remove(cn);
+		}
+	}
+
+
+	for(let cn of document.body.classList)
+	{
+		if(cn.startsWith('hash-'))
+		{
+			document.body.classList.remove(cn);
+		}
+	}
+
+
+	let currentLine = aceEditor.getCursorPosition();
+	document.body.classList.add('line-' + (currentLine.row + 1));
+	document.body.classList.add('hash-' + (window.previousHashLineNumber || 0));
+	if(currentLine.row + 1 === window.previousHashLineNumber)
+		document.body.classList.add('line-match');
+	if(session.getAnnotations)
+	{
+		var matches = session.getAnnotations().filter(function (ann)
+		{
+			return ann.row === currentLine.row;
+			//&& ann.type === 'error';
+		});
+		if(matches.length > 0)
+		{
+			document.body.classList.add(matches[0].type + '-' + currentLine.row);
+		}
+	}
 }
 

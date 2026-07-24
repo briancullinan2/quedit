@@ -4,7 +4,7 @@ import { Ace } from 'ace-builds';
 import type { SettingConfig, Settings } from '../bundle/settings';
 import type { HistoryToolbar, NavPoint } from '../bundle/menu-history';
 import type { LayoutAdjuster } from '../bundle/lumino-widget';
-import type { TerminalLogEntry } from '../terminal/widget';
+import type { TerminalLogEntry } from '../terminal/widget-types';
 import { AceEventManager, bindBlockTrackerToSession, onBlockTrackerCursorChange } from "./events";
 
 interface ISessionCache

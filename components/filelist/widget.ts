@@ -1,9 +1,9 @@
 // components/FileListWidget.ts
-import { Widget, DockPanel } from '@lumino/widgets';
+import { Widget } from '@lumino/widgets';
 import type { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
 import type { GitHubBranch, GitHubFileTree } from '../bundle/github-types';
 import type { RepositoryToolbar } from '../bundle/menu-repos';
-import type { SettingConfig, Settings } from '../bundle/settings';
+import type { Settings } from '../bundle/settings';
 import type { FileManager } from '../bundle/lumino-files';
 import { Message, MessageLoop } from '@lumino/messaging';
 import Tree from './tree.js';
@@ -130,7 +130,7 @@ export class FileListWidget extends Widget
 	/**
 	 * Safe HTML Structure Injection
 	 */
-	private async renderLayout(): Promise<void>
+	protected async renderLayout(): Promise<void>
 	{
 		if(this.node.innerHTML === '')
 		{
@@ -252,6 +252,11 @@ export class FileListWidget extends Widget
 
 	protected async initializeFiletrees(): Promise<void>
 	{
+		if(this.constructor.name === 'SearchListWidget')
+		{
+			return;
+		}
+
 		if(this.container && this.container.innerHTML !== '')
 		{
 			return;

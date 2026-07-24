@@ -1,5 +1,5 @@
 import type { Terminal, IDecoration } from '@xterm/xterm';
-import type { IPooledTerminal } from './widget';
+import type { IPooledTerminal } from './widget-types';
 
 // --- Structural Interfaces ---
 export interface SearchResult

@@ -150,7 +150,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/ace/mode-antlr_worker.js",
-    "size": 13036
+    "size": 11312
   },
   {
     "path": "/ace/mode-apache_conf.js",
@@ -1138,7 +1138,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/ace/worker-antlr.js",
-    "size": 21429
+    "size": 21423
   },
   {
     "path": "/ace/worker-base.js",
@@ -1182,7 +1182,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/app.bundle.js",
-    "size": 2945415
+    "size": 14660735
   },
   {
     "path": "/babel.min.js",
@@ -1222,35 +1222,39 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/audio-editor/widget.ts",
-    "size": 3333
+    "size": 3236
   },
   {
     "path": "/components/bundle/babel-compile.ts",
-    "size": 20473
+    "size": 21904
   },
   {
     "path": "/components/bundle/controls.css",
-    "size": 6196
+    "size": 6274
+  },
+  {
+    "path": "/components/bundle/frame-rater.ts",
+    "size": 3986
   },
   {
     "path": "/components/bundle/generate-manifest.ts",
-    "size": 1923
+    "size": 1989
   },
   {
     "path": "/components/bundle/github-api.ts",
-    "size": 12543
+    "size": 12539
   },
   {
     "path": "/components/bundle/github-settings.ts",
-    "size": 10082
+    "size": 10382
   },
   {
     "path": "/components/bundle/github-tools.ts",
-    "size": 9702
+    "size": 10588
   },
   {
     "path": "/components/bundle/github-types.ts",
-    "size": 1704
+    "size": 1788
   },
   {
     "path": "/components/bundle/github.ts",
@@ -1261,36 +1265,44 @@ self.__assetsManifest = [
     "size": 3198
   },
   {
+    "path": "/components/bundle/levenshtein.ts",
+    "size": 4804
+  },
+  {
     "path": "/components/bundle/local.ts",
-    "size": 17042
+    "size": 17559
+  },
+  {
+    "path": "/components/bundle/logging.ts",
+    "size": 15208
   },
   {
     "path": "/components/bundle/lumino-files.ts",
-    "size": 12137
+    "size": 17107
   },
   {
     "path": "/components/bundle/lumino-resize.ts",
-    "size": 12942
+    "size": 27573
   },
   {
     "path": "/components/bundle/lumino-widget.ts",
-    "size": 7940
+    "size": 11423
   },
   {
     "path": "/components/bundle/lumino.css",
-    "size": 3432
+    "size": 3458
   },
   {
     "path": "/components/bundle/lumino.ts",
-    "size": 9580
+    "size": 10124
   },
   {
     "path": "/components/bundle/menu-app.ts",
-    "size": 7582
+    "size": 18228
   },
   {
     "path": "/components/bundle/menu-engine.ts",
-    "size": 3365
+    "size": 5659
   },
   {
     "path": "/components/bundle/menu-file.ts",
@@ -1298,15 +1310,15 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/menu-history.ts",
-    "size": 14990
+    "size": 15464
   },
   {
     "path": "/components/bundle/menu-manager.ts",
-    "size": 9985
+    "size": 9742
   },
   {
     "path": "/components/bundle/menu-repos.ts",
-    "size": 3405
+    "size": 3687
   },
   {
     "path": "/components/bundle/menu-script.ts",
@@ -1318,11 +1330,11 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/menu.css",
-    "size": 1428
+    "size": 1519
   },
   {
     "path": "/components/bundle/menu.ts",
-    "size": 9544
+    "size": 16003
   },
   {
     "path": "/components/bundle/paint.css",
@@ -1334,15 +1346,15 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/settings-coalesced.ts",
-    "size": 5047
+    "size": 6217
   },
   {
     "path": "/components/bundle/settings-coalescer.ts",
-    "size": 5082
+    "size": 5121
   },
   {
     "path": "/components/bundle/settings.ts",
-    "size": 11676
+    "size": 12227
   },
   {
     "path": "/components/bundle/status.css",
@@ -1366,7 +1378,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/worker.ts",
-    "size": 6097
+    "size": 6317
   },
   {
     "path": "/components/compiler/clang.wasm",
@@ -1397,6 +1409,10 @@ self.__assetsManifest = [
     "size": 345442
   },
   {
+    "path": "/components/compiler/mmd-sccache.md",
+    "size": 3683
+  },
+  {
     "path": "/components/compiler/shared.js",
     "size": 70957
   },
@@ -1418,7 +1434,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/core/events.js",
-    "size": 7777
+    "size": 6941
   },
   {
     "path": "/components/core/extensions.js",
@@ -1430,11 +1446,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/core/local.js",
-    "size": 17382
-  },
-  {
-    "path": "/components/core/logging.js",
-    "size": 15695
+    "size": 15360
   },
   {
     "path": "/components/core/preambles.js",
@@ -1446,19 +1458,19 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/editor/editor.css",
-    "size": 1650
+    "size": 1646
   },
   {
     "path": "/components/editor/editor.js",
-    "size": 8050
+    "size": 7168
   },
   {
     "path": "/components/editor/events.ts",
-    "size": 10477
+    "size": 12185
   },
   {
     "path": "/components/editor/widget.ts",
-    "size": 23042
+    "size": 21298
   },
   {
     "path": "/components/engine/checksum.js",
@@ -1510,7 +1522,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/engine/sys_wasm.js",
-    "size": 14268
+    "size": 14226
   },
   {
     "path": "/components/engine/sys_web.js",
@@ -1521,12 +1533,8 @@ self.__assetsManifest = [
     "size": 13028
   },
   {
-    "path": "/components/filelist/filelist.js",
-    "size": 24846
-  },
-  {
     "path": "/components/filelist/github.js",
-    "size": 24564
+    "size": 24429
   },
   {
     "path": "/components/filelist/jszip.min.js",
@@ -1578,19 +1586,27 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/filelist/widget-assets.ts",
-    "size": 7484
+    "size": 7344
   },
   {
     "path": "/components/filelist/widget-database.ts",
-    "size": 8236
+    "size": 7490
   },
   {
-    "path": "/components/filelist/widget.md",
-    "size": 22297
+    "path": "/components/filelist/widget-github.ts",
+    "size": 12657
+  },
+  {
+    "path": "/components/filelist/widget-local.ts",
+    "size": 9662
+  },
+  {
+    "path": "/components/filelist/widget-search.ts",
+    "size": 13663
   },
   {
     "path": "/components/filelist/widget.ts",
-    "size": 11054
+    "size": 17900
   },
   {
     "path": "/components/layout/components.css",
@@ -1602,15 +1618,15 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/layout/popups.css",
-    "size": 3865
+    "size": 4063
   },
   {
     "path": "/components/layout/settings.js",
-    "size": 1484
+    "size": 1218
   },
   {
     "path": "/components/layout/token-modal.ts",
-    "size": 5662
+    "size": 5810
   },
   {
     "path": "/components/layout/toolbar.js",
@@ -1683,10 +1699,6 @@ self.__assetsManifest = [
   {
     "path": "/components/map-editor/draco_encoder.js",
     "size": 826701
-  },
-  {
-    "path": "/components/map-editor/file-access.js",
-    "size": 3139
   },
   {
     "path": "/components/map-editor/icons/camera/camera.png",
@@ -2334,7 +2346,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/map-editor/widget.ts",
-    "size": 964
+    "size": 932
   },
   {
     "path": "/components/map-loader/basis/basis-basics.js",
@@ -2362,7 +2374,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/map-loader/q3bsp.js",
-    "size": 23519
+    "size": 26069
   },
   {
     "path": "/components/map-loader/q3bsp_worker.js",
@@ -2374,7 +2386,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/map-loader/q3movement.js",
-    "size": 11611
+    "size": 11143
   },
   {
     "path": "/components/map-loader/q3shader.js",
@@ -2402,7 +2414,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/map-loader/widget.ts",
-    "size": 24085
+    "size": 34371
   },
   {
     "path": "/components/paint/alertify.js",
@@ -2414,11 +2426,11 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/paint/bundle.js",
-    "size": 5860766
+    "size": 5860764
   },
   {
     "path": "/components/paint/bundle.js.LICENSE.txt",
-    "size": 1622
+    "size": 1551
   },
   {
     "path": "/components/paint/css/alertify.css",
@@ -2530,7 +2542,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/paint/widget.ts",
-    "size": 32782
+    "size": 31545
   },
   {
     "path": "/components/proxy/checksum.js",
@@ -2585,20 +2597,36 @@ self.__assetsManifest = [
     "size": 23645
   },
   {
+    "path": "/components/terminal/commands-build.js",
+    "size": 18332
+  },
+  {
+    "path": "/components/terminal/commands-complete.ts",
+    "size": 9255
+  },
+  {
+    "path": "/components/terminal/commands-files.js",
+    "size": 7351
+  },
+  {
+    "path": "/components/terminal/commands-git.js",
+    "size": 4807
+  },
+  {
     "path": "/components/terminal/commands-quake3.js",
-    "size": 7945
+    "size": 7726
   },
   {
     "path": "/components/terminal/commands.js",
-    "size": 61600
+    "size": 22780
   },
   {
     "path": "/components/terminal/events.ts",
-    "size": 21351
+    "size": 21855
   },
   {
     "path": "/components/terminal/history.ts",
-    "size": 6754
+    "size": 6846
   },
   {
     "path": "/components/terminal/render-boxes.js",
@@ -2606,19 +2634,23 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/terminal/render.ts",
-    "size": 12972
+    "size": 12631
   },
   {
     "path": "/components/terminal/search.ts",
-    "size": 8430
+    "size": 8397
   },
   {
     "path": "/components/terminal/terminal.css",
     "size": 4290
   },
   {
+    "path": "/components/terminal/widget-types.ts",
+    "size": 834
+  },
+  {
     "path": "/components/terminal/widget.ts",
-    "size": 22699
+    "size": 19801
   },
   {
     "path": "/components/terminal/xterm-addon-fit.js",
@@ -2714,11 +2746,11 @@ self.__assetsManifest = [
   },
   {
     "path": "/google-drive-implicit.html",
-    "size": 4869
+    "size": 4724
   },
   {
     "path": "/index.html",
-    "size": 1704
+    "size": 1781
   },
   {
     "path": "/index.old.html",
@@ -2734,11 +2766,11 @@ self.__assetsManifest = [
   },
   {
     "path": "/README.md",
-    "size": 28747
+    "size": 29752
   },
   {
     "path": "/service-worker.js",
-    "size": 30923
+    "size": 31696
   },
   {
     "path": "/tsconfig.json",
@@ -2746,15 +2778,15 @@ self.__assetsManifest = [
   },
   {
     "path": "/webpack.nunu.js",
-    "size": 1516
+    "size": 1464
   },
   {
     "path": "/webpack.paint.js",
-    "size": 1468
+    "size": 1417
   },
   {
     "path": "/webpack.prod.js",
-    "size": 4496
+    "size": 4494
   },
   {
     "path": "/womp.LICENSE",
