@@ -74,7 +74,7 @@ export class FileListWidget extends Widget
 	protected loadedDatabases: Record<string, NestedTreeNode> = {};
 	handleKey?: string;
 	protected treeLoading: boolean = false;
-	protected refreshTreeTimer: any;
+	protected refreshTreeTimer: ReturnType<typeof setTimeout> | undefined;
 
 	protected get selector()
 	{

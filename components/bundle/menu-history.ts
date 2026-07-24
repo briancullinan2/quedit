@@ -1,5 +1,7 @@
 import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
+import type { RepositoryToolbar } from "./menu-repos";
+import type { AceEditorWidget } from "../editor/widget";
 
 declare global
 {
@@ -7,15 +9,20 @@ declare global
 	{
 		historyToolbar: HistoryToolbar;
 		HistoryToolbar: typeof HistoryToolbar;
+		RepositoryToolbar: typeof RepositoryToolbar;
 		currentOpenFileId?: any;
+		trees: Record<string, any>;
 	}
 }
 
+export type NavPoint = {
+	fileId: string;
+	row: number;
+	column: number;
+};
+
+
 // Global scope bindings for code dependencies referenced inside your metadata extractors
-declare const owner: { value: string; };
-declare const repository: { value: string; };
-declare const trees: Record<string, { nodesById: Record<string, any>; values: any[]; }>;
-declare const aceEditor: any;
 declare const openFile: (owner: string, repo: string, path: string, sha: string, flag: boolean) => void;
 
 export class HistoryToolbar extends Widget
@@ -117,18 +124,18 @@ export class HistoryToolbar extends Widget
 	public apply(): void
 	{
 		const point = this.stack[this.index];
-		const database = owner.value + '/' + repository.value;
-		const filePath = trees[database].nodesById[point.fileId].path;
+		const database = window.RepositoryToolbar.owner?.value + '/' + window.RepositoryToolbar.repository?.value;
+		const filePath = window.trees[database].nodesById[point.fileId].path;
 
 		window.currentOpenFileId = point.fileId;
-		trees[database].values = [point.fileId];
+		window.trees[database].values = [point.fileId];
 
-		openFile(owner.value, repository.value, filePath, trees[database].nodesById[point.fileId].sha, false);
+		//openFile(window.RepositoryToolbar.owner?.value, window.RepositoryToolbar.repository?.value, filePath, window.trees[database].nodesById[point.fileId].sha, false);
 
-		if(typeof aceEditor !== 'undefined')
-		{
-			aceEditor.gotoLine(point.row + 1, point.column);
-		}
+		//if(typeof aceEditor !== 'undefined')
+		//{
+		//	aceEditor.gotoLine(point.row + 1, point.column);
+		//}
 
 		// TODO:
 		//this.updateTriggerButtonValue(meta.icon, meta.title, timeString);
@@ -137,13 +144,18 @@ export class HistoryToolbar extends Widget
 	// --- History Tracking Frame & Pipeline ---
 	public recordFileHistory(filePath: string, sha: string, lineNumber: number | null = null): void
 	{
+		const aceEditor = window.lastInteractedWidget?.constructor.name === 'AceEditorWidget'
+			? window.lastInteractedWidget as AceEditorWidget
+			: undefined;
 		const fileNameMatch = filePath.match(/[^/\\#]+$/);
 		const fileName = fileNameMatch ? fileNameMatch[0] : filePath;
 
 		let targetLine = lineNumber;
-		if(lineNumber === null && typeof aceEditor !== 'undefined')
+		if(lineNumber === null && typeof aceEditor !== 'undefined'
+			&& typeof aceEditor._editor !== 'undefined'
+		)
 		{
-			targetLine = aceEditor.getCursorPosition().row + 1;
+			targetLine = aceEditor._editor.getCursorPosition().row + 1;
 		}
 
 		const dynamicTitle = targetLine
@@ -152,9 +164,9 @@ export class HistoryToolbar extends Widget
 
 		document.title = dynamicTitle;
 
-		if(typeof aceEditor !== 'undefined')
+		if(typeof aceEditor !== 'undefined' && typeof aceEditor._editor !== 'undefined')
 		{
-			const pos = aceEditor.getCursorPosition();
+			const pos = aceEditor._editor.getCursorPosition();
 			const finalLineNumber = targetLine !== null ? targetLine : (pos.row + 1);
 
 			this.appendHistoryItem({

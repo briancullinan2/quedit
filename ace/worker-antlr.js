@@ -302,7 +302,7 @@ self.addEventListener('message', function (e) {
     const msg = e.data;
     if (!msg) return;
 
-    // Use a localized variable for routing so we don't mutate the raw event object 
+    // Use a localized variable for routing so we don't mutate the raw event object
     // that Ace's worker-base.js expects to read further down the chain.
     const commandName = msg.command || msg.event;
 
@@ -386,7 +386,7 @@ self.addEventListener('message', function (e) {
                     action: "remove",
                     start: startPos,
                     end: secondParam,
-                    // For a remove action, standard applyDeltas will slice out the text, 
+                    // For a remove action, standard applyDeltas will slice out the text,
                     // but providing an empty array prevents crashes if the tracker demands the lines key
                     lines: []
                 };
@@ -483,7 +483,7 @@ function executeGetFoldRegionsCommand(msg, sender) {
     const BailStrategy = ErrorNamespace.BailErrorStrategy;
     const DefaultStrategy = ErrorNamespace.DefaultErrorStrategy;
 
-    // 2. Default to DefaultErrorStrategy so the parser attempts syntax recovery 
+    // 2. Default to DefaultErrorStrategy so the parser attempts syntax recovery
     // rather than instantly throwing an uncatchable exception on minor token gaps
     if (DefaultStrategy) {
         parser._errHandler = new DefaultStrategy();
@@ -512,8 +512,6 @@ function executeGetFoldRegionsCommand(msg, sender) {
             return;
         }
     }
-
-
 
 
 
@@ -572,7 +570,7 @@ function executeGetFoldRegionsCommand(msg, sender) {
                     let finalStartLine = b.startLine;
                     let finalEndLine = b.endLine;
 
-                    // If the starting line contains an opening curly bracket '{', 
+                    // If the starting line contains an opening curly bracket '{',
                     // adjust the fold downward by 1 line so the function signature line remains visible
                     if (headerLineText.includes('{')) {
                         finalStartLine = b.startLine + 1;

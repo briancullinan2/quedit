@@ -2,7 +2,7 @@ import { BoxPanel, DockPanel, FocusTracker, MenuBar, Panel, Widget } from "@lumi
 import { LayoutAdjuster, MOBILEMODE, WIDESCREEN, TALLSCREEN, WidgetType } from "./lumino-widget";
 import type { RepositoryToolbar } from "./menu-repos";
 import type { ScriptToolbar } from "./menu-script";
-import type { ApplicationToolbar } from "./menu-app";
+import type { ApplicationToolbar, LayoutState } from "./menu-app";
 import type { FileToolbar } from "./menu-file";
 import type { HistoryToolbar } from "./menu-history";
 import type { SettingsToolbar } from "./menu-settings";
@@ -47,6 +47,7 @@ declare global
 		historyToolbar: HistoryToolbar;
 		settingsToolbar: SettingsToolbar;
 		engineToolbar: EngineToolbar;
+		layoutState: LayoutState;
 	}
 }
 
@@ -263,7 +264,7 @@ export class ResponsiveManager
 						{
 							// First file tree / outline splits left relative to main editor
 							firstRefWidget['outline'] = widget;
-							mainDock.addWidget(widget, { mode: 'split-left', ref: primaryWidget });
+							mainDock.addWidget(widget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-left' : 'split-right', ref: primaryWidget });
 						}
 						else
 						{
@@ -277,12 +278,12 @@ export class ResponsiveManager
 						{
 							// First terminal splits bottom relative to the primary editor
 							firstRefWidget[widgetName] = widget;
-							mainDock.addWidget(widget, { mode: 'split-right', ref: primaryWidget });
+							mainDock.addWidget(widget, { mode: window.layoutState.order === 'normal-order' ? 'split-right' : 'split-left', ref: primaryWidget });
 						}
 						else if(!firstRefWidget[widgetName] && !isHeightMobile)
 						{
 							firstRefWidget[widgetName] = widget;
-							mainDock.addWidget(widget, { mode: 'split-bottom', ref: primaryWidget });
+							mainDock.addWidget(widget, { mode: window.layoutState.order === 'normal-order' ? 'split-bottom' : 'split-top', ref: primaryWidget });
 						}
 						else
 						{
@@ -296,7 +297,13 @@ export class ResponsiveManager
 						{
 							// First paint/canvas widget splits right relative to the main editor
 							firstRefWidget[widgetName] = widget;
-							mainDock.addWidget(widget, { mode: 'split-right', ref: primaryWidget });
+							if(OUTLINE_WIDGET_TYPES.includes(primaryWidget.constructor.name))
+							{
+								mainDock.addWidget(widget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-right' : 'split-left', ref: primaryWidget });
+							} else
+							{
+								mainDock.addWidget(widget, { mode: window.layoutState.order === 'normal-order' ? 'split-right' : 'split-left', ref: primaryWidget });
+							}
 						}
 						else
 						{
@@ -315,11 +322,11 @@ export class ResponsiveManager
 					{
 						if(count === 2)
 						{
-							layout.main.sizes = [0.25, 0.75];
+							layout.main.sizes = window.layoutState.panels === 'left-hand-files' ? [0.25, 0.75] : [0.75, 0.25];
 						}
 						else if(count === 3)
 						{
-							layout.main.sizes = [0.20, 0.40, 0.40];
+							layout.main.sizes = window.layoutState.panels === 'left-hand-files' ? [0.20, 0.40, 0.40] : [0.40, 0.40, 0.20];
 						}
 					} else
 					{
@@ -392,13 +399,13 @@ export class ResponsiveManager
 						if(!firstRefWidget[widgetName] && OUTLINE_WIDGET_TYPES.includes(primaryWidget.constructor.name))
 						{
 							firstRefWidget[widgetName] = widget;
-							mainDock.addWidget(widget, { mode: 'split-right', ref: nonTerminal ?? primaryWidget });
+							mainDock.addWidget(widget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-right' : 'split-left', ref: nonTerminal ?? primaryWidget });
 						}
 						else if(!firstRefWidget[widgetName] && !isMobileHeight)
 						{
 							// First terminal splits below the primary editor / non-terminal container
 							firstRefWidget[widgetName] = widget;
-							mainDock.addWidget(widget, { mode: 'split-bottom', ref: nonTerminal });
+							mainDock.addWidget(widget, { mode: window.layoutState.order === 'normal-order' ? 'split-bottom' : 'split-top', ref: nonTerminal });
 						}
 						else
 						{
@@ -411,17 +418,17 @@ export class ResponsiveManager
 						const nonTerminal = LayoutAdjuster._findNonOutlineOrTerminal(mainDock);
 						if(OUTLINE_WIDGET_TYPES.includes(widget.constructor.name) && nonTerminal)
 						{
-							mainDock.addWidget(widget, { mode: 'split-left', ref: nonTerminal });
+							mainDock.addWidget(widget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-left' : 'split-right', ref: nonTerminal });
 						} else if(nonTerminal)
 						{
 							firstRefWidget[widgetName] = widget;
 							mainDock.addWidget(widget, { mode: 'tab-after', ref: nonTerminal ?? primaryWidget });
 						} else if(firstRefWidget['TerminalWidget'])
 						{
-							mainDock.addWidget(widget, { mode: 'split-top', ref: firstRefWidget['TerminalWidget'] });
+							mainDock.addWidget(widget, { mode: window.layoutState.order === 'normal-order' ? 'split-top' : 'split-bottom', ref: firstRefWidget['TerminalWidget'] });
 						} else if(OUTLINE_WIDGET_TYPES.includes(primaryWidget.constructor.name))
 						{
-							mainDock.addWidget(widget, { mode: 'split-right', ref: firstRefWidget['outline'] });
+							mainDock.addWidget(widget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-right' : 'split-left', ref: firstRefWidget['outline'] });
 						} else
 						{
 							mainDock.addWidget(widget, { mode: 'tab-after', ref: primaryWidget });
@@ -435,7 +442,7 @@ export class ResponsiveManager
 					//const count = layout.main.children.length;
 					if(widgetTypes['outline'])
 					{
-						layout.main.sizes = [0.25, 0.75];
+						layout.main.sizes = window.layoutState.panels === 'left-hand-files' ? [0.25, 0.75] : [0.75, 0.25];
 					}
 					mainDock.restoreLayout(layout as any);
 				}

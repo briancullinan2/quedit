@@ -1,6 +1,7 @@
 import type { StatusBarWidget } from '../bundle/status';
-import type { AceEditorWidget } from './widget'; // Adjust path if needed
-import * as ace from 'ace-builds';
+import type { AceEditor, AceEditorWidget, AceSession } from './widget'; // Adjust path if needed
+import type { NavPoint } from '../bundle/menu-history';
+import { Ace } from 'ace-builds';
 
 export interface AceTrackingPayload
 {
@@ -97,14 +98,19 @@ export class AceEventManager
 				this._currentBlockMarkerId = null;
 			}
 
+			(ace as AceEditor).require(["ace/mode/antlr_worker"], (antlrWorkerModule: any) =>
+			{
+				if(antlrWorkerModule && antlrWorkerModule.switchActiveSession)
+				{
+					antlrWorkerModule.switchActiveSession(e.session);
+				}
+			});
+
 			// Route block tracking tasks back up to the widget context if they exist
-			if(typeof (this._widget as any).bindBlockTrackerToSession === 'function')
+			if(this._widget._editor)
 			{
-				(this._widget as any).bindBlockTrackerToSession(e.session);
-			}
-			if(typeof (this._widget as any).onBlockTrackerCursorChange === 'function')
-			{
-				(this._widget as any).onBlockTrackerCursorChange();
+				bindBlockTrackerToSession(e.session, this._widget._editor);
+				onBlockTrackerCursorChange(e.session, this._widget._editor);
 			}
 		});
 
@@ -228,10 +234,7 @@ export class AceEventManager
 
 		if(!event.ctrlKey && !event.metaKey) return;
 
-		if(typeof (window as any).writeLog === 'function')
-		{
-			(window as any).writeLog(`Ace Intercept -> Token: ${telemetry.tokenText}, Line: ${telemetry.row}, Fn: ${telemetry.isFunctionCall}`);
-		}
+		console.log(`Ace Intercept -> Token: ${telemetry.tokenText}, Line: ${telemetry.row}, Fn: ${telemetry.isFunctionCall}`);
 
 		if(telemetry.isFunctionCall)
 		{
@@ -318,7 +321,7 @@ export class AceEventManager
  */
 export function updateAceStatus(
 	data: AceTrackingPayload | null,
-	aceEditor: ace.Ace.Editor,
+	aceEditor: Ace.Editor,
 	statusBar: StatusBarWidget
 ): void
 {
@@ -349,5 +352,80 @@ export function updateAceStatus(
 		+ errorInfo
 		+ `File: ${data.file}, ID: ${data.id}`
 	);
+}
+
+
+let navTimer: ReturnType<typeof setTimeout> | undefined;
+
+
+// TODO: fix block tracker
+export function onBlockTrackerCursorChange(session: AceSession, aceEditor: Ace.Editor): void
+{
+	if(typeof window.historyToolbar !== "undefined" && window.historyToolbar.isNavigating)
+	{
+		return;
+	}
+
+	if(navTimer)
+	{
+		clearTimeout(navTimer);
+	}
+
+	navTimer = setTimeout(() =>
+	{
+		if(!session) return;
+
+		const pos = aceEditor.getCursorPosition();
+		const currentFile = typeof window.currentOpenFileId !== "undefined" ? window.currentOpenFileId : null;
+
+		const humanRow = pos.row + 1;
+		const humanCol = pos.column + 1;
+
+		const lastPoint: NavPoint | null = typeof window.historyToolbar !== "undefined"
+			? window.historyToolbar.stack[window.historyToolbar.index]
+			: null;
+
+		if(!lastPoint || lastPoint.fileId !== currentFile || Math.abs(lastPoint.row - humanRow) > 5)
+		{
+			if(typeof window.historyToolbar !== "undefined")
+			{
+				window.historyToolbar.push(currentFile, humanRow, humanCol);
+			}
+		}
+
+		if(typeof window.updateEditorLineIds === "function")
+		{
+			window.updateEditorLineIds();
+		}
+
+		// Strongly type the hidden multi-layered Web Worker client inside Ace
+		const activeWorker = (session.$worker as any)?.$worker;
+
+		if(activeWorker)
+		{
+			activeWorker.postMessage({
+				event: "calculateActiveBlockRange",
+				data: { lineNumber: humanRow }
+			});
+
+			activeWorker.postMessage({
+				event: "getFoldRegions",
+				data: { fileId: session.workspaceFileId ?? null }
+			});
+		}
+
+	}, 150);
+}
+
+
+export function bindBlockTrackerToSession(session: Ace.EditSession, editor: Ace.Editor)
+{
+	if(!session || !session.selection) return;
+
+	// Remove any pre-existing tracker handle on this session to prevent duplicate fire leaks
+	session.selection.off("changeCursor", onBlockTrackerCursorChange.bind(null, session, editor));
+
+	// Bind the execution frame cleanly
+	session.selection.on("changeCursor", onBlockTrackerCursorChange.bind(null, session, editor));
 }
 

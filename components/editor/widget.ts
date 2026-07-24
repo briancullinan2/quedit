@@ -2,10 +2,10 @@ import { DockPanel, Widget } from '@lumino/widgets';
 import { Message } from '@lumino/messaging';
 import { Ace } from 'ace-builds';
 import type { SettingConfig, Settings } from '../bundle/settings';
-import type { HistoryToolbar } from '../bundle/menu-history';
+import type { HistoryToolbar, NavPoint } from '../bundle/menu-history';
 import type { LayoutAdjuster } from '../bundle/lumino-widget';
 import type { TerminalLogEntry } from '../terminal/widget';
-import { AceEventManager } from "./events";
+import { AceEventManager, bindBlockTrackerToSession, onBlockTrackerCursorChange } from "./events";
 
 interface ISessionCache
 {
@@ -19,24 +19,26 @@ declare module "ace-builds" {
 	}
 }
 
-interface AceSession extends Ace.EditSession
+export interface AceSession extends Ace.EditSession
 {
 	workspaceFileId?: string;
 	$worker?: Worker;
 }
 
+export type AceEditor = typeof Ace & {
+	edit(el: string | HTMLElement, options?: any): any;
+	createEditSession(text: string | Ace.Document, mode?: any): AceSession;
+	Range: new (startRow: number, startColumn: number, endRow: number, endColumn: number) => Ace.Range;
+	config: {
+		loadModule: (module: [string, string], callback: () => void) => void;
+		set: (key: string, value: string) => void;
+	};
+	require: (modules: string[], callback: (moduleExports: any) => void) => void;
+};
+
 declare global
 {
-	const ace: typeof Ace & {
-		edit(el: string | HTMLElement, options?: any): any;
-		createEditSession(text: string | Ace.Document, mode?: any): AceSession;
-		Range: new (startRow: number, startColumn: number, endRow: number, endColumn: number) => Ace.Range;
-		config: {
-			loadModule: (module: [string, string], callback: () => void) => void;
-			set: (key: string, value: string) => void;
-		};
-		require: (modules: string[], callback: (moduleExports: any) => void) => void;
-	};
+	const ace: AceEditor;
 
 	interface Window
 	{
@@ -267,84 +269,6 @@ function getModeByFilename(filePath: string)
 }
 
 
-let navTimer: ReturnType<typeof setTimeout> | undefined;
-
-
-/*
-// TODO: fix block tracker
-function onBlockTrackerCursorChange(aceEditor: Ace.Editor): void
-{
-	if(typeof NavHistory !== "undefined" && NavHistory.isNavigating)
-	{
-		return;
-	}
-
-	if(navTimer)
-	{
-		clearTimeout(navTimer);
-	}
-
-	navTimer = setTimeout(() =>
-	{
-		const session = aceEditor.getSession() as Ace.EditSession & { workspaceFileId?: string | number; };
-		if(!session) return;
-
-		const pos = aceEditor.getCursorPosition();
-		const currentFile = typeof window.currentOpenFileId !== "undefined" ? window.currentOpenFileId : null;
-
-		const humanRow = pos.row + 1;
-		const humanCol = pos.column + 1;
-
-		const lastPoint: NavPoint | null = typeof NavHistory !== "undefined"
-			? NavHistory.stack[NavHistory.index]
-			: null;
-
-		if(!lastPoint || lastPoint.fileId !== currentFile || Math.abs(lastPoint.row - humanRow) > 5)
-		{
-			if(typeof NavHistory !== "undefined")
-			{
-				NavHistory.push(currentFile, humanRow, humanCol);
-			}
-		}
-
-		if(typeof window.updateEditorLineIds === "function")
-		{
-			window.updateEditorLineIds();
-		}
-
-		// Strongly type the hidden multi-layered Web Worker client inside Ace
-		const workerContainer = session as AceSession;
-		const activeWorker = workerContainer.$worker?.$worker;
-
-		if(activeWorker)
-		{
-			activeWorker.postMessage({
-				event: "calculateActiveBlockRange",
-				data: { lineNumber: humanRow }
-			});
-
-			activeWorker.postMessage({
-				event: "getFoldRegions",
-				data: { fileId: session.workspaceFileId ?? null }
-			});
-		}
-
-	}, 150);
-}
-*/
-
-function bindBlockTrackerToSession(session: Ace.EditSession)
-{
-	if(!session || !session.selection) return;
-
-	// Remove any pre-existing tracker handle on this session to prevent duplicate fire leaks
-	//session.selection.off("changeCursor", onBlockTrackerCursorChange);
-
-	// Bind the execution frame cleanly
-	//session.selection.on("changeCursor", onBlockTrackerCursorChange);
-}
-
-
 
 /**
  * Global static coordinator managing pool instances to facilitate cross-widget reuse.
@@ -354,7 +278,7 @@ class AceEditorPool
 	static instances: Array<{ editor: Ace.Editor; inUse: boolean; }> = [];
 	public static sessionCache: ISessionCache = {};
 
-	public static getOrCreateAceSession(fileId: string, content: string): any
+	public static getOrCreateAceSession(fileId: string, content: string, editor: Ace.Editor): any
 	{
 		if(this.sessionCache[fileId])
 		{
@@ -376,7 +300,8 @@ class AceEditorPool
 		console.warn('Setting ace9 language highlighter: ' + mode + ' from ' + fileId);
 		session.setMode(mode);
 
-		bindBlockTrackerToSession(session);
+		bindBlockTrackerToSession(session, editor);
+		onBlockTrackerCursorChange(session, editor);
 
 		if(fileId.endsWith('.c') || fileId.endsWith('.h'))
 		{
@@ -384,6 +309,19 @@ class AceEditorPool
 		}
 
 		this.sessionCache[fileId] = session;
+
+		editor.setSession(session);
+		editor.resize();
+		editor.renderer.updateFull();
+		tryLoadingTerminalEditorBridge(editor);
+		ace.require(["ace/mode/antlr_worker"], (antlrWorkerModule) =>
+		{
+			if(antlrWorkerModule && antlrWorkerModule.switchActiveSession)
+			{
+				antlrWorkerModule.switchActiveSession(session);
+			}
+		});
+
 		return session;
 	}
 
@@ -518,7 +456,7 @@ export class AceEditorWidget extends Widget
 {
 	protected _fileId: string;
 	protected _initialContent: string;
-	public _editor: Ace.Editor | null = null;
+	public _editor: Ace.Editor | undefined = undefined;
 	protected static _defaultContent: string = '#include <stdio.h>\n\n// this is a comment\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\\n");\n    return 0;\n}\n';
 	private _eventManager: any;
 
@@ -563,14 +501,7 @@ export class AceEditorWidget extends Widget
 		this.node.appendChild(this._editor?.container);
 
 		// Fetch original or structural cache descriptors targeting tracking layers
-		const session = AceEditorPool.getOrCreateAceSession(this._fileId, this._initialContent);
-		this._editor.setSession(session);
-
-		// Synchronize and render bounds accurately
-		this._editor.resize();
-		this._editor.renderer.updateFull();
-		this._eventManager.attachListeners();
-
+		const session = AceEditorPool.getOrCreateAceSession(this._fileId, this._initialContent, this._editor);
 		tryLoadingTerminalEditorBridge(this._editor);
 	}
 
@@ -582,7 +513,7 @@ export class AceEditorWidget extends Widget
 		if(this._editor)
 		{
 			AceEditorPool.releaseEditor(this._editor);
-			this._editor = null;
+			this._editor = undefined;
 		}
 		super.onBeforeDetach(msg);
 		this._eventManager.detachListeners();
@@ -636,18 +567,11 @@ export class AceEditorWidget extends Widget
 			&& ((t as AceEditorWidget)._editor?.getValue() === AceEditorWidget._defaultContent
 				|| (t as AceEditorWidget)._editor?.getValue().trim() === '')
 		) as AceEditorWidget;
-		if(existingDefault)
+		if(existingDefault && typeof existingDefault._editor !== 'undefined')
 		{
 			existingDefault.title.label = fileName.split('/').pop() ?? fileName;
 			existingDefault._initialContent = fileContent;
-			const session = AceEditorPool.getOrCreateAceSession(fileId, fileContent);
-			existingDefault._editor?.setSession(session);
-
-			// Synchronize and render bounds accurately
-			existingDefault._editor?.resize();
-			existingDefault._editor?.renderer.updateFull();
-
-			tryLoadingTerminalEditorBridge(existingDefault._editor);
+			const session = AceEditorPool.getOrCreateAceSession(fileId, fileContent, existingDefault._editor);
 			window.mainDock.activateWidget(existingDefault);
 			return;
 		}
@@ -683,11 +607,7 @@ export class SettingsWidget extends AceEditorWidget
 
 			if(self._editor)
 			{
-				const session = AceEditorPool.getOrCreateAceSession(self._fileId, self._initialContent);
-				self._editor.setSession(session);
-				self._editor.resize();
-				self._editor.renderer.updateFull();
-				tryLoadingTerminalEditorBridge(self._editor);
+				const session = AceEditorPool.getOrCreateAceSession(self._fileId, self._initialContent, self._editor);
 			}
 		});
 	}
@@ -770,7 +690,7 @@ export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
 // Define declarations for Ace and missing global window bindings
 
 
-function tryLoadingTerminalEditorBridge(aceEditor: Ace.Editor | null): void
+function tryLoadingTerminalEditorBridge(aceEditor: Ace.Editor | null | undefined): void
 {
 	if(!aceEditor)
 	{

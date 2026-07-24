@@ -79,35 +79,6 @@ function setLanguageTarget(_worker, langKey, fileId)
 	}
 }
 
-
-
-
-/*
-ace.define("ace/mode/antlr_worker", [
-	"require",
-	"exports",
-	"module",
-	"ace/worker/worker_client",
-	"ace/lib/oop"
-], function (require, exports, module) {
-	"use strict";
-
-	var WorkerClient = require("ace/worker/worker_client").WorkerClient;
-	var oop = require("ace/lib/oop");
-
-	// Inherit proto methods cleanly inside the loader space
-	oop.inherits(AntlrWorker, WorkerClient);
-
-	createWorker
-
-	// Export a wrapper that feeds WorkerClient back into your constructor
-	exports.AntlrWorker = function (session) {
-		return new AntlrWorker(session, WorkerClient);
-	};
-
-});
-
-*/
 ace.define("ace/mode/antlr_worker", [
 	"require",
 	"exports",
@@ -125,24 +96,32 @@ ace.define("ace/mode/antlr_worker", [
 	var WorkerClient = require("ace/worker/worker_client").WorkerClient;
 	var TextHighlightRules = require("ace/mode/text_highlight_rules").TextHighlightRules;
 
-	// ─── 1. YOUR CUSTOM ARCHITECTURE CONSTRUCTOR ───
+	var sharedWorkerInstance = null;
+	var activeSession = null;
+
 	function AntlrWorker(session)
 	{
 		var baseOrigin = window.location.origin;
 		var targetUrl = baseOrigin + "/ace/worker-antlr.js";
 
-		session.activeMarkerIds = [];
-
-		// Cleanly invoke the passed-in parent constructor natively
 		WorkerClient.call(this, ["ace"], "ace/mode/antlr_worker_actions", "AntlrWorker", targetUrl);
 
-		var aceBasePath = ace.config.get("basePath") || (baseOrigin + "/ace/");
-		if(aceBasePath.slice(-1) !== "/")
+		// --- CRITICAL FIX 1: Prevent Ace from terminating this single background worker ---
+		this.terminate = function ()
 		{
-			aceBasePath += "/";
-		}
+			// No-op! Intercept Ace's automatic session.stopWorker() / worker.terminate()
+		};
 
-		// Global prototype registration method
+		// Explicit method to really kill it if the entire web app unmounts
+		this.forceTerminate = function ()
+		{
+			if(this.$worker)
+			{
+				this.$worker.terminate();
+				this.$worker = null;
+			}
+		};
+
 		this.setLanguageTarget = function (fileId)
 		{
 			if(this.$worker)
@@ -154,7 +133,6 @@ ace.define("ace/mode/antlr_worker", [
 			}
 		};
 
-		// Inject your custom runtime dependencies byte-wise!
 		if(this.$worker)
 		{
 			this.$worker.postMessage({
@@ -170,51 +148,79 @@ ace.define("ace/mode/antlr_worker", [
 			});
 		}
 
-		this.attachToDocument(session);
-		var _this2 = this;
-
+		// Forward messages ONLY to the active session
 		this.on("highlight", function (response)
 		{
-			if(typeof handleWorkerStreamHighlight === 'function')
+			if(activeSession && typeof handleWorkerStreamHighlight === 'function')
 			{
-				handleWorkerStreamHighlight(session, response.data);
-			}
-		});
-		this.on("blockRange", function (response)
-		{
-			if(typeof handleWorkerBlockHighlight === 'function')
-			{
-				handleWorkerBlockHighlight(session, response.data);
-			}
-		});
-		this.on("annotate", function (response)
-		{
-			session.setAnnotations(response.data);
-			if(typeof handleWorkerAnnotate === 'function')
-			{
-				handleWorkerAnnotate(session, response);
-			}
-		});
-		this.on("foldRegionsCalculated", function (response)
-		{
-			if(typeof handleWorkerFoldRegions === 'function')
-			{
-				handleWorkerFoldRegions(session, response.data);
+				handleWorkerStreamHighlight(activeSession, response.data);
 			}
 		});
 
-		this.on("terminate", function (response)
+		this.on("blockRange", function (response)
 		{
-			session.clearAnnotations();
-			if(typeof clear === 'function') clear(session);
-			_this2.onWorkerTerminate ? _this2.onWorkerTerminate(session) : null;
+			if(activeSession && typeof handleWorkerBlockHighlight === 'function')
+			{
+				handleWorkerBlockHighlight(activeSession, response.data);
+			}
+		});
+
+		this.on("annotate", function (response)
+		{
+			if(activeSession)
+			{
+				activeSession.setAnnotations(response.data);
+				if(typeof handleWorkerAnnotate === 'function')
+				{
+					handleWorkerAnnotate(activeSession, response);
+				}
+			}
+		});
+
+		this.on("foldRegionsCalculated", function (response)
+		{
+			if(activeSession && typeof handleWorkerFoldRegions === 'function')
+			{
+				handleWorkerFoldRegions(activeSession, response.data);
+			}
 		});
 	}
 
-	// Inherit proto methods cleanly inside the loader space right next to the constructor
 	oop.inherits(AntlrWorker, WorkerClient);
 
-	// ─── 2. THE MODE CONTAINER SPECIFICATION ───
+	function switchActiveSession(newSession)
+	{
+		if(!newSession) return;
+
+		// If the shared worker was terminated or not created yet, recreate it
+		if(!sharedWorkerInstance || !sharedWorkerInstance.$worker)
+		{
+			sharedWorkerInstance = new AntlrWorker(newSession);
+		}
+
+		// --- CRITICAL FIX 2: Re-bind document listener on the worker ---
+		if(activeSession !== newSession)
+		{
+			if(activeSession)
+			{
+				//sharedWorkerInstance.detachFromDocument();
+			}
+			activeSession = newSession;
+			sharedWorkerInstance.attachToDocument(activeSession);
+		}
+
+		var modeId = (activeSession.getMode() && activeSession.getMode().$id) || activeSession.$modeId || "";
+		var languageKey = modeId.split("/").pop() || "c";
+		var fileId = activeSession.workspaceFileId ||
+			(activeSession.getDocument() && activeSession.getDocument().$fileId) ||
+			"temp_buffer." + languageKey;
+
+		activeSession.workspaceFileId = fileId;
+
+		// Notify worker about the new file context
+		sharedWorkerInstance.setLanguageTarget(fileId);
+	}
+
 	var Mode = function ()
 	{
 		this.HighlightRules = TextHighlightRules;
@@ -227,29 +233,17 @@ ace.define("ace/mode/antlr_worker", [
 		{
 			if(!session) return null;
 
-			var modeId = (session.getMode() && session.getMode().$id) || session.$modeId || "";
-			var languageKey = modeId.split("/").pop() || "c";
-			languageKey = languageKey.toLowerCase();
+			// Hand off control to the switchActiveSession manager
+			switchActiveSession(session);
 
-			var fileId = session.workspaceFileId ||
-				(session.getDocument() && session.getDocument().$fileId) ||
-				"temp_buffer." + languageKey;
-
-			session.workspaceFileId = fileId;
-
-			// Instantiate your custom pre-seeded worker wrapper safely!
-			var worker = new AntlrWorker(session);
-
-			// Seed target environment variables down the pipe
-			worker.setLanguageTarget(fileId);
-
-			return worker;
+			return sharedWorkerInstance;
 		};
 
 		this.$id = "ace/mode/antlr";
 	}).call(Mode.prototype);
 
 	exports.Mode = Mode;
+	exports.switchActiveSession = switchActiveSession;
 });
 
 
@@ -263,7 +257,7 @@ function handleWorkerFoldRegions(session, data)
 	const blocks = data.blocks || [];
 	session.antlrDiscoveredFoldBlocks = blocks;
 
-	const renderer = aceEditor.renderer;
+	const renderer = session.$editor.renderer;
 	if(!renderer || !renderer.$gutterLayer) return;
 
 	// ─── 1. FORCE THE IN-MEMORY ARRAY SYSTEM TO SHIFT STATES ───
@@ -300,57 +294,6 @@ function handleWorkerFoldRegions(session, data)
 		return null;
 	};
 
-	// ─── 3. OVERRIDE THE PHYSICAL HTML STRING GENERATOR ───
-	// This intercepts Ace's internal cell compiler right before strings append to the DOM layer!
-
-	return;
-	if(!renderer.$gutterLayer.originalUpdateCellHtml)
-	{
-		renderer.$gutterLayer.originalUpdateCellHtml = renderer.$gutterLayer.update;
-
-		renderer.$gutterLayer.update = function (config)
-		{
-			// Run the standard core gutter row generator loop array
-			this.originalUpdateCellHtml(config);
-
-			// Instantly grab the freshly drawn cells out of the virtual layer layout container
-			const cells = this.element.children;
-			for(let i = 0; i < cells.length; i++)
-			{
-				const cell = cells[i];
-				const rowText = cell.textContent.replace(/[^\d]/g, '');
-				const rowIdx = parseInt(rowText, 10) - 1;
-
-				if(isNaN(rowIdx)) continue;
-
-				const humanRow = rowIdx + 1;
-				const hasBlockStart = (session.antlrDiscoveredFoldBlocks || []).some(b => b.startLine === humanRow);
-
-				// Fetch the inner placeholder span node container
-				let span = cell.querySelector("span");
-				if(span)
-				{
-					if(hasBlockStart)
-					{
-						const isFolded = session.isRowFolded(rowIdx);
-						// Inject the exact multi-class structure Ace requires to trigger mouse events
-						span.className = `ace_fold-widget ace_start ${isFolded ? "ace_closed" : "ace_open"}`;
-						span.style.display = "inline-block";
-						span.style.visibility = "visible";
-					} else
-					{
-						span.className = "";
-						span.style.display = "none";
-					}
-				}
-			}
-		};
-	}
-
-	// ─── 4. FLUSH BUFFER AND RERENDER FULL MESH ───
-	renderer.$gutterLayer.config = null;
-	session._emit("changeFoldWidget");
-	aceEditor.renderer.updateFull(true);
 }
 
 
@@ -419,43 +362,58 @@ function handleWorkerAnnotate(session, e)
 
 
 
-
+let currentBlockMarkerId = null;
+let lastRenderedBoundsKey = "";
 
 function handleWorkerBlockHighlight(session, responseData)
 {
-	if(!responseData) return;
+
+	const AceRange = ace.require("ace/range").Range;
+
+	// If response is invalid or missing numeric boundaries, clear existing marker and reset
+	if(
+		!responseData ||
+		typeof responseData.startLine !== "number" ||
+		typeof responseData.endLine !== "number"
+	)
+	{
+		if(currentBlockMarkerId !== null && session)
+		{
+			session.removeMarker(currentBlockMarkerId);
+			currentBlockMarkerId = null;
+		}
+		lastRenderedBoundsKey = "";
+		return;
+	}
 
 	const { startLine, endLine } = responseData;
-	if(!startLine || !endLine) return;
-
-	// Create an atomic validation key representational snapshot
 	const boundsKey = `${startLine}:${endLine}`;
 
-	// TARGET EFFICIENCY GATE: If the active stream hasn't shifted structural boundaries,
-	// bail out instantly. This saves thousands of microsecond paint operations while typing.
+	// Target efficiency gate: exit early if line bounds have not changed
 	if(boundsKey === lastRenderedBoundsKey)
 	{
 		return;
 	}
 	lastRenderedBoundsKey = boundsKey;
 
-	const aceRange = ace.require("ace/range").Range;
-
-	// Clear the old background marker layout overlay cleanly
+	// Clear old marker prior to rendering the new boundary
 	if(currentBlockMarkerId !== null)
 	{
 		session.removeMarker(currentBlockMarkerId);
 		currentBlockMarkerId = null;
 	}
 
-	// Convert values back to Ace's internal 0-indexed column system
-	// Selects lines cleanly from the first character column to max line length boundary bounds
-	const highlightRange = new aceRange(startLine - 1, 0, endLine - 1, Number.MAX_SAFE_INTEGER);
+	// Convert 1-indexed input to Ace 0-indexed rows
+	const startRow = Math.max(0, startLine - 1);
+	const endRow = Math.max(0, endLine - 1);
 
-	// Inject background marker layer (class name targets your theme high-contrast CSS style sheet)
+	// Columns are set to 0 as "fullLine" expands across the full viewport width
+	const highlightRange = new AceRange(startRow, 0, endRow, 0);
+
 	currentBlockMarkerId = session.addMarker(
 		highlightRange,
 		"ace_active_block_scope_highlight",
 		"fullLine"
 	);
 }
+
