@@ -26,3 +26,11 @@ export interface TerminalLogEntry
 	index: number;
 	line: number;
 }
+
+export interface CompletionState {
+    lastTabTime: number;
+    candidates: string[];
+    candidateIndex: number;
+    originalTokenValue: string;
+    argnum: number;
+}

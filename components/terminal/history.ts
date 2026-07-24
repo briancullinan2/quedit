@@ -1,10 +1,12 @@
 import type { Terminal } from '@xterm/xterm';
+import type { CompletionState } from './widget-types';
 
 export interface TerminalState
 {
 	historyIndex: number;
 	currentLine: string;
 	cursorPosition: number;
+	completionState?: CompletionState;
 }
 
 export class TerminalHistoryManager

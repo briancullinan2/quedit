@@ -27,6 +27,8 @@ declare global
 
 		// 4. getStr helper
 		getStr(keys: string | string[], obj: Record<string, any>): string[];
+
+		findMatchesWithFuzzy(currentValue: string, candidatesPool: string[]): string[];
 	}
 }
 
@@ -182,4 +184,43 @@ export function levSearch<T extends Record<string, any>>(
 }
 
 window.levSearch = levSearch;
+
+
+/**
+ * Resolves prefix matches or falls back to Levenshtein <= 25% threshold
+ */
+function findMatchesWithFuzzy(currentValue: string, candidatesPool: string[]): string[]
+{
+	if(!currentValue) return candidatesPool;
+
+	const lowerCurrent = currentValue.toLowerCase();
+	const prefixMatches = candidatesPool.filter(c => c.toLowerCase().startsWith(lowerCurrent));
+
+	if(prefixMatches.length > 0)
+	{
+		return prefixMatches;
+	}
+
+	// Levenshtein fallback check (q3e threshold: dist / length <= 0.25)
+	const levDistFunc = window.levDist;
+	if(typeof levDistFunc !== 'function') return [];
+
+	const fuzzyMatches: string[] = [];
+	for(const candidate of candidatesPool)
+	{
+		if(!candidate) continue;
+		const len = candidate.length;
+		if(len === 0) continue;
+
+		const dist = levDistFunc(lowerCurrent, candidate.toLowerCase());
+		if(dist / len <= 0.25)
+		{
+			fuzzyMatches.push(candidate);
+		}
+	}
+
+	return fuzzyMatches;
+}
+
+window.findMatchesWithFuzzy = findMatchesWithFuzzy;
 

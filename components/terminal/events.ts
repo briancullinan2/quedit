@@ -4,7 +4,7 @@ import type { StatusBarWidget } from '../bundle/status';
 import type { IPooledTerminal, TerminalLogEntry } from './widget-types';
 import { FILE_NAME_REGEX, SearchTerminal } from './search';
 import type { terminalWrite } from '../bundle/logging';
-import { handleTabAutocomplete } from './commands-complete';
+import { clearCompletionState, handleTabAutocomplete } from './commands-complete';
 
 // --- Types & Structural Interfaces ---
 export interface ExtractedFile
@@ -433,6 +433,9 @@ export class TerminalEventManager
 			if(arg.key === "Tab")
 			{
 				return handleTabAutocomplete(arg, state.currentLine, this.pooledCtx);
+			} else
+			{
+				clearCompletionState(state);
 			}
 
 			// --- Ctrl+F: Focus Search Box ---

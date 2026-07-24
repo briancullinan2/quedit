@@ -1,5 +1,5 @@
 
-import { IPooledTerminal } from "./widget-types";
+import type { CompletionState, IPooledTerminal } from "./widget-types";
 
 /**
  * Tokenizes the input command string into structured arguments with start/end offsets.
@@ -61,8 +61,11 @@ declare global
 			STRING: 'string',      // Plain text argument
 			NUMERIC: 'number';
 		};
+		levDist(s: string, t: string): number;
+		findMatchesWithFuzzy(currentValue: string, candidatesPool: string[]): string[];
 	}
 }
+
 
 
 export function tokenizeCommandLine(input: string): CommandToken[]
@@ -182,51 +185,32 @@ export function handleTabAutocomplete(event: KeyboardEvent, currentLine: string,
 	return true;
 }
 
-/**
- * Autocompletes Command Names (argv[0])
- */
-function completeCommandName(partialCommand: string, pooledCtx: IPooledTerminal): void
-{
-	const allCommands = Object.keys(window.COMMAND_SCHEMA);
-	const matches = allCommands.filter(cmd => cmd.startsWith(partialCommand.toLowerCase()));
 
-	if(matches.length === 1)
-	{
-		// Single match -> Replace inline cleanly
-		replaceCurrentLine(matches[0] + " ", pooledCtx);
-	} else if(matches.length > 1)
-	{
-		// Multiple matches -> Print available options to terminal
-		printCompletionGrid(matches, pooledCtx);
-	}
+
+function completeCommandName(partialCommand: string, pooledCtx: IPooledTerminal): string[]
+{
+	const allCommands = Object.keys(window.COMMAND_SCHEMA || {});
+	return window.findMatchesWithFuzzy(partialCommand, allCommands);
 }
 
-/**
- * Autocompletes Enum / Array Argument Values
- */
 function completeEnumArg(
 	currentValue: string,
 	candidates: string[],
 	tokens: CommandToken[],
 	argnum: number,
 	pooledCtx: IPooledTerminal
-): void
+): string[]
 {
-	const matches = candidates.filter(c => c.toLowerCase().startsWith(currentValue.toLowerCase()));
-	applyCompletionCandidates(currentValue, matches, tokens, argnum, pooledCtx);
+	return window.findMatchesWithFuzzy(currentValue, candidates);
 }
 
-/**
- * Autocompletes File paths
- */
 function completeFilenameArg(
 	currentValue: string,
 	tokens: CommandToken[],
 	argnum: number,
 	pooledCtx: IPooledTerminal
-): void
+): string[]
 {
-	// If your app has an in-memory VFS or directory listing cache, query it here:
 	const knownFiles = (window as any).vfsFiles || [
 		"code/game/g_main.c",
 		"code/game/bg_lib.c",
@@ -234,75 +218,123 @@ function completeFilenameArg(
 		"src/dagcheck.md",
 		"quake3e.wasm"
 	];
-
-	const matches = knownFiles.filter((f: string) => f.startsWith(currentValue));
-	applyCompletionCandidates(currentValue, matches, tokens, argnum, pooledCtx);
+	return window.findMatchesWithFuzzy(currentValue, knownFiles);
 }
 
-/**
- * Autocompletes Target Database / Repositories
- */
 function completeDatabaseArg(
 	currentValue: string,
 	tokens: CommandToken[],
 	argnum: number,
-	pooledCtx: IPooledTerminal
-): void
+	pooledCtx: IPooledTerminal): string[]
 {
 	const knownDatabases = (window as any).knownDatabases || [
 		"briancullinan2/quedit",
 		"briancullinan2/quake3e-wasm",
 		"id-Software/Quake-III-Arena"
 	];
-
-	const matches = knownDatabases.filter((db: string) => db.startsWith(currentValue));
-	applyCompletionCandidates(currentValue, matches, tokens, argnum, pooledCtx);
+	return window.findMatchesWithFuzzy(currentValue, knownDatabases);
 }
+
 
 /**
  * Replaces token in line or prints candidates grid to the xterm instance
  */
 function applyCompletionCandidates(
 	currentValue: string,
-	matches: string[],
+	candidates: string[],
 	tokens: CommandToken[],
 	argnum: number,
 	pooledCtx: IPooledTerminal
 ): void
 {
-	if(matches.length === 1)
+	if(!candidates || candidates.length === 0) return;
+
+	const state = pooledCtx.events?.historyManager?.getState(pooledCtx.term);
+	if(!state) return;
+
+	const now = Date.now();
+	const prevComp: CompletionState | undefined = state.completionState;
+	const isDoubleTab = prevComp && (now - prevComp.lastTabTime <= 1000);
+
+	// --- DOUBLE TAB: Print candidate grid / "Did you mean?" ---
+	if(isDoubleTab)
 	{
-		// Reconstruct command line with the newly substituted argument value
-		const updatedTokens = tokens.map((t, idx) => idx === argnum ? matches[0] : t.value);
+		printCompletionGrid(candidates, pooledCtx, currentValue);
+		state.completionState = {
+			lastTabTime: now,
+			candidates,
+			candidateIndex: prevComp ? prevComp.candidateIndex : 0,
+			originalTokenValue: prevComp ? prevComp.originalTokenValue : currentValue,
+			argnum
+		};
+		return;
+	}
+
+	// --- SINGLE TAB: Rotate candidate inline ---
+	let candidateIndex = 0;
+	let baseTokenValue = currentValue;
+
+	if(prevComp && prevComp.candidates && prevComp.argnum === argnum)
+	{
+		candidates = prevComp.candidates;
+		baseTokenValue = prevComp.originalTokenValue;
+		candidateIndex = (prevComp.candidateIndex + 1) % candidates.length;
+	}
+
+	const selectedMatch = candidates[candidateIndex];
+
+	if(argnum === 0)
+	{
+		replaceCurrentLine(selectedMatch + " ", pooledCtx);
+	} else
+	{
+		const updatedTokens = tokens.map((t, idx) => idx === argnum ? selectedMatch : t.value);
 		if(argnum >= tokens.length)
 		{
-			updatedTokens.push(matches[0]);
+			updatedTokens.push(selectedMatch);
 		}
 		replaceCurrentLine(updatedTokens.join(" ") + " ", pooledCtx);
-	} else if(matches.length > 1)
-	{
-		printCompletionGrid(matches, pooledCtx);
 	}
+
+	// Persist rotation state for next Tab key
+	state.completionState = {
+		lastTabTime: now,
+		candidates,
+		candidateIndex,
+		originalTokenValue: baseTokenValue,
+		argnum
+	};
 }
 
 /**
  * Prints a clean, grouped candidate grid to the active terminal instance
  */
-function printCompletionGrid(candidates: string[], pooledCtx: IPooledTerminal): void
+function printCompletionGrid(candidates: string[], pooledCtx: IPooledTerminal, originalValue: string): void
 {
 	if(!pooledCtx?.term) return;
 
-	const formattedList = candidates.map(c => `\x1b[36m${c}\x1b[0m`).join("  ");
-	pooledCtx.term.write(`\r\n${formattedList}\r\n`);
+	const lowerOriginal = (originalValue || "").toLowerCase();
+	const isFuzzy = candidates.length > 0 && !candidates.some(c => c.toLowerCase().startsWith(lowerOriginal));
 
-	// Redraw prompt & current active command line state
+	let formattedList = "";
+	if(isFuzzy)
+	{
+		formattedList = `\r\n\x1b[33mDid you mean?\x1b[0m\r\n` + candidates.map(c => `\x1b[36m${c}\x1b[0m`).join("  ");
+	} else
+	{
+		formattedList = `\r\n` + candidates.map(c => `\x1b[36m${c}\x1b[0m`).join("  ");
+	}
+
+	pooledCtx.term.write(`${formattedList}\r\n`);
+
 	if(typeof prompt === "function")
 	{
 		prompt();
 	}
-	if(pooledCtx.events)
+	if(pooledCtx.events?.historyManager)
 	{
-		pooledCtx.term.write(pooledCtx.events.historyManager.getState(pooledCtx.term).currentLine);
+		const activeLine = pooledCtx.events.historyManager.getState(pooledCtx.term).currentLine || "";
+		pooledCtx.term.write(activeLine);
 	}
 }
 
@@ -328,3 +360,10 @@ function replaceCurrentLine(newLine: string, pooledCtx: IPooledTerminal): void
 	}
 	pooledCtx.term.write(newLine);
 }
+
+
+export function clearCompletionState(state: any): void
+{
+	if(state) state.completionState = undefined;
+}
+
