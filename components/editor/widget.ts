@@ -294,7 +294,6 @@ export class AceEditorWidget extends Widget implements MenuModules
 				//window.removeMenus(AceEditorWidget.name);
 			}
 		});
-		window.injectMenus(AceEditorWidget.name, VSCODE_ACE_MENUS);
 
 	}
 
@@ -326,6 +325,8 @@ export class AceEditorWidget extends Widget implements MenuModules
 		// Fetch original or structural cache descriptors targeting tracking layers
 		const session = AceEditorPool.getOrCreateAceSession(this._fileId, this._initialContent, this._editor);
 		tryLoadingTerminalEditorBridge(this._editor);
+		window.registerAllCommands(VSCODE_ACE_MENUS);
+		window.injectMenus(AceEditorWidget.name, VSCODE_ACE_MENUS);
 	}
 
 	/**
