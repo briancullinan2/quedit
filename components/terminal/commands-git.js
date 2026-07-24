@@ -28,7 +28,7 @@ async function clone(argv)
 async function status(args, flags)
 {
 	// Fall back to engine target context if no path argument is supplied directly
-	let repoPath = args[0] || SettingsManager.get('core', 'engineRepository');
+	let repoPath = args[0] || SettingsManager.get('github', 'engineRepository');
 	if(!repoPath)
 	{
 		writeLog("Error: Missing repository configuration context path mapping rules.");
@@ -125,7 +125,7 @@ async function push(args, flags)
 		return;
 	}
 
-	let repoPath = args[1] || SettingsManager.get('core', 'engineRepository');
+	let repoPath = args[1] || SettingsManager.get('github', 'engineRepository');
 	const parts = repoPath.split('/');
 	const owner = parts[0];
 	const repo = parts[1];

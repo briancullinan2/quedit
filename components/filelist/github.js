@@ -4,7 +4,7 @@
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false)
 {
 	if(typeof SettingsManager != 'undefined' && window.api)
-		window.api.github_token = SettingsManager.get('core', 'githubToken');
+		window.api.github_token = SettingsManager.get('github', 'githubToken');
 
 	const fullUrl = `https://api.github.com/repos/${ownerName}/${repoName}`
 		+ (url.startsWith('/') || url.trim().length == 0 ? '' : '/') + url + (url.includes('?') ? '&' : '?') + `t=${Date.now()}`;
@@ -123,7 +123,7 @@ async function githubGraphQL(query, variables = {})
 
 	let token = typeof api !== 'undefined'
 		? api.github_token
-		: SettingsManager.get('core', 'githubToken');
+		: SettingsManager.get('github', 'githubToken');
 
 
 	const response = await fetch('https://api.github.com/graphql', {
@@ -714,7 +714,7 @@ async function listReleases(owner, repo)
 
 async function getAuthenticatedUser()
 {
-	const token = SettingsManager.get('core', 'githubToken');
+	const token = SettingsManager.get('github', 'githubToken');
 	if(!token) return null;
 
 	try

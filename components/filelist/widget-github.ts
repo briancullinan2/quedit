@@ -72,9 +72,9 @@ export class GithubListWidget extends FileListWidget
 	{
 		const repoCollection = new Set(
 			[
-				window.SettingsManager?.get('core', 'engineRepository'),
-				window.SettingsManager?.get('core', 'gameRepository'),
-				window.SettingsManager?.get('core', 'assetRepository')
+				window.SettingsManager?.get('github', 'engineRepository'),
+				window.SettingsManager?.get('github', 'gameRepository'),
+				window.SettingsManager?.get('github', 'assetRepository')
 			].filter(Boolean)
 		);
 

@@ -237,7 +237,7 @@ window.loadFileTree = loadFileTree;
 
 export async function getAuthenticatedUser(): Promise<any>
 {
-	const token = SettingsManager.get('core', 'githubToken');
+	const token = SettingsManager.get('github', 'githubToken');
 	if(!token) return null;
 
 	try

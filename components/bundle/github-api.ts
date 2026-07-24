@@ -36,7 +36,7 @@ export async function githubRequest(ownerName: string, repoName: string, url: st
 {
 	if(typeof SettingsManager !== 'undefined' && typeof api != 'undefined')
 	{
-		api.github_token = SettingsManager.get('core', 'githubToken');
+		api.github_token = SettingsManager.get('github', 'githubToken');
 	}
 
 	const fullUrl = `https://api.github.com/repos/${ownerName}/${repoName}`
@@ -149,7 +149,7 @@ export async function githubGraphQL(query: string, variables: Record<string, any
 {
 	const token = typeof api !== 'undefined'
 		? api.github_token
-		: SettingsManager.get('core', 'githubToken');
+		: SettingsManager.get('github', 'githubToken');
 
 	const response = await fetch('https://api.github.com/graphql', {
 		method: 'POST',
