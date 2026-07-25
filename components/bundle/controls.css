@@ -36,7 +36,7 @@ ul.toolbar button,
 	font-size: 14px;
 	/* Prevents select from using system fonts */
 	vertical-align: middle;
-	background: var(--ace-gutter-bg);
+	background: var(--ace-bg);
 	border: 2px solid rgb(from var(--ace-selection-bg) r g b / 50%);
 	border-radius: 0;
 	color: var(--ace-foreground);
@@ -81,7 +81,7 @@ ul.toolbar button:hover,
 .search-box input:hover,
 .search-box input[type="text"]:hover,
 .search-box input[type="number"]:hover {
-	background: rgb(from var(--ace-selection-bg) r g b / 50%);
+	background: var(--ace-bg);
 	border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
 	cursor: pointer;
 }
@@ -224,7 +224,7 @@ select:has(option[value=""]:checked),
 #token-modal input:placeholder-shown,
 #toolbar input:placeholder-shown {
 	border-color: var(--ace-bg);
-	background-color: var(--ace-gutter-bg);
+	background-color: var(--ace-bg);
 	color: var(--ace-foreground);
 }
 
