@@ -176,42 +176,6 @@ window.addEventListener('beforeunload', async (event) => {
 });
 
 
-let resizeDebounce = null
-function resizeDebouncer() {
-    if (resizeDebounce) return
-    resizeDebounce = setTimeout(() => {
-        if (window.forceFitLayout)
-            forceFitLayout();
-        if (window.updatePainter)
-            updatePainter()
-
-        isDevToolsOpen()
-        // toji
-        if (window.onResize)
-            window.onResize()
-
-        resizeDebounce = null
-
-        if (typeof debounceFileChange !== 'undefined')
-            debounceFileChange()
-
-        if (window.aceEditor && window.terminalWrite && !window.compilerDiagnostics) {
-            tryLoadingTerminalEditorBridge()
-        }
-
-        // don't need to do this on resize because its fixed now at 120ch
-        //if (terminalWrapper.classList.contains('not-hidden')) {
-
-        //    performSharedBufferScanInternal(searchTerminal.value)
-        //performFilenameSearch()
-        //}
-
-    }, 500);
-}
-
-window.addEventListener('resize', resizeDebouncer);
-
-
 window.addEventListener('keydown', async (e) => {
     if (e.altKey && e.key === 'ArrowLeft') NavHistory.back();
     if (e.altKey && e.key === 'ArrowRight') NavHistory.forward();

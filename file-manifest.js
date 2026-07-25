@@ -1242,7 +1242,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/github-api.ts",
-    "size": 12539
+    "size": 12543
   },
   {
     "path": "/components/bundle/github-settings.ts",
@@ -1250,7 +1250,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/bundle/github-tools.ts",
-    "size": 10588
+    "size": 10590
   },
   {
     "path": "/components/bundle/github-types.ts",
@@ -1538,11 +1538,11 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/filelist/commit-worker.js",
-    "size": 13028
+    "size": 12982
   },
   {
     "path": "/components/filelist/github.js",
-    "size": 24429
+    "size": 24435
   },
   {
     "path": "/components/filelist/jszip.min.js",
@@ -1562,11 +1562,11 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/filelist/search-worker.js",
-    "size": 5747
+    "size": 5701
   },
   {
     "path": "/components/filelist/search.css",
-    "size": 2066
+    "size": 1946
   },
   {
     "path": "/components/filelist/tree.css",
@@ -1602,7 +1602,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/filelist/widget-github.ts",
-    "size": 12657
+    "size": 13815
   },
   {
     "path": "/components/filelist/widget-local.ts",
@@ -1614,7 +1614,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/filelist/widget.ts",
-    "size": 17910
+    "size": 17928
   },
   {
     "path": "/components/layout/components.css",
@@ -2618,7 +2618,7 @@ self.__assetsManifest = [
   },
   {
     "path": "/components/terminal/commands-git.js",
-    "size": 4807
+    "size": 4811
   },
   {
     "path": "/components/terminal/commands-quake3.js",

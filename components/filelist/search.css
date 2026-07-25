@@ -1,5 +1,5 @@
 .search-results-target {
-	overflow: scroll;
+	overflow: auto;
 }
 
 .search-card {

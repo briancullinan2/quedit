@@ -288,7 +288,7 @@ export class MenuManager
 					window.commandRegistry.addKeyBinding({
 						command: commandId,
 						keys: keybindingSequence,
-						selector: '.lm-miniPaintPanel'
+						selector: '*'
 					});
 				}
 			}

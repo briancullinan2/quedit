@@ -559,6 +559,6 @@ window.globalModules['file/new'] = {
 window.globalModules['edit/find'] = {
 	find_all: async function ()
 	{
-		await triggerPanelRoute('search', window.mainDock, true);
+		await triggerPanelRoute('searchlist', window.mainDock, true);
 	}
 };

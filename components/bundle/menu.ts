@@ -352,6 +352,10 @@ export function initializeMenus(commands: CommandRegistry, menuBar: MenuBar, mai
 	{
 		commands.processKeydownEvent(event);
 	}, true);
+	document.addEventListener('keyup', (event: KeyboardEvent) =>
+	{
+		commands.processKeyupEvent(event);
+	}, true);
 
 	const viewMenu = new Menu({ commands });
 	viewMenu.title.label = 'Window';
