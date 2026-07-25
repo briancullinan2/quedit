@@ -340,6 +340,11 @@ const COMMAND_SCHEMA = {
 	start: { alias: "run" },
 };
 
+
+window.COMMAND_SCHEMA = COMMAND_SCHEMA;
+
+
+
 function writeCommandHelp(targetCommand, argv)
 {
 	if(!targetCommand) return;
@@ -575,7 +580,13 @@ async function handleCommand(input, term)
 		{
 			for(let importFirst of schemaMatch.prereqs)
 			{
-				await DependencyLoader.loadModule(importFirst);
+				if(window.MODULE_REGISTRY[importFirst])
+				{
+					await triggerPanelRoute(importFirst, window.mainDock, true);
+				} else if(importFirst === 'build')
+				{
+
+				}
 			}
 		}
 

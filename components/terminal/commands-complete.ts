@@ -90,7 +90,11 @@ export function tokenizeCommandLine(input: string): CommandToken[]
 /**
  * Main Tab Key Autocomplete Handler
  */
-export function handleTabAutocomplete(event: KeyboardEvent, currentLine: string, pooledCtx: IPooledTerminal): boolean
+export function handleTabAutocomplete(
+	event: KeyboardEvent,
+	currentLine: string,
+	pooledCtx: IPooledTerminal
+): boolean
 {
 	if(event.key !== "Tab" || event.type !== "keydown")
 	{
@@ -102,32 +106,30 @@ export function handleTabAutocomplete(event: KeyboardEvent, currentLine: string,
 	const line = currentLine || "";
 	const cursorIndex = pooledCtx?.term?.buffer?.active?.cursorX ?? line.length;
 
-	// --- 1. SPECIAL CASE: COMMAND NAME COMPLETION (argv[0]) ---
-	// If there are no spaces and > 1 character, autocompleting the command name
+	// --- 1. TOKENIZE & LOCATE CURSOR IN ARGV ARRAY ---
+	const tokens = tokenizeCommandLine(line);
+	let argnum = -1;
+
 	if(!line.includes(" ") && line.trim().length >= 1)
 	{
-		completeCommandName(line.trim(), pooledCtx);
-		return true;
-	}
-
-	// --- 2. TOKENIZE & LOCATE CURSOR IN ARGV ARRAY ---
-	const tokens = tokenizeCommandLine(line);
-	if(tokens.length === 0) return true;
-
-	// Determine which token index (argnum) the cursor currently rests on
-	let argnum = tokens.findIndex(t => cursorIndex >= t.start && cursorIndex <= t.end);
-
-	// If cursor is past the last token (e.g. trailing space), we are starting a new arg
-	if(argnum === -1 && cursorIndex >= line.length)
+		argnum = 0;
+	} else if(tokens.length > 0)
 	{
-		argnum = line.endsWith(" ") ? tokens.length : tokens.length - 1;
-	} else if(argnum === -1)
+		argnum = tokens.findIndex(t => cursorIndex >= t.start && cursorIndex <= t.end);
+		if(argnum === -1 && cursorIndex >= line.length)
+		{
+			argnum = line.endsWith(" ") ? tokens.length : tokens.length - 1;
+		} else if(argnum === -1)
+		{
+			argnum = 0;
+		}
+	} else
 	{
 		argnum = 0;
 	}
 
 	const commandName = tokens[0]?.value || "";
-	let schemaEntry = window.COMMAND_SCHEMA[commandName];
+	let schemaEntry = window.COMMAND_SCHEMA ? window.COMMAND_SCHEMA[commandName] : undefined;
 
 	// Resolve Command Aliases
 	if(schemaEntry && schemaEntry.alias)
@@ -135,56 +137,53 @@ export function handleTabAutocomplete(event: KeyboardEvent, currentLine: string,
 		schemaEntry = window.COMMAND_SCHEMA[schemaEntry.alias];
 	}
 
-	if(!schemaEntry || argnum === 0)
+	let candidates: string[] = [];
+	let currentTokenValue = "";
+
+	// --- 2. DELEGATE CANDIDATE FETCHING TO SPECIALIZED FUNCTIONS ---
+	if(argnum === 0 || !schemaEntry)
 	{
-		// If completing command name mid-string or command not found
-		completeCommandName(tokens[0]?.value || "", pooledCtx);
-		return true;
+		currentTokenValue = tokens[0]?.value || line.trim();
+		candidates = completeCommandName(currentTokenValue, pooledCtx);
+	} else
+	{
+		const argIndex = argnum - 1; // 0-indexed argument offset
+		const argDef = schemaEntry.args ? schemaEntry.args[argIndex] : null;
+
+		if(!argDef) return true;
+
+		currentTokenValue = tokens[argnum]?.value || "";
+
+		// A. Explicit Enum / Array Types
+		if(Array.isArray(argDef.type) || Array.isArray(argDef.complete))
+		{
+			const rawCandidates = (Array.isArray(argDef.type) ? argDef.type : argDef.complete) as string[];
+			candidates = completeEnumArg(currentTokenValue, rawCandidates, tokens, argnum, pooledCtx);
+		}
+		// B. Custom Completion Hook on Arg Definition
+		else if(typeof argDef.complete === 'function')
+		{
+			candidates = argDef.complete(currentTokenValue, tokens, argnum);
+		}
+		// C. File Argument Types
+		else if(argDef.type === window.ARG_TYPES?.FILE)
+		{
+			candidates = completeFilenameArg(currentTokenValue, tokens, argnum, pooledCtx);
+		}
+		// D. Database Argument Types
+		else if(argDef.type === window.ARG_TYPES?.DATABASE)
+		{
+			candidates = completeDatabaseArg(currentTokenValue, tokens, argnum, pooledCtx);
+		}
 	}
 
-	// --- 3. ARGUMENT TYPE RESOLUTION ---
-	const argIndex = argnum - 1; // 0-indexed argument offset in schema
-	const argDef = schemaEntry.args ? schemaEntry.args[argIndex] : null;
+	if(!candidates || candidates.length === 0) return true;
 
-	if(!argDef) return true;
-
-	const currentTokenValue = tokens[argnum]?.value || "";
-
-	// --- 4. DELEGATE TO SPECIALIZED TYPE HANDLERS ---
-
-	// A. Explicit Enum / Array Types (e.g., mode: ['release', 'debug', ...])
-	if(Array.isArray(argDef.type) || Array.isArray(argDef.complete))
-	{
-		const candidates = (Array.isArray(argDef.type) ? argDef.type : argDef.complete) as string[];
-		completeEnumArg(currentTokenValue, candidates, tokens, argnum, pooledCtx);
-		return true;
-	}
-
-	// B. Custom Completion Hook attached directly to schema argument definition
-	if(typeof argDef.complete === 'function')
-	{
-		const candidates = argDef.complete(currentTokenValue, tokens, argnum);
-		applyCompletionCandidates(currentTokenValue, candidates, tokens, argnum, pooledCtx);
-		return true;
-	}
-
-	// C. File Argument Types
-	if(argDef.type === window.ARG_TYPES.FILE)
-	{
-		completeFilenameArg(currentTokenValue, tokens, argnum, pooledCtx);
-		return true;
-	}
-
-	// D. Database Argument Types
-	if(argDef.type === window.ARG_TYPES.DATABASE)
-	{
-		completeDatabaseArg(currentTokenValue, tokens, argnum, pooledCtx);
-		return true;
-	}
+	// --- 3. EXECUTE TAB ROTATION / DOUBLE-TAB PIPELINE ---
+	applyCompletionCandidates(currentTokenValue, candidates, tokens, argnum, pooledCtx);
 
 	return true;
 }
-
 
 
 function completeCommandName(partialCommand: string, pooledCtx: IPooledTerminal): string[]
@@ -327,9 +326,9 @@ function printCompletionGrid(candidates: string[], pooledCtx: IPooledTerminal, o
 
 	pooledCtx.term.write(`${formattedList}\r\n`);
 
-	if(typeof prompt === "function")
+	if(pooledCtx.events && typeof pooledCtx.events.historyManager.writePrompt === "function")
 	{
-		prompt();
+		pooledCtx.events.historyManager.writePrompt(pooledCtx.term);
 	}
 	if(pooledCtx.events?.historyManager)
 	{
@@ -349,9 +348,9 @@ function replaceCurrentLine(newLine: string, pooledCtx: IPooledTerminal): void
 	pooledCtx.term.write("\r\x1b[K");
 
 	// Rewrite prompt if method exists
-	if(typeof prompt === "function")
+	if(pooledCtx.events && typeof pooledCtx.events.historyManager.writePrompt === "function")
 	{
-		prompt();
+		pooledCtx.events.historyManager.writePrompt(pooledCtx.term);
 	}
 
 	if(pooledCtx.events)
