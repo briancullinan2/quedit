@@ -62,7 +62,7 @@ export const VSCODE_EDIT_MENU: MenuConfig = {
 			{
 				name: "Keyboard Shortcuts",
 				shortcut: "Ctrl+K Ctrl+S",
-				target: "ace_file.open_keybindings",
+				target: "help/shortcuts.shortcuts",
 				iconClass: "bx bx-key"
 			},
 			{
@@ -222,25 +222,11 @@ export const VSCODE_GO_MENU: MenuConfig = {
 	]
 };
 
-export const VSCODE_HELP_MENU: MenuConfig = {
-	name: "Help",
-	iconClass: "bx bx-help-circle",
-	children: [
-		{
-			name: "Keyboard Shortcuts Reference",
-			shortcut: "Ctrl+K Ctrl+R",
-			target: "ace_help.show_keybindings",
-			iconClass: "bx bx-command"
-		}
-	]
-};
-
 export const VSCODE_ACE_MENUS: MenuConfig[] = [
 	VSCODE_EDIT_MENU,
 	VSCODE_SELECTION_MENU,
 	VSCODE_VIEW_MENU,
-	VSCODE_GO_MENU,
-	VSCODE_HELP_MENU
+	VSCODE_GO_MENU
 ];
 
 export const ACE_MODULES: Record<string, Record<string, Function>> = {};
@@ -307,13 +293,6 @@ ACE_MODULES['ace_file'] = {
 		if(editor)
 		{
 			editor.execCommand('showSettingsMenu');
-		}
-	},
-	open_keybindings: function (_: any, widget: AceEditorWidget)
-	{
-		if(widget._editor && typeof widget._editor.showKeyboardShortcuts === 'function')
-		{
-			widget._editor.showKeyboardShortcuts();
 		}
 	},
 	change_theme: function (themeName: string | undefined, widget: AceEditorWidget)
@@ -593,12 +572,33 @@ ACE_MODULES['ace_go'] = {
 	}
 };
 
-ACE_MODULES['ace_help'] = {
-	show_keybindings: function (_: any, widget: AceEditorWidget)
+ACE_MODULES['help/shortcuts'] = {
+	shortcuts: function (_: any, widget: AceEditorWidget)
 	{
-		if(widget._editor && typeof widget._editor.showKeyboardShortcuts === 'function')
+		if(widget._editor)
 		{
-			widget._editor.showKeyboardShortcuts();
+			ace.config.loadModule(["ext", "ace/ext/keybinding_menu"], function ()
+			{
+				//if(widget._editor && typeof widget._editor.showKeyboardShortcuts === 'function')
+				//{
+				//	widget._editor.showKeyboardShortcuts();
+				//}
+				if(arguments[0])
+				{
+					if(typeof arguments[0] === "function")
+					{
+						arguments[0](widget._editor);
+					} else if(arguments[0] && typeof arguments[0].init === "function")
+					{
+						arguments[0].init(widget._editor);
+					}
+				}
+
+				if(widget._editor)
+				{
+					widget._editor.execCommand("showKeyboardShortcuts");
+				}
+			});
 		}
 	}
 };

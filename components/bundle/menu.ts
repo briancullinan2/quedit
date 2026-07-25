@@ -369,7 +369,7 @@ export function initializeMenus(commands: CommandRegistry, menuBar: MenuBar, mai
 		const li = document.createElement('li');
 		const a = document.createElement('a');
 		a.setAttribute('href', `#${id}`);
-		a.setAttribute('alt', route.label);
+		a.setAttribute('title', route.label);
 		a.className = route.iconClass;
 
 		// Set 'active' style override state specifically for your engine files entry point

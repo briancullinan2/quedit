@@ -130,7 +130,7 @@ select:not(:has(option[value=""]:checked)),
 #search::-moz-placeholder,
 #toolbar input::-moz-placeholder,
 #toolbar input::-ms-input-placeholder {
-    background-color: var(--ace-background);
+    background-color: var(--ace-bg);
     color: var(--ace-foreground);
     opacity: 0.75;
     font-style: italic;
@@ -145,7 +145,7 @@ select:not(:has(option[value=""]:checked)),
 #list-wrapper ul.toolbar input::placeholder,
 #search::placeholder,
 #toolbar input::placeholder {
-    background-color: var(--ace-background);
+    background-color: var(--ace-bg);
     color: var(--ace-foreground);
     opacity: 0.75;
     font-style: italic;

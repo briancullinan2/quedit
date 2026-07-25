@@ -33,6 +33,7 @@ export type AceEditor = typeof Ace & {
 	createEditSession(text: string | Ace.Document, mode?: any): AceSession;
 	Range: new (startRow: number, startColumn: number, endRow: number, endColumn: number) => Ace.Range;
 	config: {
+		setModuleUrl: (name: string, subst: string) => string;
 		loadModule: (module: [string, string], callback: () => void) => void;
 		set: (key: string, value: string) => void;
 	};
@@ -133,6 +134,11 @@ class AceEditorPool
 			container.className = 'ace-shared-pool-element';
 			container.style.width = '100%';
 			container.style.height = '100%';
+			//ace.config.set("extPath", "/ace");
+			ace.config.setModuleUrl(
+				"ace/ext/keybinding_menu",
+				"/ace/ext-keybinding_menu.js"
+			);
 			ace.config.set('basePath', '/ace');
 			ace.config.set('modePath', '/ace');
 			ace.config.set('workerPath', '/ace');

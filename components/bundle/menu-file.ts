@@ -242,10 +242,12 @@ const VIEW_MENU: MenuConfig = {
 		iconClass: "bx bx-search-alt",
 		children: [{
 			name: "Zoom In",
+			shortcut: 'Ctrl+=',
 			target: "view/zoom.in",
 			iconClass: "bx bx-search-plus"
 		}, {
 			name: "Zoom Out",
+			shortcut: 'Ctrl+-',
 			target: "view/zoom.out",
 			iconClass: "bx bx-search-minus"
 		}, {
