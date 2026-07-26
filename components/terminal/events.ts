@@ -5,6 +5,7 @@ import type { IPooledTerminal, TerminalLogEntry } from './widget-types';
 import { FILE_NAME_REGEX, SearchTerminal } from './search';
 import type { terminalWrite } from '../bundle/logging';
 import { clearCompletionState, handleTabAutocomplete } from './commands-complete';
+import { renderState } from './render';
 
 // --- Types & Structural Interfaces ---
 export interface ExtractedFile
@@ -46,6 +47,8 @@ declare global
 		lastNewLine?: boolean;
 		handleCommand: (command: string, term: Terminal) => Promise<void>;
 		terminalWrite?: typeof terminalWrite;
+		TERMINATE: boolean;
+		TerminalEventManager: typeof TerminalEventManager;
 	}
 }
 
@@ -69,8 +72,6 @@ export class TerminalEventManager
 	private targetStartX = 0;
 	private targetStartY = 0;
 	private renderWidth = 20; // Default spatial placeholder bounds
-	private renderMoved = false;
-	private isTERMINATED = false;
 	public terminalStartupBegun = false;
 
 	// Event cleanup references
@@ -91,11 +92,11 @@ export class TerminalEventManager
 		// Wire pointer and container bindings
 		this.container.addEventListener('mousemove', this.handleMouseMove);
 		this.container.addEventListener('mousedown', this.handleMouseDown);
-		this.container.addEventListener('focus', this.refreshBlinkerState);
+		this.container.addEventListener('focus', TerminalEventManager.refreshBlinkerState.bind(this, this.pooledCtx.term));
 
 		window.addEventListener('mouseup', this.handleMouseUp);
-		window.addEventListener('focus', this.refreshBlinkerState);
-		document.addEventListener('visibilitychange', this.refreshBlinkerState);
+		window.addEventListener('focus', TerminalEventManager.refreshBlinkerState.bind(this, this.pooledCtx.term));
+		document.addEventListener('visibilitychange', TerminalEventManager.refreshBlinkerState.bind(this, this.pooledCtx.term));
 
 		// Core terminal hooks
 		this.listeners.push(this.pooledCtx.term.onScroll(() => this.debounceTerminalStatus(null)));
@@ -109,11 +110,11 @@ export class TerminalEventManager
 	{
 		this.container.removeEventListener('mousemove', this.handleMouseMove);
 		this.container.removeEventListener('mousedown', this.handleMouseDown);
-		this.container.removeEventListener('focus', this.refreshBlinkerState);
+		this.container.removeEventListener('focus', TerminalEventManager.refreshBlinkerState.bind(this, this.pooledCtx.term));
 
 		window.removeEventListener('mouseup', this.handleMouseUp);
-		window.removeEventListener('focus', this.refreshBlinkerState);
-		document.removeEventListener('visibilitychange', this.refreshBlinkerState);
+		window.removeEventListener('focus', TerminalEventManager.refreshBlinkerState.bind(this, this.pooledCtx.term));
+		document.removeEventListener('visibilitychange', TerminalEventManager.refreshBlinkerState.bind(this, this.pooledCtx.term));
 
 		this.listeners.forEach(l => l.dispose());
 		this.historyManager.unregister(this.pooledCtx.term);
@@ -326,7 +327,7 @@ export class TerminalEventManager
 			const row = Math.floor(currentY / dims.height) + this.pooledCtx.term.buffer.active.viewportY;
 			this.targetStartY = row;
 			this.targetStartX = col - this.dragDownOffset;
-			this.renderMoved = true;
+			renderState.renderMoved = true;
 			return false;
 		}
 
@@ -465,7 +466,7 @@ export class TerminalEventManager
 					return false;
 				}
 				this.pooledCtx.term.write('\n\rCTRL+C');
-				this.isTERMINATED = true;
+				window.TERMINATE = true;
 				if((window as any).building) this.pooledCtx.term.write('\n\rStopping build...');
 				this.historyManager.writePrompt(this.pooledCtx.term);
 				state.cursorPosition = 0;
@@ -672,13 +673,13 @@ export class TerminalEventManager
 	}
 
 	// --- Placeholder Fallbacks for External Execution Methods ---
-	private refreshBlinkerState = (): void =>
+	public static refreshBlinkerState = (term: Terminal): void =>
 	{
 		if(document.visibilityState !== 'visible') return;
 
-		this.pooledCtx.term.focus();
-		const core = (this.pooledCtx.term as any)._core;
-		if(!this.pooledCtx.term || !core) return;
+		term.focus();
+		const core = (term as any)._core;
+		if(!term || !core) return;
 
 		if(core._cursorBlinkContext)
 		{
@@ -687,10 +688,10 @@ export class TerminalEventManager
 
 		if(core.renderService)
 		{
-			core.renderService.refreshRows(0, this.pooledCtx.term.rows - 1);
-		} else if(this.pooledCtx.term.refresh)
+			core.renderService.refreshRows(0, term.rows - 1);
+		} else if(term.refresh)
 		{
-			this.pooledCtx.term.refresh(0, this.pooledCtx.term.rows - 1);
+			term.refresh(0, term.rows - 1);
 		}
 	};
 

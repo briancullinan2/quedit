@@ -21,6 +21,7 @@ declare global
 		toolsRepository?: string | undefined | null;
 		tools2Repository?: string | undefined | null;
 		environmentRepository?: string | undefined | null;
+		TERMINATE: boolean;
 	}
 }
 
@@ -84,6 +85,7 @@ export class ScriptToolbar extends Widget
 					{
 						await window.loadScript(src);
 					}
+					window.TERMINATE = false;
 					const configuration = document.getElementById('configuration') as HTMLSelectElement;
 					if(configuration.value === 'tools') await window.buildTools(window.toolsRepository);
 					else if(configuration.value === 'qvms') await window.buildQVM(window.gameRepository);

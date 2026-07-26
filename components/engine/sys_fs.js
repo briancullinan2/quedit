@@ -1,4 +1,4 @@
-// ZERO DEPENDENCY BARE-BONES JAVASCRIPT FILE-SYSTEM FOR 
+// ZERO DEPENDENCY BARE-BONES JAVASCRIPT FILE-SYSTEM FOR
 //   POSIX WEB-ASSEMBLY
 const VFS_NOW = 3;
 const ST_FILE = 8;
@@ -229,7 +229,7 @@ function fd_seek(fd, offset, whence, newOffsetPtr) {
 	if (stream[2].rewrite && stream[2].rewrite.length > 0) {
 		stream = FS.pointers[stream[2].rewrite[stream[2].rewrite.length - 1]]
 	}
-	//writeLog(stream[3])
+	//console.log(stream[3])
 
 	// 1. Force everything to BigInt for consistent 64-bit math
 	let bigOffset = BigInt(offset);
@@ -416,7 +416,7 @@ function fd_filestat_get(fd, bufPtr) {
 		stream = FS.pointers[stream[2].rewrite]
 	}
 
-	//writeLog(stream[3])
+	//console.log(stream[3])
 
 	const view = new DataView(Module.memory.buffer);
 
@@ -507,7 +507,7 @@ function environ_get(environ_ptrs, environ_buf) {
 	}
 
 	// Null terminate the pointer array (optional but standard in some envs)
-	// view.setUint32(currentPtr, 0, true); 
+	// view.setUint32(currentPtr, 0, true);
 
 	return WASI_ESUCCESS;
 }
@@ -560,8 +560,8 @@ function debug_print_mem(view, ptr, length) {
 		hex += view[i].toString(16).padStart(2, '0') + " ";
 		if ((i + 1) % 8 === 0) hex += " | ";
 	}
-	writeLog(`Memory at 0x${ptr.toString(16)} (${length} bytes):`);
-	writeLog(hex);
+	console.log(`Memory at 0x${ptr.toString(16)} (${length} bytes):`);
+	console.log(hex);
 }
 
 
@@ -576,7 +576,7 @@ function fd_fdstat_get(fd, bufPtr) {
 		stream = FS.pointers[stream[2].rewrite]
 	}
 
-	//writeLog(stream[3])
+	//console.log(stream[3])
 
 	const view = new DataView(Module.memory.buffer);
 
@@ -621,7 +621,7 @@ function fd_fdstat_get(fd, bufPtr) {
 function fd_write(fd, iovs, iovsLen, nwritten) {
     const view = new DataView(Module.memory.buffer);
     let written = 0;
-    
+
     // START REDIRECTION INTERCEPTION
     let targetFd = fd;
 
@@ -753,8 +753,8 @@ function poll_oneoff(in_ptr, out_ptr, nsubscriptions, nevents_out) {
 			const precision = mem.getBigUint64(subPtr + 32, true);
 			const flags = mem.getUint16(subPtr + 40, true);
 
-			// In a browser, we can't actually "sleep" synchronously 
-			// without blocking the UI thread, so we just report success 
+			// In a browser, we can't actually "sleep" synchronously
+			// without blocking the UI thread, so we just report success
 			// immediately or check if the timeout is valid.
 
 			// Write the Event back to out_ptr (32 bytes)
@@ -804,7 +804,7 @@ function path_open(dirfd, lookupflags, pathPtr, pathLen, oflags, rights_base, ri
 
 	// 2. Resolve Full Path relative to dirfd
 	let localName = path.trim();
-	//writeLog(localName)
+	//console.log(localName)
     if (!localName.startsWith('/')) localName = '/' + localName;
     if (!localName.startsWith('/base')) localName = '/base' + localName;
 	if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
@@ -955,7 +955,7 @@ function path_filestat_get(dirfd, lookupflags, pathPtr, pathLen, bufPtr) {
 
 	// 1. Normalize Path - MUST MATCH YOUR path_open LOGIC EXACTLY
 	let localName = path;
-	//writeLog(localName)
+	//console.log(localName)
     if (!localName.startsWith('/')) localName = '/' + localName;
     if (!localName.startsWith('/base')) localName = '/base' + localName;
 	if (localName.startsWith('../lib/')) localName = 'lib/' + localName.substring(7);
@@ -1265,7 +1265,7 @@ function fd_renumber(fd, to) {
 
 	// 2. If 'to' is already open, POSIX says we silently close it first
 	if (FS.pointers[to]) {
-		// You might want to call Sys_FClose(to) here to ensure 
+		// You might want to call Sys_FClose(to) here to ensure
 		// any pending Sys_notify calls fire.
 		FS.pointers[to][0] = 0;
 	}
@@ -1418,11 +1418,11 @@ function callsys(argvPtr) {
 
 		// Await the execution of the WASM tool
 		let result = api.runSync(targetKey, ...cmdArgs);
-		writeLog('Process resulted in: ' + result);
+		console.log('Process resulted in: ' + result);
 
 		return result;
 	} catch (e) {
-		writeLog(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack || e.stacktrace}`);
+		console.log(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack || e.stacktrace}`);
 		return 100; // Standard error exit for LCC
 	}
 }
@@ -1508,7 +1508,7 @@ function path_rename(oldFd, oldPathPtr, oldPathLen, newFd, newPathPtr, newPathLe
 		let base = (fd === 3) ? "/" : (FS.pointers[fd] ? FS.pointers[fd][1] : "/");
 		let full = base + (base.endsWith('/') ? '' : '/') + path;
 		// Clean up double slashes and relative dots if necessary
-		return full.replace(/\/+/g, '/'); 
+		return full.replace(/\/+/g, '/');
 	};
 
 	const oldPath = resolve(oldFd, oldPathRelative);
@@ -1585,7 +1585,7 @@ function path_create_directory(fd, pathPtr, pathLen) {
 		timestamp: new Date()
 	};
 
-	writeLog(`WASI VFS: Created directory via fd(${fd}) -> "${normalizedPath}"`);
+	console.log(`WASI VFS: Created directory via fd(${fd}) -> "${normalizedPath}"`);
 	return 0; // WASI_ESUCCESS
 }
 
@@ -1625,7 +1625,7 @@ function path_remove_directory(fd, pathPtr, pathLen) {
 	}
 
 	delete FS.virtual[normalizedPath];
-	writeLog(`WASI VFS: Removed directory via fd(${fd}) -> "${normalizedPath}"`);
+	console.log(`WASI VFS: Removed directory via fd(${fd}) -> "${normalizedPath}"`);
 	return 0; // WASI_ESUCCESS
 }
 
@@ -1674,7 +1674,7 @@ if (typeof module != 'undefined') {
 function callsysNew(argvPtr) {
 	const cmdArgs = getStringsFromArgv(argvPtr);
 	const targetKey = cmdArgs[0];
-    
+
 	try {
 		const parentPid = api.pid;
 		const childPid = parentPid + 1;
@@ -1697,16 +1697,16 @@ function callsysNew(argvPtr) {
 		// 3. EXECUTE PRE-SPAWN HOUSEKEEPING (Isolate Child Descriptor Space)
 		// We generate a clean slate array for the child pointers based on the map
 		const childPointers = [];
-	    
+
 		Object.keys(fdMap).forEach((childFdStr) => {
 			const childFd = parseInt(childFdStr, 10);
 			const parentFd = fdMap[childFd];
-		    
+
 			if (FS.pointers[parentFd]) {
 				// Clone the pointer descriptor array structure:
 				// [position, mode, node, path, fd, pid]
 				const parentPointer = FS.pointers[parentFd];
-			    
+
 				childPointers[childFd] = [
 					parentPointer[0], // Inherit seek position
 					parentPointer[1], // Inherit access mode
@@ -1723,15 +1723,15 @@ function callsysNew(argvPtr) {
 		const parentPointersBackup = [...FS.pointers];
 		FS.pointers = childPointers;
 
-		writeLog(`[POSIX Spawn] Initializing Child Process ${childPid} file descriptor table.`);
+		console.log(`[POSIX Spawn] Initializing Child Process ${childPid} file descriptor table.`);
 
 		// 5. EXECUTE CHILD ENGINE PASS
-		// Because FS.pointers now ONLY holds the mapped files, the child's internal 
+		// Because FS.pointers now ONLY holds the mapped files, the child's internal
 		// read/write routines are fully contained or isolated according to your setup.
 		const result = api.runSync(targetKey, ...cmdArgs);
-	    
+
 		// 6. CAPTURE CHILD ACTIONS & RESTORE PARENT
-		// If the child opened or modified files (like generating an assembly block), 
+		// If the child opened or modified files (like generating an assembly block),
 		// propagate those newly added virtual file descriptors back into the parent space.
 		for (let i = 0; i < FS.pointers.length; i++) {
 			if (FS.pointers[i] && i > 2) {
@@ -1746,7 +1746,7 @@ function callsysNew(argvPtr) {
 
 		return result;
 	} catch (e) {
-		writeLog(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack}`);
+		console.log(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack}`);
 		return 100;
 	}
 }
@@ -1766,7 +1766,7 @@ rm /tmp/lcc10.i
 function callsysNew2(argvPtr) {
 	const cmdArgs = getStringsFromArgv(argvPtr);
 	const targetKey = cmdArgs[0];
-    
+
 	try {
 		const parentPid = api.pid;
 		const childPid = parentPid + 1;
@@ -1782,7 +1782,7 @@ function callsysNew2(argvPtr) {
 		// Assign active PID contexts down the tree layout
 		for (let i = 0; i < FS.pointers.length; i++) {
 			if (FS.pointers[i]) {
-				FS.pointers[i][5] = childPid; 
+				FS.pointers[i][5] = childPid;
 			}
 		}
 
@@ -1803,7 +1803,7 @@ function callsysNew2(argvPtr) {
 
 		return result;
 	} catch (e) {
-		writeLog(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack}`);
+		console.log(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack}`);
 		return 100;
 	}
 }
@@ -1811,7 +1811,7 @@ function callsysNew2(argvPtr) {
 function callsys(argvPtr) {
 	const cmdArgs = getStringsFromArgv(argvPtr);
 	const targetKey = cmdArgs[0];
-    
+
 	try {
 		// Track tracking dimensions across the POSIX bridge
 		const startingFp = FS.pointers.length;
@@ -1820,21 +1820,21 @@ function callsys(argvPtr) {
 
 		// Run the child tool (e.g., q3cpp). It reads and writes directly to our shared VFS
 		const result = api.runSync(targetKey, ...cmdArgs);
-	    
+
 		const endingFp = FS.pointers.length;
 		const opened = endingFp - startingFp;
 		let leftOpen = 0;
-	    
+
 		for (let i = startingFp + 1; i < endingFp; i++) {
 			if (FS.pointers[i]) leftOpen++;
 		}
-	    
+
 		if (leftOpen > 0) {
-			writeLog(`[callsys] Process resulted in: ${result}. Releasing ${leftOpen} shared child file handles.`);
-		    
+			console.log(`[callsys] Process resulted in: ${result}. Releasing ${leftOpen} shared child file handles.`);
+
 			for (let i = endingFp; i > startingFp; i--) {
 				if (!FS.pointers[i]) continue;
-			    
+
 				// If the handle belongs to our child pass execution loop, close it out clean
 				if (FS.pointers[i][5] === targetChildPid || !FS.pointers[i][5]) {
 					Sys_FClose(i);
@@ -1844,7 +1844,7 @@ function callsys(argvPtr) {
 
 		return result;
 	} catch (e) {
-		writeLog(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack}`);
+		console.log(`Execution failed for ${cmdArgs}: ${e.message}\n\r${e.stack}`);
 		return 100; // Return clean error limits to lcc driver loop
 	}
 }

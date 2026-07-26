@@ -146,7 +146,7 @@ function NET_Sleep() {
     let data = buffer + 1024
     HEAPU8.set(packet[2], data)
     MSG_Init(netmsg, data, MAX_MSGLEN)
-    //writeLog(packet[2].length, packet)
+    //console.log(packet[2].length, packet)
     HEAPU8.fill(0, from, from + 512)
     //HEAPU8.fill(0, netmsg, netmsg + 512)
     //HEAPU32[(netmsg >> 2) + 3] = data
@@ -154,7 +154,7 @@ function NET_Sleep() {
     //HEAPU32[(netmsg >> 2) + 5] = MAX_MSGLEN * 8
     HEAPU32[(netmsg >> 2) + 6] = packet[2].length
     //(packet[2].length && 0xFF000000) >> 24
-    //+ (packet[2].length && 0x00FF0000) >> 16 + 
+    //+ (packet[2].length && 0x00FF0000) >> 16 +
     HEAPU32[from >> 2] = 4 /* NA_IP */
     HEAPU8[from + 8] = packet[1][1]
     HEAPU8[from + 9] = packet[1][0]
@@ -171,7 +171,7 @@ function NET_Sleep() {
       else
         CL_PacketEvent(from, netmsg);
     } catch (up) {
-      writeLog(Array.from(packet[2]).map(c => String.fromCharCode(c)).join(''))
+      console.log(Array.from(packet[2]).map(c => String.fromCharCode(c)).join(''))
       throw up
     }
   }
@@ -241,7 +241,7 @@ function socketMessage(evt) {
     return
   }
   let message = new Uint8Array(evt.data)
-  //writeLog(message)
+  //console.log(message)
   switch (evt.target.fresh) {
     case 1:
       if (message.length != 2) {
@@ -483,7 +483,7 @@ function responseProgress(total, response) {
             if (HEAPU32[com_fullyInitialized >> 2]) {
               Cvar_SetIntegerValue(stringToAddress('cl_downloadCount'), loaded)
             }
-            //writeLog(Math.round(loaded/total*100)+'%');
+            //console.log(Math.round(loaded/total*100)+'%');
             controller.enqueue(value);
             read();
           }).catch(error => {

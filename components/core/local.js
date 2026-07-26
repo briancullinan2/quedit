@@ -553,3 +553,5 @@ function globToRegex(pattern)
 	// Match either from the root of the repository or as a segment within it
 	return new RegExp(`^(?:.*\\/)?${regexStr}$`, "i");
 }
+
+

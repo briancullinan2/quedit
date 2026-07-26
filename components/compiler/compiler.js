@@ -307,17 +307,3 @@ const api = new WorkerAPI({
 });
 window.api = api;
 window.api.github_token = window.githubToken
-
-// TODO: offline mode
-// ServiceWorker stuff
-/*
-if (navigator.serviceWorker) {
-  navigator.serviceWorker.register('./service_worker.js')
-  .then(reg => {
-    writeLog('Registration succeeded. Scope is ' + reg.scope);
-  }).catch(error => {
-    writeLog('Registration failed with ' + error);
-  });
-}
-*/
-

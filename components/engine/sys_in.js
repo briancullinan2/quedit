@@ -186,7 +186,7 @@ function InputPushMovedEvent(evt) {
 
 /*
 document.querySelector('element').bind('copy', function(event) {
-  let selectedText = window.getSelection().toString(); 
+  let selectedText = window.getSelection().toString();
   selectedText = selectedText.replace(/\u200B/g, '');
 
   clipboardData = event.clipboardData || window.clipboardData || event.originalEvent.clipboardData;
@@ -503,7 +503,7 @@ const CV_INTEGER = 2
 
 function IN_Init() {
 
-  writeLog('\n------- Input Initialization -------\n')
+  console.log('\n------- Input Initialization -------\n')
 
   CopyBiases()
 
@@ -574,16 +574,16 @@ function IN_Init() {
   GL.canvas.addEventListener('touchmove', InputPushTouchEvent, false)
   GL.canvas.addEventListener('touchcancel', InputPushTouchEvent, false)
   setTimeout(function () {
-    Sys_QueEvent( Sys_Milliseconds(), SE_KEY, 
+    Sys_QueEvent( Sys_Milliseconds(), SE_KEY,
       INPUT.keystrings['MOUSE1'], true, 0, null );
-    Sys_QueEvent( Sys_Milliseconds(), SE_KEY, 
+    Sys_QueEvent( Sys_Milliseconds(), SE_KEY,
       INPUT.keystrings['MOUSE1'], false, 0, null );
-    Sys_QueEvent( Sys_Milliseconds(), SE_KEY, 
+    Sys_QueEvent( Sys_Milliseconds(), SE_KEY,
       INPUT.keystrings['ESCAPE'], true, 0, null );
   }, 2000)
   */
 
-  writeLog('------------------------------------\n')
+  console.log('------------------------------------\n')
 }
 
 function InputPushTouchEvent(id, evt, data) {
@@ -987,8 +987,8 @@ async function R_LoadRemote(filename, widthAddress, heightAddress, imageAddress)
   }, false)
 
 
-  /* 
-  // Possible image replacement capture instead of canvas 2D 
+  /*
+  // Possible image replacement capture instead of canvas 2D
   // =========================================================================
   // REPAINT ENGINE DISPATCH BINDINGS (MODERN DECOUPLED VERSION)
   // =========================================================================

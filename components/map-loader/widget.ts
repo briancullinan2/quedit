@@ -840,7 +840,7 @@ export class TojiWidget extends Widget
 		}, false);
 	}
 
-	private getAvailableContext(canvas: HTMLCanvasElement, contextList: string[]): any
+	public static getAvailableContext(canvas: HTMLCanvasElement, contextList: string[]): any
 	{
 		if(canvas.getContext)
 		{
@@ -930,7 +930,7 @@ export class TojiWidget extends Widget
 		this.statsInstance = new Stats();
 		this.viewportFrameElement.appendChild(this.statsInstance.domElement);
 
-		let gl = this.getAvailableContext(this.viewportElement, ['webgl2', 'webgl', 'experimental-webgl']);
+		let gl = TojiWidget.getAvailableContext(this.viewportElement, ['webgl2', 'webgl', 'experimental-webgl']);
 
 		if(!gl)
 		{

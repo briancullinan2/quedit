@@ -19,7 +19,7 @@ async function pushLocalChangesToGitHub(repoOwner, repoName, branch, commitMessa
     staging ||= await calculateStagedChanges(repoOwner, repoName, branch);
 
     if (staging.treeEntries.length === 0) {
-        writeLog("No discrete variations detected between local working layer and remote branch head.");
+        console.log("No discrete variations detected between local working layer and remote branch head.");
         return null;
     }
 
@@ -27,7 +27,7 @@ async function pushLocalChangesToGitHub(repoOwner, repoName, branch, commitMessa
     const treeChanges = [];
     debugger
     for (const entry of staging.treeEntries) {
-        writeLog(`Uploading changed file blob: ${entry.path}`);
+        console.log(`Uploading changed file blob: ${entry.path}`);
         const blobSha = await createGitHubBlob(repoOwner, repoName, entry.contents);
 
         treeChanges.push({
@@ -184,7 +184,7 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
         const db = await getDB(selected);
         if (!db.objectStoreNames.contains(DB_STORE_NAME)) {
             db.close();
-            writeLog(`Target store ${DB_STORE_NAME} not allocated yet for database: ${selected}`);
+            console.log(`Target store ${DB_STORE_NAME} not allocated yet for database: ${selected}`);
             return changes;
         }
 
@@ -222,7 +222,7 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
                     console.warn(`Failed compiling ignore pattern [${trimmed}]:`, err);
                 }
             });
-            writeLog(`Loaded ${ignoreRules.length} compiled pattern matching masks from root .gitignore`);
+            console.log(`Loaded ${ignoreRules.length} compiled pattern matching masks from root .gitignore`);
         }
 
 

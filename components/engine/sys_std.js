@@ -222,7 +222,7 @@ int tm_mon;     /* months since January - [0,11]
 int tm_year;    /* years since 1900
 int tm_wday;    /* days since Sunday - [0,6]
 int tm_yday;    /* days since January 1 - [0,365]
-int tm_isdst;   /* daylight savings time flag 
+int tm_isdst;   /* daylight savings time flag
 } qtime_t;
 */
 
@@ -434,7 +434,7 @@ function _emscripten_resize_heap(requestedSize) {
     let newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
     let replacement = emscripten_realloc_buffer(newSize);
     let t1 = Date.now();
-    writeLog('Heap resize call from ' + oldSize + ' to ' + newSize
+    console.log('Heap resize call from ' + oldSize + ' to ' + newSize
       + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
     if (replacement) {
       return true

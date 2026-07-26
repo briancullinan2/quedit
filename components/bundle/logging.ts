@@ -24,6 +24,7 @@ declare global
 		runningCommand?: boolean;
 		detachedConsole?: boolean;
 		alreadyWroteDetached?: boolean;
+		specialWrite(msg: string, source: SourceMetadata): void;
 	}
 
 	const api: {
@@ -72,7 +73,6 @@ const colors: Record<string, string> = {
 export const TOOLS_PREAMBLE = `${colors.info}[TOOLS]${colors.reset} `;
 export const WARN_PREAMBLE = `${colors.warn}[DETACHED]${colors.reset} `;
 
-let PREAMBLE = TOOLS_PREAMBLE;
 let lineCount = 0;
 let lastPartialLine = '';
 
@@ -356,53 +356,6 @@ export function forceLineWrap(text: string, maxCharsPerRow: number = 80): string
 	return rows.join('\n\r');
 }
 
-// --- LOGGING WRITERS ---
-
-export function writeLog(msg: string, ...args: unknown[]): void
-{
-	let skipTerminal = false;
-	if(msg.includes('Assertion failed: lookup.node'))
-	{
-		debugger;
-		skipTerminal = true;
-	}
-	if(msg.includes && msg.includes('TypeError:')) debugger;
-
-	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
-	const rawFileName = rawFile.split('/').pop()?.replace(/\.(js|ts)$/, '') || '';
-
-	const source: SourceMetadata = [
-		category,
-		...trailingFiles,
-		func,
-		rawFileName,
-		rawFile
-	];
-
-	if(trailingFiles.includes('github'))
-	{
-		// network tracing intercept block hook...
-	}
-
-	const formatted = formatMessage(PREAMBLE, [msg, ...args]);
-
-	if(typeof window !== 'undefined' && typeof window.terminalWrite !== 'undefined' && !skipTerminal)
-	{
-		window.terminalWrite(formatted, source);
-	}
-	if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker)
-	{
-		api.hostWrite(formatted, source);
-	}
-
-	if(msg.includes('Error'))
-	{
-		originalConsole.error(msg, source, ...args);
-	} else
-	{
-		originalConsole.log(msg, source, ...args);
-	}
-}
 
 export function terminalWrite(message: string, source?: SourceMetadata | string, skipActualWrite: boolean = false): void
 {
@@ -489,7 +442,6 @@ export function specialWrite(msg: string, source: SourceMetadata): void
 		if(!window.detachedConsole && !window.alreadyWroteDetached)
 		{
 			window.detachedConsole = true;
-			PREAMBLE = WARN_PREAMBLE;
 			debugger;
 			console.warn('\n\rDetached console, awaiting terminate...');
 		}
@@ -505,6 +457,10 @@ export function specialWrite(msg: string, source: SourceMetadata): void
 		window.terminalWrite(msg, source);
 	}
 }
+
+
+window.specialWrite = specialWrite;
+
 
 // --- CONSOLE INTERCEPTION INITIALIZER ---
 

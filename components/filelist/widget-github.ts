@@ -3,6 +3,8 @@ import { FileListWidget } from './widget';
 import Tree from './tree.js';
 import type { NestedTreeNode } from '../bundle/github-tools';
 
+
+
 export interface StagingDetails
 {
 	modified: string[];
@@ -155,10 +157,7 @@ export class GithubListWidget extends FileListWidget
 
 		if(type === 'commit_status')
 		{
-			if(typeof (window as any).writeLog === 'function')
-			{
-				(window as any).writeLog(`Commit response signature: ${status}`);
-			}
+			console.log(`Commit response signature: ${status}`);
 		}
 	}
 

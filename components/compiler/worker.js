@@ -15,7 +15,6 @@
  */
 
 self.importScripts('../core/preambles.js');
-self.importScripts('../core/logging.js');
 self.importScripts('../compiler/shared.js');
 self.importScripts('../core/local.js');
 self.importScripts('../engine/sys_fs.js');
@@ -347,13 +346,13 @@ const onAnyMessage = async event => {
 
 
               if (FS.virtual[filePath] && FS.virtual[filePath].contents.length) {
-                writeLog('Run succeeded: ' + filePath + '\n\r')
+                console.log('Run succeeded: ' + filePath + '\n\r')
 
                 if (api.database)
                   await putRecord(DB_STORE_NAME, FS.virtual[filePath], api.database)
               }
             } catch (e) {
-              writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
+              console.log(`${e.message}\n\r${e.stack || e.stacktrace}`)
             }
           }
         }
@@ -373,19 +372,19 @@ const onAnyMessage = async event => {
 
     case 'compileLinkRun':
       if (currentApp) {
-        writeLog('First, disallowing rAF from previous app.');
+        console.log('First, disallowing rAF from previous app.');
         // Stop running rAF on the previous app, if any.
         currentApp.allowRequestAnimationFrame = false;
       }
       currentApp = await api.compileLinkRun(event.data.data);
-      writeLog(`finished compileLinkRun. currentApp = ${currentApp}.`);
+      console.log(`finished compileLinkRun. currentApp = ${currentApp}.`);
       break;
 
     case 'postCanvas':
       canvas = event.data.data;
       ctx2d = canvas.getContext('2d');
       break;
-    // 
+    //
     case 'remove':
       api.extract(event.data.data)
       const rx = globToRegex(filename);

@@ -543,7 +543,7 @@ async function handleCommand(input, term)
 
 	if(!runningCommand)
 	{
-		TERMINATE = false;
+		window.TERMINATE = false;
 		window.alreadyWroteDetached = false;
 	}
 

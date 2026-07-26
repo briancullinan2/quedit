@@ -135,7 +135,7 @@ function Sys_filestat_get(fd, bufPtr) {
         stream = FS.pointers[stream[2].rewrite]
     }
 
-    //writeLog(stream[3])
+    //console.log(stream[3])
 
     const view = new DataView(Module.memory.buffer);
 
@@ -198,7 +198,7 @@ function Sys_FSeek(fd, offset, whence, newOffsetPtr) {
     if (stream[2].rewrite && stream[2].rewrite.length > 0) {
         stream = FS.pointers[stream[2].rewrite[stream[2].rewrite.length - 1]]
     }
-    //writeLog(stream[3])
+    //console.log(stream[3])
 
     // 1. Force everything to BigInt for consistent 64-bit math
     let bigOffset = BigInt(offset);
@@ -299,7 +299,7 @@ function Sys_FOpen(filename, mode) {
     let modeStr = addressToString(mode)
     let localName = fileStr.trim()
 
-    //writeLog(localName)
+    //console.log(localName)
     if (!localName.startsWith('/')) localName = '/' + localName;
     if (!localName.startsWith('/base')) localName = '/base' + localName;
     if (localName.endsWith('/.')) localName = localName.substring(0, localName.length - 2);
@@ -311,7 +311,7 @@ function Sys_FOpen(filename, mode) {
         FS.pointers[FS.filePointer] = [
             0, // seek/tell
             modeStr, // r/w/rw string
-            FS.virtual[localName], // internal virtual filesystem, path, contents, timestamp, mode === FS_DIR/FS_FILE, 
+            FS.virtual[localName], // internal virtual filesystem, path, contents, timestamp, mode === FS_DIR/FS_FILE,
             localName, // file name
             FS.filePointer, // self index reference
             42
@@ -411,7 +411,7 @@ function Sys_llseek(pointer, position, mode) {
         return -1;
     }
 
-    // Update the pointer (store back as Number if your VFS prefers it, 
+    // Update the pointer (store back as Number if your VFS prefers it,
     // but BigInt is safer for large files)
     FS.pointers[pointer][0] = Number(newPos);
 
@@ -522,7 +522,7 @@ function Sys_ListFiles(directory, extension, filter, numfiles, wantsubs) {
         let subdirI = key.substring(localName.length + 1).indexOf('/')
         return (!extensionStr || key.endsWith(extensionStr)
             || (extensionStr == '/' && (FS.virtual[key].mode >> 12) === ST_DIR))
-            // TODO: match directory 
+            // TODO: match directory
             && (key[localName.length] == '/')
             && (wantsubs || subdirI == -1 || subdirI == key.length - 1)
             && (!localName || key.startsWith(localName))
@@ -681,7 +681,7 @@ function Sys_FWrite(buf, size, nmemb, pointer) {
     debugger
     // something wrong with breaking inside `node -e`
     //   maybe someone at Google saw my stream because they made it even worse.
-    //   now it shows Nodejs system code all the time instead of only when I 
+    //   now it shows Nodejs system code all the time instead of only when I
     //   click on it like resharper. LOL!
     if (typeof FS.pointers[pointer] == 'undefined') {
         throw new Error('File IO Error') // TODO: POSIX
@@ -702,7 +702,7 @@ function Sys_FWrite(buf, size, nmemb, pointer) {
 }
 
 
-// WHY ADD THIS INSTEAD OF FWRITE DIRECTLY? 
+// WHY ADD THIS INSTEAD OF FWRITE DIRECTLY?
 //   TO MAKE IT EASIER TO DROP INFRONT OF WASI BS.
 function Sys_fputs(s, f) {
     let l = addressToString(s).length;
@@ -773,7 +773,7 @@ function execv(pathPtr, argvPtr) {
     if (api && api.moduleCache[targetKey]) {
         // 1. Run the target compiler module synchronously RIGHT NOW
         let result = api.runSync(targetKey, ...cmdArgs);
-        writeLog('Process resulted in: ' + result);
+        console.log('Process resulted in: ' + result);
 
         // 2. Save the real exit code in our global virtual tracking state
         virtualChildExitCode = result;
@@ -786,7 +786,7 @@ function execv(pathPtr, argvPtr) {
         return 0;
     }
     else {
-        writeLog('Would have run: ' + [path, ...cmdArgs].join(' '));
+        console.log('Would have run: ' + [path, ...cmdArgs].join(' '));
         Module.errno = 1; // EPERM / EINVAL
         return -1;
     }
@@ -803,7 +803,7 @@ function _spawnvp(mode, cmdnamePtr, argvPtr) {
 
         // Await the execution of the WASM tool
         let result = api.runSync(targetKey, ...cmdArgs);
-        writeLog('Process resulted in: ' + result);
+        console.log('Process resulted in: ' + result);
 
         return result;
     } catch (e) {

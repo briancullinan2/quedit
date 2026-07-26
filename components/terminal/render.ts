@@ -1,25 +1,16 @@
-import type { Terminal, IDecoration } from 'xterm';
-import { FrameRater } from '../bundle/frame-rater';
+import type { Terminal, IDecoration } from '@xterm/xterm';
+import type { FrameRater } from '../bundle/frame-rater';
 import { DockPanel } from '@lumino/widgets';
-
-// --- Ambient Structural Declarations ---
-declare const term: Terminal;
-declare const terminalContainer: HTMLElement;
-declare const quakeEngineMenuData: Record<string, any>;
-
-
-declare function getAvailableContext(canvas: HTMLElement | null, contexts: string[]): WebGLRenderingContext | WebGL2RenderingContext;
-declare function obThemeFormObject(key: string, category: any, width: number): string;
-declare function refreshBlinkerState(): void;
-
+import { TerminalEventManager } from './events';
 
 declare global
 {
 	interface Window
 	{
 		mainDock: DockPanel;
-		terminalFrameLimiter: typeof FrameRater;
+		terminalFrameLimiter: FrameRater;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel, noHide?: boolean) => Promise<void>;
+		TerminalEventManager: typeof TerminalEventManager;
 	}
 }
 
@@ -39,17 +30,30 @@ export interface BlueprintItem
 	type: 'resize-t' | 'resize-b' | 'resize-l' | 'resize-r' | 'corner-tl' | 'corner-bl' | 'corner-tr' | 'corner-br';
 }
 
-// --- Shared State Context Identifiers ---
-export let activeViewportDecorations: IDecoration[] = [];
-export let renderMoved: boolean = true;
-export let targetStartX: number = 0;
-export let targetStartY: number = 0;
-export let renderWidth: number;
-export let renderHeight: number;
-export let lastRenderFootprint: RenderFootprint | null = null;
+export interface RenderState
+{
+	activeViewportDecorations: IDecoration[];
+	renderMoved: boolean;
+	targetStartX: number;
+	targetStartY: number;
+	renderWidth: number;
+	renderHeight: number;
+	lastRenderFootprint: RenderFootprint | null;
+	previousTargetX: number;
+	previousTargetY: number;
+}
 
-let previousTargetX: number;
-let previousTargetY: number;
+export const renderState: RenderState = {
+	activeViewportDecorations: [],
+	renderMoved: true,
+	targetStartX: 0,
+	targetStartY: 0,
+	renderWidth: 0,
+	renderHeight: 0,
+	lastRenderFootprint: null,
+	previousTargetX: 0,
+	previousTargetY: 0
+};
 
 /**
  * Extract complete frame pixel matrices straight out of the GPU and map them to standard 24-bit Truecolor ANSI layout strings.
@@ -106,39 +110,38 @@ export function drawQuakeConfigDashboard(xtermInstance: Terminal): void
 	const width = xtermInstance.cols || 80;
 	xtermInstance.write("\x1b[H");
 
-	for(const [key, category] of Object.entries(quakeEngineMenuData))
-	{
-		const renderedSectionBox = obThemeFormObject(key, category, width);
-		xtermInstance.write(renderedSectionBox);
-	}
+	//for(const [key, category] of Object.entries(quakeEngineMenuData))
+	//{
+	//	const renderedSectionBox = obThemeFormObject(key, category, width);
+	//	xtermInstance.write(renderedSectionBox);
+	//}
 }
 
 /**
  * Executes a localized structural downsample loop, rendering textures into specific corners of a pooled xterm window layout grid.
  */
-export async function captureRenderToTerminalCorner(): Promise<void>
+export async function captureRenderToTerminalCorner(term: Terminal): Promise<void>
 {
-	if(typeof getAvailableContext === 'undefined')
-	{
-		await window.triggerPanelRoute('toji', window.mainDock);
-	}
+	if(!term.element) return;
 
-	const viewport = document.getElementById("viewport");
-	const gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
+	await window.triggerPanelRoute('toji', window.mainDock);
+
+	const viewport = document.getElementById("viewport") as HTMLCanvasElement;
+	const gl = window.TojiWidget.getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
 
 	const coreService = (term as any)._core._renderService;
 	const charSizeService = coreService._charSizeService;
-	const windowViewCols = terminalContainer.clientWidth / charSizeService.width;
+	const windowViewCols = term.element.clientWidth / charSizeService.width;
 
-	if(renderMoved && lastRenderFootprint)
+	if(renderState.renderMoved && renderState.lastRenderFootprint)
 	{
 		let clearSequence = "\x1b[s";
 
-		for(let i = 0; i < lastRenderFootprint.height; i++)
+		for(let i = 0; i < renderState.lastRenderFootprint.height; i++)
 		{
-			const row = lastRenderFootprint.startY + i + 1;
-			const col = lastRenderFootprint.startX + 1;
-			clearSequence += `\x1b[${row};${col}H${" ".repeat(lastRenderFootprint.width)}`;
+			const row = renderState.lastRenderFootprint.startY + i + 1;
+			const col = renderState.lastRenderFootprint.startX + 1;
+			clearSequence += `\x1b[${row};${col}H${" ".repeat(renderState.lastRenderFootprint.width)}`;
 		}
 
 		clearSequence += "\x1b[u";
@@ -146,15 +149,15 @@ export async function captureRenderToTerminalCorner(): Promise<void>
 	}
 
 	const ansiStringFrame = captureFrameToCornerAnsi(
-		gl, renderWidth, renderHeight, targetStartX, targetStartY, 1.0, 0, 0
+		gl, renderState.renderWidth, renderState.renderHeight, renderState.targetStartX, renderState.targetStartY, 1.0, 0, 0
 	);
 	term.write(ansiStringFrame);
 
-	lastRenderFootprint = {
-		startX: targetStartX,
-		startY: targetStartY,
-		width: renderWidth,
-		height: renderHeight
+	renderState.lastRenderFootprint = {
+		startX: renderState.targetStartX,
+		startY: renderState.targetStartY,
+		width: renderState.renderWidth,
+		height: renderState.renderHeight
 	};
 
 	if(document.querySelector('#terminals a[href="#soft"].active') !== null)
@@ -162,18 +165,18 @@ export async function captureRenderToTerminalCorner(): Promise<void>
 		//FrameRater.requestFrameUpdate();
 	}
 
-	if(renderMoved)
+	if(renderState.renderMoved)
 	{
-		renderMoved = false;
-		activeViewportDecorations.forEach(dec => dec.dispose());
-		activeViewportDecorations = [];
+		renderState.renderMoved = false;
+		renderState.activeViewportDecorations.forEach(dec => dec.dispose());
+		renderState.activeViewportDecorations = [];
 		createViewportBorderDecorations(
 			term,
-			renderWidth,
-			renderHeight,
-			targetStartX,
-			targetStartY,
-			activeViewportDecorations
+			renderState.renderWidth,
+			renderState.renderHeight,
+			renderState.targetStartX,
+			renderState.targetStartY,
+			renderState.activeViewportDecorations
 		);
 	}
 }
@@ -181,15 +184,12 @@ export async function captureRenderToTerminalCorner(): Promise<void>
 /**
  * Captures full-bleed frame buffers and outputs them directly across the active row boundaries.
  */
-export async function captureRenderToTerminal(): Promise<void>
+export async function captureRenderToTerminal(term: Terminal): Promise<void>
 {
-	if(typeof getAvailableContext === 'undefined')
-	{
-		await window.triggerPanelRoute('toji', window.mainDock);
-	}
+	await window.triggerPanelRoute('toji', window.mainDock);
 
-	const viewport = document.getElementById("viewport");
-	const gl = getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
+	const viewport = document.getElementById("viewport") as HTMLCanvasElement;
+	const gl = window.TojiWidget.getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
 	const cols = term.cols;
 	const rows = term.rows - 2;
 
@@ -374,22 +374,27 @@ export function createViewportBorderDecorations(
 }
 
 // --- DOM Event Bindings ---
-terminalContainer.addEventListener('click', () =>
+export function terminalClickEvent(term: Terminal)
 {
-	const softActive = document.querySelector('#terminals a[href="#soft"].active') !== null;
-	if(softActive && (window as any).isModifierPressed && typeof terminalContainer.requestPointerLock === 'function')
-	{
-		terminalContainer.requestPointerLock();
-	}
-	refreshBlinkerState();
-});
+	if(!term.element) return;
 
-terminalContainer.addEventListener('dblclick', (event: MouseEvent) =>
+	const softActive = document.querySelector('#terminals a[href="#soft"].active') !== null;
+	if(softActive && (window as any).isModifierPressed && typeof term.element.requestPointerLock === 'function')
+	{
+		term.element.requestPointerLock();
+	}
+	window.TerminalEventManager.refreshBlinkerState(term);
+}
+
+export function terminalDblClickEvent(term: Terminal, event: MouseEvent)
 {
+	if(!term.element) return;
+
+
 	const softActive = document.querySelector('#terminals a[href="#soft"].active') !== null;
 	if(!softActive) return;
 
-	const rect = terminalContainer.getBoundingClientRect();
+	const rect = term.element.getBoundingClientRect();
 	const x = event.clientX - rect.left;
 	const y = event.clientY - rect.top;
 
@@ -400,34 +405,35 @@ terminalContainer.addEventListener('dblclick', (event: MouseEvent) =>
 	const row = Math.floor(y / dims.height) + term.buffer.active.viewportY;
 	const viewport = document.getElementById("viewport");
 
-	if(viewport && col >= targetStartX && col <= targetStartX + renderWidth &&
-		row >= targetStartY && row <= targetStartY + renderHeight
+	if(viewport && col >= renderState.targetStartX && col <= renderState.targetStartX + renderState.renderWidth &&
+		row >= renderState.targetStartY && row <= renderState.targetStartY + renderState.renderHeight
 	)
 	{
-		if(targetStartX === 0 && targetStartY === 0)
+		if(renderState.targetStartX === 0 && renderState.targetStartY === 0)
 		{
-			targetStartX = previousTargetX;
-			targetStartY = previousTargetY;
-			renderHeight = Math.floor(term.rows / 2);
+			renderState.targetStartX = renderState.previousTargetX;
+			renderState.targetStartY = renderState.previousTargetY;
+			renderState.renderHeight = Math.floor(term.rows / 2);
 			const canvasAspect = viewport.clientWidth / viewport.clientHeight;
-			renderWidth = Math.floor(renderHeight * canvasAspect * 2);
+			renderState.renderWidth = Math.floor(renderState.renderHeight * canvasAspect * 2);
 			term.reset();
 		} else
 		{
-			previousTargetX = targetStartX;
-			previousTargetY = targetStartY;
-			targetStartX = 0;
-			targetStartY = 0;
-			renderHeight = Math.floor(term.rows - 1);
-			const windowViewCols = terminalContainer.clientWidth / coreService._charSizeService.width;
-			renderWidth = windowViewCols;
+			renderState.previousTargetX = renderState.targetStartX;
+			renderState.previousTargetY = renderState.targetStartY;
+			renderState.targetStartX = 0;
+			renderState.targetStartY = 0;
+			renderState.renderHeight = Math.floor(term.rows - 1);
+			const windowViewCols = term.element.clientWidth / coreService._charSizeService.width;
+			renderState.renderWidth = windowViewCols;
 		}
-		renderMoved = true;
+		renderState.renderMoved = true;
 		setTimeout(() =>
 		{
 			term.reset();
-			renderMoved = true;
+			renderState.renderMoved = true;
 		}, 200);
 	}
-});
+}
+
 

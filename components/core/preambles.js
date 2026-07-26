@@ -30,23 +30,25 @@ const EDITOR_PREAMBLE = '\x1b[38;5;201m[EDITOR]\x1b[0m ';    // Hot Pink
 
 const UNZIP_PREAMBLE = '\x1b[38;5;134m[UNZIP]\x1b[0m ';      // Orchid Purple
 
-const TOOLS_PREAMBLE = '\x1b[38;5;121m[TOOLS-BUILD]\x1b[0m '
+const TOOLS_PREAMBLE = '\x1b[38;5;121m[TOOLS-BUILD]\x1b[0m ';
 //const TOOLERR_PREAMBLE = '\x1b[38;5;203m[TOOL ERROR]\x1b[0m '
-const ENGINE_PREAMBLE = '\x1b[38;5;36m[QUAKE3E]\x1b[0m '
+const ENGINE_PREAMBLE = '\x1b[38;5;36m[QUAKE3E]\x1b[0m ';
 
 
 
 // 1. Implementation of path.join for the browser
 const path = {
-    join: (...parts) => {
-        return parts
-            .map((part, index) => {
-                if (index > 0) return part.replace(/^\//, ''); // Strip leading slash
-                return part.replace(/\/$/, ''); // Strip trailing slash
-            })
-            .filter(part => part.length > 0)
-            .join('/');
-    }
+	join: (...parts) =>
+	{
+		return parts
+			.map((part, index) =>
+			{
+				if(index > 0) return part.replace(/^\//, ''); // Strip leading slash
+				return part.replace(/\/$/, ''); // Strip trailing slash
+			})
+			.filter(part => part.length > 0)
+			.join('/');
+	}
 };
 
 
@@ -56,14 +58,63 @@ const COMPILE_ARCH = 'js';
 const GAME_PLATFORM = 'qvm';
 const GAME_ARCH = 'bytecode';
 
+
+
+const config = {
+	BUILD_CLIENT: 1,
+	BUILD_SERVER: 1,
+	USE_SDL: 1,
+	USE_CURL: 1,
+	USE_LOCAL_HEADERS: 0,
+	USE_SYSTEM_JPEG: 0,
+	USE_OGG_VORBIS: 1,
+	USE_VULKAN: 0,
+	USE_OPENGL: 0,
+	USE_OPENGL2: 1,
+	RENDERER_DEFAULT: "opengl2",
+	CNAME: "quake3e",
+	DNAME: "quake3e.ded",
+	MOUNT_DIR: "code",
+	BUILD_DIR: "build",
+	BINEXT: `.${COMPILE_ARCH}.${COMPILE_PLATFORM}`,
+	TEMPDIR: '/tmp',
+	HOMEDIR: '/home',
+	RUNBASE: '/base',
+	MOD: 'baseq3a'
+};
+
+const dirs = {
+	ENGINE_DEBUG: path.join(config.BUILD_DIR, `debug-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
+	ENGINE_RELEASE: path.join(config.BUILD_DIR, `release-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
+
+	GAME_DEBUG: path.join(config.BUILD_DIR, `debug-${GAME_PLATFORM}-${GAME_ARCH}`),
+	GAME_RELEASE: path.join(config.BUILD_DIR, `release-${GAME_PLATFORM}-${GAME_ARCH}`),
+
+	CGDIR: path.join(config.MOUNT_DIR, "cgame"),
+	QADIR: path.join(config.MOUNT_DIR, "game"),
+	UIDIR: path.join(config.MOUNT_DIR, "ui"),
+	Q3UIDIR: path.join(config.MOUNT_DIR, "q3_ui"),
+
+	CDIR: path.join(config.MOUNT_DIR, "client"),
+	SDIR: path.join(config.MOUNT_DIR, "server"),
+	CMDIR: path.join(config.MOUNT_DIR, "qcommon"),
+	//R1DIR: path.join(config.MOUNT_DIR, "renderer"),
+	R2DIR: path.join(config.MOUNT_DIR, "renderer2"),
+	RCDIR: path.join(config.MOUNT_DIR, "renderercommon"),
+	//RVDIR: path.join(config.MOUNT_DIR, "renderervk"),
+	BLIBDIR: path.join(config.MOUNT_DIR, "botlib"),
+	WASMDIR: path.join(config.MOUNT_DIR, "wasm"),
+};
+
+
 const TERMINALS = (typeof document !== 'undefined'
-    ? Array.from(document.querySelectorAll('#terminals [href^="#"]')).map(el => el.href.split('#')[1])
-    : ['all', 'error', 'warn', 'info', 'soft', 'immediate', 'build', 'console', 'ai'])
-    .concat(['language'])
-    .filter((a, i, arr) => arr.indexOf(a) === i)
+	? Array.from(document.querySelectorAll('#terminals [href^="#"]')).map(el => el.href.split('#')[1])
+	: ['all', 'error', 'warn', 'info', 'soft', 'immediate', 'build', 'console', 'ai'])
+	.concat(['language'])
+	.filter((a, i, arr) => arr.indexOf(a) === i);
 
 
-const ENGINE_MEMORY_BASE = 48 * 1024 * 1024
-const UI_MEMORY_BASE = 32
-const CGAME_MEMORY_BASE = 16 * 1024 * 1024
-const GAME_MEMORY_BASE = 32 * 1024 * 1024
+const ENGINE_MEMORY_BASE = 48 * 1024 * 1024;
+const UI_MEMORY_BASE = 32;
+const CGAME_MEMORY_BASE = 16 * 1024 * 1024;
+const GAME_MEMORY_BASE = 32 * 1024 * 1024;

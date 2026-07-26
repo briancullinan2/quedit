@@ -35,7 +35,7 @@ function getQueryCommands() {
 		//'+set', 'r_ext_multitexture', '0',
 		// not implemented in javascript?
 		'+set', 'r_ignorehwgamma', '1',
-		// FBO shows up all black and textures don't bind, 
+		// FBO shows up all black and textures don't bind,
 		//   but this should work in theory with WebGL
 		'+set', 'r_ext_framebuffer_object', '0',
 		'+set', 'r_ext_direct_state_access', '0',
@@ -63,7 +63,7 @@ function getQueryCommands() {
 		'+set', 'vm_cgame', '0',
 	]
 	startup.push.apply(startup, window.preStart)
-	// TODO: full screen by default? I suppose someone might 
+	// TODO: full screen by default? I suppose someone might
 	//   want to embed in the center of a page, edit CSS instead of JS?
 	startup.push.apply(startup, [
 		'+set', 'r_fullscreen', window.fullscreen ? '1' : '0',
@@ -319,9 +319,9 @@ function debugWasmSyscallArgs(memBase, targetArgsArrayAddress) {
 	//const memBase = 309716736; // Your module record memoryBase
 	const memoryBuffer = ENV.memory.buffer;
 
-	// Set this to the exact absolute stack array address you caught entering CL_UISystemCalls 
+	// Set this to the exact absolute stack array address you caught entering CL_UISystemCalls
 	// e.g., the $var0 value (like 33168064 or 33168108) right before it dissolves
-	//const targetArgsArrayAddress = 33168108; 
+	//const targetArgsArrayAddress = 33168108;
 
 	if (!memoryBuffer) {
 		console.error("❌ Critical: WebAssembly linear memory context is missing or inaccessible.");
@@ -423,7 +423,7 @@ function Sys_LoadFunction(moduleHandle, functionNamePtr) {
 			const tableFunc = masterTable.get(checkIndex);
 			if (!tableFunc) continue;
 
-			// If reference equality works, or if the string signature mappings match, 
+			// If reference equality works, or if the string signature mappings match,
 			// we have verified the true physical underlying address.
 			if (tableFunc === targetExport || tableFunc.toString() === targetExportString) {
 				targetTableIndex = checkIndex;
@@ -445,7 +445,7 @@ function Sys_LoadFunction(moduleHandle, functionNamePtr) {
 	// =========================================================================
 	// PASS 3: DYNAMIC RUNTIME INJECTION CAGE (GROW ON MISS)
 	// =========================================================================
-	// If the toolchain completely stripped it out of the elements table, 
+	// If the toolchain completely stripped it out of the elements table,
 	// manually grow the table by 1 entry and hot-plug the export right here.
 	if (targetTableIndex === 0) {
 		targetTableIndex = masterTable.length;
@@ -471,7 +471,7 @@ function Sys_LoadFunction(moduleHandle, functionNamePtr) {
 	let sPtr = functionNamePtr;
 	let funcName = "";
 	const memoryView = new Uint8Array(ENV.memory.buffer);
-    
+
 	while (memoryView[sPtr] !== 0) {
 		funcName += String.fromCharCode(memoryView[sPtr]);
 		sPtr++;
@@ -489,8 +489,8 @@ function Sys_LoadFunction(moduleHandle, functionNamePtr) {
 	// =========================================================================
 	// PARSING THE NATIVE WASM ELEMENT OFFSET
 	// =========================================================================
-	// To completely bypass JS wrapper opacity, we look at the order of the 
-	// exported function names. Standard LLVM side-modules append their functions 
+	// To completely bypass JS wrapper opacity, we look at the order of the
+	// exported function names. Standard LLVM side-modules append their functions
 	// to the table segment in the precise order they appear in the export table definition list.
 	let targetTableIndex = 0;
 	const associatedTableBase = moduleRecord.tableBase;
@@ -499,7 +499,7 @@ function Sys_LoadFunction(moduleHandle, functionNamePtr) {
 	// Get a clean list of all exported function signatures
 	const exportedSymbols = Object.keys(moduleRecord.exports);
 	const functionSymbols = exportedSymbols.filter(x => typeof moduleRecord.exports[x] === 'function');
-    
+
 	debugger
 	// Find where this function sits in the ordered export list
 	const exportPositionIndex = functionSymbols.indexOf(funcName);
@@ -543,7 +543,7 @@ function Sys_Print(message) {
 		|| messageStr.includes('ERROR:')) {
 		console.error(messageStr)
 	} else {
-		writeLog(messageStr)
+		console.log(messageStr)
 	}
 }
 
@@ -586,7 +586,7 @@ function Sys_Edit() {
 		let utfEncoded = imageView.map(function (c) { return String.fromCharCode(c) }).join('')
 		FS_FreeFile(HEAPU32[buf >> 2])
 		ace.setValue(utfEncoded)
-		// TODO: show relationships in Jarvis, 
+		// TODO: show relationships in Jarvis,
 		//   one module refers to another module
 		//   these are the leaves of change that worry code reviewers
 		ACE.filename = filenameStr
@@ -645,7 +645,7 @@ function Sys_Error(fmt, args) {
 
 function Sys_SetStatus(status, replacementStr) {
 	// TODO: something like  window.title = , then setTimeout( window.title = 'Quake3e' again)
-	writeLog(addressToString(status), replacementStr)
+	console.log(addressToString(status), replacementStr)
 
 }
 
@@ -1250,7 +1250,7 @@ const SYS = {
 	evaledFuncs: {},
 	evaledCount: 0,
 	DebugBreak: function () { debugger },
-	DebugTrace: function () { writeLog(new Error()) },
+	DebugTrace: function () { console.log(new Error()) },
 	Sys_RandomBytes: Sys_RandomBytes,
 	Sys_Exit: Sys_Exit,
 	Sys_Edit: Sys_Edit,

@@ -2,7 +2,7 @@ const AUDIO_DRIVER = "Web Audio"
 
 let soundEffects = {}
 
-// TODO: finish spatialization 
+// TODO: finish spatialization
 // https://github.com/mdn/webaudio-examples/blob/master/spacialization/index.html
 
 // So that we don't keep retrying missing sounds
@@ -33,7 +33,7 @@ function S_CodecLoad (name, info) {
 
   let buf = Z_Malloc(8) // pointer to pointer
   HEAPU32[buf >> 2] = 0
-  
+
   if ((length = FS_ReadFile(stringToAddress(filenameStr), buf)) > 0 && HEAPU32[buf >> 2] > 0) {
     let thisAudio = document.createElement('AUDIO')
     thisAudio.addEventListener('load', function () {
@@ -43,7 +43,7 @@ function S_CodecLoad (name, info) {
     let utfEncoded = audioView.map(function (c) { return String.fromCharCode(c) }).join('')
     thisAudio.src = 'data:audio/ogg;base64,' + btoa(utfEncoded)
     thisAudio.name = filenameStr
-    writeLog('loading audio:' + filenameStr)
+    console.log('loading audio:' + filenameStr)
     //thisAudio.address = name - 28
     soundEffects[filenameStr] = [thisAudio]
     if(info) {
@@ -131,7 +131,7 @@ let SND = {
   S_Base_AddLoopingSound: S_Base_AddLoopingSound,
   S_Base_AddRealLoopingSound: S_Base_AddLoopingSound,
   S_Base_StopLoopingSound: S_Base_StopLoopingSound,
-  
+
   S_Base_ClearLoopingSounds: S_Base_ClearLoopingSounds,
   S_Base_ClearSoundBuffer: S_Base_ClearLoopingSounds,
   S_Base_StopAllSounds: S_Base_ClearLoopingSounds,
@@ -178,7 +178,7 @@ function S_Base_RawSamples() {
 
 
 let audioCtx
-let listener 
+let listener
 function InitListener() {
   audioCtx = new AudioContext()
   listener = audioCtx.listener;
@@ -241,8 +241,8 @@ function FindTrack(name) {
     }
   }
 
-  if(i >= 4) { 
-    writeLog('Warning adding too many tracks: ' + addressToString(name))
+  if(i >= 4) {
+    console.log('Warning adding too many tracks: ' + addressToString(name))
     return
   }
 
@@ -429,7 +429,7 @@ function FindSound(name) {
   }
   // make sure there aren't too many sounds
   if(soundEffects[name].length > 8) {
-    writeLog('Warning adding too many sounds: ' + addressToString(name))
+    console.log('Warning adding too many sounds: ' + addressToString(name))
     return
   }
   let newInstance = soundEffects[name][0].cloneNode()

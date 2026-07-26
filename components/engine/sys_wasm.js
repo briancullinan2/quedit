@@ -174,7 +174,7 @@ async function initEngine(program) {
         // this might help prevent this thing that krunker.io does where it lags when it first starts up
         Com_MaxFPSChanged()
     } catch (e) {
-        writeLog(`${e.message}\n\r${e.stack || e.stacktrace}`)
+        console.log(`${e.message}\n\r${e.stack || e.stacktrace}`)
         Sys_Exit(1)
         throw e
     }

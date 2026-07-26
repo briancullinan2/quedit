@@ -31,14 +31,14 @@ async function status(args, flags)
 	let repoPath = args[0] || SettingsManager.get('github', 'engineRepository');
 	if(!repoPath)
 	{
-		writeLog("Error: Missing repository configuration context path mapping rules.");
+		console.log("Error: Missing repository configuration context path mapping rules.");
 		return;
 	}
 
 	const parts = repoPath.split('/');
 	if(parts.length !== 2)
 	{
-		writeLog(`Error: Invalid target repository definition standard format [${repoPath}]. Use owner/repo.`);
+		console.log(`Error: Invalid target repository definition standard format [${repoPath}]. Use owner/repo.`);
 		return;
 	}
 
@@ -47,7 +47,7 @@ async function status(args, flags)
 	const branch = await getDefaultBranch(owner, repo);
 	const callbackId = `term_status_${Date.now()}`;
 
-	writeLog(`Calculating changes for ${owner}/${repo} on branch [${branch}]...`);
+	console.log(`Calculating changes for ${owner}/${repo} on branch [${branch}]...`);
 
 	return new Promise((resolve) =>
 	{
@@ -61,7 +61,7 @@ async function status(args, flags)
 
 			if(status !== 'SUCCESS')
 			{
-				writeLog(`Status check aborted: ${error || 'Unknown execution variance'}`);
+				console.log(`Status check aborted: ${error || 'Unknown execution variance'}`);
 				return resolve();
 			}
 
@@ -69,32 +69,32 @@ async function status(args, flags)
 
 			if(totalChanges === 0)
 			{
-				writeLog(`On branch ${branch}\nYour branch is up to date with origin.\n\nnothing to commit, working tree clean`);
+				console.log(`On branch ${branch}\nYour branch is up to date with origin.\n\nnothing to commit, working tree clean`);
 				return resolve();
 			}
 
-			writeLog(`On branch ${branch}\nChanges tracking matrix compiled:\n`);
+			console.log(`On branch ${branch}\nChanges tracking matrix compiled:\n`);
 
 			// Pretty print variations mapping standard colors or markers
 			if(modified && modified.length > 0)
 			{
-				writeLog("  Modified files:");
-				modified.forEach(p => writeLog(`     modified:   ${p}`));
-				writeLog("");
+				console.log("  Modified files:");
+				modified.forEach(p => console.log(`     modified:   ${p}`));
+				console.log("");
 			}
 
 			if(added && added.length > 0)
 			{
-				writeLog("  Untracked / Added files:");
-				added.forEach(p => writeLog(`     new file:   ${p}`));
-				writeLog("");
+				console.log("  Untracked / Added files:");
+				added.forEach(p => console.log(`     new file:   ${p}`));
+				console.log("");
 			}
 
 			if(deleted && deleted.length > 0)
 			{
-				writeLog("  Deleted files:");
-				deleted.forEach(p => writeLog(`     deleted:    ${p}`));
-				writeLog("");
+				console.log("  Deleted files:");
+				deleted.forEach(p => console.log(`     deleted:    ${p}`));
+				console.log("");
 			}
 
 			resolve();
@@ -121,7 +121,7 @@ async function push(args, flags)
 	const commitMessage = args[0];
 	if(!commitMessage || commitMessage.trim().length === 0)
 	{
-		writeLog("Error: A non-empty descriptive commit message string target parameter is required.");
+		console.log("Error: A non-empty descriptive commit message string target parameter is required.");
 		return;
 	}
 
@@ -132,7 +132,7 @@ async function push(args, flags)
 	const branch = await getDefaultBranch(owner, repo);
 	const callbackId = `term_push_${Date.now()}`;
 
-	writeLog(`Assembling commit data layout package context structures to push directly...`);
+	console.log(`Assembling commit data layout package context structures to push directly...`);
 
 	return new Promise((resolve) =>
 	{
@@ -145,8 +145,8 @@ async function push(args, flags)
 
 			if(status === 'SUCCESS')
 			{
-				writeLog(`\nCommit verification success! Head reference synchronized cleanly.`);
-				writeLog(`New Remote Commit OID: ${sha}`);
+				console.log(`\nCommit verification success! Head reference synchronized cleanly.`);
+				console.log(`New Remote Commit OID: ${sha}`);
 
 				// Optional: Re-render matching UI subtrees to reflect reset modifications state
 				if(trees['#github'] && loadedGithubTreeNodes[repoPath])
@@ -156,7 +156,7 @@ async function push(args, flags)
 				}
 			} else
 			{
-				writeLog(`\nPush execution sequence bricked: ${error}`);
+				console.log(`\nPush execution sequence bricked: ${error}`);
 			}
 			resolve();
 		};

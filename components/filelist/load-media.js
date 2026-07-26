@@ -232,14 +232,13 @@ let hasUntared = false;
 async function untarFrontent()
 {
 
-	PREAMBLE = TAR_PREAMBLE;
 	const response = await fetch('/sysroot.tar', {
 		mode: 'cors',
 		credentials: 'omit',
 	});
 	const tar = new API.Tar(await response.arrayBuffer(), log);
 	const count = await tar.untar(this.memfs);
-	writeLog(`${count} files read.`);
+	console.log(`${count} files read.`);
 	hasUntared = true;
 
 }
@@ -313,7 +312,7 @@ async function clickFile(filePath, lineNumber, noBounce = false, noHide = false,
 
 	if(!dbFile || !selected)
 	{
-		writeLog('File not found: ' + filePath);
+		console.log('File not found: ' + filePath);
 		return [,];
 	}
 

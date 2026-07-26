@@ -108,6 +108,11 @@ export const dirs = {
 };
 
 
+const ENGINE_MEMORY_BASE = 48 * 1024 * 1024;
+const UI_MEMORY_BASE = 32;
+const CGAME_MEMORY_BASE = 16 * 1024 * 1024;
+const GAME_MEMORY_BASE = 32 * 1024 * 1024;
+
 declare global
 {
 	interface Window
@@ -115,8 +120,33 @@ declare global
 		FS: {
 			virtual: Record<string, FileRecord | null | undefined>;
 		};
+		path: typeof path;
+		config: typeof config;
+		dirs: typeof dirs;
+		ENGINE_MEMORY_BASE: number;
+		UI_MEMORY_BASE: number;
+		CGAME_MEMORY_BASE: number;
+		GAME_MEMORY_BASE: number;
+		COMPILE_PLATFORM: string;
+		COMPILE_ARCH: string;
+		GAME_PLATFORM: string;
+		GAME_ARCH: string;
 	}
 }
+
+window.path = path;
+window.config = config;
+window.dirs = dirs;
+
+window.ENGINE_MEMORY_BASE = ENGINE_MEMORY_BASE;
+window.UI_MEMORY_BASE = UI_MEMORY_BASE;
+window.CGAME_MEMORY_BASE = CGAME_MEMORY_BASE;
+window.GAME_MEMORY_BASE = GAME_MEMORY_BASE;
+
+window.COMPILE_PLATFORM = COMPILE_PLATFORM;
+window.COMPILE_ARCH = COMPILE_ARCH;
+window.GAME_PLATFORM = GAME_PLATFORM;
+window.GAME_ARCH = GAME_ARCH;
 
 // 2. Safely capture or initialize the instance on window
 const FSInstance = window.FS || { virtual: {} };

@@ -52,7 +52,6 @@ declare global
 		environmentRepository?: string | undefined | null;
 		owner?: { value: string; };
 		repository?: { value: string; };
-		writeLog?: (message: string) => void;
 		FileManager: typeof FileManager;
 		resizeHandler: () => void;
 		historyToolbar: HistoryToolbar;

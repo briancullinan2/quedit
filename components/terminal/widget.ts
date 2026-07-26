@@ -7,6 +7,7 @@ import { SearchTerminal } from './search';
 import { FrameRater } from '../bundle/frame-rater';
 import type { IPooledTerminal, TerminalLogEntry } from './widget-types';
 import type { TerminalFilter } from '../bundle/menu';
+import { captureRenderToTerminalCorner } from './render';
 
 const LINES_TO_SCROLLBACK = 5000;
 
@@ -502,10 +503,7 @@ export class TerminalWidget extends Widget
 		if(this.filterId === 'soft')
 		{
 			term.options.scrollback = 0;
-			if(typeof (window as any).captureRenderToTerminalCorner === 'function')
-			{
-				(window as any).captureRenderToTerminalCorner(term);
-			}
+			captureRenderToTerminalCorner(term);
 			window.terminalLoaded = true;
 			return;
 		}
