@@ -257,10 +257,21 @@ export class ResponsiveManager
 
 				allWidgets.forEach(widget =>
 				{
-					if(widget === primaryWidget) return;
 
 					const widgetName = widget.constructor.name;
 					const isOutline = OUTLINE_WIDGET_TYPES.includes(widgetName);
+
+					if(widget === primaryWidget)
+					{
+						if(isOutline)
+						{
+							firstRefWidget['outline'] = widget;
+						} else
+						{
+							firstRefWidget[widgetName] = widget;
+						}
+						return;
+					}
 
 					if(isOutline)
 					{
@@ -278,7 +289,7 @@ export class ResponsiveManager
 					}
 					else if(widgetName === 'TerminalWidget')
 					{
-						if(!firstRefWidget[widgetName] && Object.keys(widgetTypes).length <= 3)
+						if(!firstRefWidget[widgetName] && Object.keys(widgetTypes).length <= 2)
 						{
 							// First terminal splits bottom relative to the primary editor
 							firstRefWidget[widgetName] = widget;
@@ -390,10 +401,15 @@ export class ResponsiveManager
 
 				allWidgets.forEach(widget =>
 				{
-					if(widget === primaryWidget) return;
+					const widgetName = widget.constructor.name;
+
+					if(widget === primaryWidget)
+					{
+						firstRefWidget[widgetName] = widget;
+						return;
+					}
 
 					mainDock.activateWidget(widget);
-					const widgetName = widget.constructor.name;
 
 					if(widgetName === 'TerminalWidget')
 					{

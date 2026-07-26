@@ -441,6 +441,11 @@ export function terminalWrite(message: string, source?: SourceMetadata | string,
 		}
 	}
 
+	if(!window.mainDock)
+	{
+		return;
+	}
+
 	const terms = Array.from(window.mainDock.widgets()).filter(w => w.constructor.name === 'TerminalWidget') as TerminalWidget[];
 	if(terms.length > 0 && !skipActualWrite)
 	{

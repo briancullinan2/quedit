@@ -517,7 +517,7 @@ export class TerminalWidget extends Widget
 		if(this.filterId === 'soft')
 		{
 			term.options.scrollback = 0;
-			captureRenderToTerminalCorner(term);
+			//captureRenderToTerminalCorner(term);
 			window.terminalLoaded = true;
 			return;
 		}
