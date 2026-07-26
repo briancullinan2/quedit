@@ -222,7 +222,7 @@ async function runEngine(database = null, noBounce = false) {
             const sha = await getGitShaBrowser(contents)
             //const response = await fetch("https://raw.githubusercontent.com/briancullinan2/quedit/main/quake3e.wasm");
             //const contents = await response.arrayBuffer();
-            //if (!files['briancullinan2/quedit']) {
+            //if (!filesRepo['briancullinan2/quedit']) {
             //    await loadGitHubTree('briancullinan2', 'quedit', 'main')
             //}
             //await cacheFile('briancullinan2', 'quedit', 'quake3e.wasm');

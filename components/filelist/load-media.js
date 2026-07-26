@@ -325,7 +325,7 @@ async function clickFile(filePath, lineNumber, noBounce = false, noHide = false,
 	const ownerName = parts.length == 2 ? parts[0] : owner.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
-	if(!dbFile) dbFile = files[selected][filePath];
+	if(!dbFile) dbFile = filesRepo[selected][filePath];
 
 	if(!dbFile) return [null, selected];
 

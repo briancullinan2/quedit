@@ -256,7 +256,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 		console.log(`Building ${name}.qvm...`);
 
-		if(!files[database])
+		if(!filesRepo[database])
 		{
 			let branch = await getDefaultBranch(ownerName, repoName);
 			await loadGitHubTree(ownerName, repoName, branch);

@@ -25,6 +25,7 @@ declare global
 		terminalWidgets?: Array<TerminalWidget>;
 		terminalLoaded?: boolean;
 		TERMINAL_REGISTRY: TerminalFilter[];
+		mostRecentTerminalCols: number;
 	}
 }
 
@@ -188,7 +189,7 @@ class TerminalPoolManager
 
 		const cols = Math.max(120, Math.floor(container.clientWidth / dims.css.cell.width));
 		const rows = Math.max(1, Math.floor(container.clientHeight / dims.css.cell.height));
-
+		window.mostRecentTerminalCols = cols;
 		term.resize(cols, rows);
 	}
 }

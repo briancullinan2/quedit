@@ -64,14 +64,14 @@ async function saveFile()
 		parent: filePath.substring(0, filePath.lastIndexOf('/'))
 	};
 	window.currentOpenFileId = newSha;
-	if(files[database])
+	if(filesRepo[database])
 	{
 		await putRecord(DB_STORE_NAME, FS.virtual[filePath], database);
-		if(files[database][filePath])
-			files[database][filePath].sha = newSha;
+		if(filesRepo[database][filePath])
+			filesRepo[database][filePath].sha = newSha;
 		else
-			files[database][filePath] = FS.virtual[filePath];
-		trees[database].nodesById[newSha] = files[database][filePath];
+			filesRepo[database][filePath] = FS.virtual[filePath];
+		trees[database].nodesById[newSha] = filesRepo[database][filePath];
 	}
 
 	if(filePath.includes('settings') && filePath.endsWith('.json'))

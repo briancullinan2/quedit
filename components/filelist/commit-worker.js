@@ -164,10 +164,10 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
     const selected = `${repoOwner}/${repoName}`;
 
     // 1. Ensure the remote baseline tree layout skeleton is hydrated locally
-    if (!files[selected]) {
+    if (!filesRepo[selected]) {
         await loadGitHubTree(repoOwner, repoName, branch);
     }
-    const remoteTree = files[selected] || {};
+    const remoteTree = filesRepo[selected] || {};
 
     const changes = {
         modified: [],   // { path, localSha, remoteSha }

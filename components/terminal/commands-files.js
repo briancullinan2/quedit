@@ -7,7 +7,7 @@ async function ls(argv, database)
 	const ownerName = parts.length == 2 ? parts[0] : owner.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
-	if(!files[selected])
+	if(!filesRepo[selected])
 	{
 		let branch = await getDefaultBranch(ownerName, repoName);
 		await loadGitHubTree(ownerName, repoName, branch);
@@ -21,7 +21,7 @@ async function ls(argv, database)
 
 	// Assuming FS.virtual.readdir returns objects with {name, size, type}
 	const entries = Object.values(FS.virtual)
-		.concat(Object.values(files[selected] || {}) || [])
+		.concat(Object.values(filesRepo[selected] || {}) || [])
 		.filter(p =>
 		{
 			if(!p.path)

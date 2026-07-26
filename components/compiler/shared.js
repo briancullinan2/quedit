@@ -1798,7 +1798,7 @@ const API = (function ()
 							const ownerName = parts.length == 2 ? parts[0] : owner.value;
 							const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 							// because this also creates the database with setupDatabase
-							if(!files[selected])
+							if(!filesRepo[selected])
 							{
 								let branch = await getDefaultBranch(ownerName, repoName);
 								await loadGitHubTree(ownerName, repoName, branch);

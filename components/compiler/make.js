@@ -520,7 +520,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 
 	let stringify = 'code/renderer2/stringify.c';
 	let obj = CONFIGURATION + '/stringify.o';
-	let sha = files[database][stringify].sha;
+	let sha = filesRepo[database][stringify].sha;
 	let content = await cacheFile(ownerName, repoName, stringify, sha);
 
 	if(!FS.virtual[obj] && !forceChanged)
@@ -1182,7 +1182,7 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 					let localName = 'components/compiler/wasm.syms';
 					//let response = await fetch('wasm.syms');
 					//let contents = await response.arrayBuffer()
-					if(!files['briancullinan2/quedit'])
+					if(!filesRepo['briancullinan2/quedit'])
 					{
 						await loadGitHubTree('briancullinan2', 'quedit', 'main');
 					}
@@ -1206,16 +1206,16 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 				}
 				else
 				{
-					if(!files[thisDatabase])
+					if(!filesRepo[thisDatabase])
 					{
 						let branch = await getDefaultBranch(thisOwner, thisRepo);
 						await loadGitHubTree(thisOwner, thisRepo, branch);
 					}
 
-					if(files[thisDatabase][header])
+					if(filesRepo[thisDatabase][header])
 					{
 						// cacheFile handles the storage logic
-						let sha = files[thisDatabase][header].sha;
+						let sha = filesRepo[thisDatabase][header].sha;
 						await cacheFile(thisOwner, thisRepo, header, sha);
 					}
 

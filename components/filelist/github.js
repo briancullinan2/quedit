@@ -157,7 +157,7 @@ async function loadGitHubTree(repoOwner, repoName, branch)
 		const commitData = await githubRequest(repoOwner, repoName, `commits/${branch}`);
 		const buildDate = new Date(commitData.commit.author.date);
 
-		files[database] = treeData.tree.reduce((obj, a) =>
+		filesRepo[database] = treeData.tree.reduce((obj, a) =>
 		{
 			// Attach the buildDate to every file as a fallback mtime
 			if(a.path.toLowerCase().includes('.map') || a.path.toLowerCase().includes('.bsp'))
@@ -185,7 +185,7 @@ async function loadGitHubTree(repoOwner, repoName, branch)
 			updateSelectOptions('map', mapFiles);
 		}
 
-		return files[database];
+		return filesRepo[database];
 	} catch(error)
 	{
 		console.error('Failed to load GitHub tree:', error);
@@ -228,9 +228,9 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 	try
 	{
 		// Initialize the tracking database allocation if it hasn't happened yet
-		if(typeof files[database] === 'undefined')
+		if(typeof filesRepo[database] === 'undefined')
 		{
-			files[database] = {};
+			filesRepo[database] = {};
 		}
 
 		const filesToHydrate = [];
@@ -267,7 +267,7 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 				const isFile = entry.type === 'blob';
 
 				// Map out the flat file cache signature
-				files[database][entry.path] = {
+				filesRepo[database][entry.path] = {
 					path: entry.path,
 					sha: entry.oid,
 					type: isFile ? 'file' : 'dir',
@@ -283,7 +283,7 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 				} else
 				{
 					// Set directory runtime fallback timestamp
-					files[database][entry.path].timestamp = new Date();
+					filesRepo[database][entry.path].timestamp = new Date();
 					// Push the newly uncovered subdirectory straight into the queue loop to look deeper
 					directoryQueue.push(entry.path);
 				}
@@ -297,13 +297,13 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 		for(let i = 0; i < filesToHydrate.length; i += BATCH_SIZE)
 		{
 			const chunk = filesToHydrate.slice(i, i + BATCH_SIZE);
-			batchPromises.push(hydrateFileMTimes(repoOwner, repoName, branchName, chunk, files[database]));
+			batchPromises.push(hydrateFileMTimes(repoOwner, repoName, branchName, chunk, filesRepo[database]));
 		}
 
 		// Concurrently populate file modification records across all chunks
 		await Promise.all(batchPromises);
 
-		return files[database];
+		return filesRepo[database];
 
 	} catch(error)
 	{
@@ -474,7 +474,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
 
 		// TODO: this once from front end or backend, but not both
-		if(!files[selected])
+		if(!filesRepo[selected])
 		{
 			let branch = await getDefaultBranch(repoOwner, repoName);
 			await loadGitHubTree(repoOwner, repoName, branch);
@@ -487,14 +487,14 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 		{
 			FS.virtual[filePath] = await getRecord(DB_STORE_NAME, filePath, selected);
 		}
-		if(files[selected][filePath] && FS.virtual[filePath])
+		if(filesRepo[selected][filePath] && FS.virtual[filePath])
 		{
-			if(FS.virtual[filePath].timestamp > files[selected][filePath].timestamp)
+			if(FS.virtual[filePath].timestamp > filesRepo[selected][filePath].timestamp)
 			{
 				console.info(`Skipping changed (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 				return FS.virtual[filePath].contents;
 			}
-			//FS.virtual[filePath].timestamp = files[selected][filePath].timestamp
+			//FS.virtual[filePath].timestamp = filesRepo[selected][filePath].timestamp
 		}
 
 		try
@@ -524,7 +524,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
 
 		// TODO: only continue if the file is in github
-		const shouldDownload = files[selected] && files[selected][filePath];
+		const shouldDownload = filesRepo[selected] && filesRepo[selected][filePath];
 
 
 		// TODO: IF GITHUB, ALWAYS UPDATE
@@ -581,7 +581,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
 
 		FS.virtual[filePath] = {
-			timestamp: files[selected][filePath].timestamp,
+			timestamp: filesRepo[selected][filePath].timestamp,
 			mode: FS_FILE,
 			contents: bytes,
 			path: filePath,
@@ -616,8 +616,8 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 			console.error(`${e.message}\n\r${e.stack || e.stacktrace}`);
 		}
 
-		if(files[selected][filePath])
-			return files[selected][filePath].contents;
+		if(filesRepo[selected][filePath])
+			return filesRepo[selected][filePath].contents;
 		throw e;
 	}
 

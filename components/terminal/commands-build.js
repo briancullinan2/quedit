@@ -37,7 +37,7 @@ async function buildCommand(argv, database)
 	const parts = selected.split('/');
 	const ownerName = parts.length == 2 ? parts[0] : owner.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
-	if(selected && !files[selected])
+	if(selected && !filesRepo[selected])
 	{
 		let branch = await getDefaultBranch(ownerName, repoName);
 		await loadGitHubTree(ownerName, repoName, branch);
@@ -219,7 +219,7 @@ async function link(argv, database)
 	const parts = selected.split('/');
 	const ownerName = parts.length == 2 ? parts[0] : owner.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
-	if(selected && !files[selected])
+	if(selected && !filesRepo[selected])
 	{
 		let branch = await getDefaultBranch(ownerName, repoName);
 		await loadGitHubTree(ownerName, repoName, branch);
@@ -329,7 +329,7 @@ async function header(argv, database)
 	if(!argv[0])
 		headers = [...lccToolHeaders];
 
-	if(!files[selected])
+	if(!filesRepo[selected])
 	{
 		let branch = await getDefaultBranch(ownerName, repoName);
 		await loadGitHubTree(ownerName, repoName, branch);
@@ -337,7 +337,7 @@ async function header(argv, database)
 
 	for(let header of headers)
 	{
-		let sha = files[selected][header].sha;
+		let sha = filesRepo[selected][header].sha;
 
 		await cacheFile(ownerName, repoName, header, sha);
 		await api.header(ownerName, repoName, header, selected);
@@ -392,7 +392,7 @@ async function compileWorker(argv, database, commandName, term)
 	const ownerName = parts.length == 2 ? parts[0] : owner.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
-	if(!files[selected])
+	if(!filesRepo[selected])
 	{
 		let branch = await getDefaultBranch(ownerName, repoName);
 		await loadGitHubTree(ownerName, repoName, branch);
@@ -439,7 +439,7 @@ async function compileWorker(argv, database, commandName, term)
 
 	if(TERMINATE) return;
 
-	//let sha = files[selected][file].sha
+	//let sha = filesRepo[selected][file].sha
 	let contents = await cacheFile(ownerName, repoName, file);
 
 	api.configuration = configuration.value === 'debug' ? 'debug' : 'release';
@@ -686,7 +686,7 @@ async function lburg(argv, database)
 		argv[1] || path.join(CONFIGURATION, argv[0] ? argv[0].replace('.md', '.c') : 'src/dagcheck.c'),
 	];
 
-	await cacheFile(ownerName, repoName, paths[0], (files[selected][paths[0]] || {}).sha);
+	await cacheFile(ownerName, repoName, paths[0], (filesRepo[selected][paths[0]] || {}).sha);
 
 
 	let args = [

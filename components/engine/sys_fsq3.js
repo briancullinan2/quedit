@@ -542,7 +542,7 @@ function Sys_ListFiles(directory, extension, filter, numfiles, wantsubs) {
         }
         if (relativeName[0] == '/')
             relativeName = relativeName.substring(1)
-        //matches.push(files[i])
+        //matches.push(filesRepo[i])
         HEAPU32[(listInMemory + i * 4) >> 2] = FS_CopyString(stringToAddress(relativeName));
     }
     HEAPU32[(listInMemory >> 2) + matches.length] = 0
