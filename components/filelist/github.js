@@ -1,14 +1,14 @@
 /// <reference path="../bundle/github.d.ts" />
 
 
-if(!window.trees)
+if(!self.trees)
 {
-	window.trees = {};
+	self.trees = {};
 }
 
-if(!window.filesRepo)
+if(!self.filesRepo)
 {
-	window.filesRepo = {};
+	self.filesRepo = {};
 }
 
 

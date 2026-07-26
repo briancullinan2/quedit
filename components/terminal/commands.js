@@ -587,7 +587,7 @@ async function handleCommand(input, term)
 		{
 			if(typeof originalConsole !== 'undefined')
 				originalConsole.error(execError);
-			terminalWrite(formatMessage(CMD_PREAMBLE, [`Failed executing: ${resolvedCommandKey}`, execError]));
+			console.error(`Failed executing: ${resolvedCommandKey}`, execError);
 		}
 	} else
 	{

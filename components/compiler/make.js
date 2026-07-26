@@ -565,7 +565,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 		});
 	} catch(e)
 	{
-		console.log(`${e.message}\n\r${e.stack || e.stacktrace}`);
+		console.error(`${e.message}\n\r${e.stack || e.stacktrace}`);
 	}
 
 	if(!noLinking)
@@ -626,7 +626,7 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 	} catch(e)
 	{
 
-		console.log(`Link error in stringify\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+		console.error(`Link error in stringify\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
 	}
 
 
@@ -685,7 +685,7 @@ function mkdirp(path, database)
 				api.memfs.mem.check();
 				api.memfs.mkdirp(accumulated);
 			}
-		} catch(e) { console.log(`${e.message}\n\r${e.stack || e.stacktrace}`); }
+		} catch(e) { console.error(`${e.message}\n\r${e.stack || e.stacktrace}`); }
 	}
 }
 
@@ -716,22 +716,22 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 		try
 		{
 			api.memfs.mkdirp(config.TEMPDIR);
-		} catch(e) { console.log(`${e.message}\n\r${e.stack || e.stacktrace}`); }
+		} catch(e) { console.error(`${e.message}\n\r${e.stack || e.stacktrace}`); }
 		try
 		{
 			api.memfs.mkdirp(config.HOMEDIR);
-		} catch(e) { console.log(`${e.message}\n\r${e.stack || e.stacktrace}`); }
+		} catch(e) { console.error(`${e.message}\n\r${e.stack || e.stacktrace}`); }
 
 		try
 		{
 			if(makeDirs)
 				api.memfs.mkdirp(buildDir);
-		} catch(e) { console.log(`${e.message}\n\r${e.stack || e.stacktrace}`); }
+		} catch(e) { console.error(`${e.message}\n\r${e.stack || e.stacktrace}`); }
 		try
 		{
 			if(makeDirs && outDir)
 				api.memfs.mkdirp(outDir);
-		} catch(e) { console.log(`${e.message}\n\r${e.stack || e.stacktrace}`); }
+		} catch(e) { console.error(`${e.message}\n\r${e.stack || e.stacktrace}`); }
 	}
 
 	if(!FS.virtual[file]
@@ -972,7 +972,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 			} catch(e)
 			{
 
-				console.log(`Build error in client: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+				console.error(`Build error in client: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
 			}
 
 		}
@@ -1058,7 +1058,7 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 		});
 	} catch(e)
 	{
-		console.log(`Link error in client\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+		console.error(`Link error in client\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
 	}
 
 
@@ -1140,7 +1140,7 @@ async function buildShaders(database = null, forceChanged = false)
 
 		} catch(e)
 		{
-			console.log(`Build error in shaders: ${shader}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+			console.error(`Build error in shaders: ${shader}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
 		}
 	}
 
@@ -1228,7 +1228,7 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 			{
 
 
-				console.log(`Failed to download header ${header}: ` + e + '\n\r' + (e.stack || e.stacktrace));
+				console.error(`Failed to download header ${header}: ` + e + '\n\r' + (e.stack || e.stacktrace));
 			}
 		}
 
@@ -1243,18 +1243,6 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 	needsHeaders = false;
 }
 
-
-/*
-const ST_FILE = 8
-const ST_DIR = 4
-const FS_DEFAULT = (6 << 3) + (6 << 6) + (6)
-const FS_FILE = (ST_FILE << 12) + FS_DEFAULT
-const FS_DIR = (ST_DIR << 12) + FS_DEFAULT
-
-const FS = {
-	virtual: {},
-}
-*/
 
 function loadEntry(cursor)
 {

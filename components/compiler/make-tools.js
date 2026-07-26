@@ -189,7 +189,7 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
 		} catch(e)
 		{
 
-			console.log(`Build error in lburg: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+			console.error(`Build error in lburg: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
 		}
 
 	}
@@ -336,7 +336,7 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
 	} catch(e)
 	{
 
-		console.log(`Error compiling: ${src}: ${e}\n\r${e.stack || e.stacktrace}`);
+		console.error(`Error compiling: ${src}: ${e}\n\r${e.stack || e.stacktrace}`);
 		let newError = new Error(e.message);
 		newError.stack = newError.stacktrace = e.stack || e.stacktrace;
 		throw newError;
@@ -453,7 +453,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
 
 			// ALREADY LOGGED BY
 			if(!e.message.includes('Error compiling:'))
-				console.log(`Error compiling: ${file}: ${e}\n\r${e.stack || e.stacktrace}`);
+				console.error(`Error compiling: ${file}: ${e}\n\r${e.stack || e.stacktrace}`);
 		}
 	}
 
@@ -558,7 +558,7 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
 			await compileToolFile(src, obj, "cpp", database, [], forceChanged);
 		} catch(e)
 		{
-			console.log(`${e.message}\n\r${e.stack || e.stacktrace}`);
+			console.error(`${e.message}\n\r${e.stack || e.stacktrace}`);
 		}
 	}
 
@@ -670,7 +670,7 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
 		} catch(e)
 		{
 
-			console.log(`Build error in q3lcc: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+			console.error(`Build error in q3lcc: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
 		}
 	}
 
@@ -918,7 +918,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 		} catch(e)
 		{
 
-			console.log(`Error compiling q3asm component: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+			console.error(`Error compiling q3asm component: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
 		}
 	}
 
@@ -985,7 +985,7 @@ async function linkAsm(database = null, forceChanged = false, noBuild = false)
 	} catch(e)
 	{
 
-		console.log(`Linker Error for q3asm: ${q3asmExe}: ${e}\n\r${e.stack || e.stacktrace}`);
+		console.error(`Linker Error for q3asm: ${q3asmExe}: ${e}\n\r${e.stack || e.stacktrace}`);
 		throw e;
 	}
 }

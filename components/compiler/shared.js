@@ -134,6 +134,60 @@ function getCalleeInfoFromStackTrace()
 }
 
 
+
+function formatMessageItem(arg)
+{
+	if(typeof arg === 'string')
+	{
+		return arg.trim();
+	}
+
+	if(arg instanceof Error)
+	{
+		return `${arg.name}: ${arg.message}\n\r${arg.stack || ''}\n\r[Context State Dump]:\n\r${rebuildComplexObjectAsText(arg)}`;
+	}
+
+	if(typeof arg === 'object' && arg !== null)
+	{
+		if(Object.keys(arg).length === 0)
+		{
+			return (arg.name || arg.constructor.name || typeof arg) + ' ' + '{empty}';
+		}
+
+		// Try the fast track native path first
+		try
+		{
+			const stringifyCache = new Set();
+			return (arg.name || arg.constructor.name || typeof arg) + ' ' + JSON.stringify(arg, (key, value) =>
+			{
+				if(typeof value === 'object' && value !== null)
+				{
+					if(stringifyCache.has(value)) return '[Circular]';
+					stringifyCache.add(value);
+				}
+				return value;
+			}, 4);
+		} catch(jsonCrash)
+		{
+			// ─── DYNAMIC AUTOMATIC RECOVERY FALLBACK ───
+			// If the object contained hidden internal native toJSON hooks that crashed,
+			// or had complex un-scannable structures, manually rebuild it safely.
+			return `[Rebuilt Object Asset Dump due to serialization crash: ${jsonCrash.message}]\n` + rebuildComplexObjectAsText(arg);
+		}
+	}
+
+	return String(arg);
+}
+
+const formatMessage = (level, args) =>
+{
+	const timestamp = new Date().toLocaleTimeString();
+	const processed = args.map(formatMessageItem);
+	return `${processed.join('\n\r')}\r\n`;
+};
+
+
+
 const originalConsole = {
 	log: console.log,
 	warn: console.warn,
@@ -144,8 +198,8 @@ const originalConsole = {
 self.console.log = (...args) =>
 {
 	const formatted = formatMessage('log', args);
-	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
-	const source = [category, 'log', ...trailingFiles, func,
+	const [func, trailingFiles, rawFile] = getCalleeInfoFromStackTrace();
+	const source = ['log', ...trailingFiles, func,
 		rawFile.split('/').pop().replace('.js', ''), rawFile
 	];
 	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
@@ -155,8 +209,8 @@ self.console.log = (...args) =>
 self.console.warn = (...args) =>
 {
 	const formatted = formatMessage('warn', args);
-	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
-	const source = [category, 'warn', ...trailingFiles, func,
+	const [func, trailingFiles, rawFile] = getCalleeInfoFromStackTrace();
+	const source = ['warn', ...trailingFiles, func,
 		rawFile.split('/').pop().replace('.js', ''), rawFile
 	];
 	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
@@ -166,8 +220,8 @@ self.console.warn = (...args) =>
 self.console.error = (...args) =>
 {
 	const formatted = formatMessage('error', args);
-	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
-	const source = [category, 'error', ...trailingFiles, func,
+	const [func, trailingFiles, rawFile] = getCalleeInfoFromStackTrace();
+	const source = ['error', ...trailingFiles, func,
 		rawFile.split('/').pop().replace('.js', ''), rawFile
 	];
 	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
@@ -177,8 +231,8 @@ self.console.error = (...args) =>
 self.console.info = (...args) =>
 {
 	const formatted = formatMessage('info', args);
-	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
-	const source = [category, 'info', ...trailingFiles, func,
+	const [func, trailingFiles, rawFile] = getCalleeInfoFromStackTrace();
+	const source = ['info', ...trailingFiles, func,
 		rawFile.split('/').pop().replace('.js', ''), rawFile
 	];
 	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);

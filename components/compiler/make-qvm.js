@@ -432,8 +432,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 			} catch(e)
 			{
-
-				console.log(`CC: ${src}: ${e.message}\n\r${e.stack || e.stacktrace}`);
+				console.error(`CC: ${src}: ${e.message}\n\r${e.stack || e.stacktrace}`);
 			}
 		}
 
@@ -649,7 +648,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 	} catch(e)
 	{
 
-		console.log(`Linker Error in ${name}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+		console.error(`Linker Error in ${name}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
 		throw e;
 	}
 	finally
