@@ -149,8 +149,9 @@ export const IMPORT_SETTINGS: Record<string, Record<string, SettingConfig>> = ${
 const componentScripts = [
 	'./components/bundle/github-settings.ts',
 	'./components/bundle/lumino.ts',
-	'./components/editor/widget.ts',
+	'./components/editor/widget-settings.ts',
 	'./components/terminal/widget.ts',
+	'./components/paint/widget-settings.ts',
 	'./components/map-loader/widget.ts',
 	//'./components/engine/quake-config.ts'
 ];

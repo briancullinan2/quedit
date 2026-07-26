@@ -213,7 +213,8 @@ async function find(argv)
 			window.gameRepository,
 			window.assetRepository,
 			window.toolsRepository,
-			window.tools2Repository
+			window.tools2Repository,
+			window.environmentRepository
 		].filter(Boolean)
 	});
 

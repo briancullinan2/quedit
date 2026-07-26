@@ -277,7 +277,8 @@ export class SearchListWidget extends FileListWidget
 				window.gameRepository,
 				window.assetRepository,
 				window.toolsRepository,
-				window.tools2Repository
+				window.tools2Repository,
+				window.environmentRepository
 			].filter(Boolean)
 		});
 	}

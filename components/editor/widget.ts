@@ -9,6 +9,7 @@ import { AceEventManager, bindBlockTrackerToSession, onBlockTrackerCursorChange 
 import { getModeByFilename } from './widget-modes';
 import { ACE_MODULES, VSCODE_ACE_MENUS } from './widget-menu';
 import type { MenuModules } from '../bundle/menu-manager';
+import { LOCAL_SETTINGS } from '../filelist/widget-local';
 
 interface ISessionCache
 {
@@ -72,7 +73,7 @@ declare global
 /**
  * Global static coordinator managing pool instances to facilitate cross-widget reuse.
  */
-class AceEditorPool
+export class AceEditorPool
 {
 	static instances: Array<{ editor: Ace.Editor; inUse: boolean; }> = [];
 	public static sessionCache: ISessionCache = {};
@@ -424,99 +425,6 @@ export class AceEditorWidget extends Widget implements MenuModules
 
 window.AceEditorWidget = AceEditorWidget;
 
-
-export class SettingsWidget extends AceEditorWidget
-{
-	constructor(fileId?: string, initialContent?: string)
-	{
-		super(fileId, initialContent);
-		const self = this;
-		window.SettingsManager.settings().then(settings =>
-		{
-			self._fileId = settings[0] ?? self._fileId;
-			self._initialContent = settings[2] ?? self._initialContent;
-
-			if(self._editor)
-			{
-				const session = AceEditorPool.getOrCreateAceSession(self._fileId, self._initialContent, self._editor);
-			}
-		});
-	}
-
-	// TODO: on save, also call window.SettingsManager.saveSettings
-}
-
-
-
-const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
-	editor: {
-		savedTheme: {
-			key: 'theme',
-			default: 'ace/theme/monokai',
-			elementId: 'theme',
-			description: 'The visual theme layout package used to style the interactive Ace code editor window background and syntax colors.',
-			set: (val) =>
-			{
-				for(let instance of AceEditorPool.instances)
-				{
-					instance.editor.setTheme(val);
-				}
-				if(AceEditorPool.theme)
-				{
-					AceEditorPool.theme.value = val;
-				}
-			}
-		},
-		savedKeyBinding: {
-			key: 'keybinding',
-			default: 'ace/keybinding/vim',
-			elementId: 'keybinding',
-			description: 'Defines the keyboard mapping protocol (e.g., standard, Vim, or Emacs configurations) utilized inside the script editor workspace.',
-			set: (val) =>
-			{
-				for(let instance of AceEditorPool.instances)
-				{
-					if(!val || val === 'null')
-					{
-						instance.editor.setKeyboardHandler(val);
-					} else
-					{
-						instance.editor.setKeyboardHandler(val);
-					}
-				}
-
-				if(AceEditorPool.keybinding)
-				{
-					if(!val || val === 'null')
-					{
-						AceEditorPool.keybinding.value = '';
-					}
-					else
-					{
-						AceEditorPool.keybinding.value = val;
-					}
-				}
-			}
-		}
-	},
-};
-
-
-if(!window.IMPORT_SETTINGS)
-{
-	window.IMPORT_SETTINGS = {};
-}
-
-for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
-{
-	window.IMPORT_SETTINGS[moduleKey] = {
-		...(window.IMPORT_SETTINGS[moduleKey] || {}),
-		...configs
-	};
-}
-
-// 4. Export the unified reference for standard module compilation tracking
-export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
 
 // Define declarations for Ace and missing global window bindings
 

@@ -136,8 +136,11 @@ export class GitHubSaveFileDialog
 
 	private render(): void
 	{
-		this.overlayElement = document.createElement('div');
-		this.overlayElement.className = 'sfd-overlay';
+		this.overlayElement = document.querySelector('#popups') ?? document.createElement('div');
+		if(this.overlayElement.id !== 'popups')
+		{
+			this.overlayElement.className = 'sfd-overlay';
+		}
 
 		const dialog = document.createElement('div');
 		dialog.className = 'sfd-dialog';

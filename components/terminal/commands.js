@@ -253,7 +253,7 @@ const COMMAND_SCHEMA = {
 		args: [
 			{
 				name: "module",
-				type: ['terminal', 'editor', 'build', 'quake3e', 'q3', 'audio', 'toji', 'paint', 'nunu', 'audio-editor', 'map-editor', 'map-loader'],
+				type: ['terminal', 'terminal-container', 'editor', 'build', 'quake3e', 'q3', 'engine', 'client', 'audio', 'viewport-frame', 'toji', 'paint', 'nunu', 'audio-editor', 'map-editor', 'map-loader'],
 				description: "Load the specified module by name"
 			}
 		],
@@ -344,6 +344,17 @@ const COMMAND_SCHEMA = {
 window.COMMAND_SCHEMA = COMMAND_SCHEMA;
 
 
+const BUILD_SCRIPTS = [
+	'/components/compiler/compiler.js',
+	'/components/compiler/shared.js',
+	'/components/engine/sys_fs.js',
+	'/components/compiler/make.js',
+	'/components/compiler/make-tools.js',
+	'/components/compiler/make-qvm.js',
+];
+
+window.BUILD_SCRIPTS = BUILD_SCRIPTS;
+
 
 function writeCommandHelp(targetCommand, argv)
 {
@@ -416,15 +427,29 @@ async function loadCommand(argv, database, commandName)
 {
 
 	let moduleToLoad = argv[0] || commandName;
-	if(!argv[0] || argv[0].trim().length === 0
-		|| argv === 'q3'
-		// TODO: remove conflict down below by running engine and dedicated in a worker
-		|| argv[0].includes('engine')
-		|| argv[0].includes('client')
-	)
-		moduleToLoad = 'quake3e';
 
-	if(!IMPORT_MODULES[moduleToLoad])
+	if(moduleToLoad === 'audio' || moduleToLoad === 'audio-editor')
+	{
+		moduleToLoad = 'audio-editor';
+	}
+	if(moduleToLoad === 'client' || moduleToLoad === 'engine'
+		|| moduleToLoad === 'quake3e' || moduleToLoad === 'toji'
+		|| moduleToLoad === 'map-loader' || moduleToLoad === 'q3')
+	{
+		moduleToLoad = 'viewport-frame';
+	}
+	if(moduleToLoad === 'terminal' || moduleToLoad === 'terminal-container')
+	{
+		moduleToLoad = 'terminal-container';
+	}
+
+	if(moduleToLoad === 'build')
+	{
+		for(let src of BUILD_SCRIPTS)
+		{
+			await window.loadScript(src);
+		}
+	} else if(!window.MODULE_REGISTRY[moduleToLoad])
 	{
 		console.log('Invalid module specified: ' + argv[0]);
 		console.log('Valid options:');
@@ -432,35 +457,8 @@ async function loadCommand(argv, database, commandName)
 		return;
 	}
 
-	await DependencyLoader.loadModule(moduleToLoad);
+	await window.triggerPanelRoute(moduleToLoad, window.mainDock, true);
 
-	if(moduleToLoad === 'nunu')
-	{
-		renderTabsCommand('nunu');
-	}
-
-	if(moduleToLoad === 'audio' || moduleToLoad === 'audio-editor')
-	{
-		renderTabsCommand('audio-editor');
-	}
-
-	if(moduleToLoad === 'quake3e' || moduleToLoad === 'toji')
-	{
-		renderTabsCommand('viewport-frame');
-	}
-
-	if(moduleToLoad === 'editor')
-	{
-		renderTabsCommand('editor');
-	}
-	if(moduleToLoad === 'terminal')
-	{
-		renderTabsCommand('terminal-container');
-	}
-	if(moduleToLoad === 'paint')
-	{
-		renderTabsCommand('paint');
-	}
 }
 
 
@@ -585,7 +583,10 @@ async function handleCommand(input, term)
 					await triggerPanelRoute(importFirst, window.mainDock, true);
 				} else if(importFirst === 'build')
 				{
-
+					for(let src of BUILD_SCRIPTS)
+					{
+						await window.loadScript(src);
+					}
 				}
 			}
 		}

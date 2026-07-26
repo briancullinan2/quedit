@@ -4,7 +4,7 @@ import { BoxPanel, DockPanel, Widget, Menu, MenuBar } from '@lumino/widgets';
 import * as commands from '@lumino/commands';
 import * as widgets from '@lumino/widgets';
 import * as messaging from '@lumino/messaging';
-import { createTopBar, initializeMenus } from './menu';
+import { createTopBar, initializeMenus, MODULE_REGISTRY, triggerPanelRoute } from './menu';
 import { StatusBarWidget } from './status';
 import { ServiceWorkerManager } from './worker';
 import { SettingConfig, SettingsManager } from './settings';
@@ -208,9 +208,13 @@ function main(): void
 
 	const userWorkspaceChoice = SettingsManager.get('core', 'workspaceDefault');
 
-	// TODO: load default editor specified in localStorage
-
 	isDevToolsOpen();
+
+	// TODO: load default editor specified in localStorage
+	if(MODULE_REGISTRY[userWorkspaceChoice])
+	{
+		triggerPanelRoute(userWorkspaceChoice, mainDock, true);
+	}
 }
 
 function startServiceWorker()

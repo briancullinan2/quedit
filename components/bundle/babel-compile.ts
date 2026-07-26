@@ -5,7 +5,7 @@ import
 	, packages
 } from '@babel/standalone';
 import { DB_STORE_NAME, FS_FILE, putRecord } from './local';
-import { Settings, SettingsManager } from './settings';
+import { SettingsManager } from './settings';
 import { getGitShaBrowser } from './github-tools';
 import { path } from './global';
 import type { ComponentRoute } from './menu';

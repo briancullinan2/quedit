@@ -89,57 +89,6 @@ function hasChangesBuilder() {
 }
 
 
-function onLoadEngine() {
-    // Contextual renderer engine picker from localStorage
-    const preferredRenderer = SettingsManager.get('quake3e', 'preferredRenderer');
-    if (preferredRenderer !== 'quake3e') {
-        setTimeout(window.runTojiEngine, 100);
-    } else {
-        setTimeout(window.runEngine, 100);
-    }
-}
-
-
-function onLoadToji() {
-    setTimeout(window.runTojiEngine, 100);
-}
-
-
-function hasChangesPaint() {
-    // Replaced miniPaint's auto-attached event listener with an explicit module evaluation
-    if (window.AppConfig && window.Layers && typeof window.Layers.is_layer_empty === 'function') {
-        return window.AppConfig.layers.length > 1 || !window.Layers.is_layer_empty(window.AppConfig.layer.id);
-    }
-    return false;
-}
-
-
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        // 1. Instantly resolve core application layouts, zips, and global filesystems
-        await DependencyLoader.loadModule('core');
-
-        SettingsManager.hydrateAll();
-
-        await manageServiceWorker()
-
-        //const currentTheme = IMPORT_SETTINGS.editor.savedTheme.get
-        //    ? IMPORT_SETTINGS.editor.theme.get()
-        //    : (document.getElementById(IMPORT_SETTINGS.editor.savedTheme.elementId)?.value
-        //    || IMPORT_SETTINGS.editor.savedTheme.default);
-
-        // 3. Mount workspace split layout panel preference
-        const userWorkspaceChoice = SettingsManager.get('core', 'workspaceDefault');
-
-        await DependencyLoader.loadModule(userWorkspaceChoice);
-
-    } catch (error) {
-        debugger
-        console.error('Fatal Application Bootstrap Interruption:', error);
-    }
-});
-
-
 
 window.addEventListener('beforeunload', async (event) => {
     let blockingModuleKey = null;
@@ -174,30 +123,4 @@ window.addEventListener('beforeunload', async (event) => {
         return '';
     }
 });
-
-
-window.addEventListener('keydown', async (e) => {
-    if (e.altKey && e.key === 'ArrowLeft') NavHistory.back();
-    if (e.altKey && e.key === 'ArrowRight') NavHistory.forward();
-    if (e.ctrlKey && e.key === 's') {
-        e.preventDefault();
-        saveFile();
-    }
-    if (e.key === 'Escape') {
-        modal.classList.add('hidden')
-    }
-    updateModifierPressed(e)
-    if (window.isShiftPressed && window.isModifierPressed
-        && (e.key === 'f' || e.key === 'F')) {
-        if (!document.getElementById('searchlist').classList.contains('not-hidden'))
-            await renderTabsCommand('searchlist')
-        setTimeout(() => search.focus(), 500)
-        e.preventDefault();
-    }
-});
-
-
-window.addEventListener('keyup', (e) => {
-    updateModifierPressed(e)
-})
 

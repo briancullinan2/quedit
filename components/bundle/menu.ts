@@ -1,8 +1,7 @@
 // menu.ts
-import { Menu, MenuBar, DockPanel, Panel, Widget, BoxPanel } from '@lumino/widgets';
+import { Menu, MenuBar, DockPanel, Panel, Widget } from '@lumino/widgets';
 import { CommandRegistry } from '@lumino/commands';
 import { RepositoryToolbar } from './menu-repos';
-
 import { ScriptToolbar } from './menu-script';
 import { ApplicationToolbar } from './menu-app';
 import { FileToolbar } from './menu-file';
@@ -13,10 +12,9 @@ import { LayoutAdjuster } from './lumino-widget';
 import type { FileListWidget } from '../filelist/widget';
 import { MenuConfig } from './menu-manager';
 import { loadAndInstantiate } from './babel-compile';
-import { OUTLINE_WIDGET_TYPES } from './lumino-resize';
+import { OUTLINE_WIDGET_TYPES, updateModifierPressed } from './lumino-resize';
 import type { TerminalWidget } from '../terminal/widget';
 import { FileManager } from './lumino-files';
-
 
 export interface TopBarComponents
 {
@@ -78,7 +76,7 @@ export const MODULE_REGISTRY: Record<string, ComponentRoute> = {
 	'assetlist': { label: 'Assets', url: './components/filelist/widget-assets.ts', className: 'AssetListWidget', iconClass: 'bx bx-treasure-chest' },
 	'database': { label: 'Local Database', url: './components/filelist/widget-database.ts', className: 'DatabaseListWidget', iconClass: 'bx bx-database' },
 	'github': { label: 'Github Commit', url: './components/filelist/widget-github.ts', className: 'GithubListWidget', iconClass: 'bx bx-git-repo-forked' },
-	'settings': { label: 'Edit Settings', url: './components/editor/widget.ts', className: 'SettingsWidget', iconClass: 'bx bx-gear' },
+	'settings': { label: 'Edit Settings', url: './components/editor/widget-settings.ts', className: 'SettingsWidget', iconClass: 'bx bx-gear' },
 	'viewport-frame': { label: '3D Viewport', url: './components/map-loader/widget.ts', className: 'TojiWidget', iconClass: 'bx bx-joystick' },
 	'terminal-container': { label: 'Show Console', url: './components/terminal/widget.ts', className: 'TerminalWidget', iconClass: 'bx bx-terminal' },
 };
@@ -109,7 +107,16 @@ window.TERMINAL_REGISTRY = TERMINAL_REGISTRY;
 
 export async function triggerPanelRoute(panelId: string, mainDock: DockPanel, noHide: boolean = false): Promise<void>
 {
-	const route = MODULE_REGISTRY[panelId];
+	let route = MODULE_REGISTRY[panelId];
+	/*TODO: this applied only to file open
+	if(panelId === 'viewport-frame')
+	{
+		const preferredRenderer = SettingsManager.get('toji', 'preferredRenderer');
+		if(preferredRenderer === 'nunu')
+		{
+			route = MODULE_REGISTRY['nunu'];
+		}
+	}*/
 	if(!route || !route.url)
 	{
 		console.log('Panel route not found: ' + panelId);
@@ -351,10 +358,14 @@ export function initializeMenus(commands: CommandRegistry, menuBar: MenuBar, mai
 	document.addEventListener('keydown', (event: KeyboardEvent) =>
 	{
 		commands.processKeydownEvent(event);
+		updateModifierPressed(event);
+
 	}, true);
 	document.addEventListener('keyup', (event: KeyboardEvent) =>
 	{
 		commands.processKeyupEvent(event);
+		updateModifierPressed(event);
+
 	}, true);
 
 	const viewMenu = new Menu({ commands });

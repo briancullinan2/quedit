@@ -1,4 +1,5 @@
 
+import type { FileManager } from "../bundle/lumino-files";
 import type { CompletionState, IPooledTerminal } from "./widget-types";
 
 /**
@@ -63,6 +64,7 @@ declare global
 		};
 		levDist(s: string, t: string): number;
 		findMatchesWithFuzzy(currentValue: string, candidatesPool: string[]): string[];
+		FileManager: typeof FileManager;
 	}
 }
 
@@ -226,11 +228,7 @@ function completeDatabaseArg(
 	argnum: number,
 	pooledCtx: IPooledTerminal): string[]
 {
-	const knownDatabases = (window as any).knownDatabases || [
-		"briancullinan2/quedit",
-		"briancullinan2/quake3e-wasm",
-		"id-Software/Quake-III-Arena"
-	];
+	const knownDatabases = window.FileManager.getActiveRepositories();
 	return window.findMatchesWithFuzzy(currentValue, knownDatabases);
 }
 

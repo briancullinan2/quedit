@@ -23,6 +23,7 @@ declare global
 		loadScript(src: string): Promise<any>;
 		engineToolbar: EngineToolbar;
 		TojiWidget: typeof TojiWidget;
+		SettingsManager: Settings;
 	}
 	interface Navigator
 	{
@@ -125,7 +126,7 @@ export class TojiWidget extends Widget
 	private lastMoveY: number = 0;
 
 
-	private readonly SCRIPTS_TO_LOAD = [
+	private readonly TOJI_SCRIPTS_TO_LOAD = [
 		'/components/map-loader/util/webxr-polyfill.min.js',
 		'/components/map-loader/util/game-shim.js',
 		'/components/map-loader/util/gl-matrix-min.js',
@@ -138,10 +139,28 @@ export class TojiWidget extends Widget
 		'/components/map-loader/q3glshader.js',
 		'/components/map-loader/q3movement.js'
 	];
+
+
+	private readonly QUAKE3E_SCRIPTS_TO_LOAD = [
+
+		// Low-Level WASM / Native Execution Layer
+		'/components/engine/nipplejs.js',
+		'/components/engine/sys_emgl.js',
+		'/components/engine/sys_in.js',
+		'/components/engine/sys_fsq3.js',
+		'/components/engine/sys_net.js',
+		'/components/engine/sys_std.js',
+		'/components/engine/sys_web.js',
+		'/components/engine/sys_snd.js',
+		'/components/engine/sys_wasm.js',
+
+	];
+
 	startupPromise: Promise<void>;
 	tryLoadingMapsPromise: Promise<void>;
 	enginePromise: Promise<unknown>;
 	engineResolve?: (value?: unknown) => void;
+	preferredRenderer?: string;
 
 
 	constructor(titleStr: string)
@@ -191,9 +210,19 @@ export class TojiWidget extends Widget
 
 		this.tryLoadingMapsPromise = window.engineToolbar.tryGithubs();
 
+		this.preferredRenderer = window.SettingsManager.get('toji', 'preferredRenderer');
+
 		this.startupPromise = (async () =>
 		{
-			for(let src of this.SCRIPTS_TO_LOAD)
+			if(this.preferredRenderer === 'quake3e')
+			{
+				for(let src of this.QUAKE3E_SCRIPTS_TO_LOAD)
+				{
+					await window.loadScript(src);
+				}
+				return;
+			}
+			for(let src of this.TOJI_SCRIPTS_TO_LOAD)
 			{
 				await window.loadScript(src);
 			}
@@ -215,7 +244,13 @@ export class TojiWidget extends Widget
 	{
 		super.onAfterAttach(msg);
 		await this.startupPromise;
-		this.runTojiEngine();
+		if(this.preferredRenderer === 'quake3e' && typeof window.runEngine === 'function')
+		{
+			window.runEngine();
+		} else
+		{
+			this.runTojiEngine();
+		}
 	}
 
 	protected override onBeforeDetach(msg: any): void
@@ -1193,13 +1228,13 @@ export type Q3EntityMap = {
 
 const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 
-    toji: {
-        preferredRenderer: {
-            key: 'renderer_preference',
-            default: 'toji',
-            description: 'Specific configuration preferences passed to the WebGL vertex array and custom shading target context.'
-        }
-    },
+	toji: {
+		preferredRenderer: {
+			key: 'renderer_preference',
+			default: 'toji',
+			description: 'Specific configuration preferences passed to the WebGL vertex array and custom shading target context.'
+		}
+	},
 
 };
 

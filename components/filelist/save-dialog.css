@@ -5,8 +5,8 @@
 	left: 0;
 	width: 100vw;
 	height: 100vh;
-	background-color: rgba(0, 0, 0, 0.65);
-	backdrop-filter: blur(8px);
+	background: rgba(0, 0, 0, 0.5);
+	backdrop-filter: blur(4px);
 	z-index: 999999;
 	display: flex;
 	align-items: center;
@@ -24,23 +24,23 @@
 	height: 620px;
 	max-width: 95vw;
 	max-height: 90vh;
-	background: rgba(255, 255, 255, 0.85);
+	background: rgb(from var(--ace-gutter-bg) r g b / 80%);
 	backdrop-filter: blur(20px);
 	-webkit-backdrop-filter: blur(20px);
-	border: 1px solid rgba(0, 0, 0, 0.15);
+	border: 1px solid var(--ace-selection-bg);
 	border-radius: 12px;
-	box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+	box-shadow: 0 10px 30px rgb(from var(--ace-bg) r g b / 80%);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	color: #1c1c1e;
+	color: var(--ace-foreground);
 }
 
 /* Header & Breadcrumb Toolbar */
 .sfd-header {
 	padding: 12px 16px;
-	background: rgba(246, 246, 246, 0.7);
-	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+	background: var(--ace-gutter-bg);
+	border-bottom: 1px solid var(--ace-selection-bg);
 	display: flex;
 	align-items: center;
 	gap: 12px;
@@ -57,7 +57,7 @@
 	border-radius: 6px;
 	padding: 6px;
 	cursor: pointer;
-	color: #555;
+	color: var(--ace-comment);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -65,8 +65,8 @@
 }
 
 .sfd-btn-icon:hover:not(:disabled) {
-	background: rgba(0, 0, 0, 0.08);
-	color: #000;
+	background: var(--ace-selection-bg);
+	color: var(--ace-foreground);
 }
 
 .sfd-btn-icon:disabled {
@@ -78,8 +78,8 @@
 	flex: 1;
 	display: flex;
 	align-items: center;
-	background: rgba(255, 255, 255, 0.9);
-	border: 1px solid rgba(0, 0, 0, 0.15);
+	background: var(--ace-bg);
+	border: 1px solid var(--ace-selection-bg);
 	border-radius: 6px;
 	padding: 4px 8px;
 	overflow-x: auto;
@@ -92,23 +92,23 @@
 	cursor: pointer;
 	padding: 2px 4px;
 	border-radius: 4px;
-	color: #333;
+	color: var(--ace-foreground);
 }
 
 .sfd-breadcrumb-item:hover {
-	background: rgba(0, 0, 0, 0.06);
+	background: var(--ace-selection-bg);
 }
 
 .sfd-breadcrumb-sep {
 	margin: 0 4px;
-	color: #8e8e93;
+	color: var(--ace-comment);
 }
 
 .sfd-search-box {
 	display: flex;
 	align-items: center;
-	background: rgba(255, 255, 255, 0.9);
-	border: 1px solid rgba(0, 0, 0, 0.15);
+	background: var(--ace-bg);
+	border: 1px solid var(--ace-selection-bg);
 	border-radius: 6px;
 	padding: 4px 8px;
 	width: 180px;
@@ -121,6 +121,7 @@
 	width: 100%;
 	margin-left: 6px;
 	font-size: 13px;
+	color: var(--ace-foreground);
 }
 
 /* Main Body Layout */
@@ -133,8 +134,8 @@
 /* Sidebar */
 .sfd-sidebar {
 	width: 200px;
-	background: rgba(238, 238, 241, 0.5);
-	border-right: 1px solid rgba(0, 0, 0, 0.1);
+	background: var(--ace-gutter-bg);
+	border-right: 1px solid var(--ace-selection-bg);
 	padding: 12px 8px;
 	display: flex;
 	flex-direction: column;
@@ -152,7 +153,7 @@
 	font-size: 11px;
 	font-weight: 600;
 	text-transform: uppercase;
-	color: #8e8e93;
+	color: var(--ace-comment);
 	padding: 4px 8px;
 	letter-spacing: 0.5px;
 }
@@ -164,27 +165,27 @@
 	padding: 6px 8px;
 	border-radius: 6px;
 	font-size: 13px;
-	color: #2c2c2e;
+	color: var(--ace-foreground);
 	cursor: pointer;
 	transition: background 0.15s ease;
 }
 
 .sfd-sidebar-item i {
 	font-size: 16px;
-	color: #007aff;
+	color: var(--ace-blue);
 }
 
 .sfd-sidebar-item:hover {
-	background: rgba(0, 0, 0, 0.05);
+	background: var(--ace-selection-bg);
 }
 
 .sfd-sidebar-item.active {
-	background: #007aff;
-	color: #ffffff;
+	background: var(--ace-blue);
+	color: var(--ace-bg);
 }
 
 .sfd-sidebar-item.active i {
-	color: #ffffff;
+	color: var(--ace-bg);
 }
 
 /* Columns View */
@@ -193,13 +194,13 @@
 	display: flex;
 	overflow-x: auto;
 	overflow-y: hidden;
-	background: rgba(255, 255, 255, 0.4);
+	background: var(--ace-bg);
 }
 
 .sfd-column {
 	width: 210px;
 	min-width: 210px;
-	border-right: 1px solid rgba(0, 0, 0, 0.08);
+	border-right: 1px solid var(--ace-selection-bg);
 	overflow-y: auto;
 	padding: 4px 0;
 	user-select: none;
@@ -212,7 +213,7 @@
 	padding: 6px 12px;
 	font-size: 13px;
 	cursor: pointer;
-	color: #1c1c1e;
+	color: var(--ace-foreground);
 }
 
 .sfd-column-item-left {
@@ -226,36 +227,36 @@
 
 .sfd-column-item i.type-icon {
 	font-size: 16px;
-	color: #007aff;
+	color: var(--ace-blue);
 }
 
 .sfd-column-item i.type-icon.bx-file {
-	color: #8e8e93;
+	color: var(--ace-comment);
 }
 
 .sfd-column-item i.arrow-icon {
 	font-size: 14px;
-	color: #c7c7cc;
+	color: var(--ace-invisible);
 }
 
 .sfd-column-item:hover {
-	background: rgba(0, 0, 0, 0.04);
+	background: var(--ace-active-line-bg);
 }
 
 .sfd-column-item.selected {
-	background: #007aff;
-	color: #ffffff;
+	background: var(--ace-blue);
+	color: var(--ace-bg);
 }
 
 .sfd-column-item.selected i {
-	color: #ffffff;
+	color: var(--ace-bg);
 }
 
 /* Footer / Save Inputs */
 .sfd-footer {
 	padding: 14px 20px;
-	background: rgba(246, 246, 246, 0.8);
-	border-top: 1px solid rgba(0, 0, 0, 0.1);
+	background: var(--ace-gutter-bg);
+	border-top: 1px solid var(--ace-selection-bg);
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
@@ -271,7 +272,7 @@
 	width: 80px;
 	text-align: right;
 	font-size: 13px;
-	color: #3a3a3c;
+	color: var(--ace-foreground);
 	font-weight: 500;
 }
 
@@ -279,17 +280,18 @@
 .sfd-select {
 	flex: 1;
 	padding: 6px 10px;
-	border: 1px solid rgba(0, 0, 0, 0.15);
+	border: 1px solid var(--ace-selection-bg);
 	border-radius: 6px;
-	background: #ffffff;
+	background: var(--ace-bg);
+	color: var(--ace-foreground);
 	font-size: 13px;
 	outline: none;
 }
 
 .sfd-input-text:focus,
 .sfd-select:focus {
-	border-color: #007aff;
-	box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+	background: var(--ace-bg);
+	border: 2px solid rgb(from var(--ace-blue) r g b / 50%);
 }
 
 .sfd-actions-row {
@@ -310,20 +312,21 @@
 }
 
 .sfd-btn-secondary {
-	background: rgba(0, 0, 0, 0.05);
-	border-color: rgba(0, 0, 0, 0.1);
-	color: #1c1c1e;
+	background: var(--ace-selection-bg);
+	border-color: var(--ace-selection-bg);
+	color: var(--ace-foreground);
 }
 
 .sfd-btn-secondary:hover {
-	background: rgba(0, 0, 0, 0.1);
+	background: var(--ace-print-margin);
 }
 
 .sfd-btn-primary {
-	background: #007aff;
-	color: #ffffff;
+	background: var(--ace-blue);
+	color: var(--ace-bg);
 }
 
 .sfd-btn-primary:hover {
-	background: #0062cc;
+	background: var(--ace-green);
+	color: var(--ace-bg);
 }
