@@ -313,7 +313,21 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 			type: 'json',
 			default: null,
 			description: 'Lumino layout configuration according to how tabs are arranged.'
+		},
+		currentConfig: {
+			key: 'configuration',
+			default: 'client',
+			elementId: 'configuration',
+			description: 'Determines the target compilation profile rules, distinguishing targets such as full client builds or dedicated server binaries.'
+		},
+		hotReload: {
+			key: 'hot_reload',
+			default: true,
+			elementId: 'reload',
+			type: 'boolean',
+			description: 'When true, enables immediate compilation triggers and injection changes directly into the live executable WASM state upon saving files.'
 		}
+
 	}
 };
 

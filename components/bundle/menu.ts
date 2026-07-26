@@ -648,5 +648,116 @@ if(typeof window !== 'undefined')
 		const activeHash = window.location.hash.substring(1);
 		renderHashCommand(activeHash);
 	});
+
+	window.addEventListener('mousemove', (e: MouseEvent) =>
+	{
+		const globalTooltip = document.getElementById('global-tooltip');
+
+		if(!globalTooltip) return;
+
+		const target = e.target as HTMLElement;
+
+		let targetEl: HTMLElement | null = null;
+		let targetText: string | null | undefined = "";
+
+		// 1. ISOLATED CHECK: Look for attributes assigned dynamically by our native plugin layer
+		const aceContainer = target?.closest('.ace_editor') as HTMLElement;
+		if(aceContainer)
+		{
+			// Pull error string markers
+			targetText ||= aceContainer.getAttribute('data-compiler-error');
+
+			// Pull code reference definition markers
+			let navSymbol = aceContainer.getAttribute('data-navigation-target');
+			if(navSymbol)
+			{
+				targetText = `Go to reference for definition: "${navSymbol}"`;
+			}
+
+			if(targetText)
+			{
+				targetEl = aceContainer;
+			}
+		}
+
+		// 2. STANDARD MINIPAINT DOM ATTR FALLBACKS
+		if(!targetText)
+		{
+			targetText ||= target.getAttribute('placeholder');
+			targetText ||= target.getAttribute('alt');
+			targetText ||= target.getAttribute('data-tooltip');
+			targetText ||= target.getAttribute('title');
+			if(targetText)
+			{
+				targetEl = target;
+			}
+		}
+
+		if(!targetText && target.parentElement)
+		{
+			targetText ||= target.parentElement.getAttribute('placeholder');
+			targetText ||= target.parentElement.getAttribute('alt');
+			targetText ||= target.parentElement.getAttribute('data-tooltip');
+			targetText ||= target.parentElement.getAttribute('title');
+			if(targetText)
+			{
+				targetEl = target.parentElement;
+			}
+		}
+
+		const closest = target.closest('[placeholder],[alt],[data-tooltip],[title],.pk_tb .pk_btn') as HTMLElement;
+		if(!targetText && closest)
+		{
+			targetText ||= closest.getAttribute('placeholder');
+			targetText ||= closest.getAttribute('alt');
+			targetText ||= closest.getAttribute('data-tooltip');
+			targetText ||= closest.getAttribute('title');
+			targetText ||= closest.querySelector('span')?.innerText;
+			if(targetText)
+			{
+				targetEl = closest;
+			}
+		}
+
+		if(targetEl && targetEl.style.display === 'contents')
+		{
+			targetEl = targetEl.children[0] as HTMLElement;
+		}
+
+
+		if(!targetEl || !targetText)
+		{
+			globalTooltip.style.display = 'none';
+			globalTooltip.style.opacity = '0';
+			globalTooltip.style.zIndex = '-1';
+			return;
+		}
+
+		if(!targetText) return;
+
+		const hideAceErrors = document.querySelector('#global-editor-tooltip') as HTMLElement;
+		if(hideAceErrors)
+		{
+			hideAceErrors.style.display = 'none';
+		}
+
+		globalTooltip.innerText = targetText;
+		globalTooltip.style.display = 'block';
+		globalTooltip.style.opacity = '1';
+		globalTooltip.style.visibility = 'visible';
+		globalTooltip.style.zIndex = '1000';
+
+		// Fluid position layout tracking for tracking paths cleanly under cursor coordinates
+		if(aceContainer)
+		{
+			globalTooltip.style.top = (e.clientY + 15) + 'px';
+			globalTooltip.style.left = Math.min(e.clientX + 10, window.innerWidth - globalTooltip.clientWidth - 20) + 'px';
+		} else
+		{
+			const rect = targetEl.getBoundingClientRect();
+			globalTooltip.style.top = (rect.top + targetEl.clientHeight) + 'px';
+			globalTooltip.style.left = Math.min(rect.left + targetEl.clientWidth, window.innerWidth - globalTooltip.clientWidth - 20) + 'px';
+		}
+	});
 }
 

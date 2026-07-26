@@ -79,20 +79,20 @@ export class RepositoryToolbar extends Widget
 	{
 		this.node.innerHTML = `
             <label for="top-bar-sel-owner">Owner:</label>
-            <select id="top-bar-sel-owner">
+            <select id="top-bar-sel-owner" placeholder="Repository Owner">
                 <option value="org-1">Organization One</option>
                 <option value="org-2">Organization Two</option>
             </select>
             <label for="top-bar-sel-repo">Repo:</label>
-            <select id="top-bar-sel-repo">
+            <select id="top-bar-sel-repo" placeholder="Current Repository">
                 <option value="repo-a">Repository A</option>
                 <option value="repo-b">Repository B</option>
             </select>
-			<select required id="top-bar-sel-branch">
+			<select required id="top-bar-sel-branch" placeholder="Selected Branch">
 				<option value="" selected disabled>Current Branch</option>
 				<option value="main">main</option>
 			</select>
-			<select required id="top-bar-sel-locations">
+			<select required id="top-bar-sel-locations" placeholder="Local File System">
 				<option value="" selected disabled>Local Folders</option>
 			</select>
         `;
