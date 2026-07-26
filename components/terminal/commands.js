@@ -344,17 +344,6 @@ const COMMAND_SCHEMA = {
 window.COMMAND_SCHEMA = COMMAND_SCHEMA;
 
 
-const BUILD_SCRIPTS = [
-	'/components/compiler/compiler.js',
-	'/components/compiler/shared.js',
-	'/components/engine/sys_fs.js',
-	'/components/compiler/make.js',
-	'/components/compiler/make-tools.js',
-	'/components/compiler/make-qvm.js',
-];
-
-window.BUILD_SCRIPTS = BUILD_SCRIPTS;
-
 
 function writeCommandHelp(targetCommand, argv)
 {
@@ -445,7 +434,7 @@ async function loadCommand(argv, database, commandName)
 
 	if(moduleToLoad === 'build')
 	{
-		for(let src of BUILD_SCRIPTS)
+		for(let src of window.BUILD_SCRIPTS)
 		{
 			await window.loadScript(src);
 		}
@@ -583,7 +572,7 @@ async function handleCommand(input, term)
 					await triggerPanelRoute(importFirst, window.mainDock, true);
 				} else if(importFirst === 'build')
 				{
-					for(let src of BUILD_SCRIPTS)
+					for(let src of window.BUILD_SCRIPTS)
 					{
 						await window.loadScript(src);
 					}

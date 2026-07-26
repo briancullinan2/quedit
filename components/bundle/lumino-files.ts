@@ -45,11 +45,11 @@ declare global
 	interface Window
 	{
 		engineRepository?: string | undefined | null;
-		gameRepository?: string;
-		assetRepository?: string;
-		toolsRepository?: string;
-		tools2Repository?: string;
-		environmentRepository?: string;
+		gameRepository?: string | undefined | null;
+		assetRepository?: string | undefined | null;
+		toolsRepository?: string | undefined | null;
+		tools2Repository?: string | undefined | null;
+		environmentRepository?: string | undefined | null;
 		owner?: { value: string; };
 		repository?: { value: string; };
 		writeLog?: (message: string) => void;

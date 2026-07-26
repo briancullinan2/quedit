@@ -162,7 +162,7 @@ export class PaintWidget extends Widget implements MenuModules
 	public _instance?: MiniPaintApp;
 	public modules?: Record<string, Record<string, Function>>;
 	protected _fileId: string;
-	protected _initialContent?: string | ArrayBuffer | Uint8Array | HTMLImageElement;
+	protected _initialContent?: string | ArrayBuffer | Uint8Array | HTMLImageElement | null | undefined;
 
 	constructor(fileId?: string)
 	{
@@ -446,7 +446,7 @@ export class PaintWidget extends Widget implements MenuModules
 	}
 
 
-	static async openFileInNewTab(fileId: string, fileName: string, fileContent: string | ArrayBuffer | HTMLImageElement | Uint8Array)
+	static async openFileInNewTab(fileId: string, fileName: string, fileContent?: string | ArrayBuffer | HTMLImageElement | Uint8Array | null | undefined)
 	{
 		const tabs = Array.from(window.mainDock.widgets());
 		const existingTab = tabs.find(t => (t as PaintWidget).fileId === fileId);

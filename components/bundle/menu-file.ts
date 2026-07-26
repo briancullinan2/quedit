@@ -551,7 +551,7 @@ window.globalModules['file/new'] = {
 			window.AceEditorWidget.openFileInNewTab('new-file-' + (++window.tempCount), 'New File', '');
 		} else if(editorCandidates[0] === 'PaintWidget')
 		{
-
+			window.PaintWidget.openFileInNewTab('new-file-' + (++window.tempCount), 'New File');
 		}
 	}
 

@@ -104,9 +104,9 @@ export class ApplicationToolbar extends Widget
 			this._commands.addCommand('app-toggle-console', {
 				label: 'Console',
 				iconClass: 'bx bx-terminal',
-				execute: () =>
+				execute: async () =>
 				{
-					console.log('Toggle Console Command Executed');
+					await triggerPanelRoute('terminal-container', window.mainDock);
 				}
 			});
 		}
@@ -131,6 +131,7 @@ export class ApplicationToolbar extends Widget
 				iconClass: 'bx bx-share',
 				execute: () =>
 				{
+					// TODO: reverse proxy setup
 					navigator.clipboard.writeText(window.location.href);
 				}
 			});
