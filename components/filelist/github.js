@@ -1,6 +1,17 @@
 /// <reference path="../bundle/github.d.ts" />
 
 
+if(!window.trees)
+{
+	window.trees = {};
+}
+
+if(!window.filesRepo)
+{
+	window.filesRepo = {};
+}
+
+
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false)
 {
 	if(typeof SettingsManager != 'undefined' && window.api)

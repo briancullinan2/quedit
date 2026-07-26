@@ -134,6 +134,59 @@ function getCalleeInfoFromStackTrace()
 }
 
 
+const originalConsole = {
+	log: console.log,
+	warn: console.warn,
+	error: console.error,
+	info: console.info
+};
+
+self.console.log = (...args) =>
+{
+	const formatted = formatMessage('log', args);
+	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+	const source = [category, 'log', ...trailingFiles, func,
+		rawFile.split('/').pop().replace('.js', ''), rawFile
+	];
+	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
+	if(typeof originalConsole != 'undefined') originalConsole.log(...args);
+};
+
+self.console.warn = (...args) =>
+{
+	const formatted = formatMessage('warn', args);
+	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+	const source = [category, 'warn', ...trailingFiles, func,
+		rawFile.split('/').pop().replace('.js', ''), rawFile
+	];
+	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
+	if(typeof originalConsole != 'undefined') originalConsole.warn(...args);
+};
+
+self.console.error = (...args) =>
+{
+	const formatted = formatMessage('error', args);
+	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+	const source = [category, 'error', ...trailingFiles, func,
+		rawFile.split('/').pop().replace('.js', ''), rawFile
+	];
+	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
+	if(typeof originalConsole != 'undefined') originalConsole.error(...args);
+};
+
+self.console.info = (...args) =>
+{
+	const formatted = formatMessage('info', args);
+	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
+	const source = [category, 'info', ...trailingFiles, func,
+		rawFile.split('/').pop().replace('.js', ''), rawFile
+	];
+	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
+	if(typeof originalConsole != 'undefined') originalConsole.info(...args);
+};
+
+
+
 if(!self.needsHeaders)
 	self.needsHeaders = true;
 

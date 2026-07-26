@@ -574,12 +574,6 @@ export class TerminalEventManager
 					this.historyManager.commitLine(this.pooledCtx.term, '');
 				}
 
-				if(typeof window.terminalLog !== 'undefined')
-				{
-					const logs = window.terminalLog.slice(-LINES_TO_SAVE);
-					localStorage.setItem('terminal_log', JSON.stringify(logs));
-				}
-
 				try
 				{
 					window.lastNewLine = true;

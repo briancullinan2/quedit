@@ -1485,17 +1485,17 @@
                     this._animationFrame = void 0)
                 }
                 addRefreshCallback(e) {
-                    return this._refreshCallbacks.push(e),
-                    this._animationFrame || (this._animationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => this._innerRefresh()))),
-                    this._animationFrame
+                    //return this._refreshCallbacks.push(e),
+                    //this._animationFrame || (this._animationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => this._innerRefresh()))),
+                    //this._animationFrame
                 }
                 refresh(e, t, i) {
                     this._rowCount = i,
                     e = void 0 !== e ? e : 0,
                     t = void 0 !== t ? t : this._rowCount - 1,
                     this._rowStart = void 0 !== this._rowStart ? Math.min(this._rowStart, e) : e,
-                    this._rowEnd = void 0 !== this._rowEnd ? Math.max(this._rowEnd, t) : t,
-                    this._animationFrame || (this._animationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => this._innerRefresh())))
+                    this._rowEnd = void 0 !== this._rowEnd ? Math.max(this._rowEnd, t) : t
+                    this._innerRefresh()
                 }
                 _innerRefresh() {
                     if (this._animationFrame = void 0,
@@ -2099,13 +2099,13 @@
                 }
                 _queueRefresh(e, t) {
                     this._shouldUpdateDimensions = e || this._shouldUpdateDimensions,
-                    this._shouldUpdateAnchor = t || this._shouldUpdateAnchor,
-                    void 0 === this._animationFrame && (this._animationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => {
-                        debugger;
-                        this._refreshDecorations(),
-                        this._animationFrame = void 0
-                    }
-                    )))
+                    this._shouldUpdateAnchor = t || this._shouldUpdateAnchor
+                    //void 0 === this._animationFrame && (this._animationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => {
+                    //    debugger;
+                    //    this._refreshDecorations(),
+                    //    this._animationFrame = void 0
+                    //}
+                    //)))
                 }
             }
             ;
@@ -3999,7 +3999,7 @@
                     this._onSelectionChange.fire()
                 }
                 refresh(e) {
-                    this._refreshAnimationFrame || (this._refreshAnimationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => this._refresh()))),
+                    //this._refreshAnimationFrame || (this._refreshAnimationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => this._refresh()))),
                     c.isLinux && e && this.selectionText.length && this._onLinuxMouseSelection.fire(this.selectionText)
                 }
                 _refresh() {
@@ -12086,8 +12086,8 @@
                     return c || (c = [],
                     e.set(l, c)),
                     c.push(h),
-                    s.get(l) || (s.set(l, !0),
-                    window.terminalFrameLimiter.requestFrameUpdate(( () => (t => {
+                    s.get(l) || (s.set(l, !0)
+                    /*window.terminalFrameLimiter.requestFrameUpdate(( () => (t => {
                         s.set(t, !1);
                         const n = e.get(t) ?? [];
                         for (i.set(t, n),
@@ -12097,7 +12097,7 @@
                             n.shift().execute();
                         r.set(t, !1)
                     }
-                    )(l)))),
+                    )(l)))*/),
                     h
                 }
                 ,

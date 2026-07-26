@@ -402,11 +402,43 @@ export function terminalWrite(message: string, source?: SourceMetadata | string,
 				line: lineCount
 			});
 
-			const logs = window.terminalLog.slice(-LINES_TO_SAVE);
-			localStorage.setItem('terminal_log', JSON.stringify(logs));
-		}
+			const MAX_CHARS = 1024 * 1024; // 1 MB limit (fits safely within localStorage limits)
 
-		if(!window.terminalLoaded) return;
+			// 1. Get up to LINES_TO_SAVE, working backwards from newest to oldest
+			const sourceLogs = window.terminalLog.slice(-LINES_TO_SAVE);
+			const stringifiedEntries: string[] = [];
+			let currentLength = 2; // For outer brackets '[' and ']'
+
+			for(let i = sourceLogs.length - 1; i >= 0; i--)
+			{
+				const entryString = JSON.stringify(sourceLogs[i]);
+
+				// Account for comma separator if this isn't the first item added
+				const addedLength = entryString.length + (stringifiedEntries.length > 0 ? 1 : 0);
+
+				if(currentLength + addedLength > MAX_CHARS)
+				{
+					break; // Stop including older entries once budget is exceeded
+				}
+
+				stringifiedEntries.push(entryString);
+				currentLength += addedLength;
+			}
+
+			// 2. Un-reverse so entries remain in chronological order
+			stringifiedEntries.reverse();
+
+			// 3. Assemble and save in one pass
+			const serialized = '[' + stringifiedEntries.join(',') + ']';
+
+			try
+			{
+				localStorage.setItem('terminal_log', serialized);
+			} catch(err)
+			{
+				originalConsole.error(err);
+			}
+		}
 	}
 
 	const terms = Array.from(window.mainDock.widgets()).filter(w => w.constructor.name === 'TerminalWidget') as TerminalWidget[];
@@ -516,5 +548,7 @@ export function initConsoleIntercept(): void
 		originalConsole.info(...args);
 	};
 }
+
+initConsoleIntercept();
 
 

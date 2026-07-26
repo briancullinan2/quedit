@@ -594,12 +594,6 @@ async function handleCommand(input, term)
 		terminalWrite(`Command not found: ${commandName}\n\r`);
 	}
 
-	if(typeof window.terminalLog !== 'undefined')
-	{
-		const logs = window.terminalLog.slice(-LINES_TO_SAVE);
-		localStorage.setItem('terminal_log', JSON.stringify(logs));
-	}
-
 	// TODO: undetach the console by reporting "done" from the worker
 	if(!window.detachedConsole)
 	{

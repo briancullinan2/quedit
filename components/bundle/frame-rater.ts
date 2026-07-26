@@ -18,7 +18,7 @@ export class FrameRater<T = any>
 	private callback!: FrameCallback<T> | null;
 	private startTime!: number;
 	private frameCount!: number;
-	private eventStack!: (T | undefined)[];
+	public eventStack!: (T | undefined)[];
 	private isFlushing!: boolean;
 	private intervalId!: ReturnType<typeof setInterval> | null;
 

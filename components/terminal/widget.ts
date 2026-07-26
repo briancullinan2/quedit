@@ -32,7 +32,22 @@ declare global
 
 window.terminalFrameLimiter = new FrameRater(25, (e, t, frame) =>
 {
-	e(t, frame);
+
+	for(const pooled of TerminalPoolManager.getInstance().pool.values())
+	{
+		if(pooled.activeOwner)
+		{
+			pooled.term.refresh(0, pooled.term.rows - 1);
+			const core = (pooled.term as any)._core;
+			if(core && core._renderService)
+			{
+				// Flushes whatever rows were marked dirty by term.refresh()
+				core._renderService._renderRows();
+			}
+		}
+	}
+
+	window.terminalFrameLimiter.requestFrameUpdate();
 });
 
 
@@ -42,7 +57,7 @@ window.terminalFrameLimiter = new FrameRater(25, (e, t, frame) =>
 class TerminalPoolManager
 {
 	private static instance: TerminalPoolManager;
-	private pool: Map<string, IPooledTerminal> = new Map();
+	public pool: Map<string, IPooledTerminal> = new Map();
 	private instanceCounter = 0;
 
 	private readonly SCRIPTS_TO_LOAD = [
@@ -63,6 +78,8 @@ class TerminalPoolManager
 			{
 				await window.loadScript(src);
 			}
+
+			window.terminalFrameLimiter.requestFrameUpdate();
 		})();
 		window.addEventListener('beforeunload', () =>
 		{
@@ -457,11 +474,7 @@ export class TerminalWidget extends Widget
 		// Attach terminal DOM structure to this Lumino widget node
 		this.node.appendChild(this.currentTerminalCtx.container);
 
-		//if(this.currentTerminalCtx.events?.terminalStartupBegun)
-		if(window.terminalLoaded)
-		{
-			//this.syncTerminalState();
-		}
+		this.syncTerminalState();
 
 		// Recalculate dimensions for the newly attached node viewport
 		manager.fitTerminalLayout(this.currentTerminalCtx);

@@ -8,7 +8,6 @@ declare global
 	interface Window
 	{
 		mainDock: DockPanel;
-		terminalFrameLimiter: FrameRater;
 		triggerPanelRoute: (panelId: string, mainDock: DockPanel, noHide?: boolean) => Promise<void>;
 		TerminalEventManager: typeof TerminalEventManager;
 	}

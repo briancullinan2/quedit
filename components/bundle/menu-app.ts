@@ -18,7 +18,6 @@ declare global
 		appToolbar: ApplicationToolbar;
 		ApplicationToolbar: typeof ApplicationToolbar;
 		mainDock: DockPanel;
-		terminalFrameLimiter: FrameRater;
 		AceEditorWidget: typeof AceEditorWidget;
 		TerminalWidget: typeof TerminalWidget;
 		layoutState: LayoutState;
