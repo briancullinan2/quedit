@@ -577,20 +577,20 @@ ACE_MODULES['help/shortcuts'] = {
 	{
 		if(widget._editor)
 		{
-			ace.config.loadModule(["ext", "ace/ext/keybinding_menu"], function ()
+			ace.config.loadModule(["ext", "ace/ext/keybinding_menu"], function (...args: any[])
 			{
 				//if(widget._editor && typeof widget._editor.showKeyboardShortcuts === 'function')
 				//{
 				//	widget._editor.showKeyboardShortcuts();
 				//}
-				if(arguments[0])
+				if(args[0])
 				{
-					if(typeof arguments[0] === "function")
+					if(typeof args[0] === "function")
 					{
-						arguments[0](widget._editor);
-					} else if(arguments[0] && typeof arguments[0].init === "function")
+						args[0](widget._editor);
+					} else if(args[0] && typeof args[0].init === "function")
 					{
-						arguments[0].init(widget._editor);
+						args[0].init(widget._editor);
 					}
 				}
 
