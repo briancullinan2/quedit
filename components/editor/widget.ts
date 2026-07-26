@@ -6,10 +6,11 @@ import type { HistoryToolbar, NavPoint } from '../bundle/menu-history';
 import type { LayoutAdjuster } from '../bundle/lumino-widget';
 import type { TerminalLogEntry } from '../terminal/widget-types';
 import { AceEventManager, bindBlockTrackerToSession, onBlockTrackerCursorChange } from "./events";
-import { getModeByFilename } from './widget-modes';
+import { EXTENSION_TO_MODE, getModeByFilename } from './widget-modes';
 import { ACE_MODULES, VSCODE_ACE_MENUS } from './widget-menu';
 import type { MenuModules } from '../bundle/menu-manager';
 import { LOCAL_SETTINGS } from '../filelist/widget-local';
+import type { ControlConfig, OptGroup } from '../bundle/menu-settings';
 
 interface ISessionCache
 {
@@ -65,6 +66,7 @@ declare global
 		historyToolbar: HistoryToolbar;
 		SettingsManager: Settings;
 		terminalLog: TerminalLogEntry[];
+		SETTINGS_CONTROLS: ControlConfig[];
 	}
 }
 
@@ -263,7 +265,7 @@ export class AceEditorWidget extends Widget implements MenuModules
 	protected _initialContent: string;
 	public _editor: Ace.Editor | undefined = undefined;
 	protected static _defaultContent: string = '#include <stdio.h>\n\n// this is a comment\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\\n");\n    return 0;\n}\n';
-	private _eventManager: any;
+	private _eventManager: AceEventManager;
 	autoSaveEnabled: boolean = true;
 	public modules?: Record<string, Record<string, Function>> = ACE_MODULES;
 
@@ -291,6 +293,7 @@ export class AceEditorWidget extends Widget implements MenuModules
 
 		this.node.addEventListener('focusin', () =>
 		{
+			this._eventManager.attachListeners();
 			window.injectMenus(AceEditorWidget.name, VSCODE_ACE_MENUS);
 		});
 		this.node.addEventListener('focusout', (e) =>
@@ -298,6 +301,7 @@ export class AceEditorWidget extends Widget implements MenuModules
 			// Only remove if focus didn't move somewhere else inside this same panel
 			if(!this.node.contains(e.relatedTarget as Node))
 			{
+				this._eventManager.detachListeners();
 				//window.removeMenus(AceEditorWidget.name);
 			}
 		});
@@ -334,6 +338,103 @@ export class AceEditorWidget extends Widget implements MenuModules
 		tryLoadingTerminalEditorBridge(this._editor);
 		window.registerAllCommands(VSCODE_ACE_MENUS);
 		window.injectMenus(AceEditorWidget.name, VSCODE_ACE_MENUS);
+
+		ace.config.loadModule(['ext', "ace/ext/themelist"], (...args: any[]) =>
+		{
+			if(args[0] && args[0].themes instanceof Array)
+			{
+				const themeSetting = window.SETTINGS_CONTROLS.find(s => s.name === 'theme');
+				if(themeSetting)
+				{
+
+					for(let option of themeSetting.options ?? [])
+					{
+						const options = (option as OptGroup)?.options ?? [option];
+						for(let suboption of options)
+						{
+							const name = suboption.value.split('/').pop() ?? suboption.value;
+							if(!args[0].themesByName[name])
+							{
+								const newTheme = {
+									caption: suboption.label,      // Display label in the dropdown
+									theme: suboption.value,   // The full module ID or path
+									isDark: suboption.isDark,
+									name: name
+								};
+								args[0].themes.push(newTheme);
+								args[0].themesByName[name] = newTheme;
+							}
+						}
+					}
+				}
+			}
+		});
+
+
+
+		ace.config.loadModule(['ext', "ace/ext/modelist"], (...args: any[]) =>
+		{
+			const getExtensionsForMode = (targetMode) =>
+				Object.entries(EXTENSION_TO_MODE)
+					.filter(([_, mode]) => mode === targetMode)
+					.map(([ext]) => ext)
+					.join('|');
+
+			const extensions = getExtensionsForMode('antlr_worker');
+
+			if(args[0] && args[0].modes instanceof Array)
+			{
+				const antlrMode = {
+					name: "antlr_worker",
+					caption: "ANTLR (Auto Detect)",        // Display label in the dropdown
+					mode: "ace/mode/antlr_worker",     // The module path
+					extensions: extensions,                 // File extensions associated with it
+					supportsFile: (filename: string) =>
+					{
+						const ext = filename.split('.').pop();
+						return ext ? EXTENSION_TO_MODE[ext.toLowerCase()] === 'antlr_worker' : false;
+					}
+				};
+
+				// Add to mode arrays used by OptionPanel
+				args[0].modes.unshift(antlrMode);
+				args[0].modesByName["antlr_worker"] = antlrMode;
+			}
+		});
+
+
+
+		ace.config.loadModule(['ext', "ace/ext/options"], (...args: any[]) =>
+		{
+			if(args[0] && args[0].OptionPanel)
+			{
+				const originalRenderControl = args[0].OptionPanel.prototype.renderOptionControl;
+
+				args[0].OptionPanel.prototype.renderOptionControl = function (id: string, option: any)
+				{
+					// Check if Ace is rendering the keyboardHandler control
+					if(option && option.path === "keyboardHandler" && option.items)
+					{
+						const exists = option.items.some((item: any) =>
+							(typeof item === 'object' ? item.value : item) === "ace/keyboard/combined"
+						);
+
+						if(!exists)
+						{
+							option.items.push({
+								caption: "Combined",
+								value: "ace/keyboard/combined"
+							});
+						}
+					}
+
+					// Let original function render the <select> with your new option appended
+					return originalRenderControl.apply(this, arguments);
+				};
+			}
+		});
+
+		this._eventManager.attachListeners();
 	}
 
 	/**
@@ -346,8 +447,8 @@ export class AceEditorWidget extends Widget implements MenuModules
 			AceEditorPool.releaseEditor(this._editor);
 			this._editor = undefined;
 		}
-		super.onBeforeDetach(msg);
 		this._eventManager.detachListeners();
+		super.onBeforeDetach(msg);
 	}
 
 	/**

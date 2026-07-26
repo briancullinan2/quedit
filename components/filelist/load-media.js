@@ -105,7 +105,7 @@ async function openFile(repoOwner, repoName, filePath, sha, recordHistory = true
 	} else if(typeof getOrCreateAceSession !== 'undefined')
 	{
 		const session = getOrCreateAceSession(filePath, str);
-		if(session.getMode()?.$id?.includes('antrl_worker'))
+		if(session.getMode()?.$id?.includes('antlr_worker'))
 		{
 			setTimeout(async () =>
 			{

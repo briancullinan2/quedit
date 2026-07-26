@@ -8,13 +8,14 @@ declare global
 	{
 		settingsToolbar: SettingsToolbar;
 		SettingsToolbar: typeof SettingsToolbar;
+		SETTINGS_CONTROLS: ControlConfig[];
 	}
 }
 
-type SelectOption = { value: string; label: string; selected?: boolean; };
-type OptGroup = { label: string; options: SelectOption[]; };
+export type SelectOption = { value: string; label: string; selected?: boolean; isDark?: boolean; };
+export type OptGroup = { label: string; options: SelectOption[]; };
 
-type ControlConfig = {
+export type ControlConfig = {
 	id: string;
 	placeholder: string;
 	type: 'select' | 'checkbox';
@@ -26,7 +27,7 @@ type ControlConfig = {
 	checked?: boolean;
 };
 
-const SETTINGS_CONTROLS: ControlConfig[] = [
+export const SETTINGS_CONTROLS: ControlConfig[] = [
 	{
 		id: 'keybinding',
 		placeholder: 'Key Binding',
@@ -89,109 +90,111 @@ const SETTINGS_CONTROLS: ControlConfig[] = [
 			{
 				label: "The Coders' Heritage",
 				options: [
-					{ value: 'ace/theme/monokai', label: 'Monokai (OG High Contrast)', selected: true },
-					{ value: 'ace/theme/textmate', label: 'TextMate (The Standard)' },
-					{ value: 'ace/theme/github', label: 'GitHub (Legacy Light)' },
-					{ value: 'ace/theme/eclipse', label: 'Eclipse (Java Classic)' },
-					{ value: 'ace/theme/xcode', label: 'XCode (Apple Classic)' }
+					{ value: 'ace/theme/monokai', label: 'Monokai (OG High Contrast)', selected: true, isDark: true },
+					{ value: 'ace/theme/textmate', label: 'TextMate (The Standard)', isDark: false },
+					{ value: 'ace/theme/github', label: 'GitHub (Legacy Light)', isDark: false },
+					{ value: 'ace/theme/eclipse', label: 'Eclipse (Java Classic)', isDark: false },
+					{ value: 'ace/theme/xcode', label: 'XCode (Apple Classic)', isDark: false }
 				]
 			},
 			{
 				label: 'Sci-Fi Voids & Cyber Terminals',
 				options: [
-					{ value: 'ace/theme/terminal', label: 'Retro Terminal (Classic Amber/Green)' },
-					{ value: 'ace/theme/gob', label: 'Green on Black (The Matrix)' },
-					{ value: 'ace/theme/nightvision', label: 'Night Vision (Matrix Green)' },
-					{ value: 'ace/theme/invertedneon', label: 'Inverted Neon (vs Night Vision)' },
-					{ value: 'ace/theme/vibrant_ink', label: 'Vibrant Ink (Neon)' },
-					{ value: 'ace/theme/chaos', label: 'Chaos (Extreme Contrast)' },
-					{ value: 'ace/theme/midnightvoid', label: 'Midnight Void (vs Daybreak)' }
+					{ value: 'ace/theme/terminal', label: 'Retro Terminal (Classic Amber/Green)', isDark: true },
+					{ value: 'ace/theme/gob', label: 'Green on Black (The Matrix)', isDark: true },
+					{ value: 'ace/theme/nightvision', label: 'Night Vision (Matrix Green)', isDark: true },
+					{ value: 'ace/theme/invertedneon', label: 'Inverted Neon (vs Night Vision)', isDark: false },
+					{ value: 'ace/theme/vibrant_ink', label: 'Vibrant Ink (Neon)', isDark: true },
+					{ value: 'ace/theme/chaos', label: 'Chaos (Extreme Contrast)', isDark: true },
+					{ value: 'ace/theme/midnightvoid', label: 'Midnight Void (vs Daybreak)', isDark: true }
 				]
 			},
 			{
 				label: 'Atmospheric Dawns & Sunsets',
 				options: [
-					{ value: 'ace/theme/daybreak', label: 'Daybreak (Classic Sunrise)' },
-					{ value: 'ace/theme/dawn', label: 'Dawn (Soft Sunrise)' },
-					{ value: 'ace/theme/desertsunset', label: 'Desert Sunset (Banded Gold)' },
-					{ value: 'ace/theme/arcticthaw', label: 'Arctic Thaw (vs Desert Sunset)' },
-					{ value: 'ace/theme/solarflare', label: 'Solar Flare (vs Dusk)' },
-					{ value: 'ace/theme/dusk', label: 'Dusk (Atmospheric Night)' }
+					{ value: 'ace/theme/daybreak', label: 'Daybreak (Classic Sunrise)', isDark: false },
+					{ value: 'ace/theme/dawn', label: 'Dawn (Soft Sunrise)', isDark: false },
+					{ value: 'ace/theme/desertsunset', label: 'Desert Sunset (Banded Gold)', isDark: false },
+					{ value: 'ace/theme/arcticthaw', label: 'Arctic Thaw (vs Desert Sunset)', isDark: true },
+					{ value: 'ace/theme/solarflare', label: 'Solar Flare (vs Dusk)', isDark: true },
+					{ value: 'ace/theme/dusk', label: 'Dusk (Atmospheric Night)', isDark: true }
 				]
 			},
 			{
 				label: 'Deep Water & Organic Ecosystems',
 				options: [
-					{ value: 'ace/theme/cobalt', label: 'Cobalt (Deep Sea Blue)' },
-					{ value: 'ace/theme/oceanripple', label: 'Ocean Ripple (Deep Reflective)' },
-					{ value: 'ace/theme/abyssaltrench', label: 'Abyssal Trench (vs Ocean Ripple)' },
-					{ value: 'ace/theme/coralreef', label: 'Coral Reef (Tropical Cyan)' },
-					{ value: 'ace/theme/deepseakelp', label: 'Deep Sea Kelp (vs Coral Reef)' },
-					{ value: 'ace/theme/emeraldforest', label: 'Emerald Forest (Vibrant Green)' },
-					{ value: 'ace/theme/sourlime', label: 'Sour Lime (vs Berry Blast)' },
-					{ value: 'ace/theme/berryblast', label: 'Berry Blast (Candy Red/Blue)' }
+					{ value: 'ace/theme/cobalt', label: 'Cobalt (Deep Sea Blue)', isDark: true },
+					{ value: 'ace/theme/oceanripple', label: 'Ocean Ripple (Deep Reflective)', isDark: true },
+					{ value: 'ace/theme/abyssaltrench', label: 'Abyssal Trench (vs Ocean Ripple)', isDark: true },
+					{ value: 'ace/theme/coralreef', label: 'Coral Reef (Tropical Cyan)', isDark: false },
+					{ value: 'ace/theme/deepseakelp', label: 'Deep Sea Kelp (vs Coral Reef)', isDark: true },
+					{ value: 'ace/theme/emeraldforest', label: 'Emerald Forest (Vibrant Green)', isDark: true },
+					{ value: 'ace/theme/sourlime', label: 'Sour Lime (vs Berry Blast)', isDark: true },
+					{ value: 'ace/theme/berryblast', label: 'Berry Blast (Candy Red/Blue)', isDark: true }
 				]
 			},
 			{
 				label: 'Industrial Foundry & Metallic Elements',
 				options: [
-					{ value: 'ace/theme/mono_industrial', label: 'Mono Industrial (Raw Slate)' },
-					{ value: 'ace/theme/darkslate', label: 'Dark Slate (vs Shale Life)' },
-					{ value: 'ace/theme/silverchrome', label: 'Silver Chrome (Metallic)' },
-					{ value: 'ace/theme/oxidizediron', label: 'Oxidized Iron (vs Silver Chrome)' },
-					{ value: 'ace/theme/leadfortress', label: 'Lead Fortress (vs Golden Gate)' },
-					{ value: 'ace/theme/goldengate', label: 'Golden Gate (Polished Gold)' }
+					{ value: 'ace/theme/mono_industrial', label: 'Mono Industrial (Raw Slate)', isDark: true },
+					{ value: 'ace/theme/darkslate', label: 'Dark Slate (vs Shale Life)', isDark: true },
+					{ value: 'ace/theme/silverchrome', label: 'Silver Chrome (Metallic)', isDark: false },
+					{ value: 'ace/theme/oxidizediron', label: 'Oxidized Iron (vs Silver Chrome)', isDark: true },
+					{ value: 'ace/theme/leadfortress', label: 'Lead Fortress (vs Golden Gate)', isDark: true },
+					{ value: 'ace/theme/goldengate', label: 'Golden Gate (Polished Gold)', isDark: false }
 				]
 			},
 			{
 				label: 'Academic Pages & Editorial Finishes',
 				options: [
-					{ value: 'ace/theme/ivory', label: 'Atrium Ivory (vs Default Purple)' },
-					{ value: 'ace/theme/parchment', label: 'Parchment (Academic Beige)' },
-					{ value: 'ace/theme/obsidianledger', label: 'Obsidian Ledger (vs Parchment)' },
-					{ value: 'ace/theme/kuroir', label: 'Paper White' },
-					{ value: 'ace/theme/crimson_editor', label: 'Crimson Editor' },
-					{ value: 'ace/theme/sqlserver', label: 'SQL Server Management Studio' },
-					{ value: 'ace/theme/dreamweaver', label: 'Dreamweaver Classic' }
+					{ value: 'ace/theme/ivory', label: 'Atrium Ivory (vs Default Purple)', isDark: false },
+					{ value: 'ace/theme/parchment', label: 'Parchment (Academic Beige)', isDark: false },
+					{ value: 'ace/theme/obsidianledger', label: 'Obsidian Ledger (vs Parchment)', isDark: true },
+					{ value: 'ace/theme/kuroir', label: 'Paper White', isDark: false },
+					{ value: 'ace/theme/crimson_editor', label: 'Crimson Editor', isDark: false },
+					{ value: 'ace/theme/sqlserver', label: 'SQL Server Management Studio', isDark: false },
+					{ value: 'ace/theme/dreamweaver', label: 'Dreamweaver Classic', isDark: false }
 				]
 			},
 			{
 				label: 'Cozy Studio Earth Tones',
 				options: [
-					{ value: 'ace/theme/dracula', label: 'Dracula (Vampire Mode)' },
-					{ value: 'ace/theme/one_dark', label: 'One Dark (Atom Style)' },
-					{ value: 'ace/theme/nord_dark', label: 'Nord Dark (Arctic Frost)' },
-					{ value: 'ace/theme/gruvbox', label: 'Gruvbox (Earth Tones)' },
-					{ value: 'ace/theme/pastel_on_dark', label: 'Pastel on Dark' },
-					{ value: 'ace/theme/twilight', label: 'Twilight (Warm Dark)' },
-					{ value: 'ace/theme/ambiance', label: 'Ambiance (Smooth Espresso)' },
-					{ value: 'ace/theme/idle_fingers', label: 'idle Fingers' },
-					{ value: 'ace/theme/merbivore_soft', label: 'Merbivore Soft' },
-					{ value: 'ace/theme/merbivore', label: 'Merbivore' }
+					{ value: 'ace/theme/dracula', label: 'Dracula (Vampire Mode)', isDark: true },
+					{ value: 'ace/theme/one_dark', label: 'One Dark (Atom Style)', isDark: true },
+					{ value: 'ace/theme/nord_dark', label: 'Nord Dark (Arctic Frost)', isDark: true },
+					{ value: 'ace/theme/gruvbox', label: 'Gruvbox (Earth Tones)', isDark: true },
+					{ value: 'ace/theme/pastel_on_dark', label: 'Pastel on Dark', isDark: true },
+					{ value: 'ace/theme/twilight', label: 'Twilight (Warm Dark)', isDark: true },
+					{ value: 'ace/theme/ambiance', label: 'Ambiance (Smooth Espresso)', isDark: true },
+					{ value: 'ace/theme/idle_fingers', label: 'idle Fingers', isDark: true },
+					{ value: 'ace/theme/merbivore_soft', label: 'Merbivore Soft', isDark: true },
+					{ value: 'ace/theme/merbivore', label: 'Merbivore', isDark: true }
 				]
 			},
 			{
 				label: 'Prisms & Chromatic Experiments',
 				options: [
-					{ value: 'ace/theme/solarized_dark', label: 'Solarized Dark (Precision Calibrated)' },
-					{ value: 'ace/theme/solarized_light', label: 'Solarized Light (Precision Calibrated)' },
-					{ value: 'ace/theme/rainbowpeak', label: 'Rainbow Peak (Full Spectrum)' },
-					{ value: 'ace/theme/monochromematrix', label: 'Monochrome Matrix (vs Rainbow)' },
-					{ value: 'ace/theme/tomorrow_night_blue', label: 'Tomorrow Night Blue' },
-					{ value: 'ace/theme/tomorrow_night_bright', label: 'Tomorrow Night Bright' },
-					{ value: 'ace/theme/tomorrow_night_eighties', label: 'Tomorrow Night 80s' },
-					{ value: 'ace/theme/tomorrow_night', label: 'Tomorrow Night' },
-					{ value: 'ace/theme/tomorrow', label: 'Tomorrow Light' },
-					{ value: 'ace/theme/katzenmilch', label: 'KatzenMilch (Warm Gray)' },
-					{ value: 'ace/theme/iplastic', label: 'IPlastic' },
-					{ value: 'ace/theme/kr_theme', label: 'krTheme' },
-					{ value: 'ace/theme/clouds_midnight', label: 'Clouds Midnight' },
-					{ value: 'ace/theme/clouds', label: 'Clouds Light' }
+					{ value: 'ace/theme/solarized_dark', label: 'Solarized Dark (Precision Calibrated)', isDark: true },
+					{ value: 'ace/theme/solarized_light', label: 'Solarized Light (Precision Calibrated)', isDark: false },
+					{ value: 'ace/theme/rainbowpeak', label: 'Rainbow Peak (Full Spectrum)', isDark: false },
+					{ value: 'ace/theme/monochromematrix', label: 'Monochrome Matrix (vs Rainbow)', isDark: true },
+					{ value: 'ace/theme/tomorrow_night_blue', label: 'Tomorrow Night Blue', isDark: true },
+					{ value: 'ace/theme/tomorrow_night_bright', label: 'Tomorrow Night Bright', isDark: true },
+					{ value: 'ace/theme/tomorrow_night_eighties', label: 'Tomorrow Night 80s', isDark: true },
+					{ value: 'ace/theme/tomorrow_night', label: 'Tomorrow Night', isDark: true },
+					{ value: 'ace/theme/tomorrow', label: 'Tomorrow Light', isDark: false },
+					{ value: 'ace/theme/katzenmilch', label: 'KatzenMilch (Warm Gray)', isDark: false },
+					{ value: 'ace/theme/iplastic', label: 'IPlastic', isDark: false },
+					{ value: 'ace/theme/kr_theme', label: 'krTheme', isDark: true },
+					{ value: 'ace/theme/clouds_midnight', label: 'Clouds Midnight', isDark: true },
+					{ value: 'ace/theme/clouds', label: 'Clouds Light', isDark: false }
 				]
 			}
 		]
 	}
 ];
+
+window.SETTINGS_CONTROLS = SETTINGS_CONTROLS;
 
 
 export class SettingsToolbar extends Widget
