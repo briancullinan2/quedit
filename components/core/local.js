@@ -259,8 +259,8 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 {
 	const path = typeof record === 'string' ? record : record?.path || '';
 	const parts = dbName.split('/');
-	const ownerName = parts.length === 2 ? parts[0] : (typeof owner !== 'undefined' ? owner.value : '');
-	const repoName = parts.length === 2 ? parts[1] : (parts[0] || (typeof repository !== 'undefined' ? repository.value : ''));
+	const ownerName = parts.length === 2 ? parts[0] : self.RepositoryToolbar?.owner?.value || '';
+	const repoName = parts.length === 2 ? parts[1] : (parts[0] || self.RepositoryToolbar?.repository?.value || '');
 
 	// 1. Generate a comprehensive unique composite signature key out of all input arguments
 	// This isolates variations in stores, indices, query ranges, and databases entirely.
@@ -554,7 +554,7 @@ function findVirtualFiles(globPattern)
 }
 
 
-function globToRegex(pattern)
+function globToRegex(pattern, caseSensitive = false)
 {
 	// Clean up leading/trailing slashes so matching is uniform
 	let cleaned = pattern.trim();
@@ -573,7 +573,7 @@ function globToRegex(pattern)
 	}
 
 	// Match either from the root of the repository or as a segment within it
-	return new RegExp(`^(?:.*\\/)?${regexStr}$`, "i");
+	return new RegExp(`^(?:.*\\/)?${regexStr}$`, !caseSensitive ? "i" : void 0);
 }
 
 window.globToRegex = globToRegex;

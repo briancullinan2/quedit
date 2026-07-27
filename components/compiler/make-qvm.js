@@ -1,3 +1,5 @@
+/// <reference path="../bundle/global.d.ts" />
+
 /**
  * Quake3e Build Configuration Script - QVM Version
  */
@@ -621,7 +623,6 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
 		if(QVM_MODE)
 		{
-
 			await api?.run({
 				tool: 'q3asm.js.wasm',
 				args: [

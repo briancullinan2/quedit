@@ -1,3 +1,5 @@
+/// <reference path="../bundle/global.d.ts" />
+
 /**
  * Quake3e LCC Toolchain Build Script
  * Handles: q3rcc, lburg, q3cpp, q3lcc

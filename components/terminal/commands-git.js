@@ -1,8 +1,10 @@
 
+/// <reference path="../bundle/global.d.ts" />
+
 
 async function clone(argv)
 {
-	const selected = argv[0] || toolsRepository || 'briancullinan2/quedit';
+	const selected = argv[0] || self.toolsRepository || 'briancullinan2/quedit';
 	const parts = selected.split('/');
 	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
@@ -10,9 +12,9 @@ async function clone(argv)
 	let branch = argv[1];
 	if(!branch)
 	{
-		branch = await getDefaultBranch(ownerName, repoName);
+		branch = await self.getDefaultBranch(ownerName, repoName);
 	}
-	await loadGitHubTree(ownerName, repoName, branch);
+	await self.loadGitHubTree(ownerName, repoName, branch);
 
 	terminalWrite('Checked out: ' + branch + ' from ' + ownerName + '/' + repoName + '\n\r');
 
@@ -44,7 +46,7 @@ async function statusCommand(args, flags)
 
 	const owner = parts[0];
 	const repo = parts[1];
-	const branch = await getDefaultBranch(owner, repo);
+	const branch = await self.getDefaultBranch(owner, repo);
 	const callbackId = `term_status_${Date.now()}`;
 
 	console.log(`Calculating changes for ${owner}/${repo} on branch [${branch}]...`);
@@ -149,7 +151,7 @@ async function push(args, flags)
 				console.log(`New Remote Commit OID: ${sha}`);
 
 				// Optional: Re-render matching UI subtrees to reflect reset modifications state
-				if(trees['#github'] && loadedGithubTreeNodes[repoPath])
+				if(self.trees['#github'] && loadedGithubTreeNodes[repoPath])
 				{
 					// Force an instant re-sync evaluation tree updates pass
 					expandGithubTree(document.querySelector(`[data-id="${repoPath}"]`), repoPath);

@@ -11,7 +11,7 @@ interface Window
 	filesRepo: Record<string, any>; // or GitHubFileTree | undefined
 	mapFiles: Record<string, string>;
 	SettingsManager: Settings;
-	api: any;
+	api: WorkerAPI;
 	updateSelectOptions: (
 		elementId: string | Element | undefined | null,
 		items: Record<string, string> | Array<string | GitHubBranchLike>,
@@ -34,12 +34,13 @@ interface Window
 	environmentRepository?: string | undefined | null;
 	getDefaultBranch(ownerName: string, repo: string): Promise<string>;
 	loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
-	cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload?: boolean) => Promise<any>;
+	cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string | null, forceReload?: boolean) => Promise<any>;
 	deleteRecord(storeName: string, key: string, dbName: string | null): Promise<boolean>;
+	searchGitHubCode(query: string, activeRepositories: string[], token: string | null): Promise<any[]>;
 	FS: {
 		virtual: Record<string, FileRecord | null | undefined>;
 	};
-	globToRegex(pattern: string): RegExp;
+	globToRegex(pattern: string, caseSensitive?: boolean): RegExp;
 	RepositoryToolbar?: typeof RepositoryToolbar;
 	SettingsToolbar?: typeof SettingsToolbar;
 	JSZip: typeof JSZipImport;
@@ -100,14 +101,14 @@ interface WorkerAPIOptions
 interface WorkerCommandOptions
 {
 	configuration?: 'release' | 'debug' | string;
-	database?: string;
+	database?: string | null;
 	width?: number;
 	github_token?: string;
-	toolsRepo?: string;
-	toolsRepo2?: string;
-	engineRepo?: string;
-	gameRepo?: string;
-	assetRepo?: string;
+	toolsRepo?: string | null;
+	toolsRepo2?: string | null;
+	engineRepo?: string | null;
+	gameRepo?: string | null;
+	assetRepo?: string | null;
 	[key: string]: any;
 }
 
@@ -119,7 +120,12 @@ interface ResponseCallback
 	timeoutId: ReturnType<typeof setTimeout>;
 }
 
-declare class WorkerAPI
+declare class MockAPI
+{
+	github_token?: string | null;
+}
+
+declare class WorkerAPI extends MockAPI
 {
 	nextResponseId?: number;
 	responseCBs?: Map<number, ResponseCallback>;
@@ -129,7 +135,6 @@ declare class WorkerAPI
 	hostWrite?: (text: any, source?: any) => void;
 	database?: string;
 	width?: number;
-	github_token?: string;
 	toolsRepo?: string;
 	toolsRepo2?: string;
 	engineRepo?: string;
@@ -176,6 +181,7 @@ declare global
 {
 	let api: WorkerAPI | undefined;
 	let needsHeaders: boolean;
+	let TERMINATE: boolean;
 
 	interface Window
 	{
@@ -191,6 +197,10 @@ declare global
 		runEngine?: () => void;
 		DB_SCHEME: SchemaStoreConfig[];
 		importScripts: (...urls: (string | URL)[]) => void;
+	}
+	interface WorkerGlobalScope
+	{
+		api: WorkerAPI | MockAPI;
 	}
 
 	const terminalWrite: (message: string, source?: SourceMetadata | string, skipActualWrite?: boolean) => void;

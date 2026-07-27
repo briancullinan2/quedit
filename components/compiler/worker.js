@@ -26,8 +26,10 @@ self.importScripts('../compiler/make.js');
 self.importScripts('../compiler/make-tools.js');
 self.importScripts('../compiler/make-qvm.js');
 
-
-let TERMINATE = false;
+if(typeof self.TERMINATE === 'undefined')
+{
+	self.TERMINATE = false;
+}
 
 const Module = {
 

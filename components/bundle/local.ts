@@ -22,7 +22,7 @@ declare global
 		): Promise<FileRecord[]>;
 		putRecord(storeName: string, record: FileRecord, dbName: string | null, noBounce?: boolean): Promise<any>;
 		getRecord(storeName: string, record: string, dbName: string | null, dbVersion?: number, noBounce?: boolean): Promise<FileRecord | null>;
-		globToRegex(pattern: string): RegExp;
+		globToRegex(pattern: string, caseSensitive?: boolean): RegExp;
 		deleteRecord(storeName: string, key: string, dbName: string | null): Promise<boolean>;
 		DB_STORE_NAME: string;
 		ST_DIR: number;
@@ -627,7 +627,7 @@ export function findVirtualFiles(globPattern: string): Record<string, FileRecord
 	}, {});
 }
 
-export function globToRegex(pattern: string): RegExp
+export function globToRegex(pattern: string, caseSensitive: boolean = false): RegExp
 {
 	let cleaned = pattern.trim();
 	if(cleaned.startsWith('/')) cleaned = cleaned.substring(1);
@@ -643,7 +643,7 @@ export function globToRegex(pattern: string): RegExp
 		regexStr = regexStr.replace(/\\\/.*$/, "(?:\\/.*)?");
 	}
 
-	return new RegExp(`^(?:.*\\/)?${regexStr}$`, "i");
+	return new RegExp(`^(?:.*\\/)?${regexStr}$`, !caseSensitive ? "i" : void 0);
 }
 
 window.globToRegex = globToRegex;

@@ -25,6 +25,7 @@ declare global
 		loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
 		getBranches: (repoOwner: string | undefined, repoName: string | undefined) => Promise<GitHubBranch[]>;
 		getDefaultBranch(ownerName: string, repo: string): Promise<string>;
+		searchGitHubCode(query: string, activeRepositories: string[], token: string | null): Promise<any[]>;
 	}
 }
 
@@ -455,3 +456,5 @@ export async function searchGitHubCode(query: string, activeRepositories: string
 		return [];
 	}
 }
+
+window.searchGitHubCode = searchGitHubCode;

@@ -37,6 +37,7 @@
 	"exclude": [
 		"components/terminal/xterm.js",
 		"components/engine/sys_*.js",
+		"components/map-loader/*.js",
 		"node_modules",
 		"**/node_modules",
 		"build",

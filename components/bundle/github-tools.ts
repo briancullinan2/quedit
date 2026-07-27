@@ -17,7 +17,7 @@ declare global
 	{
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
 		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
-		cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload?: boolean) => Promise<any>;
+		cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string | null, forceReload?: boolean) => Promise<any>;
 		sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[];
 	}
 }
@@ -56,7 +56,7 @@ export async function getGitShaBrowser(content: string | Uint8Array | ArrayBuffe
 window.getGitShaBrowser = getGitShaBrowser;
 
 
-export async function cacheFile(storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload = false): Promise<any>
+export async function cacheFile(storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string | null, forceReload = false): Promise<any>
 {
 	return await debounceRecords(storeName ?? DB_STORE_NAME, 'path', filePath, sha, forceReload, `${repoOwner}/${repoName}`, 'cache');
 }
@@ -64,7 +64,7 @@ export async function cacheFile(storeName?: string, repoOwner?: string, repoName
 window.cacheFile = cacheFile;
 
 
-export async function cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string, forceReload = false): Promise<any>
+export async function cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string | null, forceReload = false): Promise<any>
 {
 	const selected = `${repoOwner}/${repoName}`;
 	const filePath = selected + '/' + localPath;

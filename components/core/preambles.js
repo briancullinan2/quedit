@@ -37,19 +37,62 @@ const ENGINE_PREAMBLE = '\x1b[38;5;36m[QUAKE3E]\x1b[0m ';
 
 
 // 1. Implementation of path.join for the browser
-const path = {
-	join: (...parts) =>
-	{
-		return parts
-			.map((part, index) =>
+if(!self.path)
+{
+	self.path = {
+		join: (...parts) =>
+		{
+			return parts
+				.map((part, index) =>
+				{
+					if(index > 0) return part.replace(/^\//, ''); // Strip leading slash
+					return part.replace(/\/$/, ''); // Strip trailing slash
+				})
+				.filter(part => part.length > 0)
+				.join('/');
+		},
+		resolve: (...parts) =>
+		{
+			let resolvedSegments = [];
+
+			for(const part of parts)
 			{
-				if(index > 0) return part.replace(/^\//, ''); // Strip leading slash
-				return part.replace(/\/$/, ''); // Strip trailing slash
-			})
-			.filter(part => part.length > 0)
-			.join('/');
-	}
-};
+				if(!part) continue;
+
+				// If a segment starts with '/', it acts as an absolute root reset
+				if(part.startsWith('/'))
+				{
+					resolvedSegments = part.split('/');
+				} else
+				{
+					resolvedSegments.push(...part.split('/'));
+				}
+			}
+
+			// Normalize the accumulated stack (. and .. processing)
+			const stack = [];
+			for(const segment of resolvedSegments)
+			{
+				if(segment === '' || segment === '.')
+				{
+					continue;
+				}
+				if(segment === '..')
+				{
+					if(stack.length > 0)
+					{
+						stack.pop();
+					}
+					continue;
+				}
+				stack.push(segment);
+			}
+
+			// Reconstruct the path ensuring it behaves as an absolute result
+			return '/' + stack.join('/');
+		}
+	};
+}
 
 
 const COMPILE_PLATFORM = 'wasm';
