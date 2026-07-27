@@ -14,6 +14,8 @@ interface Window
 		items: Record<string, string> | Array<string | GitHubBranchLike>,
 		selectedValue?: string
 	) => void;
+	ST_DIR: number;
+	ST_FILE: number;
 	FS_FILE: number;
 	FS_DIR: number;
 	path: {

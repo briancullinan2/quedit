@@ -4,8 +4,8 @@ async function ls(argv, database)
 {
 	let selected = toolsRepository || database;
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 
 	if(!filesRepo[selected])
 	{
@@ -149,8 +149,8 @@ function openCommand(argv, database)
 {
 	let selected = toolsRepository || argv[1] || database;
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 	let fileName = argv[0];
 	// TODO: I did this backwards, i should have had the terminal click execute the command, and put it in history
 	navigateFile(fileName, null);

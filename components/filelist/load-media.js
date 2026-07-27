@@ -322,8 +322,8 @@ async function clickFile(filePath, lineNumber, noBounce = false, noHide = false,
 	latestPanelId = previousPanelId = 'editor'; // switch from terminal automatically
 
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 
 	if(!dbFile) dbFile = filesRepo[selected][filePath];
 

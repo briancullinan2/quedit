@@ -352,10 +352,10 @@ function getBaseFlags()
 	if(config.USE_CURL) flags.push("-DUSE_CURL");
 
 	// Web-specific requirements
-	if(COMPILE_PLATFORM === 'emscripten')
-	{
-		flags.push("-s USE_SDL=2", "-s ALLOW_MEMORY_GROWTH=1", "-s ASSERTIONS=1");
-	}
+	//if(COMPILE_PLATFORM === 'emscripten')
+	//{
+	//	flags.push("-s USE_SDL=2", "-s ALLOW_MEMORY_GROWTH=1", "-s ASSERTIONS=1");
+	//}
 
 	return flags;
 }
@@ -496,16 +496,19 @@ function BUILDCFLAGS(CONFIGURATION)
 
 
 
+/**
+ * @param {string | null} database
+ **/
 async function buildStringify(database = null, forceChanged = false, noLinking = false)
 {
 
 
 	let DEBUG_CFLAGS = BUILDCFLAGS();
 
-	if(!database) database = api.database;
-	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	if(!database) database = self.toolsRepository || api.database;
+	const parts = database?.split('/');
+	const ownerName = parts?.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || self.RepositoryToolbar?.repository?.value;
 
 	if(needsHeaders)
 	{
@@ -518,19 +521,22 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 		: dirs.ENGINE_DEBUG;
 	//await api.upload(database)
 
-	let stringify = 'code/renderer2/stringify.c';
-	let obj = CONFIGURATION + '/stringify.o';
-	let sha = filesRepo[database][stringify].sha;
-	let content = await cacheFile(ownerName, repoName, stringify, sha);
+	const stringify = 'code/renderer2/stringify.c';
+	const virtualStr = path.join(database, stringify);
+	const obj = CONFIGURATION + '/stringify.o';
+	const virtualObj = path.join(database, obj);
+	const content = await self.cacheFile(ownerName, repoName, stringify);
 
-	if(!FS.virtual[database + '/' + obj] && !forceChanged)
-		FS.virtual[database + '/' + obj] = await getRecord(DB_STORE_NAME, obj, database);
+	if(!self.FS.virtual[virtualObj] && !forceChanged)
+		self.FS.virtual[virtualObj] = await getRecord(DB_STORE_NAME, obj, database);
 
 	let hasChanged = false;
 
-	if(FS.virtual[database + '/' + obj]
+	if(self.FS.virtual[virtualObj]
 		// compare input and output mtime
-		&& FS.virtual[database + '/' + stringify]?.timestamp < FS.virtual[database + '/' + obj]?.timestamp
+		&& self.FS.virtual[virtualStr]?.timestamp
+		&& self.FS.virtual[virtualObj]?.timestamp
+		&& self.FS.virtual[virtualStr]?.timestamp < self.FS.virtual[virtualObj]?.timestamp
 		&& !forceChanged
 	)
 	{
@@ -565,7 +571,10 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 		});
 	} catch(e)
 	{
-		console.error(`${e.message}\n\r${e.stack || e.stacktrace}`);
+		if(e instanceof Error)
+		{
+			console.error(`${e.message}\n\r${e.stack}`);
+		}
 	}
 
 	if(!noLinking)
@@ -575,6 +584,10 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 }
 
 
+
+/**
+ * @param {string | null} database
+ **/
 async function linkStringify(database = null, forceChanged = false, noBuild = false)
 {
 
@@ -593,12 +606,13 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 		await buildStringify(database, false, true);
 	}
 
-	let stringifyExe = CONFIGURATION + '/stringify' + config.BINEXT;
+	const stringifyExe = CONFIGURATION + '/stringify' + config.BINEXT;
+	const virtualStrExe = path.join(database, stringifyExe);
 
-	FS.virtual[database + '/' + stringifyExe] = await getRecord(DB_STORE_NAME, stringifyExe, database);
+	self.FS.virtual[virtualStrExe] = await getRecord(DB_STORE_NAME, stringifyExe, database);
 
 
-	if(FS.virtual[database + '/' + stringifyExe] && !forceChanged)
+	if(self.FS.virtual[virtualStrExe] && !forceChanged)
 	{
 		console.log(stringifyExe + " already up to date...");
 		return;
@@ -621,8 +635,10 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 		});
 	} catch(e)
 	{
-
-		console.error(`Link error in stringify\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+		if(e instanceof Error)
+		{
+			console.error(`Link error in stringify\n\r${e.message}\n\r${e.stack}`);
+		}
 	}
 
 
@@ -644,31 +660,31 @@ function mkdirp(path, database)
 	for(const part of parts)
 	{
 		accumulated = accumulated === "" ? part : `${accumulated}/${part}`;
+		const virtualAccu = path.join(database, accumulated);
 
 		try
 		{
-			let hadnt = !FS.virtual[database + '/' + accumulated] || FS.virtual[database + '/' + accumulated].default === true;
+			let hadnt = !self.FS.virtual[virtualAccu]; // || self.FS.virtual[virtualAccu].default === true;
 			if(hadnt)
-				FS.virtual[database + '/' + accumulated] = {
+				self.FS.virtual[virtualAccu] = {
 					timestamp: new Date(),
-					mode: FS_DIR,
-					size: 4096,
+					mode: self.FS_DIR,
 					path: accumulated,
 					parent: accumulated.substring(0, accumulated.lastIndexOf('/'))
 				};
-			FS.virtual[database + '/' + accumulated + '/.'] = FS.virtual[database + '/' + accumulated];
+			self.FS.virtual[virtualAccu + '/.'] = self.FS.virtual[virtualAccu];
 			if(previousPath)
-				FS.virtual[database + '/' + accumulated + '/..'] = FS.virtual[database + '/' + previousPath];
+				self.FS.virtual[virtualAccu + '/..'] = self.FS.virtual[database + '/' + previousPath];
 			if(database && hadnt) // TODO: good for checking build times?
-				putRecord(DB_STORE_NAME, FS.virtual[database + '/' + accumulated], database);
-			if(FS.virtual[database + '/' + accumulated].default)
-			{
-				FS.virtual[database + '/' + accumulated].default = false;
-			}
+				putRecord(DB_STORE_NAME, self.FS.virtual[virtualAccu], database);
+			//if(self.FS.virtual[virtualAccu].default)
+			//{
+			//	self.FS.virtual[virtualAccu].default = false;
+			//}
 		} catch(e)
 		{
 			// Log only if it's a real crash, not just an "already exists" error
-			if(!e.message.includes("exists"))
+			if(e instanceof Error && !e.message.includes("exists"))
 			{
 				console.warn(`mkdirp segment failed: ${accumulated}`, e);
 			}
@@ -681,7 +697,13 @@ function mkdirp(path, database)
 				api.memfs.mem.check();
 				api.memfs.mkdirp(accumulated);
 			}
-		} catch(e) { console.error(`${e.message}\n\r${e.stack || e.stacktrace}`); }
+		} catch(e)
+		{
+			if(e instanceof Error)
+			{
+				console.error(`${e.message}\n\r${e.stack}`);
+			}
+		}
 	}
 }
 
@@ -691,20 +713,20 @@ const loadedDirectories = [];
 async function prepInputOutput(file, obj, database, makeDirs = false)
 {
 	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 
-	let buildDir = file.substring(0, file.lastIndexOf('/'));
-	let outDir;
-	if(obj)
-		outDir = obj.substring(0, obj.lastIndexOf('/'));
+	const virtualFile = path.join(database, file);
+	const virtualObj = path.join(database, obj);
+	const buildDir = file.substring(0, file.lastIndexOf('/'));
+	const outDir = obj?.substring(0, obj?.lastIndexOf('/'));
 
 
-	if(makeDirs && !FS.virtual[config.TEMPDIR])
+	if(makeDirs && !self.FS.virtual[config.TEMPDIR])
 		mkdirp(config.TEMPDIR, database);
-	if(makeDirs && !FS.virtual[config.HOMEDIR])
+	if(makeDirs && !self.FS.virtual[config.HOMEDIR])
 		mkdirp(config.HOMEDIR, database);
-	if(makeDirs && !FS.virtual[database])
+	if(makeDirs && !self.FS.virtual[database])
 		mkdirp(database, database);
 
 	if(api.memfs)
@@ -714,28 +736,51 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 		try
 		{
 			api.memfs.mkdirp(config.TEMPDIR);
-		} catch(e) { console.error(`${e.message}\n\r${e.stack || e.stacktrace}`); }
+		} catch(e)
+		{
+			if(e instanceof Error)
+			{
+				console.error(`${e.message}\n\r${e.stack}`);
+			}
+		}
 		try
 		{
 			api.memfs.mkdirp(config.HOMEDIR);
-		} catch(e) { console.error(`${e.message}\n\r${e.stack || e.stacktrace}`); }
-
+		} catch(e)
+		{
+			if(e instanceof Error)
+			{
+				console.error(`${e.message}\n\r${e.stack}`);
+			}
+		}
 		try
 		{
 			if(makeDirs)
 				api.memfs.mkdirp(buildDir);
-		} catch(e) { console.error(`${e.message}\n\r${e.stack || e.stacktrace}`); }
+		} catch(e)
+		{
+			if(e instanceof Error)
+			{
+				console.error(`${e.message}\n\r${e.stack}`);
+			}
+		}
 		try
 		{
 			if(makeDirs && outDir)
 				api.memfs.mkdirp(outDir);
-		} catch(e) { console.error(`${e.message}\n\r${e.stack || e.stacktrace}`); }
+		} catch(e)
+		{
+			if(e instanceof Error)
+			{
+				console.error(`${e.message}\n\r${e.stack}`);
+			}
+		}
 	}
 
-	if(!FS.virtual[database + '/' + file]
-		|| (FS.virtual[database + '/' + file] >> 12) !== ST_DIR
-		&& (!FS.virtual[database + '/' + file].contents
-			|| FS.virtual[database + '/' + file].contents.length === 0)
+	if(!self.FS.virtual[virtualFile]
+		|| (self.FS.virtual[virtualFile].mode >> 12) !== self.ST_DIR
+		&& (!self.FS.virtual[virtualFile].contents
+			|| self.FS.virtual[virtualFile].contents.length === 0)
 	)
 	{
 		if(!loadedDirectories.includes(buildDir) && makeDirs)
@@ -746,26 +791,26 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 				mkdirp(buildDir, database);
 			let currentDir = await queryIndex(DB_STORE_NAME, 'parent', buildDir, null, null, database);
 			for(let r of currentDir)
-				FS.virtual[database + '/' + r.path] = r;
+				self.FS.virtual[database + '/' + r.path] = r;
 		}
 
 		// TODO!!!!! check if commit has changed or file has changed on disk
-		if((!FS.virtual[database + '/' + file]
-			|| !FS.virtual[database + '/' + file].contents
-			|| FS.virtual[database + '/' + file].contents.length === 0) && makeDirs /* only load github if its a controlled file */)
+		if((!self.FS.virtual[virtualFile]
+			|| !self.FS.virtual[virtualFile].contents
+			|| self.FS.virtual[virtualFile].contents.length === 0) && makeDirs /* only load github if its a controlled file */)
 		{
 			console.log(`Loading IDB/Github (${api.worker ? 'frontend' : 'worker'}): ${file}`);
-			await cacheFile(ownerName, repoName, file, null, makeDirs);
+			await self.cacheFile(DB_STORE_NAME, ownerName, repoName, file, void 0, makeDirs);
 		}
 
-		if(FS.virtual[database + '/' + file] && (FS.virtual[database + '/' + file].mode >> 12) === ST_FILE)
+		if(self.FS.virtual[virtualFile] && (self.FS.virtual[virtualFile].mode >> 12) === self.ST_FILE)
 		{
 			if(api.memfs)
 			{
 				if(!api.memfs.exists(file))
 				{
 					api.memfs.mem.check;
-					api.memfs.addFile(file, FS.virtual[database + '/' + file].contents);
+					api.memfs.addFile(file, self.FS.virtual[virtualFile].contents);
 				} else
 					console.log(`Already have from query (${api.worker ? 'frontend' : 'worker'}): ${file}`);
 			}
@@ -778,14 +823,14 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 	{
 		if(api.memfs)
 		{
-			if((FS.virtual[database + '/' + file].mode >> 12) === ST_DIR)
+			if((self.FS.virtual[virtualFile].mode >> 12) === self.ST_DIR)
 			{
-				api.memfs.addDirectory(database + '/' + file);
+				api.memfs.addDirectory(virtualFile);
 			}
 			else
 			{
 				//api.memfs.mem.check
-				api.memfs.addFile(file, FS.virtual[database + '/' + file].contents);
+				api.memfs.addFile(file, self.FS.virtual[virtualFile].contents);
 			}
 		}
 		console.log(`Already have contents (${api.worker ? 'frontend' : 'worker'}): ${file}`);
@@ -793,43 +838,48 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 
 	try
 	{
-		if(api.memfs && makeDirs && FS.virtual[database + '/' + file] && FS.virtual[database + '/' + file].contents)
+		if(api.memfs && makeDirs && self.FS.virtual[virtualFile] && self.FS.virtual[virtualFile].contents)
 		{
-			if((FS.virtual[database + '/' + file].mode >> 12) === ST_DIR)
+			if((self.FS.virtual[virtualFile].mode >> 12) === self.ST_DIR)
 			{
 				api.memfs.addDirectory(file);
 			}
 			else
 			{
 				api.memfs.mem.check;
-				api.memfs.addFile(file, FS.virtual[database + '/' + file].contents);
+				api.memfs.addFile(file, self.FS.virtual[virtualFile].contents);
 			}
 		}
 	} catch(e)
 	{
-		console.log(`(${api.worker ? 'frontend' : 'worker'}) ${e.message}\n\r${e.stack || e.stacktrace}`);
+		if(e instanceof Error)
+		{
+			console.log(`(${api.worker ? 'frontend' : 'worker'}) ${e.message}\n\r${e.stack}`);
+		}
 	}
 
 	if(!obj) return;
 
-	if(!FS.virtual[database + '/' + obj])
+	if(!self.FS.virtual[virtualObj])
 	{
 		if(!loadedDirectories.includes(outDir) && makeDirs)
 		{
 			console.log(`Loading index output (${api.worker ? 'frontend' : 'worker'}): ${outDir}`);
 			if(makeDirs)
+			{
 				mkdirp(outDir, database);
+			}
 			let currentDir = await queryIndex(DB_STORE_NAME, 'parent', outDir, null, null, database);
 			for(let r of currentDir)
-				FS.virtual[database + '/' + r.path] = r;
+				self.FS.virtual[database + '/' + r.path] = r;
 			loadedDirectories.push(outDir);
 		}
 
 		// don't load object files from github
-		if(!FS.virtual[database + '/' + obj])
+		if(!self.FS.virtual[virtualObj])
 		{
 			console.log(`Loading IDB output (${api.worker ? 'frontend' : 'worker'}): ${obj}`);
-			FS.virtual[database + '/' + obj] = await getRecord(DB_STORE_NAME, obj, database);
+			self.FS.virtual[virtualObj] = await getRecord(DB_STORE_NAME, obj, database);
 		} else
 		{
 			console.log(`Already have object (${api.worker ? 'frontend' : 'worker'}): ${file}`);
@@ -846,6 +896,9 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 let building = false;
 let buildDebounce = null;
 
+/**
+ * @param {string | null} database
+ **/
 async function buildClient(database = null, forceChanged = false, noLinking = false, noBounce = false)
 {
 
@@ -889,10 +942,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 		let DEBUG_CFLAGS = BUILDCFLAGS();
 
-		if(!database) database = api.database;
-		const parts = database.split('/');
-		const ownerName = parts.length == 2 ? parts[0] : owner.value;
-		const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+		if(!database) database = self.engineRepository || api.database;
 
 		let CONFIGURATION = api.configuration == 'release'
 			? dirs.ENGINE_RELEASE
@@ -925,17 +975,17 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 			try
 			{
-
-
-
-				let obj = CONFIGURATION + '/' + file.replace('.c', '.o');
+				const obj = CONFIGURATION + '/' + file.replace('.c', '.o');
+				const virtualFile = path.join(database, file);
+				const virtualObj = path.join(database, obj);
 
 				if(!forceChanged)
 					await prepInputOutput(file, obj, database, true /* controlled directory */);
 
-				if(FS.virtual[database + '/' + obj]
+				if(self.FS.virtual[virtualObj]?.timestamp
+					&& self.FS.virtual[virtualFile]?.timestamp
 					// compare input and output mtime
-					&& FS.virtual[database + '/' + file]?.timestamp < FS.virtual[database + '/' + obj]?.timestamp
+					&& self.FS.virtual[virtualFile]?.timestamp < self.FS.virtual[virtualObj]?.timestamp
 					&& !forceChanged
 				)
 				{
@@ -963,7 +1013,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 				await api.compile({
 					CFLAGS: CCFLAGS,
-					contents: FS.virtual[database + '/' + file].contents,
+					contents: self.FS.virtual[virtualFile]?.contents,
 					input: file,
 					database,
 					obj
@@ -971,14 +1021,19 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 			} catch(e)
 			{
-
-				console.error(`Build error in client: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+				if(e instanceof Error)
+				{
+					console.error(`Build error in client: ${file}\n\r${e.message}\n\r${e.stack}`);
+				}
 			}
 
 		}
 
 		let shadersChanged = await buildShaders(database, forceChanged);
-		hasChanged = hasChanged || shadersChanged;
+		if(shadersChanged)
+		{
+			hasChanged = true;
+		}
 
 		if(!noLinking)
 		{
@@ -1000,6 +1055,9 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 
 
+/**
+ * @param {string | null} database
+ **/
 async function linkEngine(database = null, forceChanged = true, noBuild = false)
 {
 	if(!database) database = api.database;
@@ -1021,12 +1079,13 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 	}
 
 
-	let engineExe = CONFIGURATION + '/' + config.CNAME + config.BINEXT;
+	const engineExe = CONFIGURATION + '/' + config.CNAME + config.BINEXT;
+	const virtualExe = path.join(database, engineExe);
 
-	FS.virtual[database + '/' + engineExe] = await getRecord(DB_STORE_NAME, engineExe, database);
+	self.FS.virtual[virtualExe] = await getRecord(DB_STORE_NAME, engineExe, database);
 
 
-	if(FS.virtual[database + '/' + engineExe]
+	if(self.FS.virtual[virtualExe]
 		// TODO: compare LATEST input and output mtime
 		&& !forceChanged
 	)
@@ -1057,7 +1116,10 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 		});
 	} catch(e)
 	{
-		console.error(`Link error in client\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+		if(e instanceof Error)
+		{
+			console.error(`Link error in client\n\r${e.message}\n\r${e.stack}`);
+		}
 	}
 
 
@@ -1065,13 +1127,13 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 
 
 
+/**
+ * @param {string | null} database
+ **/
 async function buildShaders(database = null, forceChanged = false)
 {
 
-	if(!database) database = api.database;
-	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	if(!database) database = self.engineRepository || api.database;
 
 	if(needsHeaders)
 	{
@@ -1100,14 +1162,16 @@ async function buildShaders(database = null, forceChanged = false)
 		try
 		{
 			// TODO: run stringify?
-
-			let obj = CONFIGURATION + '/' + shader.replace('.glsl', '.o');
+			const obj = CONFIGURATION + '/' + shader.replace('.glsl', '.o');
+			const virtualShader = path.join(database, shader);
+			const virtualObj = path.join(database, obj);
 
 			if(!forceChanged) // because we'll create it anyways so don't load it here
 				await prepInputOutput(shader, obj, database, true /* controlled paths */);
 
-			if(FS.virtual[database + '/' + obj]
-				&& FS.virtual[database + '/' + shader]?.timestamp < FS.virtual[database + '/' + obj]?.timestamp
+			if(self.FS.virtual[virtualObj]?.timestamp
+				&& self.FS.virtual[virtualShader]?.timestamp
+				&& self.FS.virtual[virtualShader]?.timestamp < self.FS.virtual[virtualObj]?.timestamp
 				&& !forceChanged
 			)
 			{
@@ -1118,7 +1182,7 @@ async function buildShaders(database = null, forceChanged = false)
 
 			console.log(`GLSL: ${obj}`);
 
-			const cCode = generateFallbackC(shader, FS.virtual[database + '/' + shader].contents);
+			const cCode = generateFallbackC(shader, self.FS.virtual[virtualShader]?.contents);
 
 			let hasChanged = true;
 
@@ -1139,7 +1203,10 @@ async function buildShaders(database = null, forceChanged = false)
 
 		} catch(e)
 		{
-			console.error(`Build error in shaders: ${shader}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+			if(e instanceof Error)
+			{
+				console.error(`Build error in shaders: ${shader}\n\r${e.message}\n\r${e.stack}`);
+			}
 		}
 	}
 
@@ -1149,13 +1216,26 @@ async function buildShaders(database = null, forceChanged = false)
 
 
 
+/**
+ * @param {string | null} database
+ **/
 async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = null)
 {
 	if(!database)
-		database = api.database;
-	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	{
+		database = self.engineRepository || api.database;
+	}
+	if(!database)
+	{
+		return;
+	}
+	const parts = database?.split('/');
+	const ownerName = parts?.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || self.RepositoryToolbar?.repository?.value;
+	if(!ownerName || !repoName)
+	{
+		return;
+	}
 
 	// Process in chunks to avoid slamming the network/API
 	for(let i = 0; i < headers.length; i += batchSize)
@@ -1173,61 +1253,60 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 			//await Promise.all(batch.map(async (header) => {
 			try
 			{
-				let thisDatabase = database;
-				let thisOwner = ownerName;
-				let thisRepo = repoName;
 				if(header.includes('wasm.syms'))
 				{
-					let localName = 'components/compiler/wasm.syms';
+					const localName = 'components/compiler/wasm.syms';
+					const virtualHeader = path.join(database, localName);
 					//let response = await fetch('wasm.syms');
 					//let contents = await response.arrayBuffer()
-					if(!filesRepo['briancullinan2/quedit'])
+					if(!self.filesRepo['briancullinan2/quedit'])
 					{
-						await loadGitHubTree('briancullinan2', 'quedit', 'main');
+						await self.loadGitHubTree('briancullinan2', 'quedit', 'main');
 					}
-					await cacheFile('briancullinan2', 'quedit', localName);
-					if(!FS.virtual[database + '/' + localName])
+					await self.cacheFile('briancullinan2', 'quedit', localName);
+					if(!self.FS.virtual[virtualHeader])
 					{
 						debugger;
 						console.error('Goddamnit you suck at programming.');
 					}
-					FS.virtual[database + '/' + header] =
+					self.FS.virtual[database + '/' + header] =
 					{
 						timestamp: new Date(),
-						mode: FS_FILE,
-						contents: FS.virtual[database + '/' + localName].contents,
+						mode: self.FS_FILE,
+						contents: self.FS.virtual[virtualHeader]?.contents,
 						path: header,
-						sha: FS.virtual[database + '/' + localName].sha,
+						sha: self.FS.virtual[virtualHeader]?.sha,
 						parent: header.substring(0, header.lastIndexOf('/'))
 
 					};
-					await putRecord(DB_STORE_NAME, FS.virtual[database + '/' + header], thisDatabase);
+					await putRecord(DB_STORE_NAME, self.FS.virtual[database + '/' + header], database);
 				}
 				else
 				{
-					if(!filesRepo[thisDatabase])
+					if(!self.filesRepo[database])
 					{
-						let branch = await getDefaultBranch(thisOwner, thisRepo);
-						await loadGitHubTree(thisOwner, thisRepo, branch);
+						let branch = await self.getDefaultBranch(ownerName, repoName);
+						await self.loadGitHubTree(ownerName, repoName, branch);
 					}
 
-					if(filesRepo[thisDatabase][header])
+					if(self.filesRepo[database]?.[header])
 					{
 						// cacheFile handles the storage logic
-						let sha = filesRepo[thisDatabase][header].sha;
-						await cacheFile(thisOwner, thisRepo, header, sha);
+						let sha = self.filesRepo[database]?.[header].sha;
+						await self.cacheFile(ownerName, repoName, header, sha);
 					}
 
 				}
 
 
 
-				await api.header(thisOwner, thisRepo, header, thisDatabase);
+				await api.header(ownerName, repoName, header, database);
 			} catch(e)
 			{
-
-
-				console.error(`Failed to download header ${header}: ` + e + '\n\r' + (e.stack || e.stacktrace));
+				if(e instanceof Error)
+				{
+					console.error(`Failed to download header ${header}: ` + e + '\n\r' + (e.stack));
+				}
 			}
 		}
 
@@ -1240,39 +1319,5 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 
 
 	needsHeaders = false;
-}
-
-
-function loadEntry(cursor)
-{
-	if(!cursor)
-	{
-		return resolve();
-	}
-	if(cursor.path.endsWith('default.cfg'))
-	{
-		FS.hadDefault = cursor.path;
-	}
-	// already exists on filesystem,
-	//   it must have come with page
-	if(FS.virtual[database + '/' + cursor.path]
-		&& FS.virtual[database + '/' + cursor.path].timestamp
-		> cursor.timestamp)
-	{
-		// embedded file is newer, start with that
-		return;
-	}
-
-
-	console.log('Loading: ' + cursor.path);
-
-	FS.virtual[database + '/' + cursor.path] = {
-		timestamp: cursor.timestamp,
-		mode: cursor.mode,
-		contents: cursor.contents,
-		path: cursor.path,
-		sha: cursor.sha,
-		parent: cursor.parent,
-	};
 }
 

@@ -4,8 +4,8 @@ async function clone(argv)
 {
 	const selected = argv[0] || toolsRepository || 'briancullinan2/quedit';
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 
 	const branch = argv[1];
 	if(!branch)

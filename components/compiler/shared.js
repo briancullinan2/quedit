@@ -1902,8 +1902,8 @@ const API = (function ()
 						try
 						{
 							const parts = selected.split('/');
-							const ownerName = parts.length == 2 ? parts[0] : owner.value;
-							const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+							const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+							const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 							// because this also creates the database with setupDatabase
 							if(!filesRepo[selected])
 							{
@@ -2063,15 +2063,6 @@ const API = (function ()
 			await this.hostLogAsync(`Untaring ${filename}`, promise);
 		}
 
-		async loadEntry(cursor)
-		{
-			if(!cursor)
-			{
-				return resolve();
-			}
-			FS.virtual[cursor.path] = cursor;
-		}
-
 
 
 
@@ -2134,9 +2125,6 @@ const API = (function ()
 			await this.ready;
 			this.database = database || this.database;
 			if(!this.database) return;
-
-			// TODO: this needs to be optimized
-			//await readAll(this.database, this.loadEntry.bind(this))
 		}
 
 

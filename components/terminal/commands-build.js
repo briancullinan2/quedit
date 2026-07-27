@@ -35,8 +35,8 @@ async function buildCommand(argv, database)
 		selected = argv[1] || gameRepository;
 
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 	if(selected && !filesRepo[selected])
 	{
 		let branch = await getDefaultBranch(ownerName, repoName);
@@ -217,8 +217,8 @@ async function link(argv, database)
 
 
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 	if(selected && !filesRepo[selected])
 	{
 		let branch = await getDefaultBranch(ownerName, repoName);
@@ -322,8 +322,8 @@ async function header(argv, database)
 {
 	let selected = toolsRepository || argv[1] || database;
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 	let headers = [argv[0]];
 
 	if(!argv[0])
@@ -389,8 +389,8 @@ async function compileWorker(argv, database, commandName, term)
 
 
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 
 	if(!filesRepo[selected])
 	{
@@ -665,8 +665,8 @@ async function lburg(argv, database)
 {
 	let selected = toolsRepository || argv[1] || database;
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 
 	if(!files.selected)
 	{

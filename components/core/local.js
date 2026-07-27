@@ -218,6 +218,10 @@ const getBounceRegistry = {
 
 
 
+
+/**
+ * @param {string | null} dbName
+ **/
 async function putRecord(storeName, record, dbName = null, noBounce = false)
 {
 	return await debounceRecords(storeName, 'path', record, null, null, dbName, 'put', noBounce);
