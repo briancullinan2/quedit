@@ -3,116 +3,31 @@
 import { cacheFileInternal } from "./github-tools";
 import { FS } from "./global";
 import type { RepositoryToolbar } from "./menu-repos";
+import type {
+	LocalWindow, DatabaseMetadata, FileRecord,
+	SchemaStoreConfig, DebounceToken, InstallCheckResult,
+	SetupDatabaseResult } from './local.d';
 
 
-declare global
-{
-	interface Window
-	{
-		RepositoryToolbar: typeof RepositoryToolbar;
-		getDatabaseMetadata(): Promise<DatabaseMetadata[]>;
-		queryIndex(
-			storeName: string,
-			indexName: string,
-			exactIndex: any,
-			lower: any,
-			upper: any,
-			dbName: string | null,
-			noBounce?: boolean
-		): Promise<FileRecord[]>;
-		putRecord(storeName: string, record: FileRecord, dbName: string | null, noBounce?: boolean): Promise<any>;
-		getRecord(storeName: string, record: string, dbName: string | null, dbVersion?: number, noBounce?: boolean): Promise<FileRecord | null>;
-		globToRegex(pattern: string, caseSensitive?: boolean): RegExp;
-		deleteRecord(storeName: string, key: string, dbName: string | null): Promise<boolean>;
-		DB_STORE_NAME: string;
-		ST_DIR: number;
-		ST_FILE: number;
-		FS_FILE: number;
-		FS_DIR: number;
-	}
-}
+const localSelf: LocalWindow = /** @type {any} */ (self);
 
 
-export interface DatabaseMetadata
-{
-	key: string;
-	value: number;
-}
-
-export interface InstallCheckResult
-{
-	item1: string | null;
-	item2: number;
-	item3: boolean;
-	item4: string[];
-}
-
-export interface SetupDatabaseResult
-{
-	item1: boolean;
-	item2: string;
-}
-
-export interface FileRecord
-{
-	timestamp?: Date | null;
-	mode: number;
-	contents?: Uint8Array | ArrayBuffer | FileSystemDirectoryHandle | any;
-	path: string;
-	sha?: string | null;
-	parent?: string | null;
-}
-
-export interface SchemaIndexConfig
-{
-	key: string;
-	value: string;
-}
-
-export interface SchemaStoreConfig
-{
-	key: string;
-	value: {
-		item1: string; // keyPath
-		item2: SchemaIndexConfig[]; // indexes
-	};
-}
-
-interface DebounceToken
-{
-	promise: Promise<any> | null;
-	resolve: ((value: any) => void) | null;
-	reject: ((reason: any) => void) | null;
-	timer: ReturnType<typeof setTimeout> | null;
-	latestArgs: {
-		storeName: string;
-		indexName: string;
-		record: string | FileRecord | any;
-		lower: any;
-		upper: any;
-		dbName: string | undefined | null;
-		ownerName: string;
-		repoName: string;
-	};
-}
-
-// --- Constants ---
 
 export const DB_VERSION = 1; // Increment this when you add new C# Entities!
 export const DB_NAME = "briancullinan2/illustrious";
 export const DB_STORE_NAME = 'FILE_DATA';
-window.DB_STORE_NAME = DB_STORE_NAME;
+localSelf.DB_STORE_NAME = DB_STORE_NAME;
 export const DB_DEBOUNCE_INTERVAL = 50;
 
 export const ST_FILE = 8;
-window.ST_FILE = ST_FILE;
+localSelf.ST_FILE = ST_FILE;
 export const ST_DIR = 4;
-window.ST_DIR = ST_DIR;
+localSelf.ST_DIR = ST_DIR;
 export const FS_DEFAULT = (6 << 3) + (6 << 6) + (6);
 export const FS_FILE = (ST_FILE << 12) + FS_DEFAULT;
-window.FS_FILE = FS_FILE;
+localSelf.FS_FILE = FS_FILE;
 export const FS_DIR = (ST_DIR << 12) + FS_DEFAULT;
-window.FS_DIR = FS_DIR;
+localSelf.FS_DIR = FS_DIR;
 
 export const DB_SCHEME: SchemaStoreConfig[] = [
 	{
@@ -173,7 +88,7 @@ export async function getDatabaseMetadata(): Promise<DatabaseMetadata[]>
 	return dbs.map(db => ({ key: db.name || '', value: db.version || 0 }));
 }
 
-window.getDatabaseMetadata = getDatabaseMetadata;
+localSelf.getDatabaseMetadata = getDatabaseMetadata;
 
 export async function needsInstall(dbName: string | null, expectedStores: SchemaStoreConfig[]): Promise<InstallCheckResult>
 {
@@ -428,14 +343,14 @@ export async function putRecord(storeName: string, record: FileRecord, dbName: s
 	return await debounceRecords(storeName, 'path', record, null, null, dbName, 'put', noBounce);
 }
 
-window.putRecord = putRecord;
+localSelf.putRecord = putRecord;
 
 export async function getRecord(storeName: string, record: string, dbName: string | null = null, dbVersion = 1, noBounce = false): Promise<FileRecord | null>
 {
 	return await debounceRecords(storeName, 'path', record, dbVersion, null, dbName, 'get', noBounce);
 }
 
-window.getRecord = getRecord;
+localSelf.getRecord = getRecord;
 
 export async function queryIndex(
 	storeName: string,
@@ -450,7 +365,7 @@ export async function queryIndex(
 	return await debounceRecords(storeName, indexName, exactIndex, lower, upper, dbName, 'query', noBounce);
 }
 
-window.queryIndex = queryIndex;
+localSelf.queryIndex = queryIndex;
 
 export function debounceRecords(
 	storeName: string,
@@ -465,8 +380,8 @@ export function debounceRecords(
 {
 	const path: string = typeof record === 'string' ? record : record?.path || '';
 	const parts = (dbName || '').split('/');
-	const ownerName = parts.length === 2 ? parts[0] : (typeof window.RepositoryToolbar.owner !== 'undefined' ? window.RepositoryToolbar.owner?.value ?? '' : '');
-	const repoName = parts.length === 2 ? parts[1] : (parts[0] || (typeof window.RepositoryToolbar.repository !== 'undefined' ? window.RepositoryToolbar.repository?.value ?? '' : ''));
+	const ownerName = parts.length === 2 ? parts[0] : (typeof localSelf.RepositoryToolbar.owner !== 'undefined' ? localSelf.RepositoryToolbar.owner?.value ?? '' : '');
+	const repoName = parts.length === 2 ? parts[1] : (parts[0] || (typeof localSelf.RepositoryToolbar.repository !== 'undefined' ? localSelf.RepositoryToolbar.repository?.value ?? '' : ''));
 
 	const compositeArgs = {
 		storeName,
@@ -580,7 +495,7 @@ export async function deleteRecord(storeName: string, key: string, dbName: strin
 	});
 }
 
-window.deleteRecord = deleteRecord;
+localSelf.deleteRecord = deleteRecord;
 
 export async function readAll(dbName: string, callback?: (item: any) => void): Promise<any[]>
 {
@@ -646,5 +561,5 @@ export function globToRegex(pattern: string, caseSensitive: boolean = false): Re
 	return new RegExp(`^(?:.*\\/)?${regexStr}$`, !caseSensitive ? "i" : void 0);
 }
 
-window.globToRegex = globToRegex;
+localSelf.globToRegex = globToRegex;
 

@@ -135,26 +135,26 @@ declare global
 	}
 }
 
-window.path = path;
-window.config = config;
-window.dirs = dirs;
+self.path = path;
+self.config = config;
+self.dirs = dirs;
 
-window.ENGINE_MEMORY_BASE = ENGINE_MEMORY_BASE;
-window.UI_MEMORY_BASE = UI_MEMORY_BASE;
-window.CGAME_MEMORY_BASE = CGAME_MEMORY_BASE;
-window.GAME_MEMORY_BASE = GAME_MEMORY_BASE;
+self.ENGINE_MEMORY_BASE = ENGINE_MEMORY_BASE;
+self.UI_MEMORY_BASE = UI_MEMORY_BASE;
+self.CGAME_MEMORY_BASE = CGAME_MEMORY_BASE;
+self.GAME_MEMORY_BASE = GAME_MEMORY_BASE;
 
-window.COMPILE_PLATFORM = COMPILE_PLATFORM;
-window.COMPILE_ARCH = COMPILE_ARCH;
-window.GAME_PLATFORM = GAME_PLATFORM;
-window.GAME_ARCH = GAME_ARCH;
+self.COMPILE_PLATFORM = COMPILE_PLATFORM;
+self.COMPILE_ARCH = COMPILE_ARCH;
+self.GAME_PLATFORM = GAME_PLATFORM;
+self.GAME_ARCH = GAME_ARCH;
 
 // 2. Safely capture or initialize the instance on window
-const FSInstance = window.FS || { virtual: {} };
+const FSInstance = self.FS || { virtual: {} };
 
-if(!window.FS)
+if(!self.FS)
 {
-	window.FS = FSInstance;
+	self.FS = FSInstance;
 }
 
 // 3. Export it cleanly for module usage

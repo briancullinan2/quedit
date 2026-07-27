@@ -13,18 +13,6 @@ import
 	, setupDatabase
 } from "./local";
 
-declare global
-{
-	interface Window
-	{
-		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
-		loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
-		getBranches: (repoOwner: string | undefined, repoName: string | undefined) => Promise<GitHubBranch[]>;
-		getDefaultBranch(ownerName: string, repo: string): Promise<string>;
-		searchGitHubCode(query: string, activeRepositories: string[], token: string | null): Promise<any[]>;
-	}
-}
-
 
 // --- Overloaded Function Signatures for Request Layer ---
 export async function githubRequest(ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: false): Promise<any>;

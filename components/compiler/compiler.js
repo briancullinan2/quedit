@@ -32,7 +32,7 @@ class LanguageAPI
 	inject(options)
 	{
 		options.configuration = options.configuration || this.configuration || 'release';
-		options.database = options.database || window.engineRepository || this.database;
+		options.database = options.database || self.engineRepository || this.database;
 		options.github_token = options.github_token || self.githubToken || this.github_token;
 	}
 
@@ -53,7 +53,7 @@ class LanguageAPI
 	{
 		const responseId = ++this.nextResponseId;
 
-		window.runningCommand = true;
+		self.runningCommand = true;
 
 		const responsePromise = new Promise((resolve, reject) =>
 		{
@@ -133,8 +133,8 @@ class LanguageAPI
 				break;
 
 			case 'done':
-				window.detachedConsole = false;
-				window.runningWorker = false;
+				self.detachedConsole = false;
+				self.runningWorker = false;
 			// Fall-through intended matching base pipeline patterns
 
 			case 'runAsync': {
@@ -193,10 +193,10 @@ class WorkerAPI
 
 	inject(options)
 	{
-		let currentConfig = options.configuration || window.SettingsToolbar?.configuration?.value || this.configuration || 'release';
+		let currentConfig = options.configuration || self.SettingsToolbar?.configuration?.value || this.configuration || 'release';
 		this.configuration = options.configuration = currentConfig === 'debug' ? 'debug' : 'release';
 		this.database = options.database = options.database || self.engineRepository || this.database;
-		this.width = options.width = options.width = window.mostRecentTerminalCols || 120;
+		this.width = options.width = options.width = self.mostRecentTerminalCols || 120;
 		this.github_token = options.github_token = options.github_token = this.github_token;
 		this.toolsRepo = options.toolsRepo = options.toolsRepo || self.toolsRepository || this.toolsRepo;
 		this.toolsRepo2 = options.toolsRepo2 = options.toolsRepo2 || self.tools2Repository || this.toolsRepo2;
@@ -323,8 +323,8 @@ class WorkerAPI
 				break;
 
 			case 'done':
-				window.detachedConsole = false;
-				window.runningWorker = false;
+				self.detachedConsole = false;
+				self.runningWorker = false;
 			case 'runAsync': {
 				const responseId = event.data.responseId;
 				const promise = this.responseCBs.get(responseId);
@@ -350,10 +350,10 @@ class WorkerAPI
 }
 
 const language = new LanguageAPI({
-	hostWrite: window.specialWrite
+	hostWrite: self.specialWrite
 });
 
 self.api = new WorkerAPI({
-	hostWrite: window.specialWrite
+	hostWrite: self.specialWrite
 });
 self.api.github_token = self.githubToken;

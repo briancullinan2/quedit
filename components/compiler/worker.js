@@ -144,7 +144,10 @@ const onAnyMessage = async event =>
 			break;
 
 		case 'setShowTiming':
-			api?.showTiming = event.data.data;
+			if(api)
+			{
+				api.showTiming = event.data.data;
+			}
 			break;
 
 		case 'compileToAssembly': {

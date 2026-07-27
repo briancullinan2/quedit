@@ -10,6 +10,9 @@ const ARG_TYPES = {
 	NUMERIC: 'number'
 };
 
+/**
+ * @type {import("./commands-complete").CommandSchema}
+ */
 const COMMAND_SCHEMA = {
 	help: {
 		execute: help,
@@ -359,7 +362,7 @@ function writeCommandHelp(targetCommand, argv)
 	terminalWrite(`\x1b[4mDescription:\x1b[0m ${schema.description}\n\r\n\r`);
 
 	// Render Arguments and Typings
-	if(schema.args.length > 0)
+	if(schema.args && schema.args.length > 0)
 	{
 		terminalWrite(`\x1b[4mArguments:\x1b[0m\n\r`);
 		schema.args.forEach((arg, index) =>
@@ -378,13 +381,13 @@ function writeCommandHelp(targetCommand, argv)
 	}
 
 	// Render Compilation and Runtime Flags
-	const flagKeys = Object.keys(schema.flags);
+	const flagKeys = Object.keys(schema.flags || []);
 	if(flagKeys.length > 0)
 	{
 		terminalWrite(`\x1b[4mAvailable Flags:\x1b[0m\n\r`);
 		flagKeys.forEach(flag =>
 		{
-			terminalWrite(`  ${flag.padEnd(10)} : ${schema.flags[flag].description}\n\r`);
+			terminalWrite(`  ${flag.padEnd(10)} : ${typeof schema.flags?.[flag] === 'string' ? schema.flags?.[flag] : schema.flags?.[flag].description}\n\r`);
 		});
 		terminalWrite(`\n\r`);
 	}
@@ -576,8 +579,8 @@ async function handleCommand(input, term)
 			await targetExecutionRoute(args, database, commandName, term);
 		} catch(execError)
 		{
-			if(typeof originalConsole !== 'undefined')
-				originalConsole.error(execError);
+			if(typeof self.originalConsole !== 'undefined')
+				self.originalConsole.error(execError);
 			console.error(`Failed executing: ${resolvedCommandKey}`, execError);
 		}
 	} else

@@ -5,54 +5,142 @@ import type { SettingsToolbar } from './menu-settings';
 import type JSZipImport from 'jszip';
 import type { SearchService } from './lumino-search';
 
-interface Window
+
+export interface MainThreadDOMExtensions
 {
-	trees: Record<string, any>;
-	filesRepo: Record<string, any>; // or GitHubFileTree | undefined
-	mapFiles: Record<string, string>;
+	// UI Toolbar & Lumino Component Constructors
+	RepositoryToolbar?: typeof RepositoryToolbar;
+	SettingsToolbar?: typeof SettingsToolbar;
 	SettingsManager: Settings;
-	api: WorkerAPI;
+
+	// DOM Manipulation Helpers
 	updateSelectOptions: (
 		elementId: string | Element | undefined | null,
 		items: Record<string, string> | Array<string | GitHubBranchLike>,
 		selectedValue?: string
 	) => void;
-	DB_STORE_NAME: string;
-	ST_DIR: number;
-	ST_FILE: number;
-	FS_FILE: number;
-	FS_DIR: number;
+
+	// Active Workspace Selected Repositories (Used by Workspace Dropdowns)
+	engineRepository?: string | null;
+	gameRepository?: string | null;
+	assetRepository?: string | null;
+	toolsRepository?: string | null;
+	tools2Repository?: string | null;
+	environmentRepository?: string | null;
+
+	// Background Threads & Singletons
+	searchWorker: Worker;
+	searchService: SearchService; // UI Service Dispatcher
+}
+
+
+export interface BuildSystemGlobals
+{
+	needsHeaders: boolean;
+	TERMINATE: boolean;
+	undefinedFlags: string[];
+	includeFlags: string[];
+	CFLAGS: string[];
+	building?: boolean;
+	buildDebounce?: ReturnType<typeof setTimeout> | undefined;
+	api: WorkerAPI | undefined;
+	downloadHeaders(headers: any, batchSize?: number, database?: string | null): Promise<void>;
+}
+
+
+
+export interface SharedVirtualFSExtensions
+{
+	SYS: any;
+	FILED: any;
+	updateGlobalBufferAndViews: () => void;
+
+	// In-Memory File & Tree Cache Stores
+	trees: Record<string, any>;
+	filesRepo: Record<string, any>; // GitHub file tree cache
+	mapFiles: Record<string, string>; // Flat path mappings
+
+	// Virtual In-Memory FS Storage
+	FS: {
+		virtual: Record<string, FileRecord | null | undefined>;
+	};
+
+	// Shared Path Utility Polyfill
 	path: {
 		join: (...parts: string[]) => string;
 		resolve: (...parts: string[]) => string;
 	};
-	engineRepository?: string | undefined | null;
-	gameRepository?: string | undefined | null;
-	assetRepository?: string | undefined | null;
-	toolsRepository?: string | undefined | null;
-	tools2Repository?: string | undefined | null;
-	environmentRepository?: string | undefined | null;
-	githubToken?: string | undefined | null;
-	getDefaultBranch(ownerName: string, repo: string): Promise<string>;
-	loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
-	cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string | null, forceReload?: boolean) => Promise<any>;
-	deleteRecord(storeName: string, key: string, dbName: string | null): Promise<boolean>;
-	searchGitHubCode(query: string, activeRepositories: string[], token: string | null): Promise<any[]>;
-	cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string | null, forceReload?: boolean): Promise<any>;
-	FS: {
-		virtual: Record<string, FileRecord | null | undefined>;
-	};
-	globToRegex(pattern: string, caseSensitive?: boolean): RegExp;
-	RepositoryToolbar?: typeof RepositoryToolbar;
-	SettingsToolbar?: typeof SettingsToolbar;
-	JSZip: typeof JSZipImport;
-	searchWorker: Worker;
-	searchService: SearchService;
-	DB_SCHEME: SchemaStoreConfig[];
-	getAuthenticatedUser(): Promise<any>;
 }
 
 
+export interface WorkerContextExtensions
+{
+	// Worker API Constructor & Runtime Binding
+	API: typeof WorkerAPI;
+	api?: WorkerAPI | MockAPI;
+
+	// Standard Worker Script Loader
+	importScripts(...urls: (string | URL)[]): void;
+
+	// Intercepted / Preserved Worker Console
+	originalConsole: {
+		log: typeof console.log;
+		warn: typeof console.warn;
+		error: typeof console.error;
+		info: typeof console.info;
+	};
+}
+
+export interface SharedDatabaseConstants
+{
+	DB_STORE_NAME: string;
+	DB_SCHEME: SchemaStoreConfig[];
+
+	// File System Mode Flags (Emscripten / POSIX Mode Mask Constants)
+	ST_DIR: number;
+	ST_FILE: number;
+	FS_FILE: number;
+	FS_DIR: number;
+}
+
+
+export interface SharedGitHubNetworkUtils
+{
+	githubToken?: string | null;
+	getAuthenticatedUser(): Promise<any>;
+	getDefaultBranch(ownerName: string, repo: string): Promise<string>;
+	loadGitHubTree(repoOwner: string, repoName: string, branch: string, path?: string): Promise<GitHubFileTree | undefined>;
+	searchGitHubCode(query: string, activeRepositories: string[], token: string | null): Promise<any[]>;
+}
+
+
+export interface SharedStoragePrimitives
+{
+	terminalWrite(message: string, source?: SourceMetadata | string, skipActualWrite?: boolean): void;
+
+	cacheFile(
+		storeName?: string,
+		repoOwner?: string,
+		repoName?: string,
+		filePath?: string,
+		sha?: string | null,
+		forceReload?: boolean
+	): Promise<any>;
+
+	// Direct IndexedDB / GitHub Worker Network Methods
+	cacheFileInternal(
+		storeName: string,
+		repoOwner: string,
+		repoName: string,
+		localPath: string,
+		sha?: string | null,
+		forceReload?: boolean
+	): Promise<any>;
+
+	deleteRecord(storeName: string, key: string, dbName: string | null): Promise<boolean>;
+	globToRegex(pattern: string, caseSensitive?: boolean): RegExp;
+	JSZip: typeof JSZipImport;
+}
 
 export interface SchemaIndexConfig
 {
@@ -69,38 +157,6 @@ export interface SchemaStoreConfig
 	};
 }
 
-
-// Also extend WorkerGlobalScope / globalThis so `self.trees` works cleanly
-interface WorkerGlobalScope
-{
-	trees: Record<string, any>;
-	filesRepo: Record<string, any>;
-	mapFiles: Record<string, string>;
-	path: {
-		join: (...parts: string[]) => string;
-		resolve: (...parts: string[]) => string;
-	};
-	FS: {
-		virtual: Record<string, FileRecord | null | undefined>;
-	};
-	JSZip: typeof JSZipImport;
-	searchService: SearchService;
-	DB_SCHEME: SchemaStoreConfig[];
-	importScripts: (...urls: (string | URL)[]) => void;
-	githubToken?: string | undefined | null;
-	originalConsole: {
-		log: typeof console.log,
-		warn: typeof console.warn,
-		error: typeof console.error,
-		info: typeof console.info;
-	};
-	getAuthenticatedUser(): Promise<any>;
-	cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string | null, forceReload?: boolean): Promise<any>;
-	API: typeof WorkerAPI;
-}
-
-declare var self: Window & WorkerGlobalScope & typeof globalThis;
-// global.d.ts
 
 /** Options passed into the WorkerAPI constructor */
 interface WorkerAPIOptions
@@ -194,54 +250,19 @@ declare API: typeof WorkerAPI;
 
 declare global
 {
-	let api: WorkerAPI | undefined;
-	let needsHeaders: boolean;
-	let TERMINATE: boolean;
-	var API: typeof WorkerAPI;
+	interface Window extends
+		MainThreadDOMExtensions,
+		SharedVirtualFSExtensions,
+		SharedDatabaseConstants,
+		SharedGitHubNetworkUtils,
+		SharedStoragePrimitives { }
 
-	interface Window
-	{
-		WorkerAPI: typeof WorkerAPI;
-		api?: typeof api;
-		detachedConsole?: boolean;
-		runningWorker?: boolean | WorkerAPI;
-		mostRecentTerminalCols?: number;
-		previousHashLineNumber?: number | null;
-		showDirectoryPicker(
-			options?: DirectoryPickerOptions
-		): Promise<FileSystemDirectoryHandle>;
-		runEngine?: () => void;
-		DB_SCHEME: SchemaStoreConfig[];
-		importScripts: (...urls: (string | URL)[]) => void;
-		githubToken?: string | undefined | null;
-		originalConsole: {
-			log: typeof console.log,
-			warn: typeof console.warn,
-			error: typeof console.error,
-			info: typeof console.info;
-		};
-	}
-	interface WorkerGlobalScope
-	{
-		api?: WorkerAPI | MockAPI;
-		API: typeof WorkerAPI;
-	}
-
-	const terminalWrite: (message: string, source?: SourceMetadata | string, skipActualWrite?: boolean) => void;
-
-	const SYS: any;
-	const FILED: any;
-	const updateGlobalBufferAndViews: () => void;
-	const path: {
-		join: (...parts: string[]) => string;
-		resolve: (...parts: string[]) => string;
-	};
-
-	const FS: {
-		virtual: Record<string, FileRecord | null | undefined>;
-	};
-	const JSZip: typeof JSZipImport;
-	const importScripts: (...urls: (string | URL)[]) => void;
+	interface WorkerGlobalScope extends
+		WorkerContextExtensions,
+		SharedVirtualFSExtensions,
+		SharedDatabaseConstants,
+		SharedGitHubNetworkUtils,
+		SharedStoragePrimitives { }
 }
 
 type SourceMetadata = [

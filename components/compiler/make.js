@@ -900,28 +900,25 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 
 
 
-let building = false;
-let buildDebounce = null;
-
 /**
  * @param {string | null | undefined} database
  **/
 async function buildClient(database = null, forceChanged = false, noLinking = false, noBounce = false)
 {
 
-	if(buildDebounce)
+	if(self.buildDebounce)
 	{
-		clearTimeout(buildDebounce);
+		clearTimeout(self.buildDebounce);
 	}
 
 	if(!noBounce)
 	{
-		buildDebounce = setTimeout(() => buildClient(database, forceChanged, noLinking, true), 500);
+		self.buildDebounce = setTimeout(() => buildClient(database, forceChanged, noLinking, true), 500);
 		return;
 	}
 
-	if(building) return;
-	building = true;
+	if(self.building) return;
+	self.building = true;
 
 
 	try

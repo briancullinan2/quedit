@@ -7,9 +7,10 @@ import { FS } from "./global";
 import
 {
 	DB_SCHEME, DB_STORE_NAME, deleteOldDatabase
-	, FileRecord, FS_FILE, getDatabaseMetadata, needsInstall
+	, FS_FILE, getDatabaseMetadata, needsInstall
 	, putRecord, setupDatabase
 } from "./local";
+import { FileRecord } from './local.d';
 import { SettingsManager } from "./settings";
 
 

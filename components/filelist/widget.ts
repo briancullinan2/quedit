@@ -8,12 +8,18 @@ import type { FileManager } from '../bundle/lumino-files';
 import { Message, MessageLoop } from '@lumino/messaging';
 import Tree from './tree.js';
 import type { GitHubBranchLike } from '../bundle/github-settings';
-import type { FileRecord } from '../bundle/local';
+import type { FileRecord } from '../bundle/local.d';
 import
 {
 	configureFileHandle, getRegistryIdFromWidget, getSettingFromRegistryId,
 	listDirectory, LOCAL_SETTINGS, treeHandler, verifyPermission
 } from './widget-local';
+import type { FilelistWindow } from './widget.d';
+
+
+
+const filelistSelf: FilelistWindow = /** @type {any} */ (self);
+
 
 declare global
 {
@@ -28,14 +34,13 @@ declare global
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
 		loadFileTree: (repoOwner: string, repoName: string, branch: string, selector: string) => Promise<void>;
 		cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string | null, forceReload?: boolean) => Promise<any>;
-		trees: Record<string, any>;
-		filesRepo: Record<string, GitHubFileTree | undefined>;
+
 		RepositoryToolbar: typeof RepositoryToolbar;
 		GameListWidget: typeof GameListWidget;
 		FileListWidget: typeof FileListWidget;
-		SettingsManager: Settings;
+
 		FileManager: typeof FileManager;
-		fileListWidgets?: Array<FileListWidget>;
+
 		getRegistryIdFromWidget(widget: string | HTMLElement | FileListWidget): string | null | undefined | void;
 		putRecord(storeName: string, record: FileRecord, dbName: string | null, noBounce?: boolean): Promise<any>;
 		getRecord(storeName: string, record: string, dbName: string | null, dbVersion?: number, noBounce?: boolean): Promise<FileRecord | null>;
@@ -61,9 +66,9 @@ declare global
 	}
 }
 
-if(!window.fileListWidgets)
+if(!filelistSelf.fileListWidgets)
 {
-	window.fileListWidgets = new Array<FileListWidget>();
+	filelistSelf.fileListWidgets = new Array<FileListWidget>();
 }
 
 
@@ -86,11 +91,11 @@ export class FileListWidget extends Widget
 	constructor(titleStr: string)
 	{
 		super();
-		this.id = `filelist-panel-${++window.tempCount}`;
+		this.id = `filelist-panel-${++filelistSelf.tempCount}`;
 		this.title.label = titleStr;
-		if(window.fileListWidgets)
+		if(filelistSelf.fileListWidgets)
 		{
-			window.fileListWidgets[window.fileListWidgets.length] = this;
+			filelistSelf.fileListWidgets[filelistSelf.fileListWidgets.length] = this;
 		}
 		this.title.closable = true;
 		this.node.style.minWidth = '200px';
@@ -123,7 +128,7 @@ export class FileListWidget extends Widget
 
 	public get defaultRepository()
 	{
-		return window.SettingsManager.get('github', 'engineRepository');
+		return filelistSelf.SettingsManager.get('github', 'engineRepository');
 	}
 
 
@@ -164,22 +169,22 @@ export class FileListWidget extends Widget
 			`;
 		}
 		const parts = this.defaultRepository.split('/');
-		const ownerName = parts.length === 2 ? parts[0] : window.RepositoryToolbar.owner?.value;
-		const repoName = parts.length === 2 ? parts[1] : parts[0] || window.RepositoryToolbar.repository?.value;
+		const ownerName = parts.length === 2 ? parts[0] : filelistSelf.RepositoryToolbar.owner?.value;
+		const repoName = parts.length === 2 ? parts[1] : parts[0] || filelistSelf.RepositoryToolbar.repository?.value;
 
 		const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement);
-		const owners = window.SettingsManager.get('github', 'ownersList');
-		window.addOwnerIfNotExists(ownerName);
-		window.updateSelectOptions(owner, owners, ownerName);
+		const owners = filelistSelf.SettingsManager.get('github', 'ownersList');
+		filelistSelf.addOwnerIfNotExists(ownerName);
+		filelistSelf.updateSelectOptions(owner, owners, ownerName);
 
 		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement);
-		const repositories = window.SettingsManager.get('github', 'repositoriesList');
-		window.addRepoIfNotExists(repoName);
-		window.updateSelectOptions(repo, repositories, repoName);
+		const repositories = filelistSelf.SettingsManager.get('github', 'repositoriesList');
+		filelistSelf.addRepoIfNotExists(repoName);
+		filelistSelf.updateSelectOptions(repo, repositories, repoName);
 
 		const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement);
-		const branches = await window.getBranches(ownerName, repoName);
-		window.updateSelectOptions(branch, branches, branches[0].name);
+		const branches = await filelistSelf.getBranches(ownerName, repoName);
+		filelistSelf.updateSelectOptions(branch, branches, branches[0].name);
 	}
 
 	protected override onAfterAttach(msg: Message): void
@@ -191,8 +196,8 @@ export class FileListWidget extends Widget
 				this.bindDOMEvents();
 				const widgetHandle = getRegistryIdFromWidget(this);
 				const settingKey: string = getSettingFromRegistryId(widgetHandle);
-				const database = window.SettingsManager.get('github', 'environmentRepository');
-				const handle: FileSystemDirectoryHandle = (await window.getRecord(window.DB_STORE_NAME, '/' + settingKey, database))?.contents;
+				const database = filelistSelf.SettingsManager.get('github', 'environmentRepository');
+				const handle: FileSystemDirectoryHandle = (await filelistSelf.getRecord(filelistSelf.DB_STORE_NAME, '/' + settingKey, database))?.contents;
 				if(handle && await verifyPermission(handle))
 				{
 					this.handle = handle;
@@ -216,15 +221,15 @@ export class FileListWidget extends Widget
 			const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement).value;
 			const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement).value;
 			const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement).value;
-			window.open('https://github.com/' + owner + '/' + repo + '/tree/' + branch, '_blank');
+			filelistSelf.open('https://github.com/' + owner + '/' + repo + '/tree/' + branch, '_blank');
 		});
 		this.node.querySelector('[href="#new-folder"]')?.addEventListener('click', async (event) =>
 		{
 			event.preventDefault();
-			let handle: FileSystemDirectoryHandle;
+			let handle: FileSystemDirectoryHandle | undefined;
 			try
 			{
-				handle = await window.showDirectoryPicker({
+				handle = await filelistSelf.showDirectoryPicker?.({
 					mode: 'readwrite'
 				});
 			}
@@ -236,11 +241,11 @@ export class FileListWidget extends Widget
 			}
 			const widgetHandle = getRegistryIdFromWidget(this);
 			const settingKey: string = getSettingFromRegistryId(widgetHandle);
-			const database = window.SettingsManager.get('github', 'environmentRepository');
-			await window.ensureDatabaseContainer(database);
-			await window.putRecord(window.DB_STORE_NAME, {
+			const database = filelistSelf.SettingsManager.get('github', 'environmentRepository');
+			await filelistSelf.ensureDatabaseContainer(database);
+			await filelistSelf.putRecord(filelistSelf.DB_STORE_NAME, {
 				timestamp: new Date(),
-				mode: window.FS_FILE,
+				mode: filelistSelf.FS_FILE,
 				contents: handle,
 				path: '/' + settingKey,
 				parent: '/'
@@ -263,7 +268,7 @@ export class FileListWidget extends Widget
 		}
 
 		const repoSelect = this.node.querySelector('.filelist-repository') as HTMLSelectElement;
-		const pathRepo = window.location.pathname?.trim().replace(/\/$|^\//, '');
+		const pathRepo = filelistSelf.location.pathname?.trim().replace(/\/$|^\//, '');
 
 		if(pathRepo && pathRepo.length > 0)
 		{
@@ -303,21 +308,21 @@ export class FileListWidget extends Widget
 			// Scan root level items from local directory handle
 			const localEntries = await listDirectory(this.handle, '');
 
-			window.filesRepo[this.selector] = localEntries;
-			if(!window.filesRepo[database])
+			filelistSelf.filesRepo[this.selector] = localEntries;
+			if(!filelistSelf.filesRepo[database])
 			{
-				window.filesRepo[database] = {};
+				filelistSelf.filesRepo[database] = {};
 			}
 
-			const nodes = window.convertFlatToNested(Object.values(window.filesRepo[this.selector] ?? {}));
+			const nodes = filelistSelf.convertFlatToNested(Object.values(filelistSelf.filesRepo[this.selector] ?? {}));
 			for(let n of nodes)
 			{
 				n.id = database + '/' + n.id;
-				const isDir = n.mode ? (n.mode >> 12) & window.ST_DIR : false;
+				const isDir = n.mode ? (n.mode >> 12) & filelistSelf.ST_DIR : false;
 				n.children = isDir ? [{ text: 'Loading...', id: `${n.path}/loading`, path: `${n.path}/loading`, status: 0, state: { open: false, expanded: false } } as NestedTreeNode] : null;
 
-				window.filesRepo[database][n.path] = window.FS.virtual[n.path] = this.loadedDatabases[n.id] = Object.assign(n, {
-					mode: n.mode ?? window.FS_FILE,
+				filelistSelf.filesRepo[database][n.path] = filelistSelf.FS.virtual[n.path] = this.loadedDatabases[n.id] = Object.assign(n, {
+					mode: n.mode ?? filelistSelf.FS_FILE,
 				});
 			}
 
@@ -331,10 +336,10 @@ export class FileListWidget extends Widget
 			};
 		}
 
-		const activeTree = window.trees[this.selector];
+		const activeTree = filelistSelf.trees[this.selector];
 		if(!activeTree)
 		{
-			window.trees[this.selector] = window.trees[database] = new Tree(this.selector, {
+			filelistSelf.trees[this.selector] = filelistSelf.trees[database] = new Tree(this.selector, {
 				data: this.loadedDatabases[database].children,
 				autoOpen: false,
 				closeDepth: null
@@ -355,7 +360,7 @@ export class FileListWidget extends Widget
 		if(this.treeLoading) return;
 		if(folderId.endsWith('[Recursive]') || folderId.endsWith('/loading')) return;
 
-		const activeTree = window.trees[this.selector];
+		const activeTree = filelistSelf.trees[this.selector];
 		if(!activeTree || !activeTree.nodesById[folderId]) return;
 
 		if(!this.handle || !this.handleKey) return;
@@ -376,25 +381,25 @@ export class FileListWidget extends Widget
 		{
 			this.treeLoading = true;
 
-			if(!window.filesRepo[database])
+			if(!filelistSelf.filesRepo[database])
 			{
-				window.filesRepo[database] = {};
+				filelistSelf.filesRepo[database] = {};
 			}
 
 			// Resolve sub-directory handle and list its children
-			const targetDirHandle = await window.resolveDirectoryHandle(this.handle, relativeSegments);
+			const targetDirHandle = await filelistSelf.resolveDirectoryHandle(this.handle, relativeSegments);
 			const result = await listDirectory(targetDirHandle, baseDir);
 
-			const nodes = window.convertFlatToNested(Object.values(result ?? {}));
+			const nodes = filelistSelf.convertFlatToNested(Object.values(result ?? {}));
 			for(const r of nodes)
 			{
 				r.path = basePath + '/' + r.path;
-				window.filesRepo[database][r.path] = window.FS.virtual[r.path] = Object.assign(r, {
-					mode: r.mode ?? window.FS_FILE,
+				filelistSelf.filesRepo[database][r.path] = filelistSelf.FS.virtual[r.path] = Object.assign(r, {
+					mode: r.mode ?? filelistSelf.FS_FILE,
 				});
 			}
 
-			const resultSet = Object.values(window.filesRepo[database]).reduce((acc: Record<string, any>, r: any) =>
+			const resultSet = Object.values(filelistSelf.filesRepo[database]).reduce((acc: Record<string, any>, r: any) =>
 			{
 				acc[r.path] = r;
 				return acc;
@@ -418,7 +423,7 @@ export class FileListWidget extends Widget
 			const newChildren = childrenKeys.map(path =>
 			{
 				const node = resultSet[path];
-				const isDir = (node.mode >> 12) & window.ST_DIR;
+				const isDir = (node.mode >> 12) & filelistSelf.ST_DIR;
 				const name = path.split('/').pop() || path;
 
 				const newNode: NestedTreeNode = {
@@ -457,7 +462,7 @@ export class FileListWidget extends Widget
 				});
 			}
 
-			window.sortNodes(newChildren);
+			filelistSelf.sortNodes(newChildren);
 			this.loadedDatabases[folderId].children = activeTree.nodesById[folderId].children = newChildren;
 
 		} catch(err: any)
@@ -542,14 +547,14 @@ export class FileListWidget extends Widget
 }
 
 
-window.FileListWidget = FileListWidget;
+filelistSelf.FileListWidget = FileListWidget;
 
 
 export class GameListWidget extends FileListWidget
 {
 	public override get defaultRepository()
 	{
-		return window.SettingsManager.get('github', 'gameRepository');
+		return filelistSelf.SettingsManager.get('github', 'gameRepository');
 	}
 }
 
@@ -559,12 +564,12 @@ export async function loadFileTree(repoOwner: string, repoName: string, branch: 
 	try
 	{
 		const database = `${repoOwner}/${repoName}`;
-		window.filesRepo[selector] = await window.loadGitHubTree(repoOwner, repoName, branch);
+		filelistSelf.filesRepo[selector] = await filelistSelf.loadGitHubTree(repoOwner, repoName, branch);
 
-		if(!window.filesRepo[selector]) return;
+		if(!filelistSelf.filesRepo[selector]) return;
 
-		window.trees[selector] = window.trees[database] = new Tree(selector, {
-			data: window.convertFlatToNested(Object.values(window.filesRepo[selector])),
+		filelistSelf.trees[selector] = filelistSelf.trees[database] = new Tree(selector, {
+			data: filelistSelf.convertFlatToNested(Object.values(filelistSelf.filesRepo[selector])),
 			autoOpen: false,
 			closeDepth: 2,
 		});
@@ -574,7 +579,7 @@ export async function loadFileTree(repoOwner: string, repoName: string, branch: 
 	}
 }
 
-window.loadFileTree = loadFileTree;
+filelistSelf.loadFileTree = loadFileTree;
 
 
-window.GameListWidget = GameListWidget;
+filelistSelf.GameListWidget = GameListWidget;

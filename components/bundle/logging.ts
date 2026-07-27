@@ -1,66 +1,12 @@
-import type { AceSession } from "../editor/widget";
-import type { TerminalLogEntry, } from "../terminal/widget-types";
+/// <reference path="./logging.d.ts" />
+
 import type { TerminalWidget } from '../terminal/widget';
-import { DockPanel, Widget } from "@lumino/widgets";
-import { WorkerAPI } from './global.d';
+import type { SourceMetadata, ParsedStackFrame, CalleeInfo, LoggingWindow } from './logging.d';
 
-// --- GLOBAL TYPE DECLARATIONS ---
-declare global
-{
-	interface Window
-	{
-		mainDock: DockPanel;
-		lastInteractedWidget: Widget | null;
-		lineCount: number;
-		terminalLog: TerminalLogEntry[];
-		compilerDiagnostics?: {
-			log: (msg: string) => void;
-			clear: () => void;
-			getBridge: () => {
-				refreshActiveEditorView: (session: AceSession) => void;
-			};
-		};
-		terminalLoaded?: boolean;
-		terminalWrite?: typeof terminalWrite;
-		runningCommand?: boolean;
-		detachedConsole?: boolean;
-		alreadyWroteDetached?: boolean;
-		specialWrite(msg: string, source: SourceMetadata): void;
-		originalConsole: {
-			log: typeof console.log,
-			warn: typeof console.warn,
-			error: typeof console.error,
-			info: typeof console.info;
-		};
-	}
-
-}
+const loggingSelf: LoggingWindow = /** @type {any} */ (self);
 
 export const LINES_TO_SAVE = 1000;
 
-
-// --- TYPES & INTERFACES ---
-export type LogLevel = 'log' | 'warn' | 'error' | 'info';
-
-export type SourceMetadata = [
-	category: string,
-	...trailingFilesAndFunc: string[],
-	rawFileName: string,
-	rawFilePath: string
-];
-
-export interface ParsedStackFrame
-{
-	func: string;
-	file: string;
-}
-
-export type CalleeInfo = [
-	func: string,
-	trailingFiles: string[],
-	category: string,
-	rawFile: string
-];
 
 // --- CONSTANTS & CONFIGURATION ---
 const colors: Record<string, string> = {
@@ -75,7 +21,7 @@ const colors: Record<string, string> = {
 export const TOOLS_PREAMBLE = `${colors.info}[TOOLS]${colors.reset} `;
 export const WARN_PREAMBLE = `${colors.warn}[DETACHED]${colors.reset} `;
 
-let lineCount = 0;
+loggingSelf.lineCount = 0;
 let lastPartialLine = '';
 
 const PIPELINE_CATEGORIES: Record<string, string> = {
@@ -95,7 +41,7 @@ const originalConsole = {
 	info: console.info.bind(console)
 };
 
-window.originalConsole = originalConsole;
+loggingSelf.originalConsole = originalConsole;
 
 // --- CORE UTILITIES ---
 
@@ -382,11 +328,11 @@ export function terminalWrite(message: string, source?: SourceMetadata | string,
 
 	if(typeof window !== 'undefined')
 	{
-		window.lineCount = (window.lineCount || 0) + (message.match(/\n/g) || []).length;
+		loggingSelf.lineCount = (loggingSelf.lineCount || 0) + (message.match(/\n/g) || []).length;
 
-		if(window.compilerDiagnostics)
+		if(loggingSelf.compilerDiagnostics)
 		{
-			window.compilerDiagnostics.log(message);
+			loggingSelf.compilerDiagnostics.log(message);
 		}
 
 		if(!source || typeof source === 'string')
@@ -396,20 +342,20 @@ export function terminalWrite(message: string, source?: SourceMetadata | string,
 			source = [category, source ?? 'log', ...trailingFiles, func, rawFileName, rawFile];
 		}
 
-		if(window.terminalLog)
+		if(loggingSelf.terminalLog)
 		{
-			window.terminalLog.push({
+			loggingSelf.terminalLog.push({
 				render: render.includes('\n') ? forceLineWrap(render, 120) : '',
 				source: source,
 				text: message,
-				index: window.terminalLog.length,
-				line: lineCount
+				index: loggingSelf.terminalLog.length,
+				line: loggingSelf.lineCount
 			});
 
 			const MAX_CHARS = 1024 * 1024; // 1 MB limit (fits safely within localStorage limits)
 
 			// 1. Get up to LINES_TO_SAVE, working backwards from newest to oldest
-			const sourceLogs = window.terminalLog.slice(-LINES_TO_SAVE);
+			const sourceLogs = loggingSelf.terminalLog.slice(-LINES_TO_SAVE);
 			const stringifiedEntries: string[] = [];
 			let currentLength = 2; // For outer brackets '[' and ']'
 
@@ -445,17 +391,17 @@ export function terminalWrite(message: string, source?: SourceMetadata | string,
 		}
 	}
 
-	if(!window.mainDock)
+	if(!loggingSelf.mainDock)
 	{
 		return;
 	}
 
-	const terms = Array.from(window.mainDock.widgets()).filter(w => w.constructor.name === 'TerminalWidget') as TerminalWidget[];
+	const terms = Array.from(loggingSelf.mainDock.widgets()).filter(w => w.constructor.name === 'TerminalWidget') as TerminalWidget[];
 	if(terms.length > 0 && !skipActualWrite)
 	{
 		terms.forEach(term =>
 		{
-			if(window.lastInteractedWidget === term
+			if(loggingSelf.lastInteractedWidget === term
 				|| term.filterId === source || source?.includes(term.filterId))
 			{
 				term.currentTerminalCtx?.term.write(message);
@@ -464,7 +410,7 @@ export function terminalWrite(message: string, source?: SourceMetadata | string,
 	}
 }
 
-window.terminalWrite = terminalWrite;
+loggingSelf.terminalWrite = terminalWrite;
 
 export function specialWrite(msg: string, source: SourceMetadata): void
 {
@@ -472,17 +418,17 @@ export function specialWrite(msg: string, source: SourceMetadata): void
 
 	if(msg.includes('Array "[Circular]"')) debugger;
 
-	if(msg.includes('q3lcc -v') && typeof window !== 'undefined' && window.compilerDiagnostics)
+	if(msg.includes('q3lcc -v') && typeof window !== 'undefined' && loggingSelf.compilerDiagnostics)
 	{
-		window.compilerDiagnostics.clear();
+		loggingSelf.compilerDiagnostics.clear();
 	}
 
-	if(typeof window !== 'undefined' && !window.runningCommand)
+	if(typeof window !== 'undefined' && !loggingSelf.runningCommand)
 	{
-		window.runningCommand = true;
-		if(!window.detachedConsole && !window.alreadyWroteDetached)
+		loggingSelf.runningCommand = true;
+		if(!loggingSelf.detachedConsole && !loggingSelf.alreadyWroteDetached)
 		{
-			window.detachedConsole = true;
+			loggingSelf.detachedConsole = true;
 			debugger;
 			console.warn('\n\rDetached console, awaiting terminate...');
 		}
@@ -493,14 +439,14 @@ export function specialWrite(msg: string, source: SourceMetadata): void
 	{
 		skipTerminal = true;
 	}
-	if(!skipTerminal && typeof window !== 'undefined' && window.terminalWrite)
+	if(!skipTerminal && typeof window !== 'undefined' && terminalWrite)
 	{
-		window.terminalWrite(msg, source);
+		terminalWrite(msg, source);
 	}
 }
 
 
-window.specialWrite = specialWrite;
+loggingSelf.specialWrite = specialWrite;
 
 
 // --- CONSOLE INTERCEPTION INITIALIZER ---
@@ -516,7 +462,7 @@ export function initConsoleIntercept(): void
 		const rawFileName = rawFile.split('/').pop()?.replace(/\.(js|ts)$/, '') || '';
 		const source: SourceMetadata = [category, 'log', ...trailingFiles, func, rawFileName, rawFile];
 
-		if(typeof window !== 'undefined' && window.terminalWrite) window.terminalWrite(formatted, source);
+		if(typeof window !== 'undefined' && terminalWrite) terminalWrite(formatted, source);
 		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
 		originalConsole.log(...args);
 	};
@@ -528,7 +474,7 @@ export function initConsoleIntercept(): void
 		const rawFileName = rawFile.split('/').pop()?.replace(/\.(js|ts)$/, '') || '';
 		const source: SourceMetadata = [category, 'warn', ...trailingFiles, func, rawFileName, rawFile];
 
-		if(typeof window !== 'undefined' && window.terminalWrite) window.terminalWrite(formatted, source);
+		if(typeof window !== 'undefined' && terminalWrite) terminalWrite(formatted, source);
 		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
 		originalConsole.warn(...args);
 	};
@@ -540,7 +486,7 @@ export function initConsoleIntercept(): void
 		const rawFileName = rawFile.split('/').pop()?.replace(/\.(js|ts)$/, '') || '';
 		const source: SourceMetadata = [category, 'error', ...trailingFiles, func, rawFileName, rawFile];
 
-		if(typeof window !== 'undefined' && window.terminalWrite) window.terminalWrite(formatted, source);
+		if(typeof window !== 'undefined' && terminalWrite) terminalWrite(formatted, source);
 		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
 		originalConsole.error(...args);
 	};
@@ -552,7 +498,7 @@ export function initConsoleIntercept(): void
 		const rawFileName = rawFile.split('/').pop()?.replace(/\.(js|ts)$/, '') || '';
 		const source: SourceMetadata = [category, 'info', ...trailingFiles, func, rawFileName, rawFile];
 
-		if(typeof window !== 'undefined' && window.terminalWrite) window.terminalWrite(formatted, source);
+		if(typeof window !== 'undefined' && terminalWrite) terminalWrite(formatted, source);
 		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
 		originalConsole.info(...args);
 	};

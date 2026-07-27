@@ -1,6 +1,9 @@
 
 /// <reference path="../bundle/global.d.ts" />
 
+/// <reference path="../bundle/global-shared.d.ts" />
+
+
 
 async function buildCommand(argv, database)
 {
@@ -110,7 +113,7 @@ async function buildCommand(argv, database)
 
 	if(selected === self.engineRepository) // TODO: || file.includes('code/') && !file.includes('code/'))
 	{
-		await self.downloadHeaders(q3eCommonHeaders, 10, mode === 'all' ? self.engineRepository : selected);
+		await downloadHeaders(q3eCommonHeaders, 10, mode === 'all' ? self.engineRepository : selected);
 	}
 
 	needsHeaders = false;
@@ -119,7 +122,7 @@ async function buildCommand(argv, database)
 	if(TERMINATE) return;
 
 	if(mode === 'stringify' || mode === 'all')
-		await self.buildStringify(mode === 'all' ? self.engineRepository : selected, false, true);
+		await buildStringify(mode === 'all' ? self.engineRepository : selected, false, true);
 
 	if(TERMINATE) return;
 	if(mode === 'shaders')
@@ -695,7 +698,7 @@ async function lburg(argv, database)
 	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 
-	if(!files.selected)
+	if(!self.filesRepo[selected])
 	{
 		let branch = await self.getDefaultBranch(ownerName, repoName);
 		await self.loadGitHubTree(ownerName, repoName, branch);
@@ -737,7 +740,7 @@ async function lburg(argv, database)
 
 async function lcc(argv)
 {
-	return commands['clang'](argv);
+	return self.COMMAND_SCHEMA['clang'].execute?.(argv);
 }
 
 

@@ -1,3 +1,6 @@
+
+/// <reference path="../bundle/global.d.ts" />
+
 /*
  * Copyright 2020 WebAssembly Community Group participants
  *
@@ -67,7 +70,7 @@ if(typeof needsHeaders === 'undefined')
 	needsHeaders = true;
 }
 
-const API = (function ()
+self.API = (function ()
 {
 
 	class ProcExit extends Error
