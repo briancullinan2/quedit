@@ -1,5 +1,9 @@
 class LanguageAPI
 {
+
+	database = null;
+	github_token = null;
+
 	constructor(options)
 	{
 		this.nextResponseId = 0;
@@ -186,16 +190,16 @@ class WorkerAPI
 
 	inject(options)
 	{
-		let currentConfig = options.configuration || configuration.value || this.configuration || 'release';
+		let currentConfig = options.configuration || window.SettingsToolbar?.configuration?.value || this.configuration || 'release';
 		this.configuration = options.configuration = currentConfig === 'debug' ? 'debug' : 'release';
-		this.database = options.database = options.database || engineRepository || this.database;
+		this.database = options.database = options.database || self.engineRepository || this.database;
 		this.width = options.width = options.width = window.mostRecentTerminalCols || 120;
 		this.github_token = options.github_token = options.github_token = this.github_token;
-		this.toolsRepo = options.toolsRepo = options.toolsRepo || toolsRepository || this.toolsRepo;
-		this.toolsRepo2 = options.toolsRepo2 = options.toolsRepo2 || tools2Repository || this.toolsRepo2;
-		this.engineRepo = options.engineRepo = options.engineRepo || engineRepository || this.engineRepo;
-		this.gameRepo = options.gameRepo = options.gameRepo || gameRepository || this.gameRepo;
-		this.assetRepo = options.assetRepo = options.assetRepo || assetRepository || this.assetRepo;
+		this.toolsRepo = options.toolsRepo = options.toolsRepo || self.toolsRepository || this.toolsRepo;
+		this.toolsRepo2 = options.toolsRepo2 = options.toolsRepo2 || self.tools2Repository || this.toolsRepo2;
+		this.engineRepo = options.engineRepo = options.engineRepo || self.engineRepository || this.engineRepo;
+		this.gameRepo = options.gameRepo = options.gameRepo || self.gameRepository || this.gameRepo;
+		this.assetRepo = options.assetRepo = options.assetRepo || self.assetRepository || this.assetRepo;
 	}
 
 
@@ -265,7 +269,7 @@ class WorkerAPI
 	async build(database, action = 'all')
 	{
 		let options = {
-			database: database || owner.value + '/' + repository.value || this.database,
+			database: database || this.database || (self.RepositoryToolbar?.owner?.value + '/' + self.RepositoryToolbar?.repository?.value),
 			action,
 		};
 		this.inject(options);
@@ -346,8 +350,7 @@ const language = new LanguageAPI({
 	hostWrite: window.specialWrite
 });
 
-const api = new WorkerAPI({
+self.api = new WorkerAPI({
 	hostWrite: window.specialWrite
 });
-window.api = api;
-window.api.github_token = window.githubToken;
+self.api.github_token = window.githubToken;

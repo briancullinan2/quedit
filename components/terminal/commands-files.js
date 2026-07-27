@@ -2,15 +2,15 @@
 
 async function ls(argv, database)
 {
-	let selected = toolsRepository || database;
+	let selected = window.toolsRepository || database;
 	const parts = selected.split('/');
 	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 
-	if(!filesRepo[selected])
+	if(!window.filesRepo[selected])
 	{
-		let branch = await getDefaultBranch(ownerName, repoName);
-		await loadGitHubTree(ownerName, repoName, branch);
+		let branch = await window.getDefaultBranch(ownerName, repoName);
+		await window.loadGitHubTree(ownerName, repoName, branch);
 	}
 
 	const flags = {
@@ -20,10 +20,14 @@ async function ls(argv, database)
 	};
 
 	// Assuming FS.virtual.readdir returns objects with {name, size, type}
-	const entries = Object.values(FS.virtual)
-		.concat(Object.values(filesRepo[selected] || {}) || [])
+	const entries = Object.values(window.FS.virtual)
+		.concat(Object.values(window.filesRepo[selected] || {}) || [])
 		.filter(p =>
 		{
+			if(!p)
+			{
+				return false;
+			}
 			if(!p.path)
 			{
 				debugger;

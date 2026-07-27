@@ -22,6 +22,7 @@ declare global
 	interface Window
 	{
 		statusBar: StatusBarWidget;
+		previousHashLineNumber?: number | null;
 	}
 }
 
@@ -215,13 +216,12 @@ export class AceEventManager
 	private _onMouseUp = (): void =>
 	{
 		const hasClass = document.body.classList.contains('dragging');
-		const isModifierPressed = (this._widget as any).isModifierPressed ?? false;
 
-		if(!isModifierPressed && hasClass)
+		if(!window.isModifierPressed && hasClass)
 		{
 			document.body.classList.remove('dragging');
 		}
-		if(isModifierPressed && !hasClass)
+		if(window.isModifierPressed && !hasClass)
 		{
 			document.body.classList.add('dragging');
 		}

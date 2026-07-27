@@ -11,17 +11,12 @@ import
 	ST_FILE
 } from "./local";
 
-declare const api: any;
-declare const JSZip: any;
-declare const Tree: any;
-
 declare global
 {
 	interface Window
 	{
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
 		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
-		loadFileTree: (repoOwner: string, repoName: string, branch: string, selector: string) => Promise<void>;
 		cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload?: boolean) => Promise<any>;
 		sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[];
 	}
@@ -216,28 +211,6 @@ export async function cacheFileInternal(storeName: string, repoOwner: string, re
 
 
 
-export async function loadFileTree(repoOwner: string, repoName: string, branch: string, selector: string): Promise<void>
-{
-	try
-	{
-		const database = `${repoOwner}/${repoName}`;
-		filesRepo[selector] = await loadGitHubTree(repoOwner, repoName, branch);
-
-		if(!filesRepo[selector]) return;
-
-		trees[selector] = trees[database] = new Tree(selector, {
-			data: convertFlatToNested(Object.values(filesRepo[selector])),
-			autoOpen: false,
-			closeDepth: 2,
-		});
-	} catch(error)
-	{
-		console.error('Failed to load file list tree:', error);
-	}
-}
-
-window.loadFileTree = loadFileTree;
-
 export async function getAuthenticatedUser(): Promise<any>
 {
 	const token = SettingsManager.get('github', 'githubToken');
@@ -273,7 +246,7 @@ export async function getAuthenticatedUser(): Promise<any>
 export interface FlatFileNode
 {
 	path: string;
-	sha?: string;
+	sha?: string | null;
 	type?: 'blob' | 'tree' | string;
 	mode?: number | string;
 	[key: string]: any;
@@ -291,7 +264,7 @@ export interface NestedTreeNode
 	path: string;
 	mode?: number;
 	parent?: string;
-	sha?: string;
+	sha?: string | null;
 	children?: NestedTreeNode[] | null | undefined;
 }
 

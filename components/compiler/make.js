@@ -471,24 +471,24 @@ function generateFallbackC(fileName, content)
 function BUILDCFLAGS(CONFIGURATION)
 {
 	if(!CONFIGURATION)
-		CONFIGURATION = api.configuration == 'release'
+		CONFIGURATION = api?.configuration === 'release'
 			? dirs.ENGINE_RELEASE
 			: dirs.ENGINE_DEBUG;
 
-	let DEBUG_CFLAGS = api.configuration != 'debug'
+	let DEBUG_CFLAGS = api?.configuration != 'debug'
 		? ['-DNDEBUG', '-O3', '-ffast-math']
 		: ['-DDEBUG', '-D_DEBUG', /* '-g',*/ '-O0'];
 
-	let PRE = api.configuration == 'pre'
+	let PRE = api?.configuration === 'pre'
 		? ['-E', '-P']
-		: api.configuration == 'analyze'
+		: api?.configuration === 'analyze'
 			? ['--analyze']
-			: api.configuration == 'sanitize'
+			: api?.configuration === 'sanitize'
 				? ['-fsanitize=address']
 				: [];
 
 	PRE = PRE.concat([
-		'-fmessage-length', '' + (api.width || '80')
+		'-fmessage-length', '' + (api?.width || '80')
 	]);
 
 	return [...DEBUG_CFLAGS, ...PRE];
@@ -497,7 +497,7 @@ function BUILDCFLAGS(CONFIGURATION)
 
 
 /**
- * @param {string | null} database
+ * @param {string | null | undefined} database
  **/
 async function buildStringify(database = null, forceChanged = false, noLinking = false)
 {
@@ -505,7 +505,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 
 	let DEBUG_CFLAGS = BUILDCFLAGS();
 
-	if(!database) database = self.toolsRepository || api.database;
+	if(!database) database = self.toolsRepository || api?.database;
 	const parts = database?.split('/');
 	const ownerName = parts?.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
 	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || self.RepositoryToolbar?.repository?.value;
@@ -516,7 +516,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 		await downloadHeaders(q3eCommonHeaders, 10, database);
 	}
 
-	let CONFIGURATION = api.configuration == 'release'
+	let CONFIGURATION = api?.configuration === 'release'
 		? dirs.ENGINE_RELEASE
 		: dirs.ENGINE_DEBUG;
 	//await api.upload(database)
@@ -549,7 +549,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 
 	try
 	{
-		await api.compile({
+		await api?.compile({
 			CFLAGS: [
 				'-cc1', '-triple', 'wasm32-wasi',
 				'-emit-obj',
@@ -559,7 +559,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 				'-internal-isystem', '/lib/clang/8.0.1/include',
 				"-std=gnu11",
 				...DEBUG_CFLAGS,
-				...(api.configuration == 'pre' ? [
+				...(api?.configuration === 'pre' ? [
 					'-o', obj.replace('.o', '.a'),
 				] : ['-o', obj]),
 				stringify
@@ -586,14 +586,14 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 
 
 /**
- * @param {string | null} database
+ * @param {string | null | undefined} database
  **/
 async function linkStringify(database = null, forceChanged = false, noBuild = false)
 {
 
-	if(!database) database = api.database;
+	if(!database) database = api?.database;
 
-	let CONFIGURATION = api.configuration == 'release'
+	let CONFIGURATION = api?.configuration == 'release'
 		? dirs.ENGINE_RELEASE
 		: dirs.ENGINE_DEBUG;
 
@@ -622,7 +622,7 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 
 	try
 	{
-		await api.link({
+		await api?.link({
 			LDFLAGS: [
 				...toolLdFlags,
 				CONFIGURATION + '/stringify.o',
@@ -692,7 +692,7 @@ function mkdirp(path, database)
 
 		try
 		{
-			if(api.memfs)
+			if(api?.memfs)
 			{
 				api.memfs.mem.check();
 				api.memfs.mkdirp(accumulated);
@@ -729,10 +729,10 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 	if(makeDirs && !self.FS.virtual[database])
 		mkdirp(database, database);
 
-	if(api.memfs)
+	if(api?.memfs)
 	{
-		await api.ready;
-		api.memfs.mem.check();
+		await api?.ready;
+		api?.memfs.mem.check();
 		try
 		{
 			api.memfs.mkdirp(config.TEMPDIR);
@@ -785,7 +785,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 	{
 		if(!loadedDirectories.includes(buildDir) && makeDirs)
 		{
-			console.log(`Loading index (${api.worker ? 'frontend' : 'worker'}): ${buildDir}`);
+			console.log(`Loading index (${api?.worker ? 'frontend' : 'worker'}): ${buildDir}`);
 			loadedDirectories.push(buildDir);
 			if(makeDirs)
 				mkdirp(buildDir, database);
@@ -799,13 +799,13 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 			|| !self.FS.virtual[virtualFile].contents
 			|| self.FS.virtual[virtualFile].contents.length === 0) && makeDirs /* only load github if its a controlled file */)
 		{
-			console.log(`Loading IDB/Github (${api.worker ? 'frontend' : 'worker'}): ${file}`);
+			console.log(`Loading IDB/Github (${api?.worker ? 'frontend' : 'worker'}): ${file}`);
 			await self.cacheFile(DB_STORE_NAME, ownerName, repoName, file, void 0, makeDirs);
 		}
 
 		if(self.FS.virtual[virtualFile] && (self.FS.virtual[virtualFile].mode >> 12) === self.ST_FILE)
 		{
-			if(api.memfs)
+			if(api?.memfs)
 			{
 				if(!api.memfs.exists(file))
 				{
@@ -821,7 +821,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 
 	} else
 	{
-		if(api.memfs)
+		if(api?.memfs)
 		{
 			if((self.FS.virtual[virtualFile].mode >> 12) === self.ST_DIR)
 			{
@@ -833,12 +833,12 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 				api.memfs.addFile(file, self.FS.virtual[virtualFile].contents);
 			}
 		}
-		console.log(`Already have contents (${api.worker ? 'frontend' : 'worker'}): ${file}`);
+		console.log(`Already have contents (${api?.worker ? 'frontend' : 'worker'}): ${file}`);
 	}
 
 	try
 	{
-		if(api.memfs && makeDirs && self.FS.virtual[virtualFile] && self.FS.virtual[virtualFile].contents)
+		if(api?.memfs && makeDirs && self.FS.virtual[virtualFile] && self.FS.virtual[virtualFile].contents)
 		{
 			if((self.FS.virtual[virtualFile].mode >> 12) === self.ST_DIR)
 			{
@@ -854,7 +854,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 	{
 		if(e instanceof Error)
 		{
-			console.log(`(${api.worker ? 'frontend' : 'worker'}) ${e.message}\n\r${e.stack}`);
+			console.log(`(${api?.worker ? 'frontend' : 'worker'}) ${e.message}\n\r${e.stack}`);
 		}
 	}
 
@@ -864,7 +864,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 	{
 		if(!loadedDirectories.includes(outDir) && makeDirs)
 		{
-			console.log(`Loading index output (${api.worker ? 'frontend' : 'worker'}): ${outDir}`);
+			console.log(`Loading index output (${api?.worker ? 'frontend' : 'worker'}): ${outDir}`);
 			if(makeDirs)
 			{
 				mkdirp(outDir, database);
@@ -878,11 +878,11 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 		// don't load object files from github
 		if(!self.FS.virtual[virtualObj])
 		{
-			console.log(`Loading IDB output (${api.worker ? 'frontend' : 'worker'}): ${obj}`);
+			console.log(`Loading IDB output (${api?.worker ? 'frontend' : 'worker'}): ${obj}`);
 			self.FS.virtual[virtualObj] = await getRecord(DB_STORE_NAME, obj, database);
 		} else
 		{
-			console.log(`Already have object (${api.worker ? 'frontend' : 'worker'}): ${file}`);
+			console.log(`Already have object (${api?.worker ? 'frontend' : 'worker'}): ${file}`);
 		}
 		//if (api.memfs && !api.memfs.exists(obj) && FS.virtual[file])
 		//    api.memfs.addFile(obj, FS.virtual[obj].contents)
@@ -897,7 +897,7 @@ let building = false;
 let buildDebounce = null;
 
 /**
- * @param {string | null} database
+ * @param {string | null | undefined} database
  **/
 async function buildClient(database = null, forceChanged = false, noLinking = false, noBounce = false)
 {
@@ -923,7 +923,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 		// TODO: publish binaryen zero-filled, zip, download uri
 
 
-		if(!api.github_token)
+		if(!api?.github_token)
 			return alert("Must enter Github token first by clicking the doorway on the left.");
 
 
@@ -942,9 +942,9 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 		let DEBUG_CFLAGS = BUILDCFLAGS();
 
-		if(!database) database = self.engineRepository || api.database;
+		if(!database) database = self.engineRepository || api?.database;
 
-		let CONFIGURATION = api.configuration == 'release'
+		let CONFIGURATION = api?.configuration === 'release'
 			? dirs.ENGINE_RELEASE
 			: dirs.ENGINE_DEBUG;
 
@@ -1001,7 +1001,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 				let CCFLAGS = [
 					...CFLAGS,
 					...DEBUG_CFLAGS,
-					...(api.configuration == 'pre' ? [
+					...(api?.configuration === 'pre' ? [
 						'-o', obj.replace('.o', '.a')
 					] : ['-o', obj]),
 					file
@@ -1056,14 +1056,14 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 
 /**
- * @param {string | null} database
+ * @param {string | null | undefined} database
  **/
 async function linkEngine(database = null, forceChanged = true, noBuild = false)
 {
-	if(!database) database = api.database;
+	if(!database) database = api?.database;
 
 
-	let CONFIGURATION = api.configuration == 'release'
+	let CONFIGURATION = api?.configuration === 'release'
 		? dirs.ENGINE_RELEASE
 		: dirs.ENGINE_DEBUG;
 
@@ -1099,7 +1099,7 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 
 	try
 	{
-		await api.link({
+		await api?.link({
 			LDFLAGS: [
 				...LDFLAGS,
 				...clientObjs,
@@ -1128,12 +1128,12 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 
 
 /**
- * @param {string | null} database
+ * @param {string | null | undefined} database
  **/
 async function buildShaders(database = null, forceChanged = false)
 {
 
-	if(!database) database = self.engineRepository || api.database;
+	if(!database) database = self.engineRepository || api?.database;
 
 	if(needsHeaders)
 	{
@@ -1141,7 +1141,7 @@ async function buildShaders(database = null, forceChanged = false)
 		await downloadHeaders(q3eCommonHeaders, 10, database);
 	}
 
-	let CONFIGURATION = api.configuration == 'release'
+	let CONFIGURATION = api?.configuration === 'release'
 		? dirs.ENGINE_RELEASE
 		: dirs.ENGINE_DEBUG;
 
@@ -1188,7 +1188,7 @@ async function buildShaders(database = null, forceChanged = false)
 
 			console.log(`CC: ${shader}`);
 
-			await api.compile({
+			await api?.compile({
 				CFLAGS: [
 					...CFLAGS,
 					...DEBUG_CFLAGS,
@@ -1217,13 +1217,13 @@ async function buildShaders(database = null, forceChanged = false)
 
 
 /**
- * @param {string | null} database
+ * @param {string | null | undefined} database
  **/
 async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = null)
 {
 	if(!database)
 	{
-		database = self.engineRepository || api.database;
+		database = self.engineRepository || api?.database;
 	}
 	if(!database)
 	{
@@ -1300,7 +1300,7 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 
 
 
-				await api.header(ownerName, repoName, header, database);
+				await api?.header(ownerName, repoName, header, database);
 			} catch(e)
 			{
 				if(e instanceof Error)

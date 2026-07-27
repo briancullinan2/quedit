@@ -43,6 +43,7 @@ declare global
 		tabsMenu: Menu;
 		MODULE_REGISTRY: Record<string, ComponentRoute>;
 		TERMINAL_REGISTRY: TerminalFilter[];
+		previousHashLineNumber?: number | null;
 	}
 }
 
@@ -627,7 +628,7 @@ export async function renderHashCommand(targetHashName: string, noBounce: boolea
 	{
 		const [filePath, selected, dbFile, lineNumber] = await FileManager.findFileTestPath(rawTarget);
 
-		(window as any).previousHashLineNumber = lineNumber;
+		window.previousHashLineNumber = lineNumber;
 
 		const targetPath = filePath || selected;
 		if(targetPath && typeof (window as any).navigateFile === 'function')

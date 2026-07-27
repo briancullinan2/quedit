@@ -1,3 +1,4 @@
+/// <reference path="../bundle/global.d.ts" />
 
 const LINES_TO_SAVE = 1000;
 
@@ -536,12 +537,12 @@ async function handleCommand(input, term)
 
 	if(window.api)
 	{
-		api.configuration = configuration.value === 'debug' ? 'debug' : 'release';
+		window.api.configuration = window.SettingsToolbar?.configuration?.value === 'debug' ? 'debug' : 'release';
 	}
 
 	if(tokens.length === 0) return;
 
-	if(!runningCommand)
+	if(!window.runningCommand)
 	{
 		window.TERMINATE = false;
 		window.alreadyWroteDetached = false;
@@ -569,7 +570,7 @@ async function handleCommand(input, term)
 			{
 				if(window.MODULE_REGISTRY[importFirst])
 				{
-					await triggerPanelRoute(importFirst, window.mainDock, true);
+					await window.triggerPanelRoute(importFirst, window.mainDock, true);
 				} else if(importFirst === 'build')
 				{
 					for(let src of window.BUILD_SCRIPTS)
@@ -607,7 +608,7 @@ async function handleCommand(input, term)
 async function hello(argv)
 {
 	const name = argv[0] || 'User';
-	let user = (await getAuthenticatedUser())?.login;
+	let user = (await window.getAuthenticatedUser())?.login;
 	terminalWrite(`Hello, ${user || name}!\n\r`);
 }
 

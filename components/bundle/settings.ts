@@ -31,7 +31,7 @@ declare global
 		engineRepository?: string | undefined | null;
 		AceEditorWidget: typeof AceEditorWidget;
 		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
-		[key: string]: any;
+		//[key: string]: any;
 	}
 }
 

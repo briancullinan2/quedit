@@ -61,194 +61,18 @@ function debounceLazy(f, ms)
 }
 
 
-function getCalleeInfoFromStackTrace()
+
+if(typeof needsHeaders === 'undefined')
 {
-	try
-	{
-		throw new Error();
-	} catch(error)
-	{
-		if(!error.stack) return ['unknown', [], 'unknown'];
-		const stackLines = error.stack.split('\n');
-
-		const parseLine = (line) =>
-		{
-			let match = line.match(/at\s+([^\s(]+)\s+\((.+):[0-9]+:[0-9]+\)/);
-			if(match) return { func: match[1], file: match[2] };
-
-			match = line.match(/at\s+(.+):[0-9]+:[0-9]+/);
-			if(match) return { func: 'global', file: match[1] };
-
-			return null;
-		};
-
-		// Identify internal logger context dynamically (e.g., logging.js)
-		let currentFile = null;
-		for(let i = 0; i < stackLines.length; i++)
-		{
-			const parsed = parseLine(stackLines[i]);
-			if(parsed)
-			{
-				currentFile = parsed.file;
-				break;
-			}
-		}
-
-		let immediateCalleeFunc = null;
-		let immediateCalleeFile = null;
-		const trailingFiles = [];
-		const uniqueNames = new Set();
-
-		// Scan the entire call stack structure
-		for(let i = 0; i < stackLines.length; i++)
-		{
-			const parsed = parseLine(stackLines[i]);
-			if(!parsed) continue;
-
-			// Skip internal wrapper functions inside the logging script itself
-			if(parsed.file === currentFile) continue;
-
-			// The first file we hit outside of logging.js is our immediate caller
-			if(!immediateCalleeFunc)
-			{
-				immediateCalleeFunc = parsed.func;
-				immediateCalleeFile = parsed.file;
-			}
-
-			// Isolate clean script names (e.g., "file:///path/make.js" -> "make")
-			const scriptName = parsed.file.split('/').pop().replace('.js', '');
-
-			if(!uniqueNames.has(scriptName))
-			{
-				uniqueNames.add(scriptName);
-				trailingFiles.push(scriptName);
-			}
-		}
-
-		return [
-			immediateCalleeFunc || 'global',
-			trailingFiles,
-			immediateCalleeFile || 'unknown'
-		];
-	}
+	needsHeaders = true;
 }
-
-
-
-function formatMessageItem(arg)
-{
-	if(typeof arg === 'string')
-	{
-		return arg.trim();
-	}
-
-	if(arg instanceof Error)
-	{
-		return `${arg.name}: ${arg.message}\n\r${arg.stack || ''}\n\r[Context State Dump]:\n\r${rebuildComplexObjectAsText(arg)}`;
-	}
-
-	if(typeof arg === 'object' && arg !== null)
-	{
-		if(Object.keys(arg).length === 0)
-		{
-			return (arg.name || arg.constructor.name || typeof arg) + ' ' + '{empty}';
-		}
-
-		// Try the fast track native path first
-		try
-		{
-			const stringifyCache = new Set();
-			return (arg.name || arg.constructor.name || typeof arg) + ' ' + JSON.stringify(arg, (key, value) =>
-			{
-				if(typeof value === 'object' && value !== null)
-				{
-					if(stringifyCache.has(value)) return '[Circular]';
-					stringifyCache.add(value);
-				}
-				return value;
-			}, 4);
-		} catch(jsonCrash)
-		{
-			// ─── DYNAMIC AUTOMATIC RECOVERY FALLBACK ───
-			// If the object contained hidden internal native toJSON hooks that crashed,
-			// or had complex un-scannable structures, manually rebuild it safely.
-			return `[Rebuilt Object Asset Dump due to serialization crash: ${jsonCrash.message}]\n` + rebuildComplexObjectAsText(arg);
-		}
-	}
-
-	return String(arg);
-}
-
-const formatMessage = (level, args) =>
-{
-	const timestamp = new Date().toLocaleTimeString();
-	const processed = args.map(formatMessageItem);
-	return `${processed.join('\n\r')}\r\n`;
-};
-
-
-
-const originalConsole = {
-	log: console.log,
-	warn: console.warn,
-	error: console.error,
-	info: console.info
-};
-
-self.console.log = (...args) =>
-{
-	const formatted = formatMessage('log', args);
-	const [func, trailingFiles, rawFile] = getCalleeInfoFromStackTrace();
-	const source = ['log', ...trailingFiles, func,
-		rawFile.split('/').pop().replace('.js', ''), rawFile
-	];
-	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
-	if(typeof originalConsole != 'undefined') originalConsole.log(...args);
-};
-
-self.console.warn = (...args) =>
-{
-	const formatted = formatMessage('warn', args);
-	const [func, trailingFiles, rawFile] = getCalleeInfoFromStackTrace();
-	const source = ['warn', ...trailingFiles, func,
-		rawFile.split('/').pop().replace('.js', ''), rawFile
-	];
-	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
-	if(typeof originalConsole != 'undefined') originalConsole.warn(...args);
-};
-
-self.console.error = (...args) =>
-{
-	const formatted = formatMessage('error', args);
-	const [func, trailingFiles, rawFile] = getCalleeInfoFromStackTrace();
-	const source = ['error', ...trailingFiles, func,
-		rawFile.split('/').pop().replace('.js', ''), rawFile
-	];
-	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
-	if(typeof originalConsole != 'undefined') originalConsole.error(...args);
-};
-
-self.console.info = (...args) =>
-{
-	const formatted = formatMessage('info', args);
-	const [func, trailingFiles, rawFile] = getCalleeInfoFromStackTrace();
-	const source = ['info', ...trailingFiles, func,
-		rawFile.split('/').pop().replace('.js', ''), rawFile
-	];
-	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
-	if(typeof originalConsole != 'undefined') originalConsole.info(...args);
-};
-
-
-
-if(!self.needsHeaders)
-	self.needsHeaders = true;
 
 const API = (function ()
 {
 
 	class ProcExit extends Error
 	{
+		code = 0;
 		constructor(code)
 		{
 			super(`process exited with code ${code}.`);
@@ -293,6 +117,12 @@ const API = (function ()
 		return WebAssembly.instantiate(module, imports);
 	}
 
+	/**
+	 *
+	 * @param {*} obj
+	 * @param {*} names
+	 * @returns {any}
+	 */
 	function getImportObject(obj, names)
 	{
 		const result = {};
@@ -383,7 +213,7 @@ const API = (function ()
 				this, ['abort', 'host_write', 'host_read', 'memfs_log', 'copy_in', 'copy_out']);
 
 			this.ready = api.getModule(this.memfsFilename)
-				.then(module => WebAssembly.instantiate(module, { env }))
+				.then(module => WebAssembly.instantiate(module, { env: env }))
 				.then(instance =>
 				{
 					this.instance = instance;
@@ -639,7 +469,7 @@ const API = (function ()
 				throw new Error("Scratch buffer too small for readdir");
 			}
 
-			const entries = this.directoryList(dirFd, scratchPtr, scratchLen);
+			const entries = this.directoryList(dirFd); //, scratchPtr, scratchLen);
 
 			for(const entry of entries)
 			{
@@ -672,7 +502,7 @@ const API = (function ()
 					{
 						const subDirFd = new DataView(this.exports.memory.buffer).getUint32(resultFdPtr, true);
 
-						await recursiveDir(subDirFd, fullPath);
+						await this.recursiveDir(subDirFd, fullPath);
 						this.exports.fd_close(subDirFd);
 					}
 				} else
@@ -765,9 +595,9 @@ const API = (function ()
 		{
 			this.mem.check();
 			let message = this.mem.readStr(buf, len);
-			if(typeof originalConsole !== 'undefined')
-				originalConsole.warn(message);
-			api.hostWrite(formatMessage('memfs', [message]));
+			if(typeof self.originalConsole !== 'undefined')
+				self.originalConsole.warn(message);
+			api?.hostWrite?.(message);
 		}
 
 		/*
@@ -890,7 +720,7 @@ const API = (function ()
 			this.allowRequestAnimationFrame = true;
 			this.handles = new Map();
 			this.nextHandle = 0;
-			Module.database = this.api.database;
+			Module.database = this.api?.database;
 
 			const env = getImportObject(this, [
 				'canvas_arc',
@@ -960,7 +790,7 @@ const API = (function ()
 			}
 			let needMemfs = module.name.includes('lld') || module.name.includes('clang');
 
-			if(!FS.pointers[0] || !FS.pointers[0][2])
+			if(!self.FS.pointers[0] || !self.FS.pointers[0][2])
 			{
 				debugger;
 			}
@@ -1053,10 +883,8 @@ const API = (function ()
 
 			this.instance = instance;
 
-
-
-			this.exports = this.instance.exports;
-			if(this.exports.memory)
+			this.exports = this.instance?.exports;
+			if(this.exports?.memory)
 			{
 				this.mem = new Memory(this.exports.memory);
 				ENV.memory = this.exports.memory;
@@ -1065,11 +893,11 @@ const API = (function ()
 			{
 				this.api.memfs.hostMem = this.mem;
 			}
-			if(this.exports.__indirect_function_table)
+			if(this.exports?.__indirect_function_table)
 			{
 				this.table = this.exports.__indirect_function_table;
 			}
-			this.exports.__heap_base.value;
+			//this.exports.__heap_base.value;
 		}
 
 		runSync()
@@ -1079,7 +907,7 @@ const API = (function ()
 				//FS.virtual['/dev/stdin'].rewrite = 0
 				//FS.virtual['/dev/stdout'].rewrite = 0
 				//FS.virtual['/dev/stderr'].rewrite = 0
-				Module.exports = this.exports || this.instance.exports;
+				Module.exports = this.exports || this.instance?.exports;
 				Module.errno.value = (this.exports['___errno_location'])
 					? this.exports['___errno_location']()
 					: 0 || this.exports['errno'];
@@ -1104,11 +932,11 @@ const API = (function ()
 					Module.errno.value = this.previousErrno;
 					if(this.api.memfs)
 					{
-						this.api.memfs.hostMem = this.previousHostMem;
+						//this.api.memfs.hostMem = this.previousHostMem;
 					}
 					this.api.pid = this.previousPid;
-					FS.pointers[0][2].rewrite = this.previousFd;
-					FS.pointers[0][2].contents = this.previousContents;
+					//self.FS.pointers[0][2].rewrite = this.previousFd;
+					//self.FS.pointers[0][2].contents = this.previousContents;
 					updateGlobalBufferAndViews();
 				}
 			}
@@ -1120,20 +948,23 @@ const API = (function ()
 			try
 			{
 				this.pid = ++this.api.pid;
-				this.output = this.exports._start();
+				this.output = this.exports?._start();
 				return this.output || 0;
 			} catch(exn)
 			{
 				let writeStack = true;
+
+				if(!(exn instanceof Error))
+				{
+					return;
+				}
 
 				if(exn.message.includes('memory access out of bounds'))
 				{
 					this.api.initMemFS();
 				}
 
-				if(exn instanceof ProcExit
-					|| exn.message === 'WASI_ENOSYS'
-				)
+				if(exn instanceof ProcExit)
 				{
 					this.output = exn.code;
 
@@ -1157,13 +988,7 @@ const API = (function ()
 
 				if(exn.message === 'WASI_ENOSYS')
 				{
-					let msg = `\x1b[91mError: Exit code ${exn.code}`;
-					if(writeStack)
-					{
-						msg = msg + `\n${exn.stack}`;
-					}
-					msg += '\x1b[0m\n\r';
-					this.hostWrite(msg);
+					this.hostWrite(`Error: Exit code ${exn.code}\n${exn.stack}`);
 				}
 				else
 				{
@@ -1245,6 +1070,7 @@ const API = (function ()
 
 		getStringsFromArgv(argv)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			const args = [];
 
@@ -1264,7 +1090,7 @@ const API = (function ()
 			// If argv is already an array (passed via ...argv in JS), just sanitize it
 			else if(Array.isArray(argv))
 			{
-				return argv.map(arg => (typeof arg === 'number' ? this.mem.readStr(arg) : arg));
+				return argv.map(arg => (typeof arg === 'number' && this.mem ? this.mem.readStr(arg) : arg));
 			}
 
 			return args;
@@ -1272,6 +1098,7 @@ const API = (function ()
 
 		environ_sizes_get(environ_count_out, environ_buf_size_out)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			let size = 0;
 			const names = Object.getOwnPropertyNames(this.environ);
@@ -1288,6 +1115,7 @@ const API = (function ()
 
 		environ_get(environ_ptrs, environ_buf)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			const names = Object.getOwnPropertyNames(this.environ);
 			for(const name of names)
@@ -1303,6 +1131,7 @@ const API = (function ()
 
 		args_sizes_get(argc_out, argv_buf_size_out)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			let size = 0;
 			for(let arg of this.argv)
@@ -1316,6 +1145,7 @@ const API = (function ()
 
 		args_get(argv_ptrs, argv_buf)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			for(let arg of this.argv)
 			{
@@ -1329,6 +1159,7 @@ const API = (function ()
 
 		random_get(buf, buf_len)
 		{
+			if(!this.mem) return;
 			const data = new Uint8Array(this.mem.buffer, buf, buf_len);
 			for(let i = 0; i < buf_len; ++i)
 			{
@@ -1338,6 +1169,7 @@ const API = (function ()
 
 		clock_time_get(id, precision, result_ptr)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			// id: 0 = REALTIME, 1 = MONOTONIC
 			// result_ptr: index in WASM memory where the 64-bit timestamp goes
@@ -1363,6 +1195,7 @@ const API = (function ()
 
 		poll_oneoff(in_ptr, out_ptr, nsubscriptions, nevents_out)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			const mem = new DataView(this.mem.buffer);
 			let eventsCreated = 0;
@@ -1427,7 +1260,7 @@ const API = (function ()
 				{
 					if(this.allowRequestAnimationFrame)
 					{
-						this.exports.canvas_loop(ms);
+						this.exports?.canvas_loop(ms);
 					}
 				});
 			}
@@ -1458,6 +1291,7 @@ const API = (function ()
 		}
 		canvas_imageDataSetData(handle, buffer, offset, size)
 		{
+			if(!this.mem) return;
 			const imageData = this.handles.get(handle);
 			if(imageData)
 			{
@@ -1480,12 +1314,14 @@ const API = (function ()
 		canvas_fillRect(...args) { if(ctx2d) ctx2d.fillRect(...args); }
 		canvas_fillText(text, text_len, x, y)
 		{  // TODO: maxwidth
+			if(!this.mem) return;
 			this.mem.check();
 			if(ctx2d) ctx2d.fillText(this.mem.readStr(text, text_len), x, y);
 		}
 		canvas_lineTo(...args) { if(ctx2d) ctx2d.lineTo(...args); }
 		canvas_measureText(text, text_len)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			if(ctx2d) return ctx2d.measureText(this.mem.readStr(text, text_len)).width;
 			return 0;
@@ -1502,6 +1338,7 @@ const API = (function ()
 		canvas_strokeRect(...args) { if(ctx2d) ctx2d.strokeRect(...args); }
 		canvas_strokeText(text, text_len, x, y)
 		{  // TODO: maxwidth
+			if(!this.mem) return;
 			this.mem.check();
 			if(ctx2d) ctx2d.strokeText(this.mem.readStr(text, text_len), x, y);
 		}
@@ -1511,11 +1348,13 @@ const API = (function ()
 		// Canvas properties.
 		canvas_setFillStyle(buf, len)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			if(ctx2d) ctx2d.fillStyle = this.mem.readStr(buf, len);
 		}
 		canvas_setFont(buf, len)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			if(ctx2d) ctx2d.font = this.mem.readStr(buf, len);
 		}
@@ -1534,6 +1373,7 @@ const API = (function ()
 		canvas_setShadowBlur(value) { if(ctx2d) ctx2d.shadowBlur = value; }
 		canvas_setShadowColor(buf, len)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			if(ctx2d) ctx2d.shadowColor = this.mem.readStr(buf, len);
 		}
@@ -1541,6 +1381,7 @@ const API = (function ()
 		canvas_setShadowOffsetY(value) { if(ctx2d) ctx2d.setShadowOffsetY = value; }
 		canvas_setStrokeStyle(buf, len)
 		{
+			if(!this.mem) return;
 			this.mem.check();
 			if(ctx2d) ctx2d.strokeStyle = this.mem.readStr(buf, len);
 		}
@@ -1599,19 +1440,15 @@ const API = (function ()
 				const modeOctal = parseInt(readStr(this.u8, headerOffset + 100, 8), 8);
 
 				// 3. Register in Virtual FS (Placeholder only)
-				if(!FS.virtual[filename])
+				if(!self.FS.virtual[filename])
 				{
 					const isDir = typeStr === '5' || filename.endsWith('/');
 
-					FS.virtual[filename] = {
+					self.FS.virtual[filename] = {
 						timestamp: new Date(),
 						mode: isDir ? FS_DIR : FS_FILE,
-						size: size,
 						path: filename,
 						parent: filename.substring(0, filename.lastIndexOf('/')),
-						// DO NOT assign .contents here to save memory
-						isLazy: true,
-						dataOffset: headerOffset + 512 // Store where the data starts for later
 					};
 				}
 
@@ -1718,7 +1555,7 @@ const API = (function ()
 				switch(entry.type)
 				{
 					case '0': // Regular file.
-						FS.virtual[entry.filename] = {
+						self.FS.virtual[entry.filename] = {
 							timestamp: new Date(),
 							mode: FS_FILE,
 							contents: entry.contents,
@@ -1738,10 +1575,9 @@ const API = (function ()
 					case '5':
 						if(entry.filename.endsWith('/'))
 							entry.filename = entry.filename.substring(0, entry.filename.length - 1);
-						FS.virtual[entry.filename] = {
+						self.FS.virtual[entry.filename] = {
 							timestamp: new Date(),
 							mode: FS_DIR,
-							size: 4096,
 							path: entry.filename,
 							parent: entry.filename.substring(0, entry.filename.lastIndexOf('/'))
 						};
@@ -1827,8 +1663,8 @@ const API = (function ()
 				return result;
 			} catch(e)
 			{
-				if(e.message && !e.message.includes('Response code: 404'))
-					this.hostWrite(` failed.\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+				if(e instanceof Error && e.message && !e.message.includes('Response code: 404'))
+					this.hostWrite(` failed.\n\r${e.message}\n\r${e.stack}`);
 				throw e;
 			} finally
 			{
@@ -1848,31 +1684,31 @@ const API = (function ()
 		{
 			let result = [
 				name,
-				dirs.ENGINE_RELEASE + '/' + name,
-				dirs.ENGINE_DEBUG + '/' + name,
+				self.dirs.ENGINE_RELEASE + '/' + name,
+				self.dirs.ENGINE_DEBUG + '/' + name,
 				'components/compiler/' + name,
 			];
 			if(!name.endsWith('.js.wasm'))
 			{
 				result = result.concat(name + '.js.wasm',
-					dirs.ENGINE_RELEASE + '/' + name + '.js.wasm',
-					dirs.ENGINE_DEBUG + '/' + name + '.js.wasm',
+					self.dirs.ENGINE_RELEASE + '/' + name + '.js.wasm',
+					self.dirs.ENGINE_DEBUG + '/' + name + '.js.wasm',
 					'components/compiler/' + name + '.js.wasm',
 				);
 			}
 			if(!name.endsWith('.wasm'))
 			{
 				result = result.concat(name + '.wasm',
-					dirs.ENGINE_RELEASE + '/' + name + '.wasm',
-					dirs.ENGINE_DEBUG + '/' + name + '.wasm',
+					self.dirs.ENGINE_RELEASE + '/' + name + '.wasm',
+					self.dirs.ENGINE_DEBUG + '/' + name + '.wasm',
 					'components/compiler/' + name + '.wasm',
 				);
 			}
 			if(name.endsWith('.js.wasm'))
 			{
 				result = result.concat(name.replace('.js.wasm', '.wasm'),
-					dirs.ENGINE_RELEASE + '/' + name.replace('.js.wasm', '.wasm'),
-					dirs.ENGINE_DEBUG + '/' + name.replace('.js.wasm', '.wasm'),
+					self.dirs.ENGINE_RELEASE + '/' + name.replace('.js.wasm', '.wasm'),
+					self.dirs.ENGINE_DEBUG + '/' + name.replace('.js.wasm', '.wasm'),
 					'components/compiler/' + name.replace('.js.wasm', '.wasm'),
 				);
 			}
@@ -1905,13 +1741,13 @@ const API = (function ()
 							const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
 							const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 							// because this also creates the database with setupDatabase
-							if(!filesRepo[selected])
+							if(!self.filesRepo[selected])
 							{
-								let branch = await getDefaultBranch(ownerName, repoName);
-								await loadGitHubTree(ownerName, repoName, branch);
+								let branch = await self.getDefaultBranch(ownerName, repoName);
+								await self.loadGitHubTree(ownerName, repoName, branch);
 							}
 
-							let record = await getRecord(DB_STORE_NAME, filePath, selected);
+							let record = await self.getRecord(self.DB_STORE_NAME, filePath, selected);
 							checkedPaths.push(filePath + ' on ' + selected);
 							if(record)
 							{
@@ -1920,23 +1756,28 @@ const API = (function ()
 							}
 						} catch(e)
 						{
-							console.log(`${e.message}\n\r${e.stack || e.stacktrace}`);
+							if(e instanceof Error)
+							{
+								console.log(`${e.message}\n\r${e.stack}`);
+							}
 						}
 					}
 
-					if(this.memfs && this.memfs.exists(filePath))
+					if(this.memfs && this.memfs.exists(filePath)
+						&& self.FS.virtual[filePath]
+					)
 					{
 						contents = this.memfs.getFileContents(filePath);
-						if(!FS.virtual[filePath] || contents.length === 0)
+						if(!self.FS.virtual[filePath] || contents.length === 0)
 						{
 							console.error('Assetion virtual fs not empty for wasm: ' + name);
 							debugger;
 						}
-						FS.virtual[filePath].contents = contents;
+						self.FS.virtual[filePath].contents = contents;
 					}
-					else if(FS.virtual[filePath])
+					else if(self.FS.virtual[filePath])
 					{
-						contents = FS.virtual[filePath].contents;
+						contents = self.FS.virtual[filePath].contents;
 					}
 
 					if(contents)
@@ -1961,7 +1802,7 @@ const API = (function ()
 						}
 					} catch(e)
 					{
-						if(e.message.includes('Response code: 404'))
+						if(e instanceof Error && e.message.includes('Response code: 404'))
 						{
 							console.warn('Tried: ' + filePath + ' and got ' + e.message + ' in getModule()');
 						} else
@@ -2001,10 +1842,10 @@ const API = (function ()
 				this.hostWrite(name + ' not found at: \n\r' + checkedPaths.join('\n\r')
 					+ '\n\r' + window.location + '/' + name + '\n\r');
 				console.error(up);
-				if(
-					(up.message.includes('Response code: 404')
+				if(up instanceof Error
+					&& (up.message.includes('Response code: 404')
 						|| up.message.includes('HTTP status code is not ok'))
-					|| up.message.includes('No module!')
+					|| (up instanceof Error && up.message.includes('No module!'))
 					&& (this.toolsRepo || this.toolsRepo2 || this.database)
 					&& !alreadyTried
 				)
@@ -2014,23 +1855,23 @@ const API = (function ()
 
 					// TODO: try compiling ourselves if its a known module + result
 					if(name.includes('q3lcc'))
-						await buildLCC(selected, false);
+						await self.buildLCC(selected, false);
 					if(name.includes('q3rcc'))
-						await buildRCC(selected, false, false);
+						await self.buildRCC(selected, false, false);
 					if(name.includes('lburg'))
-						await buildLBurg(selected, false);
+						await self.buildLBurg(selected, false);
 					if(name.includes('q3cpp'))
-						await buildCPP(selected, false);
+						await self.buildCPP(selected, false);
 					if(name.includes('q3asm'))
 					{
-						await buildAsmTool(this.toolsRepo2 || selected, false);
+						await self.buildAsmTool(this.toolsRepo2 || selected, false);
 					}
 					if(name.includes('quake3e'))
-						await buildClient(selected, false, false, true /* no bounce */);
-					if(name.includes('quake3e.ded'))
-						await buildDedicated(selected, false);
+						await self.buildClient(selected, false, false, true /* no bounce */);
+					//if(name.includes('quake3e.ded'))
+					//	await buildDedicated(selected, false);
 					if(name.includes('stringify'))
-						await buildStringify(selected, false);
+						await self.buildStringify(selected, false);
 
 					try
 					{
@@ -2039,7 +1880,10 @@ const API = (function ()
 					} catch(e)
 					{
 						console.log("Error while compiling required tool: " + name + " on databases: " + selected);
-						console.log(`${e.message}\n\r${e.stack || e.stacktrace}`);
+						if(e instanceof Error)
+						{
+							console.log(`${e.message}\n\r${e.stack}`);
+						}
 						console.log('Cannot continue with building...');
 						throw e;
 					}
@@ -2056,14 +1900,12 @@ const API = (function ()
 				await this.memfs.ready;
 			const promise = (async () =>
 			{
-				const tar = new Tar(await this.readBuffer(filename), this.hostWrite);
+				const tar = new Tar(await this.readBuffer(filename)); //, this.hostWrite);
 				const count = await tar.untar(this.memfs);
 				this.hostWrite(`${count} files read.`);
 			})();
 			await this.hostLogAsync(`Untaring ${filename}`, promise);
 		}
-
-
 
 
 		extract(options, database)
@@ -2106,16 +1948,19 @@ const API = (function ()
 				if(alwaysMkdir)
 					console.log('Header loading (worker): ' + filePath);
 
-				if(filePath.includes(dirs.ENGINE_RELEASE) || filePath.includes(dirs.ENGINE_DEBUG))
+				if(filePath.includes(self.dirs.ENGINE_RELEASE) || filePath.includes(self.dirs.ENGINE_DEBUG))
 				{
 					//debugger
 				}
-				await prepInputOutput(filePath, null, this.database, alwaysMkdir);
+				await self.prepInputOutput(filePath, null, this.database, alwaysMkdir);
 
 				return true;
 			} catch(e)
 			{
-				console.log(`${e.message}\n\r${e.stack || e.stacktrace}`);
+				if(e instanceof Error)
+				{
+					console.log(`${e.message}\n\r${e.stack}`);
+				}
 				return false;
 			}
 		}
@@ -2135,13 +1980,15 @@ const API = (function ()
 			await this.ready;
 			this.extract(options);
 			const input = options.input;
+			const virtualInput = path.join(this.database, input);
 			const contents = options.contents;
 			const obj = options.obj;
+			const virtualObj = path.join(this.database, obj);
 			const opt = options.opt || '2';
 
 
 			if(input && contents)
-				FS.virtual[this.database + '/' + input] = {
+				self.FS.virtual[virtualInput] = {
 					timestamp: new Date(),
 					mode: FS_FILE,
 					contents: contents,
@@ -2149,21 +1996,21 @@ const API = (function ()
 					parent: input.substring(0, input.lastIndexOf('/'))
 				};
 
-			await prepInputOutput(input, obj, this.database, true);
+			await self.prepInputOutput(input, obj, this.database, true);
 
-			if(!FS.virtual[this.database + '/' + input] || !FS.virtual[this.database + '/' + input].contents)
+			if(!self.FS.virtual[virtualInput] || !self.FS.virtual[virtualInput].contents)
 			{
 				debugger;
 				console.error('Input file empty: ' + input);
 			}
 
-			mkdirp(config.TEMPDIR, this.database);
+			self.mkdirp(self.config.TEMPDIR, this.database);
 
-			if(input && this.memfs)
+			if(input && this.memfs && self.FS.virtual[virtualInput])
 			{
 				this.memfs.mkdirp(input.substring(0, input.lastIndexOf('/')));
 				this.memfs.mkdirp(obj.substring(0, obj.lastIndexOf('/')));
-				this.memfs.addFile(input, FS.virtual[this.database + '/' + input].contents);
+				this.memfs.addFile(input, self.FS.virtual[virtualInput].contents);
 			}
 
 
@@ -2184,7 +2031,7 @@ const API = (function ()
 			if(this.memfs && this.memfs.exists(obj))
 			{
 				let bytes = this.memfs.getFileContents(obj);
-				FS.virtual[this.database + '/' + obj] = {
+				self.FS.virtual[virtualObj] = {
 					timestamp: new Date(),
 					mode: FS_FILE,
 					contents: bytes.slice(),
@@ -2195,24 +2042,30 @@ const API = (function ()
 				try
 				{
 					if(this.database)
-						await putRecord(DB_STORE_NAME, FS.virtual[this.database + '/' + obj], this.database);
+						await self.putRecord(self.DB_STORE_NAME, self.FS.virtual[virtualObj], this.database);
 
 					console.log('Compile succeeded: ' + obj + '\n\r');
 				} catch(e)
 				{
 					debugger;
-					console.log(`${e.message}\n\r${e.stack || e.stacktrace}`);
+					if(e instanceof Error)
+					{
+						console.log(`${e.message}\n\r${e.stack}`);
+					}
 				}
 			}
-			else if(this.database && FS.virtual[this.database + '/' + obj])
+			else if(this.database && self.FS.virtual[virtualObj])
 			{
 				try
 				{
-					await putRecord(DB_STORE_NAME, FS.virtual[this.database + '/' + obj], this.database);
+					await self.putRecord(self.DB_STORE_NAME, self.FS.virtual[virtualObj], this.database);
 				} catch(e)
 				{
 					debugger;
-					console.log(`${e.message}\n\r${e.stack || e.stacktrace}`);
+					if(e instanceof Error)
+					{
+						console.log(`${e.message}\n\r${e.stack}`);
+					}
 				}
 			}
 
@@ -2241,12 +2094,12 @@ const API = (function ()
 				if(this.memfs)
 					this.memfs.addFile(input, contents);
 
-				FS.virtual[input] = {
+				self.FS.virtual[input] = {
 					timestamp: new Date(),
 					mode: FS_FILE,
 					contents: contents,
 					path: input,
-					sha: await getGitShaBrowser(contents),
+					sha: await self.getGitShaBrowser(contents),
 					parent: input.substring(0, input.lastIndexOf('/'))
 				};
 
@@ -2257,7 +2110,7 @@ const API = (function ()
 				`-triple=${triple}`, '-mllvm',
 				'--x86-asm-syntax=intel', `-O${opt}`,
 				'-o', output, '-x', 'c++', input);
-			return FS.virtual[output];
+			return self.FS.virtual[output];
 		}
 
 		async compileTo6502(options)
@@ -2270,7 +2123,7 @@ const API = (function ()
 
 			await this.ready;
 
-			FS.virtual[input] = {
+			self.FS.virtual[input] = {
 				timestamp: new Date(),
 				mode: FS_FILE,
 				contents: contents,
@@ -2281,7 +2134,7 @@ const API = (function ()
 
 			const vasm = await this.getModule('vasm6502_oldstyle');
 			await this.run(vasm, 'vasm6502_oldstyle', ...flags, '-o', output, input);
-			return FS.virtual[output];
+			return self.FS.virtual[output];
 		}
 
 		async link(options)
@@ -2292,16 +2145,17 @@ const API = (function ()
 
 			const obj = options.obj;
 			const wasm = options.wasm;
+			const virtualWasm = path.join(this.database, wasm);
 
 
 			if(wasm)
 			{
 				const dirPath = wasm.substring(0, wasm.lastIndexOf('/'));
 				if(dirPath.trim().length > 0)
-					mkdirp(dirPath);
+					self.mkdirp(dirPath);
 			}
 
-			mkdirp(config.TEMPDIR, this.database);
+			self.mkdirp(self.config.TEMPDIR, this.database);
 
 
 			const loadedObjs = [];
@@ -2346,7 +2200,7 @@ const API = (function ()
 					let bytes = this.memfs.getFileContents(wasm);
 					if(bytes.length > 0)
 					{
-						FS.virtual[this.database + '/' + wasm] = {
+						self.FS.virtual[virtualWasm] = {
 							timestamp: new Date(),
 							mode: FS_FILE,
 							contents: bytes,
@@ -2355,21 +2209,26 @@ const API = (function ()
 						};
 
 						if(this.database)
-							await putRecord(DB_STORE_NAME, FS.virtual[this.database + '/' + wasm], this.database);
+							await self.putRecord(self.DB_STORE_NAME, self.FS.virtual[virtualWasm], this.database);
 
 					}
-				} else if(this.database && FS.virtual[this.database + '/' + wasm] && FS.virtual[this.database + '/' + wasm].contents)
-					await putRecord(DB_STORE_NAME, FS.virtual[this.database + '/' + wasm], this.database);
+				} else if(this.database && self.FS.virtual[virtualWasm] && self.FS.virtual[virtualWasm].contents)
+				{
+					await self.putRecord(self.DB_STORE_NAME, self.FS.virtual[virtualWasm], this.database);
+				}
 
 			} catch(e)
 			{
-				console.log(`${e.message}\n\r${e.stack || e.stacktrace}`);
+				if(e instanceof Error)
+				{
+					console.log(`${e.message}\n\r${e.stack}`);
+				}
 			}
 
-			if(FS.virtual[this.database + '/' + wasm].contents.length > 1024)
+			if(self.FS.virtual[virtualWasm] && self.FS.virtual[virtualWasm].contents.length > 1024)
 				console.log('Link succeeded: ' + wasm + '\n\r');
 
-			return FS.virtual[this.database + '/' + wasm];
+			return self.FS.virtual[virtualWasm];
 		}
 
 
@@ -2381,36 +2240,36 @@ const API = (function ()
 
 			if(mode === 'stringify' || mode === 'engine'
 				|| mode === 'release' || mode === 'debug' || mode === 'all')
-				await buildStringify(selected, mode === 'stringify');
+				await self.buildStringify(selected, mode === 'stringify');
 			if(mode === 'shaders' || mode === 'engine'
 				|| mode === 'release' || mode === 'debug' || mode === 'all')
-				await buildShaders(selected, mode === 'shaders');
+				await self.buildShaders(selected, mode === 'shaders');
 			if(mode === 'client' || mode === 'engine'
 				|| mode === 'release' || mode === 'debug' || mode === 'all')
-				await buildClient(selected, mode === 'client' || mode === 'engine', false, true);
+				await self.buildClient(selected, mode === 'client' || mode === 'engine', false, true);
 
 
 			if(!selected)
 				selected = this.database;
 			if(mode === 'lburg' || mode === 'tools' || mode === 'all')
-				await buildTools(selected, 'lburg', mode === 'lburg', true); // shared debouncer
+				await self.buildTools(selected, 'lburg', mode === 'lburg', true); // shared debouncer
 			if(mode === 'q3rcc' || mode === 'tools' || mode === 'all')
-				await buildTools(selected, 'q3rcc', mode === 'q3rcc', true); // implicit forceChanged = true
+				await self.buildTools(selected, 'q3rcc', mode === 'q3rcc', true); // implicit forceChanged = true
 			if(mode === 'q3cpp' || mode === 'tools' || mode === 'all')
-				await buildTools(selected, 'q3cpp', mode === 'q3cpp', true);
+				await self.buildTools(selected, 'q3cpp', mode === 'q3cpp', true);
 			if(mode === 'q3lcc' || mode === 'tools' || mode === 'all')
-				await buildTools(selected, 'q3lcc', mode === 'q3lcc', true);
+				await self.buildTools(selected, 'q3lcc', mode === 'q3lcc', true);
 			if(mode == 'q3asm' || mode === 'tools' || mode === 'all')
-				await buildTools(selected, 'q3asm', mode === 'q3asm', true);
+				await self.buildTools(selected, 'q3asm', mode === 'q3asm', true);
 
 			if(mode == 'game' || mode === 'qvms' || mode === 'all')
-				await buildModule('game', dirs.QADIR, gameFiles, selected, ['QAGAME'], mode === 'game', false, true);
+				await self.buildModule('game', self.dirs.QADIR, gameFiles, selected, ['QAGAME'], mode === 'game', false, true);
 			if(mode == 'cgame' || mode === 'qvms' || mode === 'all')
-				await buildModule('cgame', dirs.CGDIR, cgameFiles, selected, ['CGAME'], mode === 'cgame', false, true);
+				await self.buildModule('cgame', self.dirs.CGDIR, cgameFiles, selected, ['CGAME'], mode === 'cgame', false, true);
 			if(mode == 'ui' || mode === 'qvms' || mode === 'all')
-				await buildModule('ui', dirs.UIDIR, uiFiles, selected, ['UI'], mode === 'ui', false, true);
+				await self.buildModule('ui', self.dirs.UIDIR, uiFiles, selected, ['UI'], mode === 'ui', false, true);
 			if(mode == 'q3_ui' || mode === 'qvms' || mode === 'all')
-				await buildModule('q3_ui', dirs.Q3UIDIR, q3uiFiles, selected, ['UI'], mode === 'q3_ui', false, true);
+				await self.buildModule('q3_ui', self.dirs.Q3UIDIR, q3uiFiles, selected, ['UI'], mode === 'q3_ui', false, true);
 
 
 		}
@@ -2427,7 +2286,7 @@ const API = (function ()
 			if(typeof module == 'string' || !module)
 				throw new Error('Cannot load module: ' + name);
 
-			mkdirp(config.TEMPDIR, this.database);
+			self.mkdirp(self.config.TEMPDIR, this.database);
 
 			/*
 			if (args) {
@@ -2485,7 +2344,7 @@ const API = (function ()
 				throw new Error('Cannot load module: ' + name);
 
 
-			mkdirp(config.TEMPDIR, this.database);
+			self.mkdirp(self.config.TEMPDIR, this.database);
 
 			/*
 			if (args) {
@@ -2534,11 +2393,12 @@ const API = (function ()
 			const input = `test.cc`;
 			const obj = `test.o`;
 			const wasm = `test.wasm`;
+			const virtualWasm = path.join(this.database, wasm);
 			await this.compile({ input, contents: options.contents, obj });
 			await this.link({ obj, wasm });
 
 			const testMod = await this.hostLogAsync(`Compiling ${wasm}`,
-				WebAssembly.compile(FS.virtual[this.database + '/' + wasm].contents));
+				WebAssembly.compile(self.FS.virtual[virtualWasm]?.contents));
 			return await this.run(testMod, wasm);
 		}
 	}

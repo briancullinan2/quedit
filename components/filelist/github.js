@@ -58,7 +58,9 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
 		}
 
 		if(buffer)
+		{
 			return await response.arrayBuffer();
+		}
 		return await response.json();
 	} catch(up)
 	{
@@ -186,12 +188,12 @@ async function loadGitHubTree(repoOwner, repoName, branch)
 			return obj;
 		}, {});
 
-		let databases = await getDatabaseMetadata();
+		let databases = await self.getDatabaseMetadata();
 		if(databases.filter(d => d.key == database).length == 0
-			|| (await needsInstall(database, DB_SCHEME)).item3)
+			|| (await self.needsInstall(database, self.DB_SCHEME)).item3)
 		{
-			await deleteOldDatabase(database);
-			await setupDatabase(database, DB_SCHEME);
+			await self.deleteOldDatabase(database);
+			await self.setupDatabase(database, self.DB_SCHEME);
 		}
 
 		if(Object.keys(mapFiles).length > 1 && typeof self.updateSelectOptions !== 'undefined')
@@ -475,7 +477,7 @@ async function getGitShaBrowser(content)
 
 async function cacheFile(storeName, repoOwner, repoName, filePath, sha, forceReload = false)
 {
-	return await debounceRecords(DB_STORE_NAME, 'path', filePath, sha, forceReload, repoOwner + '/' + repoName, 'cache');
+	return await debounceRecords(self.DB_STORE_NAME, 'path', filePath, sha, forceReload, repoOwner + '/' + repoName, 'cache');
 }
 
 
@@ -494,40 +496,46 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 			await loadGitHubTree(repoOwner, repoName, branch);
 		}
 
-		if(!FS.virtual[filePath]
-			|| !FS.virtual[filePath].contents
-			|| !FS.virtual[filePath].contents.length === 0
+		if(!self.FS.virtual[filePath]
+			|| !self.FS.virtual[filePath].contents
+			|| self.FS.virtual[filePath].contents.length === 0
 		)
 		{
-			FS.virtual[filePath] = await getRecord(storeName || DB_STORE_NAME, filePath, selected);
+			self.FS.virtual[filePath] = await self.getRecord(storeName || self.DB_STORE_NAME, filePath, selected);
 		}
-		if(self.filesRepo[selected][filePath] && FS.virtual[filePath])
+		if(self.filesRepo[selected]
+			&& self.filesRepo[selected][filePath] && self.FS.virtual[filePath])
 		{
-			if(FS.virtual[filePath].timestamp > self.filesRepo[selected][filePath].timestamp)
+			if(self.FS.virtual[filePath].timestamp
+				&& self.filesRepo[selected][filePath].timestamp
+				&& self.FS.virtual[filePath].timestamp > self.filesRepo[selected][filePath].timestamp)
 			{
 				console.info(`Skipping changed (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
-				return FS.virtual[filePath].contents;
+				return self.FS.virtual[filePath].contents;
 			}
 			//FS.virtual[filePath].timestamp = filesRepo[selected][filePath].timestamp
 		}
 
 		try
 		{
-			if(typeof api !== 'undefined' && api.memfs && FS.virtual[filePath] && !api.memfs.exists(filePath))
-				api.memfs.addFile(filePath, FS.virtual[filePath].contents);
+			if(typeof api !== 'undefined' && api.memfs && self.FS.virtual[filePath] && !api.memfs.exists(filePath))
+				api.memfs.addFile(filePath, self.FS.virtual[filePath].contents);
 		} catch(e)
 		{
-			console.error(`${e.message}\n\r${e.stack || e.stacktrace}`);
+			if(e instanceof Error)
+			{
+				console.error(`${e.message}\n\r${e.stack}`);
+			}
 		}
 
 		if(filePath.includes('tmp/')
-			|| filePath.includes(dirs.ENGINE_RELEASE)
-			|| filePath.includes(dirs.ENGINE_DEBUG))
+			|| filePath.includes(self.dirs.ENGINE_RELEASE)
+			|| filePath.includes(self.dirs.ENGINE_DEBUG))
 		{
-			if(FS.virtual[filePath])
+			if(self.FS.virtual[filePath])
 			{
 				console.info(`Already compiled (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
-				return FS.virtual[filePath].contents;
+				return self.FS.virtual[filePath].contents;
 			}
 			else
 			{
@@ -542,7 +550,7 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 
 		// TODO: IF GITHUB, ALWAYS UPDATE
-		if(!shouldDownload && FS.virtual[filePath])
+		if(!shouldDownload && self.FS.virtual[filePath])
 		{
 			if(filePath.includes('.syms'))
 			{
@@ -550,7 +558,7 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 				console.error('No you fucking dont: ' + filePath);
 			}
 			console.info(`Already have cached (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
-			return FS.virtual[filePath].contents;
+			return self.FS.virtual[filePath].contents;
 		}
 
 		if(!shouldDownload)
@@ -561,10 +569,10 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 
 		// TODO: use this to indicate whether we should update against file change time
-		if(!forceReload && FS.virtual[filePath])
+		if(!forceReload && self.FS.virtual[filePath])
 		{
 			console.info(`Skipping important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
-			return FS.virtual[filePath].contents;
+			return self.FS.virtual[filePath].contents;
 		} else
 		{
 			console.info(`Downloading important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
@@ -594,9 +602,9 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 		}
 
 
-		FS.virtual[filePath] = {
-			timestamp: filesRepo[selected][filePath].timestamp,
-			mode: FS_FILE,
+		self.FS.virtual[filePath] = {
+			timestamp: self.filesRepo[selected]?.[filePath].timestamp,
+			mode: self.FS_FILE,
 			contents: bytes,
 			path: filePath,
 			sha: jsonResponse.sha,
@@ -606,7 +614,7 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 		// async to filesystem
 		// does it REALLY matter if it makes it? wont it just redownload?
-		await putRecord(storeName || DB_STORE_NAME, FS.virtual[filePath], selected);
+		await self.putRecord(storeName || self.DB_STORE_NAME, self.FS.virtual[filePath], selected);
 
 		try
 		{
@@ -616,7 +624,10 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 		} catch(e)
 		{
-			console.warn(`Memfs Error: ${e.message}\n\r${e.stack || e.stacktrace}`);
+			if(e instanceof Error)
+			{
+				console.warn(`Memfs Error: ${e.message}\n\r${e.stack}`);
+			}
 		}
 
 		console.info(`Downloaded fresh (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
@@ -625,20 +636,26 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 	} catch(e)
 	{
 		console.error(`Cache file error in ${filePath}`);
-		if(!e.message.includes('HTTP_ERROR:'))
+		if(e instanceof Error && !e.message.includes('HTTP_ERROR:'))
 		{
-			console.error(`${e.message}\n\r${e.stack || e.stacktrace}`);
+			console.error(`${e.message}\n\r${e.stack}`);
 		}
 
-		if(filesRepo[selected][filePath])
-			return filesRepo[selected][filePath].contents;
+		if(self.filesRepo[selected]?.[filePath])
+			return self.filesRepo[selected][filePath].contents;
 		throw e;
 	}
 
 }
 
 
-
+/**
+ *
+ * @param {*} owner
+ * @param {*} repo
+ * @param {*} branch
+ * @param {string | null} database
+ */
 async function downloadRepoZip(owner, repo, branch = 'master', database = null)
 {
 
@@ -650,16 +667,16 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null)
 		console.info(`Requesting archive from ${owner}/${repo}...`);
 
 		const buffer = await githubRequest(owner, repo, `zipball/${branch}`, true, true);
-		const zipPath = path.join(config.MOUNT_DIR, 'branch.zip');
-		FS.virtual[zipPath] = {
+		const zipPath = path.join(self.config.MOUNT_DIR, 'branch.zip');
+		self.FS.virtual[zipPath] = {
 			timestamp: new Date(),
-			mode: FS_FILE,
-			contents: data,
+			mode: self.FS_FILE,
+			contents: buffer,
 			path: zipPath,
-			sha: await getGitShaBrowser(data),
+			sha: await getGitShaBrowser(buffer),
 			parent: zipPath.substring(0, zipPath.lastIndexOf('/'))
 		};
-		putRecord(DB_STORE_NAME, FS.virtual[zipPath], database);
+		self.putRecord(self.DB_STORE_NAME, self.FS.virtual[zipPath], database);
 		console.info(`Downloaded ${buffer.byteLength} bytes. Processing...`);
 
 		// Use JSZip to hydrate FS.virtual
@@ -676,18 +693,18 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null)
 			{
 				// Remove the top-level GitHub folder name (e.g., 'repo-master/')
 				const cleanedPath = relativePath.substring(relativePath.indexOf('/') + 1);
-				const fullPath = path.join(config.MOUNT_DIR, cleanedPath);
+				const fullPath = path.join(self.config.MOUNT_DIR, cleanedPath);
 
-				FS.virtual[fullPath] = {
+				self.FS.virtual[fullPath] = {
 					timestamp: new Date(),
-					mode: FS_FILE,
+					mode: self.FS_FILE,
 					contents: data,
 					path: fullPath,
 					sha: await getGitShaBrowser(data),
 					parent: fullPath.substring(0, fullPath.lastIndexOf('/'))
 				};
 
-				putRecord(DB_STORE_NAME, FS.virtual[fullPath], database);
+				self.putRecord(self.DB_STORE_NAME, self.FS.virtual[fullPath], database);
 			}));
 		});
 
@@ -696,7 +713,10 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null)
 
 	} catch(err)
 	{
-		console.error(`Failed to download repo: ${err.message}`);
+		if(err instanceof Error)
+		{
+			console.error(`Failed to download repo: ${err.message}`);
+		}
 	}
 }
 
@@ -728,7 +748,7 @@ async function listReleases(owner, repo)
 
 async function getAuthenticatedUser()
 {
-	const token = SettingsManager.get('github', 'githubToken');
+	const token = self.SettingsManager.get('github', 'githubToken');
 	if(!token) return null;
 
 	try

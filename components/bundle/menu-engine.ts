@@ -13,7 +13,7 @@ declare global
 		updateSelectOptions: (
 			elementId: string | Element | undefined | null,
 			items: Record<string, string> | Array<string | GitHubBranchLike>,
-			selectedValue: string
+			selectedValue?: string
 		) => void;
 		githubRequest: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
 		mapFiles: Record<string, string>;

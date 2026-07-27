@@ -25,7 +25,7 @@ declare global
 		terminalWidgets?: Array<TerminalWidget>;
 		terminalLoaded?: boolean;
 		TERMINAL_REGISTRY: TerminalFilter[];
-		mostRecentTerminalCols: number;
+		mostRecentTerminalCols?: number;
 	}
 }
 

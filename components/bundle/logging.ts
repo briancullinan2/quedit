@@ -2,6 +2,7 @@ import type { AceSession } from "../editor/widget";
 import type { TerminalLogEntry, } from "../terminal/widget-types";
 import type { TerminalWidget } from '../terminal/widget';
 import { DockPanel, Widget } from "@lumino/widgets";
+import { WorkerAPI } from './global.d';
 
 // --- GLOBAL TYPE DECLARATIONS ---
 declare global
@@ -26,11 +27,6 @@ declare global
 		alreadyWroteDetached?: boolean;
 		specialWrite(msg: string, source: SourceMetadata): void;
 	}
-
-	const api: {
-		hostWrite?: (formatted: string, source: SourceMetadata) => void;
-		worker?: boolean;
-	} | undefined;
 
 }
 

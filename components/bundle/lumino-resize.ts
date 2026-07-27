@@ -36,6 +36,8 @@ declare global
 {
 	interface Window
 	{
+		isModifierPressed?: boolean;
+		isShiftPressed?: boolean;
 		workspaceBox: BoxPanel;
 		toolbarWidget: Widget;
 		lastInteractedWidget: Widget | null;
@@ -624,6 +626,8 @@ export class ResponsiveManager
 			return;
 		}
 
+		this._prevWidgetCount = currentWidgets.length;
+
 		// 1. Gather file list widget targets
 		const targetIds = this._extractTargetWidgetIds(currentWidgets);
 		console.log('Resizing file list target: ' + targetIds.size);
@@ -644,7 +648,6 @@ export class ResponsiveManager
 			mainDock.restoreLayout(layout as any);
 		}
 
-		this._prevWidgetCount = currentWidgets.length;
 	}
 
 	/**

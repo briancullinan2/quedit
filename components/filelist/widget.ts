@@ -22,7 +22,7 @@ declare global
 		updateSelectOptions: (
 			elementId: string | Element | undefined | null,
 			items: Record<string, string> | Array<string | GitHubBranchLike>,
-			selectedValue: string
+			selectedValue?: string
 		) => void;
 		getBranches: (repoOwner: string | undefined, repoName: string | undefined) => Promise<GitHubBranch[]>;
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
@@ -284,7 +284,7 @@ export class FileListWidget extends Widget
 			const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement).value;
 			const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement).value;
 			const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement).value;
-			await window.loadFileTree(owner, repo, branch, this.selector);
+			await loadFileTree(owner, repo, branch, this.selector);
 		}
 	}
 
@@ -552,5 +552,29 @@ export class GameListWidget extends FileListWidget
 		return window.SettingsManager.get('github', 'gameRepository');
 	}
 }
+
+
+export async function loadFileTree(repoOwner: string, repoName: string, branch: string, selector: string): Promise<void>
+{
+	try
+	{
+		const database = `${repoOwner}/${repoName}`;
+		window.filesRepo[selector] = await window.loadGitHubTree(repoOwner, repoName, branch);
+
+		if(!window.filesRepo[selector]) return;
+
+		window.trees[selector] = window.trees[database] = new Tree(selector, {
+			data: window.convertFlatToNested(Object.values(window.filesRepo[selector])),
+			autoOpen: false,
+			closeDepth: 2,
+		});
+	} catch(error)
+	{
+		console.error('Failed to load file list tree:', error);
+	}
+}
+
+window.loadFileTree = loadFileTree;
+
 
 window.GameListWidget = GameListWidget;

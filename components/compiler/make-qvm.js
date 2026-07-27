@@ -133,7 +133,7 @@ const qvmHeaders = [
 	"game/g_syscalls.h",
 	"cgame/cg_syscalls.h",
 	"ui/ui_syscalls.h"
-].map(file => path.join(config.MOUNT_DIR, file));
+].map(file => path.join(self.config.MOUNT_DIR, file));
 
 
 const QVMLIB_CFLAGS = [
@@ -236,7 +236,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 		console.log(`Compiling ${name} module...`);
 
 
-		if(!database) database = self.gameRepository || api.database;
+		if(!database) database = self.gameRepository || api?.database;
 		const parts = database.split('/');
 		const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
 		const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
@@ -250,9 +250,9 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
 
-		let CONFIGURATION = api.configuration == 'release'
-			? dirs.ENGINE_RELEASE
-			: dirs.ENGINE_DEBUG;
+		let CONFIGURATION = api?.configuration === 'release'
+			? self.dirs.ENGINE_RELEASE
+			: self.dirs.ENGINE_DEBUG;
 
 		console.log(`Building ${name}.qvm...`);
 
@@ -275,7 +275,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 			// Q3 Makefile logic: shared files are in the game/ directory
 			if(file.startsWith('bg_') || file.startsWith('q_'))
 			{
-				src = path.join(dirs.QADIR, file.replace('.o', '.c'));
+				src = path.join(self.dirs.QADIR, file.replace('.o', '.c'));
 			} else
 			{
 				src = path.join(sourceDir, file.replace('.o', '.c'));
@@ -307,18 +307,18 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 				let content;
 				if(self.FS.virtual[virtualSrc])
 					content = self.FS.virtual[virtualSrc].contents;
-				else if(!src.includes(config.BUILD_DIR + '/'))
+				else if(!src.includes(self.config.BUILD_DIR + '/'))
 					content = await self.cacheFile(ownerName, repoName, src);
 				else
 				{
-					self.FS.virtual[virtualSrc] = await getRecord(DB_STORE_NAME, src, database);
+					self.FS.virtual[virtualSrc] = await self.getRecord(self.DB_STORE_NAME, src, database);
 					if(!self.FS.virtual[virtualSrc])
 						throw new Error('Output file not found: ' + src);
 				}
 
 
 
-				let objRecord = await getRecord(DB_STORE_NAME, obj, database);
+				let objRecord = await self.getRecord(self.DB_STORE_NAME, obj, database);
 				self.FS.virtual[virtualObj] = objRecord;
 
 				if(self.FS.virtual[virtualObj]?.timestamp
@@ -401,7 +401,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 					*/
 
 
-					await api.run({
+					await api?.run({
 						tool: 'q3lcc.js.wasm',
 						args: [
 							'q3lcc', '-S', '-Wf-g',
@@ -418,7 +418,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 				}
 				else
 				{
-					await api.compile({
+					await api?.compile({
 						CFLAGS: [
 							...CCFLAGS,
 							...(src.includes('bg_lib.c') ? ['-DQ3_VM=1'] : []),
@@ -470,7 +470,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 async function linkModule(database, name, sourceDir, filesList, forceChanged = false, noModule = false /* from buildModule */, noBounce = false)
 {
-	if(!database) database = self.gameRepository || api.database;
+	if(!database) database = self.gameRepository || api?.database;
 	const parts = database.split('/');
 	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
@@ -491,14 +491,14 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 	try
 	{
 
-		let CONFIGURATION = api.configuration == 'release'
-			? dirs.ENGINE_RELEASE
-			: dirs.ENGINE_DEBUG;
+		let CONFIGURATION = api?.configuration === 'release'
+			? self.dirs.ENGINE_RELEASE
+			: self.dirs.ENGINE_DEBUG;
 
 
 
 		// Link phase (q3asm)
-		const qvmOutput = path.join(CONFIGURATION, repoName || config.MOD, `${name === 'game' ? 'qagame' : name}.${QVM_MODE ? 'qvm' : 'wasm'}`);
+		const qvmOutput = path.join(CONFIGURATION, repoName || self.config.MOD, `${name === 'game' ? 'qagame' : name}.${QVM_MODE ? 'qvm' : 'wasm'}`);
 		const virtualQVM = path.join(database, qvmOutput);
 
 		let qvmObjs = filesList.map(file => path.join(CONFIGURATION, sourceDir, file));
@@ -520,16 +520,16 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 			// called from command or UI
 
 			if(name === 'game')
-				await buildModule(name, dirs.QADIR, filesList, database, ['GAME'], false, true /* prevent recursion */, true);
+				await buildModule(name, self.dirs.QADIR, filesList, database, ['GAME'], false, true /* prevent recursion */, true);
 
 			if(name === 'cgame')
-				await buildModule(name, dirs.CGDIR, filesList, database, ['CGAME'], false, true /* prevent recursion */, true);
+				await buildModule(name, self.dirs.CGDIR, filesList, database, ['CGAME'], false, true /* prevent recursion */, true);
 
 			if(name === 'ui')
-				await buildModule(name, dirs.UIDIR, filesList, database, ['UI'], false, true /* prevent recursion */, true);
+				await buildModule(name, self.dirs.UIDIR, filesList, database, ['UI'], false, true /* prevent recursion */, true);
 
 			if(name === 'q3_ui')
-				await buildModule(name, dirs.Q3UIDIR, filesList, database, ['UI', 'Q3UI'], false, true /* prevent recursion */, true);
+				await buildModule(name, self.dirs.Q3UIDIR, filesList, database, ['UI', 'Q3UI'], false, true /* prevent recursion */, true);
 
 		}
 
@@ -548,11 +548,11 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 		const virtualSyscalls = database + '/' + syscalls;
 
 
-		let q3asm = path.join(config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
+		let q3asm = path.join(self.config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
 		if(name === 'cgame')
-			q3asm = path.join(config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
+			q3asm = path.join(self.config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
 		if(name === 'ui' || name === 'q3_ui')
-			q3asm = path.join(config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
+			q3asm = path.join(self.config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
 		const virtualAsm = database + '/' + q3asm;
 
 
@@ -569,7 +569,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 			content = await self.cacheFile(ownerName, repoName, syscalls);
 			if(!self.FS.virtual[virtualSyscalls])
 			{
-				self.FS.virtual[virtualSyscalls] = await getRecord(DB_STORE_NAME, syscalls, database);
+				self.FS.virtual[virtualSyscalls] = await self.getRecord(self.DB_STORE_NAME, syscalls, database);
 				if(!self.FS.virtual[virtualSyscalls])
 					throw new Error('Syscalls file not found: ' + syscalls);
 			}
@@ -582,7 +582,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 			content2 = await self.cacheFile(ownerName, repoName, q3asm);
 			if(!self.FS.virtual[virtualAsm])
 			{
-				self.FS.virtual[virtualAsm] = await getRecord(DB_STORE_NAME, q3asm, database);
+				self.FS.virtual[virtualAsm] = await self.getRecord(self.DB_STORE_NAME, q3asm, database);
 				if(!self.FS.virtual[virtualAsm])
 					throw new Error('Syscalls file not found: ' + q3asm);
 			}
@@ -591,7 +591,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 		}
 
 
-		let exeRecord = await getRecord(DB_STORE_NAME, qvmOutput, database);
+		let exeRecord = await self.getRecord(self.DB_STORE_NAME, qvmOutput, database);
 		self.FS.virtual[virtualQVM] = exeRecord;
 
 		console.log(`Assembling ${qvmOutput}...`);
@@ -604,14 +604,14 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
 		console.log(`LD: ${qvmOutput}`);
 
-		let memoryBase = "--global-base=" + UI_MEMORY_BASE;
+		let memoryBase = "--global-base=" + self.UI_MEMORY_BASE;
 		if(name === 'cgame')
 		{
-			memoryBase = "--global-base=" + CGAME_MEMORY_BASE;
+			memoryBase = "--global-base=" + self.CGAME_MEMORY_BASE;
 		}
 		if(name === 'game')
 		{
-			memoryBase = "--global-base=" + GAME_MEMORY_BASE;
+			memoryBase = "--global-base=" + self.GAME_MEMORY_BASE;
 		}
 		let LDFLAGS = [
 			...(QVM_MODE ? ['-vq3', '-r', '-m', '-v'] : SHLIB_LDFLAGS),
@@ -622,7 +622,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 		if(QVM_MODE)
 		{
 
-			await api.run({
+			await api?.run({
 				tool: 'q3asm.js.wasm',
 				args: [
 					'q3asm.js.wasm',
@@ -636,7 +636,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 		else
 		{
 
-			await api.link({
+			await api?.link({
 				LDFLAGS: [
 					...LDFLAGS,
 					memoryBase,
@@ -670,38 +670,38 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
 
 /**
- * @param {string | null} database
+ * @param {string | null | undefined} database
  **/
 async function buildGame(database = null, forceChanged = true)
 {
-	if(!database) database = self.gameRepository || api.database;
+	if(!database) database = self.gameRepository || api?.database;
 
-	await buildModule('game', dirs.QADIR, gameFiles, database, ['GAME'], forceChanged);
+	await buildModule('game', self.dirs.QADIR, gameFiles, database, ['GAME'], forceChanged);
 
 
 }
 
 /**
- * @param {string | null} database
+ * @param {string | null | undefined} database
  **/
 async function buildCGame(database = null, forceChanged = true)
 {
-	if(!database) database = self.gameRepository || api.database;
+	if(!database) database = self.gameRepository || api?.database;
 
-	await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged);
+	await buildModule('cgame', self.dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged);
 
 
 }
 
 
 /**
- * @param {string | null} database
+ * @param {string | null | undefined} database
  **/
 async function buildUI(database = null, forceChanged = true)
 {
-	if(!database) database = self.gameRepository || api.database;
+	if(!database) database = self.gameRepository || api?.database;
 
-	await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI'], forceChanged);
+	await buildModule('ui', self.dirs.UIDIR, uiFiles, database, ['UI'], forceChanged);
 
 
 }
@@ -709,15 +709,15 @@ async function buildUI(database = null, forceChanged = true)
 
 
 /**
- * @param {string | null} database
+ * @param {string | null | undefined} database
  **/
 async function buildQ3UI(database = null, forceChanged = true)
 {
-	if(!database) database = self.gameRepository || api.database;
+	if(!database) database = self.gameRepository || api?.database;
 
 
 
-	await buildModule('q3_ui', dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged);
+	await buildModule('q3_ui', self.dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged);
 
 
 }
@@ -728,11 +728,11 @@ async function buildQ3UI(database = null, forceChanged = true)
 
 
 /**
- * @param {string | null} database
+ * @param {string | null | undefined} database
  **/
 async function buildQVM(database = null, forceChanged = false, noBounce = false)
 {
-	if(!database) database = self.gameRepository || api.database;
+	if(!database) database = self.gameRepository || api?.database;
 
 	if(buildDebounce)
 	{
@@ -755,27 +755,27 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
 
 
 		// CGAME
-		await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged, false, true);
+		await buildModule('cgame', self.dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged, false, true);
 
 
 		if(TERMINATE) return;
 
 
 		// 2. Build GAME (qagame)
-		await buildModule('game', dirs.QADIR, gameFiles, database, ['QAGAME'], forceChanged, false, true);
+		await buildModule('game', self.dirs.QADIR, gameFiles, database, ['QAGAME'], forceChanged, false, true);
 
 		if(TERMINATE) return;
 
 
 		// 3. Build UI
-		await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI'], forceChanged, false, true);
+		await buildModule('ui', self.dirs.UIDIR, uiFiles, database, ['UI'], forceChanged, false, true);
 
 		if(TERMINATE) return;
 
 
 
 		// 3. Build UI
-		await buildModule('q3_ui', dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged, false, true);
+		await buildModule('q3_ui', self.dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged, false, true);
 
 		if(TERMINATE) return;
 

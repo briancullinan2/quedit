@@ -57,7 +57,7 @@ export interface FileRecord
 	mode: number;
 	contents?: Uint8Array | ArrayBuffer | FileSystemDirectoryHandle | any;
 	path: string;
-	sha?: string;
+	sha?: string | null;
 	parent?: string | null;
 }
 

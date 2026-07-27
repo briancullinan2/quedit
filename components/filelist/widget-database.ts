@@ -23,9 +23,6 @@ declare global
 			noBounce?: boolean
 		): Promise<FileRecord[]>;
 		filesRepo: Record<string, GitHubFileTree | undefined>;
-		FS: {
-			virtual: Record<string, FileRecord | null | undefined>;
-		};
 		DB_STORE_NAME: string;
 		ST_DIR: number;
 	}

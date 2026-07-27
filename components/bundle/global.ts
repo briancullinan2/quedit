@@ -119,6 +119,7 @@ declare global
 	{
 		FS: {
 			virtual: Record<string, FileRecord | null | undefined>;
+			pointers: ([number, string, FileRecord, string, number, number])[];
 		};
 		path: typeof path;
 		config: typeof config;

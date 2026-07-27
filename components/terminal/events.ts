@@ -41,6 +41,7 @@ declare global
 	{
 		terminalLog: TerminalLogEntry[];
 		isModifierPressed?: boolean;
+		isShiftPressed?: boolean;
 		moveLookLocked?: (mx: number, my: number) => void;
 		playerMover?: { jump: () => void; };
 		updateModifierPressed: (arg: KeyboardEvent) => void;

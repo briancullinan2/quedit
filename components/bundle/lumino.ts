@@ -12,6 +12,7 @@ import { isDevToolsOpen, OUTLINE_WIDGET_TYPES, ResponsiveManager } from './lumin
 
 import '@lumino/widgets/style/index.css';
 import { applyInitialLayout } from './menu-app';
+import JSZip from 'jszip';
 
 
 declare global
@@ -24,6 +25,7 @@ declare global
 			messaging: any;
 			commands: any;
 		};
+		JSZip: typeof JSZip;
 		statusBar: StatusBarWidget;
 		envStatusNode: HTMLDivElement;
 		mainDock: DockPanel;
@@ -40,6 +42,7 @@ window.Lumino = {
 	messaging,
 	commands
 };
+window.JSZip = JSZip;
 
 
 

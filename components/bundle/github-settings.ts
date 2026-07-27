@@ -13,7 +13,7 @@ declare global
 		updateSelectOptions: (
 			elementId: string | Element | undefined | null,
 			items: Record<string, string> | Array<string | GitHubBranchLike>,
-			selectedValue: string
+			selectedValue?: string
 		) => void;
 		addRepoIfNotExists(newRepo: string): void;
 		addOwnerIfNotExists(newOwner: string): void;

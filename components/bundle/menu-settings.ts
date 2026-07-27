@@ -331,6 +331,11 @@ export class SettingsToolbar extends Widget
 			}
 		}).join('') + '</ul>';
 	}
+
+	public static get configuration(): HTMLSelectElement | null
+	{
+		return SettingsToolbar.getInstance().node.querySelector('#configuration');
+	}
 }
 
 window.SettingsToolbar = SettingsToolbar;
