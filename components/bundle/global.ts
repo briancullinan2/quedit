@@ -1,4 +1,4 @@
-import { FileRecord } from "./local";
+import { FileRecord } from "./local.d";
 
 
 export const path = {

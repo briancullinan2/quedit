@@ -10,19 +10,9 @@ import
 	, FS_DIR, FS_FILE, getRecord, putRecord,
 	ST_FILE
 } from "./local";
+import { GithubWindow } from "./github.d";
 
-declare global
-{
-	interface Window
-	{
-		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
-		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
-		cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string | null, forceReload?: boolean) => Promise<any>;
-		sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[];
-		getAuthenticatedUser(): Promise<any>;
-		cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string | null, forceReload?: boolean): Promise<any>;
-	}
-}
+const githubSelf: GithubWindow = /** @type {any} */ (self);
 
 export async function getGitShaBrowser(content: string | Uint8Array | ArrayBuffer): Promise<string>
 {
@@ -55,7 +45,7 @@ export async function getGitShaBrowser(content: string | Uint8Array | ArrayBuffe
 }
 
 
-window.getGitShaBrowser = getGitShaBrowser;
+githubSelf.getGitShaBrowser = getGitShaBrowser;
 
 
 export async function cacheFile(storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string | null, forceReload = false): Promise<any>
@@ -63,7 +53,7 @@ export async function cacheFile(storeName?: string, repoOwner?: string, repoName
 	return await debounceRecords(storeName ?? DB_STORE_NAME, 'path', filePath, sha, forceReload, `${repoOwner}/${repoName}`, 'cache');
 }
 
-window.cacheFile = cacheFile;
+githubSelf.cacheFile = cacheFile;
 
 
 export async function cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string | null, forceReload = false): Promise<any>
@@ -94,16 +84,16 @@ export async function cacheFileInternal(storeName: string, repoOwner: string, re
 		{
 			if(FS.virtual[filePath].timestamp > filesRepo[selected][localPath].timestamp!)
 			{
-				console.info(`Skipping changed (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+				console.info(`Skipping changed (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 				return FS.virtual[filePath].contents;
 			}
 		}
 
 		try
 		{
-			if(typeof api !== 'undefined' && api.memfs && FS.virtual[filePath] && !api.memfs.exists(filePath))
+			if(typeof githubSelf.api !== 'undefined' && githubSelf.api.memfs && FS.virtual[filePath] && !githubSelf.api.memfs.exists(filePath))
 			{
-				api.memfs.addFile(filePath, FS.virtual[filePath].contents);
+				githubSelf.api.memfs.addFile(filePath, FS.virtual[filePath].contents);
 			}
 		} catch(e: any)
 		{
@@ -116,11 +106,11 @@ export async function cacheFileInternal(storeName: string, repoOwner: string, re
 		{
 			if(FS.virtual[filePath])
 			{
-				console.info(`Already compiled (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+				console.info(`Already compiled (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 				return FS.virtual[filePath].contents;
 			} else
 			{
-				console.info(`Skipping output (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+				console.info(`Skipping output (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 				return null;
 			}
 		}
@@ -134,23 +124,23 @@ export async function cacheFileInternal(storeName: string, repoOwner: string, re
 				debugger;
 				console.error('No you fucking dont: ' + filePath);
 			}
-			console.info(`Already have cached (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+			console.info(`Already have cached (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 			return FS.virtual[filePath].contents;
 		}
 
 		if(!shouldDownload)
 		{
-			console.info(`Skipping unimportant (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+			console.info(`Skipping unimportant (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 			return null;
 		}
 
 		if(!forceReload && FS.virtual[filePath])
 		{
-			console.info(`Skipping important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+			console.info(`Skipping important (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 			return FS.virtual[filePath].contents;
 		} else
 		{
-			console.info(`Downloading important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+			console.info(`Downloading important (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 		}
 
 		const jsonResponse = await githubRequest(repoOwner, repoName, `contents/${filePath}`);
@@ -183,16 +173,16 @@ export async function cacheFileInternal(storeName: string, repoOwner: string, re
 
 		try
 		{
-			if(typeof api !== 'undefined' && api.memfs && !api.memfs.exists(filePath))
+			if(typeof githubSelf.api !== 'undefined' && githubSelf.api.memfs && !githubSelf.api.memfs.exists(filePath))
 			{
-				api.memfs.addFile(filePath, bytes);
+				githubSelf.api.memfs.addFile(filePath, bytes);
 			}
 		} catch(e: any)
 		{
 			console.warn(`Memfs Error: ${e.message}\n\r${e.stack || e.stacktrace}`);
 		}
 
-		console.info(`Downloaded fresh (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+		console.info(`Downloaded fresh (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 		return bytes;
 	} catch(e: any)
 	{
@@ -211,7 +201,7 @@ export async function cacheFileInternal(storeName: string, repoOwner: string, re
 }
 
 
-self.cacheFileInternal = cacheFileInternal;
+githubSelf.cacheFileInternal = cacheFileInternal;
 
 
 
@@ -246,7 +236,7 @@ export async function getAuthenticatedUser(): Promise<any>
 }
 
 
-self.getAuthenticatedUser = getAuthenticatedUser;
+githubSelf.getAuthenticatedUser = getAuthenticatedUser;
 
 
 export interface FlatFileNode
@@ -322,7 +312,7 @@ export function convertFlatToNested(data: FlatFileNode[]): NestedTreeNode[]
 	}, []);
 };
 
-window.convertFlatToNested = convertFlatToNested;
+githubSelf.convertFlatToNested = convertFlatToNested;
 
 
 export function sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[]
@@ -334,11 +324,11 @@ export function sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[]
 			// 1. Bitmask check if mode is present
 			if(typeof node.mode === 'number')
 			{
-				if(typeof window.ST_FILE === 'number' && ((node.mode >> 12) & window.ST_FILE))
+				if(typeof githubSelf.ST_FILE === 'number' && ((node.mode >> 12) & githubSelf.ST_FILE))
 				{
 					return false;
 				}
-				if(typeof window.ST_DIR === 'number' && ((node.mode >> 12) & window.ST_DIR))
+				if(typeof githubSelf.ST_DIR === 'number' && ((node.mode >> 12) & githubSelf.ST_DIR))
 				{
 					return true;
 				}
@@ -376,4 +366,4 @@ export function sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[]
 }
 
 
-window.sortNodes = sortNodes;
+githubSelf.sortNodes = sortNodes;

@@ -17,42 +17,8 @@ import
 import type { FilelistWindow } from './widget.d';
 
 
-
 const filelistSelf: FilelistWindow = /** @type {any} */ (self);
 
-
-declare global
-{
-	interface Window
-	{
-		updateSelectOptions: (
-			elementId: string | Element | undefined | null,
-			items: Record<string, string> | Array<string | GitHubBranchLike>,
-			selectedValue?: string
-		) => void;
-		getBranches: (repoOwner: string | undefined, repoName: string | undefined) => Promise<GitHubBranch[]>;
-		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
-		loadFileTree: (repoOwner: string, repoName: string, branch: string, selector: string) => Promise<void>;
-		cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string | null, forceReload?: boolean) => Promise<any>;
-
-		RepositoryToolbar: typeof RepositoryToolbar;
-		GameListWidget: typeof GameListWidget;
-		FileListWidget: typeof FileListWidget;
-
-		FileManager: typeof FileManager;
-
-		getRegistryIdFromWidget(widget: string | HTMLElement | FileListWidget): string | null | undefined | void;
-		putRecord(storeName: string, record: FileRecord, dbName: string | null, noBounce?: boolean): Promise<any>;
-		getRecord(storeName: string, record: string, dbName: string | null, dbVersion?: number, noBounce?: boolean): Promise<FileRecord | null>;
-		DB_STORE_NAME: string;
-		FS_FILE: number;
-		ensureDatabaseContainer(database: string): Promise<void>;
-		resolveDirectoryHandle(
-			rootHandle: FileSystemDirectoryHandle,
-			pathSegments: string[]
-		): Promise<FileSystemDirectoryHandle>;
-	}
-}
 
 type PermissionState = 'granted' | 'denied' | 'prompt';
 
@@ -174,17 +140,20 @@ export class FileListWidget extends Widget
 
 		const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement);
 		const owners = filelistSelf.SettingsManager.get('github', 'ownersList');
-		filelistSelf.addOwnerIfNotExists(ownerName);
+		filelistSelf.addOwnerIfNotExists?.(ownerName);
 		filelistSelf.updateSelectOptions(owner, owners, ownerName);
 
 		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement);
 		const repositories = filelistSelf.SettingsManager.get('github', 'repositoriesList');
-		filelistSelf.addRepoIfNotExists(repoName);
+		filelistSelf.addRepoIfNotExists?.(repoName);
 		filelistSelf.updateSelectOptions(repo, repositories, repoName);
 
 		const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement);
-		const branches = await filelistSelf.getBranches(ownerName, repoName);
-		filelistSelf.updateSelectOptions(branch, branches, branches[0].name);
+		const branches = await filelistSelf.getBranches?.(ownerName, repoName);
+		if(branches)
+		{
+			filelistSelf.updateSelectOptions(branch, branches, branches[0].name);
+		}
 	}
 
 	protected override onAfterAttach(msg: Message): void
@@ -197,7 +166,7 @@ export class FileListWidget extends Widget
 				const widgetHandle = getRegistryIdFromWidget(this);
 				const settingKey: string = getSettingFromRegistryId(widgetHandle);
 				const database = filelistSelf.SettingsManager.get('github', 'environmentRepository');
-				const handle: FileSystemDirectoryHandle = (await filelistSelf.getRecord(filelistSelf.DB_STORE_NAME, '/' + settingKey, database))?.contents;
+				const handle: FileSystemDirectoryHandle = (await filelistSelf.getRecord?.(filelistSelf.DB_STORE_NAME, '/' + settingKey, database))?.contents;
 				if(handle && await verifyPermission(handle))
 				{
 					this.handle = handle;
@@ -243,7 +212,7 @@ export class FileListWidget extends Widget
 			const settingKey: string = getSettingFromRegistryId(widgetHandle);
 			const database = filelistSelf.SettingsManager.get('github', 'environmentRepository');
 			await filelistSelf.ensureDatabaseContainer(database);
-			await filelistSelf.putRecord(filelistSelf.DB_STORE_NAME, {
+			await filelistSelf.putRecord?.(filelistSelf.DB_STORE_NAME, {
 				timestamp: new Date(),
 				mode: filelistSelf.FS_FILE,
 				contents: handle,

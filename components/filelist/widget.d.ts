@@ -4,21 +4,35 @@ import type { Settings } from "../bundle/settings";
 import type { GlobalToolbars, SettingsWindow } from '../bundle/menu.d';
 import type { GithubWindow } from '../bundle/github.d';
 import type { LocalWindow } from "../bundle/local.d";
-import { FileListWidget, GameListWidget } from "./widget";
+import type { FileListWidget, GameListWidget } from "./widget";
+import type { LuminoWindow } from '../bundle/lumino.d';
 
 export interface EditorUtilities
 {
 	tempCount: number;
 }
 
-export interface FilelistWindow extends EditorUtilities, GlobalToolbars, SettingsWindow, GithubWindow, LocalWindow
+
+interface DirectoryPickerOptions
 {
+	/** An optional string identifier to remember the last opened directory */
+	id?: string;
+	/** Defaults to "read" for read-only access or "readwrite" for read/write access */
+	mode?: 'read' | 'readwrite';
+	/** A FileSystemHandle or a well-known directory name ("desktop", "documents", "downloads", "music", "pictures", "videos") */
+	startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+}
+
+
+export interface FilelistWindow extends EditorUtilities, GlobalToolbars, SettingsWindow, GithubWindow, LocalWindow, LuminoWindow
+{
+	loadFileTree?: (repoOwner: string, repoName: string, branch: string, selector: string) => Promise<void>;
 	fileListWidgets?: Array<FileListWidget>;
 	showDirectoryPicker?: (
 		options?: DirectoryPickerOptions
 	) => Promise<FileSystemDirectoryHandle>;
-	FileListWidget: typeof FileListWidget;
-	GameListWidget: typeof GameListWidget;
+	FileListWidget?: typeof FileListWidget;
+	GameListWidget?: typeof GameListWidget;
 }
 
 declare var self: Window & FilelistWindow & typeof globalThis;

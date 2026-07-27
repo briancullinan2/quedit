@@ -463,7 +463,7 @@ export function initConsoleIntercept(): void
 		const source: SourceMetadata = [category, 'log', ...trailingFiles, func, rawFileName, rawFile];
 
 		if(typeof window !== 'undefined' && terminalWrite) terminalWrite(formatted, source);
-		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
+		if(typeof loggingSelf.api !== 'undefined' && typeof loggingSelf.api.hostWrite !== 'undefined' && !loggingSelf.api.worker) loggingSelf.api.hostWrite(formatted, source);
 		originalConsole.log(...args);
 	};
 
@@ -475,7 +475,7 @@ export function initConsoleIntercept(): void
 		const source: SourceMetadata = [category, 'warn', ...trailingFiles, func, rawFileName, rawFile];
 
 		if(typeof window !== 'undefined' && terminalWrite) terminalWrite(formatted, source);
-		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
+		if(typeof loggingSelf.api !== 'undefined' && typeof loggingSelf.api.hostWrite !== 'undefined' && !loggingSelf.api.worker) loggingSelf.api.hostWrite(formatted, source);
 		originalConsole.warn(...args);
 	};
 
@@ -487,7 +487,7 @@ export function initConsoleIntercept(): void
 		const source: SourceMetadata = [category, 'error', ...trailingFiles, func, rawFileName, rawFile];
 
 		if(typeof window !== 'undefined' && terminalWrite) terminalWrite(formatted, source);
-		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
+		if(typeof loggingSelf.api !== 'undefined' && typeof loggingSelf.api.hostWrite !== 'undefined' && !loggingSelf.api.worker) loggingSelf.api.hostWrite(formatted, source);
 		originalConsole.error(...args);
 	};
 
@@ -499,7 +499,7 @@ export function initConsoleIntercept(): void
 		const source: SourceMetadata = [category, 'info', ...trailingFiles, func, rawFileName, rawFile];
 
 		if(typeof window !== 'undefined' && terminalWrite) terminalWrite(formatted, source);
-		if(typeof api !== 'undefined' && typeof api.hostWrite !== 'undefined' && !api.worker) api.hostWrite(formatted, source);
+		if(typeof loggingSelf.api !== 'undefined' && typeof loggingSelf.api.hostWrite !== 'undefined' && !loggingSelf.api.worker) loggingSelf.api.hostWrite(formatted, source);
 		originalConsole.info(...args);
 	};
 }

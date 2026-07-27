@@ -1,24 +1,13 @@
 import { getBranches } from "./github-api";
+import { SettingsWindow } from "./menu.d";
 import { RepositoryToolbar } from "./menu-repos";
 import { SettingConfig } from "./settings";
-
-// --- Environmental Declarations ---
-declare const api: any;
+import { GithubWindow } from "./github.d";
 
 
-declare global
-{
-	interface Window
-	{
-		updateSelectOptions: (
-			elementId: string | Element | undefined | null,
-			items: Record<string, string> | Array<string | GitHubBranchLike>,
-			selectedValue?: string
-		) => void;
-		addRepoIfNotExists(newRepo: string): void;
-		addOwnerIfNotExists(newOwner: string): void;
-	}
-}
+
+const githubSelf: GithubWindow = /** @type {any} */ (self);
+
 
 export function addRepoIfNotExists(newRepo: string): void
 {
@@ -41,7 +30,7 @@ export function addRepoIfNotExists(newRepo: string): void
 	}
 }
 
-window.addRepoIfNotExists = addRepoIfNotExists;
+githubSelf.addRepoIfNotExists = addRepoIfNotExists;
 
 export function addOwnerIfNotExists(newOwner: string): void
 {
@@ -65,7 +54,7 @@ export function addOwnerIfNotExists(newOwner: string): void
 	}
 }
 
-window.addOwnerIfNotExists = addOwnerIfNotExists;
+githubSelf.addOwnerIfNotExists = addOwnerIfNotExists;
 
 export function parseRepository(newRepo: string): [string | undefined, string | undefined]
 {
@@ -220,16 +209,7 @@ export function updateSelectOptions(
 }
 
 
-window.updateSelectOptions = updateSelectOptions;
-
-
-declare global
-{
-	interface Window
-	{
-		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
-	}
-}
+githubSelf.updateSelectOptions = updateSelectOptions;
 
 
 const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
@@ -240,8 +220,8 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 			description: 'Personal GitHub Access Token used to authenticate API requests, bypass rate limits, and securely fetch repository source files or assets.',
 			set: (val: string): void =>
 			{
-				if(typeof api === 'undefined') return;
-				api.github_token = val; // share with worker
+				if(typeof githubSelf.api === 'undefined') return;
+				githubSelf.api.github_token = val; // share with worker
 			}
 		},
 		ownersList: {
@@ -330,20 +310,20 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 	}
 };
 
-if(!window.IMPORT_SETTINGS)
+if(!githubSelf.IMPORT_SETTINGS)
 {
-	window.IMPORT_SETTINGS = {};
+	githubSelf.IMPORT_SETTINGS = {};
 }
 
 for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
 {
-	window.IMPORT_SETTINGS[moduleKey] = {
-		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+	githubSelf.IMPORT_SETTINGS[moduleKey] = {
+		...(githubSelf.IMPORT_SETTINGS[moduleKey] || {}),
 		...configs
 	};
 }
 
 // 4. Export the unified reference for standard module compilation tracking
-export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
+export const IMPORT_SETTINGS = githubSelf.IMPORT_SETTINGS;
 
 

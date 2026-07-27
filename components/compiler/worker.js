@@ -1,4 +1,9 @@
 /// <reference path="../bundle/global.d.ts" />
+/// <reference path="./worker.d.ts" />
+
+/** @type {import('./worker.d').WorkerWindow} */
+const workerSelf = /** @type {any} */ (self);
+
 
 /*
  * Copyright 2020 WebAssembly Community Group participants

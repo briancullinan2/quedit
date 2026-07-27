@@ -2,19 +2,14 @@ import { getDefaultBranch, loadGitHubTree } from "./github-api";
 import { cacheFile } from "./github-tools";
 import { filesRepo, GitHubFileEntry, trees } from "./github-types";
 import { FS } from "./global";
-import { DB_STORE_NAME, FileRecord, getDatabaseMetadata, getRecord } from "./local";
+import { DB_STORE_NAME, getDatabaseMetadata, getRecord } from "./local";
+import type { FileRecord } from './local.d';
 import type { HistoryToolbar } from "./menu-history";
 import { AssetInspector, hasSequentialBinaryRegex, hexDump } from "../rosetta/binary.mjs";
 import type { DockPanel } from "@lumino/widgets";
 import type { AceEditorWidget } from "../editor/widget";
 import { triggerPanelRoute } from "./menu";
 
-
-export interface DatabaseMetadata
-{
-	key: string;
-	[key: string]: any;
-}
 
 export interface PathCandidate
 {
@@ -38,32 +33,6 @@ export interface FilePayload
 	isMapFile: boolean;
 	outputString: string;
 }
-
-// Global type declarations for window variables and side-effects
-declare global
-{
-	interface Window
-	{
-		engineRepository?: string | undefined | null;
-		gameRepository?: string | undefined | null;
-		assetRepository?: string | undefined | null;
-		toolsRepository?: string | undefined | null;
-		tools2Repository?: string | undefined | null;
-		environmentRepository?: string | undefined | null;
-		owner?: { value: string; };
-		repository?: { value: string; };
-		FileManager: typeof FileManager;
-		resizeHandler: () => void;
-		historyToolbar: HistoryToolbar;
-		mainDock: DockPanel;
-		AceEditorWidget: typeof AceEditorWidget;
-		resolveDirectoryHandle(
-			rootHandle: FileSystemDirectoryHandle,
-			pathSegments: string[]
-		): Promise<FileSystemDirectoryHandle>;
-	}
-}
-
 
 
 export class FileManager

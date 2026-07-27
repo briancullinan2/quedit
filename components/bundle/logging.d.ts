@@ -1,7 +1,8 @@
-import { DockPanel, Widget } from "@lumino/widgets";
-import { TerminalLogEntry } from "../terminal/widget-types";
-import { AceSession } from "../editor/widget";
-import { specialWrite, terminalWrite } from "./logging";
+import type { DockPanel, Widget } from "@lumino/widgets";
+import type { TerminalLogEntry } from "../terminal/widget-types";
+import type { AceSession } from "../editor/widget";
+import type { specialWrite, terminalWrite } from "./logging";
+import type { ApiWindow } from "../compiler/worker.d";
 
 // --- TYPES & INTERFACES ---
 export type LogLevel = 'log' | 'warn' | 'error' | 'info';
@@ -27,7 +28,7 @@ export type CalleeInfo = [
 ];
 
 
-export interface LoggingWindow
+export interface LoggingWindow extends ApiWindow
 {
 	lineCount?: number;
 	originalConsole?: {

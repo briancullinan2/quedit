@@ -77,15 +77,18 @@ export interface LocalWindow extends GlobalToolbars
 		dbName: string | null,
 		noBounce?: boolean
 	) => Promise<FileRecord[]>;
-	putRecord(storeName: string, record: FileRecord, dbName: string | null, noBounce?: boolean): Promise<any>;
-	getRecord(storeName: string, record: string, dbName: string | null, dbVersion?: number, noBounce?: boolean): Promise<FileRecord | null>;
-	globToRegex(pattern: string, caseSensitive?: boolean): RegExp;
-	deleteRecord(storeName: string, key: string, dbName: string | null): Promise<boolean>;
-	DB_STORE_NAME: string;
-	ST_DIR: number;
-	ST_FILE: number;
-	FS_FILE: number;
-	FS_DIR: number;
+	putRecord?: (storeName: string, record: FileRecord, dbName: string | null, noBounce?: boolean) => Promise<any>;
+	getRecord?: (storeName: string, record: string, dbName: string | null, dbVersion?: number, noBounce?: boolean) => Promise<FileRecord | null>;
+	globToRegex?: (pattern: string, caseSensitive?: boolean) => RegExp;
+	deleteRecord?: (storeName: string, key: string, dbName: string | null) => Promise<boolean>;
+
+	DB_STORE_NAME?: string;
+	DB_SCHEME?: SchemaStoreConfig[];
+
+	ST_DIR?: number;
+	ST_FILE?: number;
+	FS_FILE?: number;
+	FS_DIR?: number;
 }
 
 declare var self: Window & LocalWindow & typeof globalThis;

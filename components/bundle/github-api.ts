@@ -1,5 +1,6 @@
 
 import { SettingsManager } from "../bundle/settings";
+import { GithubWindow } from "./github.d";
 import { updateSelectOptions } from "./github-settings";
 import
 {
@@ -14,18 +15,21 @@ import
 } from "./local";
 
 
+const githubSelf: GithubWindow = /** @type {any} */ (self);
+
+
 // --- Overloaded Function Signatures for Request Layer ---
 export async function githubRequest(ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: false): Promise<any>;
 export async function githubRequest(ownerName: string, repoName: string, url: string, authorize: boolean, buffer?: true): Promise<ArrayBuffer>;
 export async function githubRequest(ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean): Promise<any | ArrayBuffer>;
 export async function githubRequest(ownerName: string, repoName: string, url: string, authorize: boolean = true, buffer?: boolean): Promise<any>
 {
-	if(typeof SettingsManager !== 'undefined' && typeof api != 'undefined')
+	if(typeof SettingsManager !== 'undefined' && typeof githubSelf.api != 'undefined')
 	{
-		api.github_token = SettingsManager.get('github', 'githubToken');
+		githubSelf.api.github_token = SettingsManager.get('github', 'githubToken');
 	}
 
-	const fullUrl = `https://api.github.com/repos/${ownerName}/${repoName}`
+	const fullUrl = `https://githubSelf.api.github.com/repos/${ownerName}/${repoName}`
 		+ (url.startsWith('/') || url.trim().length === 0 ? '' : '/') + url + (url.includes('?') ? '&' : '?') + `t=${Date.now()}`;
 
 	try
@@ -35,8 +39,8 @@ export async function githubRequest(ownerName: string, repoName: string, url: st
 			'X-GitHub-Api-Version': '2022-11-28'
 		};
 
-		const token = typeof api !== 'undefined'
-			? api.github_token
+		const token = typeof githubSelf.api !== 'undefined'
+			? githubSelf.api.github_token
 			: localStorage.getItem('github_token');
 
 		if(authorize && token)
@@ -75,7 +79,7 @@ export async function githubRequest(ownerName: string, repoName: string, url: st
 }
 
 
-window.githubRequest = githubRequest;
+githubSelf.githubRequest = githubRequest;
 
 export async function getDefaultBranch(ownerName: string, repo: string): Promise<string>
 {
@@ -87,7 +91,7 @@ export async function getDefaultBranch(ownerName: string, repo: string): Promise
 	return data.default_branch;
 }
 
-window.getDefaultBranch = getDefaultBranch;
+githubSelf.getDefaultBranch = getDefaultBranch;
 
 export async function getBranchVersion(ownerName: string, repo: string, branch?: string): Promise<Date>
 {
@@ -130,16 +134,16 @@ export async function getBranches(repoOwner: string | undefined, repoName: strin
 }
 
 
-window.getBranches = getBranches;
+githubSelf.getBranches = getBranches;
 
 
 export async function githubGraphQL(query: string, variables: Record<string, any> = {}): Promise<any>
 {
-	const token = typeof api !== 'undefined'
-		? api.github_token
+	const token = typeof githubSelf.api !== 'undefined'
+		? githubSelf.api.github_token
 		: SettingsManager.get('github', 'githubToken');
 
-	const response = await fetch('https://api.github.com/graphql', {
+	const response = await fetch('https://githubSelf.api.github.com/graphql', {
 		method: 'POST',
 		headers: {
 			'Authorization': `Bearer  ${token}`,
@@ -200,7 +204,7 @@ export async function loadGitHubTree(repoOwner: string, repoName: string, branch
 }
 
 
-window.loadGitHubTree = loadGitHubTree;
+githubSelf.loadGitHubTree = loadGitHubTree;
 
 
 export async function loadGitHubTreeNew(repoOwner: string, repoName: string, branch?: string, initialPath = ''): Promise<any>
@@ -377,10 +381,10 @@ export async function searchGitHubRepositories(query: string, ownerName?: string
 		queryString += ` user:${ownerName}`;
 	}
 
-	const fullUrl = `https://api.github.com/search/repositories?q=${encodeURIComponent(queryString)}`;
+	const fullUrl = `https://githubSelf.api.github.com/search/repositories?q=${encodeURIComponent(queryString)}`;
 
-	const token = typeof api !== 'undefined'
-		? api.github_token
+	const token = typeof githubSelf.api !== 'undefined'
+		? githubSelf.api.github_token
 		: localStorage.getItem('github_token');
 
 	const headers: Record<string, string> = {
@@ -408,7 +412,7 @@ export async function searchGitHubCode(query: string, activeRepositories: string
 
 	const primaryRepo = activeRepositories[0];
 	const queryString = `${query} repo:${primaryRepo}`;
-	const fullUrl = `https://api.github.com/search/code?q=${encodeURIComponent(queryString)}`;
+	const fullUrl = `https://githubSelf.api.github.com/search/code?q=${encodeURIComponent(queryString)}`;
 
 	const headers: Record<string, string> = {
 		'Accept': 'application/vnd.github+json',
@@ -441,4 +445,4 @@ export async function searchGitHubCode(query: string, activeRepositories: string
 	}
 }
 
-window.searchGitHubCode = searchGitHubCode;
+githubSelf.searchGitHubCode = searchGitHubCode;
