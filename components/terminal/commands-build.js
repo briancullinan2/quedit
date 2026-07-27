@@ -203,7 +203,11 @@ async function link(argv, database)
 	const mode = argv[0] || 'engine';
 
 
-	let selected = api.database = argv[1] || self.engineRepository || database;
+	let selected = argv[1] || self.engineRepository || database;
+	if(api)
+	{
+		api.database = selected;
+	}
 	if(mode === 'q3lcc'
 		|| mode === 'q3rcc'
 		|| mode === 'q3cpp'
@@ -609,7 +613,7 @@ rm /tmp/lcc420.i
 		? [...CFLAGS, "-Icode/wasm", "-Icode/qcommon", "-Icode/client", "-Icode/game"]
 		: [...LCC_CFLAGS, "-Isrc"];
 
-	return await api.compile({
+	return await api?.compile({
 		CFLAGS: [
 			...INCLUDES,
 			...(self.SettingsToolbar?.configuration?.value === 'pre' ? [

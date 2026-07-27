@@ -1,3 +1,4 @@
+/// <reference path="../bundle/global.d.ts" />
 
 
 /**
@@ -140,6 +141,8 @@ const originalConsole = {
 	error: console.error,
 	info: console.info
 };
+
+self.originalConsole = originalConsole;
 
 self.console.log = (...args) =>
 {

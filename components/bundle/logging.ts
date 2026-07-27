@@ -26,6 +26,12 @@ declare global
 		detachedConsole?: boolean;
 		alreadyWroteDetached?: boolean;
 		specialWrite(msg: string, source: SourceMetadata): void;
+		originalConsole: {
+			log: typeof console.log,
+			warn: typeof console.warn,
+			error: typeof console.error,
+			info: typeof console.info;
+		};
 	}
 
 }
@@ -88,6 +94,8 @@ const originalConsole = {
 	error: console.error.bind(console),
 	info: console.info.bind(console)
 };
+
+window.originalConsole = originalConsole;
 
 // --- CORE UTILITIES ---
 

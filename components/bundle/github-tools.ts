@@ -19,6 +19,8 @@ declare global
 		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
 		cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string | null, forceReload?: boolean) => Promise<any>;
 		sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[];
+		getAuthenticatedUser(): Promise<any>;
+		cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string | null, forceReload?: boolean): Promise<any>;
 	}
 }
 
@@ -209,6 +211,8 @@ export async function cacheFileInternal(storeName: string, repoOwner: string, re
 }
 
 
+self.cacheFileInternal = cacheFileInternal;
+
 
 
 export async function getAuthenticatedUser(): Promise<any>
@@ -241,6 +245,8 @@ export async function getAuthenticatedUser(): Promise<any>
 	}
 }
 
+
+self.getAuthenticatedUser = getAuthenticatedUser;
 
 
 export interface FlatFileNode

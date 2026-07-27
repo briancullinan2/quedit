@@ -648,6 +648,8 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 }
 
+self.cacheFileInternal = cacheFileInternal;
+
 
 /**
  *
@@ -776,6 +778,8 @@ async function getAuthenticatedUser()
 		console.error("Failed to fetch user data: " + err);
 	}
 }
+
+self.getAuthenticatedUser = getAuthenticatedUser;
 
 
 async function searchGitHubRepositories(query, ownerName, repoName)

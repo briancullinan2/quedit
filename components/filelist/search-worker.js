@@ -1,9 +1,11 @@
 /// <reference path="../bundle/global.d.ts" />
 
+/** @type {WorkerGlobalScope & { api?: { github_token?: string | null | undefined } }} */
+const workerSelf = self;
 
-if(!self.api)
+if(!workerSelf.api)
 {
-	self.api = {
+	workerSelf.api = {
 		github_token: null
 	};
 }
@@ -59,9 +61,9 @@ async function getAllLocalFiles(activeRepositories)
 self.onmessage = async function (e)
 {
 	const { query, activeRepositories, gitHubToken, caseSensitive, callbackId } = e.data;
-	if(api)
+	if(workerSelf.api)
 	{
-		api.github_token = gitHubToken;
+		workerSelf.api.github_token = gitHubToken;
 	}
 
 	if(!query || query.length < 2)

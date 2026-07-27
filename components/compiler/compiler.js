@@ -1,3 +1,6 @@
+/// <reference path="../bundle/global.d.ts" />
+
+
 class LanguageAPI
 {
 
@@ -30,7 +33,7 @@ class LanguageAPI
 	{
 		options.configuration = options.configuration || this.configuration || 'release';
 		options.database = options.database || window.engineRepository || this.database;
-		options.github_token = options.github_token || window.githubToken || this.github_token;
+		options.github_token = options.github_token || self.githubToken || this.github_token;
 	}
 
 	setShowTiming(value)
@@ -353,4 +356,4 @@ const language = new LanguageAPI({
 self.api = new WorkerAPI({
 	hostWrite: window.specialWrite
 });
-self.api.github_token = window.githubToken;
+self.api.github_token = self.githubToken;

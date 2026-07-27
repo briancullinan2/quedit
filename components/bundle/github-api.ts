@@ -13,10 +13,6 @@ import
 	, setupDatabase
 } from "./local";
 
-declare const api: any;
-declare const JSZip: any;
-declare const Tree: any;
-
 declare global
 {
 	interface Window

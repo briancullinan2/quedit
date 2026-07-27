@@ -75,7 +75,7 @@ async function needsInstall(dbName, expectedStores)
 
 		request.onsuccess = (event) =>
 		{
-			const db = event.target.result;
+			const db = /** @type {IDBOpenDBRequest} */ (event.target).result;
 			const existingStores = Array.from(db.objectStoreNames);
 
 			// Identify which expected stores are missing
@@ -116,7 +116,7 @@ async function setupDatabase(dbName, stores)
 
 		request.onupgradeneeded = (event) =>
 		{
-			const db = event.target.result;
+			const db = /** @type {IDBOpenDBRequest} */ (event.target).result;
 
 			try
 			{
@@ -291,7 +291,7 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 		else if(MODE === 'query')
 			return queryIndexInternal(storeName, indexName, record, lower, upper, dbName); // Fixed typo: passed indexName
 		else if(MODE === 'cache')
-			return cacheFileInternal(storeName, ownerName, repoName, record, lower, upper, dbName);
+			return self.cacheFileInternal(storeName, ownerName, repoName, record, lower, upper);
 		else
 			throw new Error('MODE not recognized in debounceRecords: ' + MODE);
 	}
@@ -349,7 +349,7 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 			else if(MODE === 'query')
 				result = await queryIndexInternal(sName, iName, rec, low, up, dName);
 			else if(MODE === 'cache')
-				result = await cacheFileInternal(sName, oName, rName, rec, low, up, dName);
+				result = await self.cacheFileInternal(sName, oName, rName, rec, low, up);
 			else
 				throw new Error('MODE not recognized in debounceRecords: ' + MODE);
 

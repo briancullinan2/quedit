@@ -32,11 +32,13 @@ interface Window
 	toolsRepository?: string | undefined | null;
 	tools2Repository?: string | undefined | null;
 	environmentRepository?: string | undefined | null;
+	githubToken?: string | undefined | null;
 	getDefaultBranch(ownerName: string, repo: string): Promise<string>;
 	loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
 	cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string | null, forceReload?: boolean) => Promise<any>;
 	deleteRecord(storeName: string, key: string, dbName: string | null): Promise<boolean>;
 	searchGitHubCode(query: string, activeRepositories: string[], token: string | null): Promise<any[]>;
+	cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string | null, forceReload?: boolean): Promise<any>;
 	FS: {
 		virtual: Record<string, FileRecord | null | undefined>;
 	};
@@ -47,6 +49,7 @@ interface Window
 	searchWorker: Worker;
 	searchService: SearchService;
 	DB_SCHEME: SchemaStoreConfig[];
+	getAuthenticatedUser(): Promise<any>;
 }
 
 
@@ -84,6 +87,16 @@ interface WorkerGlobalScope
 	searchService: SearchService;
 	DB_SCHEME: SchemaStoreConfig[];
 	importScripts: (...urls: (string | URL)[]) => void;
+	githubToken?: string | undefined | null;
+	originalConsole: {
+		log: typeof console.log,
+		warn: typeof console.warn,
+		error: typeof console.error,
+		info: typeof console.info;
+	};
+	getAuthenticatedUser(): Promise<any>;
+	cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string | null, forceReload?: boolean): Promise<any>;
+	API: typeof WorkerAPI;
 }
 
 declare var self: Window & WorkerGlobalScope & typeof globalThis;
@@ -103,7 +116,7 @@ interface WorkerCommandOptions
 	configuration?: 'release' | 'debug' | string;
 	database?: string | null;
 	width?: number;
-	github_token?: string;
+	github_token?: string | null;
 	toolsRepo?: string | null;
 	toolsRepo2?: string | null;
 	engineRepo?: string | null;
@@ -120,7 +133,7 @@ interface ResponseCallback
 	timeoutId: ReturnType<typeof setTimeout>;
 }
 
-declare class MockAPI
+export interface MockAPI
 {
 	github_token?: string | null;
 }
@@ -142,6 +155,7 @@ declare class WorkerAPI extends MockAPI
 	assetRepo?: string;
 	memfs?: any;
 	ready?: boolean;
+	github_token?: string | null;
 
 	constructor(options: WorkerAPIOptions);
 
@@ -152,7 +166,7 @@ declare class WorkerAPI extends MockAPI
 	runAsync?: (id: string, options?: any) => Promise<any>;
 	compileToAssembly(options?: WorkerCommandOptions): Promise<any>;
 	compileTo6502(options?: WorkerCommandOptions): Promise<any>;
-	upload(options?: WorkerCommandOptions): Promise<any>;
+	upload(options?: WorkerCommandOptions | string): Promise<any>;
 	download?: (options?: WorkerCommandOptions) => Promise<any>;
 	header(owner: string, repo: string, header: any, database?: string): Promise<any>;
 	compile(options?: WorkerCommandOptions): Promise<any>;
@@ -166,7 +180,6 @@ declare class WorkerAPI extends MockAPI
 	onmessage?: (event: MessageEvent) => void;
 }
 
-
 interface DirectoryPickerOptions
 {
 	/** An optional string identifier to remember the last opened directory */
@@ -177,11 +190,14 @@ interface DirectoryPickerOptions
 	startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
 }
 
+declare API: typeof WorkerAPI;
+
 declare global
 {
 	let api: WorkerAPI | undefined;
 	let needsHeaders: boolean;
 	let TERMINATE: boolean;
+	var API: typeof WorkerAPI;
 
 	interface Window
 	{
@@ -197,10 +213,18 @@ declare global
 		runEngine?: () => void;
 		DB_SCHEME: SchemaStoreConfig[];
 		importScripts: (...urls: (string | URL)[]) => void;
+		githubToken?: string | undefined | null;
+		originalConsole: {
+			log: typeof console.log,
+			warn: typeof console.warn,
+			error: typeof console.error,
+			info: typeof console.info;
+		};
 	}
 	interface WorkerGlobalScope
 	{
-		api: WorkerAPI | MockAPI;
+		api?: WorkerAPI | MockAPI;
+		API: typeof WorkerAPI;
 	}
 
 	const terminalWrite: (message: string, source?: SourceMetadata | string, skipActualWrite?: boolean) => void;

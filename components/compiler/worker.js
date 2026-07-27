@@ -1,3 +1,5 @@
+/// <reference path="../bundle/global.d.ts" />
+
 /*
  * Copyright 2020 WebAssembly Community Group participants
  *
@@ -56,7 +58,11 @@ const apiOptions = {
 	{
 		try
 		{
-			if(filename instanceof Uint8Array || filename instanceof ArrayBuffer)
+			if(filename instanceof Uint8Array)
+			{
+				return await WebAssembly.compile(/** @type {BufferSource} */(filename.buffer));
+			}
+			if(filename instanceof ArrayBuffer)
 			{
 				return await WebAssembly.compile(filename);
 			}
@@ -138,7 +144,7 @@ const onAnyMessage = async event =>
 			break;
 
 		case 'setShowTiming':
-			api.showTiming = event.data.data;
+			api?.showTiming = event.data.data;
 			break;
 
 		case 'compileToAssembly': {
@@ -411,13 +417,14 @@ const onAnyMessage = async event =>
 							}
 
 
-							if(self.FS.virtual[filePath] && self.FS.virtual[filePath]?.contents.length)
+							const record = self.FS.virtual[filePath];
+							if(record && record.contents?.length)
 							{
 								console.log('Run succeeded: ' + filePath + '\n\r');
 
-								if(api?.database && typeof self.FS.virtual[filePath] !== 'undefined')
+								if(api?.database)
 								{
-									await self.putRecord(self.DB_STORE_NAME, self.FS.virtual[filePath], api?.database);
+									await self.putRecord(self.DB_STORE_NAME, record, api?.database);
 								}
 							}
 						} catch(e)
