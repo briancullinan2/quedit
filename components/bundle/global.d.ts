@@ -3,6 +3,7 @@ import type { RepositoryToolbar } from './menu-repos';
 import type { GitHubBranchLike } from './github-settings';
 import type { SettingsToolbar } from './menu-settings';
 import type JSZipImport from 'jszip';
+import type { SearchService } from './lumino-search';
 
 interface Window
 {
@@ -34,13 +35,36 @@ interface Window
 	getDefaultBranch(ownerName: string, repo: string): Promise<string>;
 	loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
 	cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload?: boolean) => Promise<any>;
+	deleteRecord(storeName: string, key: string, dbName: string | null): Promise<boolean>;
 	FS: {
 		virtual: Record<string, FileRecord | null | undefined>;
 	};
+	globToRegex(pattern: string): RegExp;
 	RepositoryToolbar?: typeof RepositoryToolbar;
 	SettingsToolbar?: typeof SettingsToolbar;
 	JSZip: typeof JSZipImport;
+	searchWorker: Worker;
+	searchService: SearchService;
+	DB_SCHEME: SchemaStoreConfig[];
 }
+
+
+
+export interface SchemaIndexConfig
+{
+	key: string;
+	value: string;
+}
+
+export interface SchemaStoreConfig
+{
+	key: string;
+	value: {
+		item1: string; // keyPath
+		item2: SchemaIndexConfig[]; // indexes
+	};
+}
+
 
 // Also extend WorkerGlobalScope / globalThis so `self.trees` works cleanly
 interface WorkerGlobalScope
@@ -56,6 +80,9 @@ interface WorkerGlobalScope
 		virtual: Record<string, FileRecord | null | undefined>;
 	};
 	JSZip: typeof JSZipImport;
+	searchService: SearchService;
+	DB_SCHEME: SchemaStoreConfig[];
+	importScripts: (...urls: (string | URL)[]) => void;
 }
 
 declare var self: Window & WorkerGlobalScope & typeof globalThis;
@@ -162,6 +189,8 @@ declare global
 			options?: DirectoryPickerOptions
 		): Promise<FileSystemDirectoryHandle>;
 		runEngine?: () => void;
+		DB_SCHEME: SchemaStoreConfig[];
+		importScripts: (...urls: (string | URL)[]) => void;
 	}
 
 	const terminalWrite: (message: string, source?: SourceMetadata | string, skipActualWrite?: boolean) => void;
@@ -178,6 +207,7 @@ declare global
 		virtual: Record<string, FileRecord | null | undefined>;
 	};
 	const JSZip: typeof JSZipImport;
+	const importScripts: (...urls: (string | URL)[]) => void;
 }
 
 type SourceMetadata = [

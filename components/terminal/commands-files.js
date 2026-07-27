@@ -1,3 +1,5 @@
+/// <reference path="../bundle/global.d.ts" />
+
 
 
 const formatBytes = (bytes) =>
@@ -62,11 +64,19 @@ async function ls(argv, database)
 
 	if(flags.flat)
 	{
-		entries.forEach(e => terminalWrite(e.path + '\n\r'));
+		entries.forEach(e =>
+		{
+			if(!e) return;
+			terminalWrite(e.path + '\n\r');
+		});
 	} else
 	{
 		// Calculate column width for alignment
-		const maxName = Math.max(...entries.map(e => e.path.length), 10);
+		const maxName = Math.max(...entries.map(e =>
+		{
+			if(!e) return 0;
+			return e.path.length;
+		}), 10);
 
 		terminalWrite(`${'NAME'.padEnd(maxName + 2)}${'SIZE'.padEnd(10)}TYPE\n\r`);
 		terminalWrite('-'.repeat(maxName + 20) + '\n\r');
@@ -85,83 +95,103 @@ async function ls(argv, database)
 }
 
 
-
 async function remove(argv, database)
 {
-	const metas = await getDatabaseMetadata();
-	const databases = [database].concat(metas.map(m => m.key));
-	const filename = argv[0];
-
-	const queryTarget = argv.join(' ');
-	const caseSensitiveActive = argv.includes('-c');
-	const cleanQuery = queryTarget.replace(/-c\s*/g, '').trim();
-
-
-	// Synchronize your search status tracking states so that fallback mirrors stay coherent
-	latestQueryVal = cleanQuery;
-	lastExecutedQueryVal = cleanQuery;
-
-	// Set up our execution promise callback resolver right before dispatching messages
-	const searchPromise = new Promise((resolve, reject) =>
+	if(!argv.length || !argv[0])
 	{
-		terminalCommandDeferred = { resolve, reject };
+		terminalWrite(`\x1b[1;38;5;196mError:\x1b[0m Target filename or glob pattern required.\n\r`);
+		return;
+	}
 
-		// Safety timeout watchdog to prevent terminal lockups if background threads hang
-		setTimeout(() =>
+	const caseSensitiveActive = argv.includes('-c');
+	const filteredArgs = argv.filter(arg => arg !== '-c');
+	const filename = filteredArgs[0];
+	const cleanQuery = filteredArgs.join(' ').trim();
+
+	if(!cleanQuery || cleanQuery.length < 2)
+	{
+		terminalWrite(`\x1b[1;38;5;196mError:\x1b[0m Search target must span at least 2 characters.\n\r`);
+		return;
+	}
+
+	// Resolve target databases
+	const metas = await window.getDatabaseMetadata?.() || [];
+	const targetDatabases = [database, ...metas.map((m) => m.key)].filter(Boolean);
+
+	terminalWrite(`\x1b[38;5;242m[Worker Thread] Locating candidate files for removal matching: "${cleanQuery}"...\x1b[0m\n\r`);
+
+	let timerId = null;
+
+	// Dispatch query through shared service
+	const { callbackId, promise } = self.searchService.search(
 		{
-			if(terminalCommandDeferred)
-			{
-				resolve([]);
-				terminalCommandDeferred = null;
-			}
+			query: cleanQuery,
+			caseSensitive: caseSensitiveActive,
+			activeRepositories: targetDatabases
+		},
+		undefined,
+		'cli-remove'
+	);
+
+	// Watchdog safety timeout
+	const watchdogPromise = new Promise((resolve) =>
+	{
+		timerId = setTimeout(() =>
+		{
+			self.searchService.cancelSearch(callbackId);
+			resolve([]);
 		}, 8000);
 	});
 
-	// Fire payload directly down to your background indexing threads
-	searchWorker.postMessage({
-		query: cleanQuery,
-		caseSensitive: caseSensitiveActive,
-		gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
-		activeRepositories: databases.filter(Boolean)
-	});
+	const groupedMatches = await Promise.race([promise, watchdogPromise]);
 
-	const groupedMatches = await searchPromise;
-	const rx = globToRegex(filename);
+	if(timerId) clearTimeout(timerId);
 
+	const rx = self.globToRegex(filename);
 
-	await Promise.all(groupedMatches.map(async group =>
-	{
-		if(rx.test(group.path))
+	// 1. Purge matching records across repositories
+	await Promise.all(
+		groupedMatches.map(async (group) =>
 		{
-			terminalWrite(`Removing ${group.path} on ${group.repo}\n\r`);
-			await deleteRecord(DB_STORE_NAME, group.path, group.repo);
-		}
-	}));
+			if(rx.test(group.path))
+			{
+				terminalWrite(`Removing ${group.path} on ${group.repo}\n\r`);
+				await self.deleteRecord(self.DB_STORE_NAME, group.path, group.repo);
+			}
+		})
+	);
 
-	for(let path of Object.keys(FS.virtual))
+	// 2. Clear matching in-memory entries from FS.virtual
+	const virtualFS = self.FS?.virtual;
+	if(virtualFS)
 	{
-		if(rx.test(path))
+		for(const path of Object.keys(virtualFS))
 		{
-			delete FS.virtual[filename];
-			terminalWrite(`Removing ${filename} from memory\n\r`);
+			if(rx.test(path))
+			{
+				delete virtualFS[path];
+				terminalWrite(`Removing ${path} from memory\n\r`);
+			}
 		}
 	}
 
+	// 3. Notify remote storage backend
 	try
 	{
-		await api.remove(filename);
+		await window.api?.remove?.(filename);
 	} catch(e)
 	{
-
+		// Silently swallow backend removal errors if unhandled
 	}
-}
 
+	terminalWrite(`\x1b[38;5;118mRemove operation finished.\x1b[0m\n\r`);
+}
 
 
 
 function openCommand(argv, database)
 {
-	let selected = toolsRepository || argv[1] || database;
+	let selected = self.toolsRepository || argv[1] || database;
 	const parts = selected.split('/');
 	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
@@ -180,14 +210,13 @@ function edit(argv)
 
 /**
  * Asynchronous terminal worker searching interface gateway.
- * Maps over the shared background worker registry.
+ * Stream-renders results as they arrive while keeping the promise alive until complete.
  */
 async function find(argv)
 {
-	// Reconstruct query argument string securely if user input spans unquoted spaces
-	const queryTarget = argv.join(' ');
 	const caseSensitiveActive = argv.includes('-c');
-	const cleanQuery = queryTarget.replace(/-c\s*/g, '').trim();
+	const filteredArgs = argv.filter(arg => arg !== '-c');
+	const cleanQuery = filteredArgs.join(' ').trim();
 
 	if(!cleanQuery || cleanQuery.length < 2)
 	{
@@ -197,79 +226,71 @@ async function find(argv)
 
 	terminalWrite(`\x1b[38;5;242m[Worker Thread] Querying repositories for matching traces: "${cleanQuery}"...\x1b[0m\n\r`);
 
-	// Synchronize your search status tracking states so that fallback mirrors stay coherent
-	latestQueryVal = cleanQuery;
-	lastExecutedQueryVal = cleanQuery;
+	let knownPathsCount = 0;
+	let timerId = null;
 
-	// Set up our execution promise callback resolver right before dispatching messages
-	const searchPromise = new Promise((resolve, reject) =>
+	const renderIncrementalResults = (groupedMatches) =>
 	{
-		terminalCommandDeferred = { resolve, reject };
-
-		// Safety timeout watchdog to prevent terminal lockups if background threads hang
-		setTimeout(() =>
+		if(groupedMatches.length === 0 || groupedMatches.length <= knownPathsCount)
 		{
-			if(terminalCommandDeferred)
+			return;
+		}
+
+		const newGroups = groupedMatches.slice(knownPathsCount);
+		knownPathsCount = groupedMatches.length;
+
+		newGroups.forEach(group =>
+		{
+			terminalWrite(`\x1b[1;38;5;45m📁 repo: [${group.repo}] -> ${group.path}\x1b[0m\n\r`);
+
+			if(group.localMatches.length > 0)
 			{
-				resolve([]);
-				terminalCommandDeferred = null;
+				group.localMatches.forEach(match =>
+				{
+					const lineLabel = `   Line ${match.line}: `.padEnd(14);
+					terminalWrite(`\x1b[38;5;246m${lineLabel}\x1b[0m \x1b[38;5;253m${match.matchText}\x1b[0m\n\r`);
+				});
+			} else
+			{
+				terminalWrite(`   \x1b[38;5;242m=> structural path pattern footprint match verified\x1b[0m\n\r`);
 			}
+
+			terminalWrite(`\x1b[38;5;236m${'-'.repeat(80)}\x1b[0m\n\r`);
+		});
+	};
+
+	const { callbackId, promise } = self.searchService.search(
+		{
+			query: cleanQuery,
+			caseSensitive: caseSensitiveActive
+		},
+		(partialResults) =>
+		{
+			renderIncrementalResults(partialResults);
+		},
+		'cli-find'
+	);
+
+	const watchdogPromise = new Promise((resolve) =>
+	{
+		timerId = setTimeout(() =>
+		{
+			self.searchService.cancelSearch(callbackId);
+			resolve([]);
 		}, 8000);
 	});
 
-	// Fire payload directly down to your background indexing threads
-	searchWorker.postMessage({
-		query: cleanQuery,
-		caseSensitive: caseSensitiveActive,
-		gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
-		activeRepositories: [
-			window.engineRepository,
-			window.gameRepository,
-			window.assetRepository,
-			window.toolsRepository,
-			window.tools2Repository,
-			window.environmentRepository
-		].filter(Boolean)
-	});
+	terminalWrite(`\n\r\x1b[1;38;5;118m=== WORKSPACE SEARCH RESULTS STREAM ===\x1b[0m\n\r`);
 
-	// Put the terminal command router thread to sleep until the worker completes its pass
-	const groupedMatches = await searchPromise;
+	const finalResults = await Promise.race([promise, watchdogPromise]);
 
-	if(groupedMatches.length === 0)
+	if(timerId) clearTimeout(timerId);
+
+	if(knownPathsCount === 0)
 	{
 		terminalWrite(`\n\r\x1b[1;38;5;208m[!] 0 results returned matching parameter targets.\x1b[0m\n\r`);
-		return;
-	}
-
-	// =========================================================================
-	// HIGH-DENSITY TERMINAL TELEMETRY LAYOUT RENDERING
-	// =========================================================================
-	terminalWrite(`\n\r\x1b[1;38;5;118m=== WORKSPACE SEARCH RESULTS (${groupedMatches.length} files hit) ===\x1b[0m\n\r`);
-
-	groupedMatches.forEach(group =>
+	} else
 	{
-		// Output file header block track info
-		terminalWrite(`\x1b[1;38;5;45m📁 repo: [${group.repo}] -> ${group.path}\x1b[0m\n\r`);
-
-		// Render explicit line hits if deep content results exist
-		if(group.localMatches.length > 0)
-		{
-			group.localMatches.forEach(match =>
-			{
-				const lineLabel = `   Line ${match.line}: `.padEnd(14);
-				// Highlight structural text highlights
-				terminalWrite(`\x1b[38;5;246m${lineLabel}\x1b[0m \x1b[38;5;253m${match.matchText}\x1b[0m\n\r`);
-			});
-		} else
-		{
-			// It was a pure filename path match structure or direct glob reference match hit
-			terminalWrite(`   \x1b[38;5;242m=> structural path pattern footprint match verified\x1b[0m\n\r`);
-		}
-
-		// Micro boundary rule lines isolating file targets
-		terminalWrite(`\x1b[38;5;236m${'-'.repeat(80)}\x1b[0m\n\r`);
-	});
-
-	terminalWrite(`\n\rSearch operations completed successfully.\n\r`);
+		terminalWrite(`\n\rSearch operations completed successfully (${knownPathsCount} total files matched).\n\r`);
+	}
 }
-

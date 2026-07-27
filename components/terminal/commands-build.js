@@ -1,4 +1,5 @@
 
+/// <reference path="../bundle/global.d.ts" />
 
 
 async function buildCommand(argv, database)

@@ -1,4 +1,7 @@
-﻿
+﻿/// <reference path="../bundle/global.d.ts" />
+
+
+
 const DB_VERSION = 1; // Increment this when you add new C# Entities!
 const DB_NAME = "briancullinan2/quedit";
 const DB_STORE_NAME = 'FILE_DATA';
@@ -15,6 +18,7 @@ const DB_SCHEME = [
 		}
 	}
 ];
+self.DB_SCHEME = DB_SCHEME;
 
 async function getDB(dbName = null, dbVersion = null)
 {
@@ -548,6 +552,8 @@ function findVirtualFiles(globPattern)
 		return accumulator;
 	}, {});
 }
+
+
 function globToRegex(pattern)
 {
 	// Clean up leading/trailing slashes so matching is uniform
@@ -570,4 +576,5 @@ function globToRegex(pattern)
 	return new RegExp(`^(?:.*\\/)?${regexStr}$`, "i");
 }
 
+window.globToRegex = globToRegex;
 

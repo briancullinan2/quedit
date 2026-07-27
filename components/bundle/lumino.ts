@@ -1,5 +1,6 @@
 import './logging';
 import './levenshtein';
+import './lumino-search';
 import { BoxPanel, DockPanel, Widget, Menu, MenuBar } from '@lumino/widgets';
 import * as commands from '@lumino/commands';
 import * as widgets from '@lumino/widgets';
@@ -279,8 +280,6 @@ function setTheme(theme: string)
 
 	document.body.classList.add(`theme-${themeName.replace(/_/g, '-')}`);
 }
-
-
 
 
 

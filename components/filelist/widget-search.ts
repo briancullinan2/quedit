@@ -1,31 +1,13 @@
 import { Message } from '@lumino/messaging';
 import { FileListWidget } from './widget';
+import type { SearchService, GroupedSearchResult } from '../bundle/lumino-search';
 
-export interface SearchMatchItem
+declare global
 {
-	path: string;
-	repoSource: string;
-	isRemote?: boolean;
-	line?: number;
-	matchText: string;
-	matchIndex?: number;
-	matchLength?: number;
-	sha?: string;
-}
-
-export interface GroupedSearchResult
-{
-	path: string;
-	repo: string;
-	localMatches: SearchMatchItem[];
-	remoteMatches: SearchMatchItem[];
-}
-
-export interface SearchTransactionState
-{
-	paths: SearchMatchItem[];
-	contents: SearchMatchItem[];
-	github: SearchMatchItem[];
+	interface Window
+	{
+		searchService: SearchService;
+	}
 }
 
 export interface HistorySnapshot
@@ -36,8 +18,7 @@ export interface HistorySnapshot
 
 export class SearchListWidget extends FileListWidget
 {
-	private searchWorker: Worker;
-	private activeSearchTransactions = new Map<string, SearchTransactionState>();
+	private currentCallbackId: string | null = null;
 	private searchHistoryStack: HistorySnapshot[] = [];
 	private federatedSearchTimer: ReturnType<typeof setTimeout> | null = null;
 	private latestQueryVal: string | null = null;
@@ -50,17 +31,10 @@ export class SearchListWidget extends FileListWidget
 	constructor(titleStr: string = 'Search Workspace')
 	{
 		super(titleStr);
-		this.id = `search-list-panel-${++window.tempCount}`;
+		this.id = `search-list-panel-${++(window as any).tempCount}`;
 		this.addClass('ide-search-list-widget');
-
-		// Spin up isolated worker thread for this widget
-		this.searchWorker = new Worker('/components/filelist/search-worker.js');
-		this.searchWorker.onmessage = this.handleWorkerMessage.bind(this);
 	}
 
-	/**
-	 * Minimal Layout Override: Search Box + Results Render Container (No Toolbar/Repo Selects)
-	 */
 	protected override async renderLayout(): Promise<void>
 	{
 		if(this.node.innerHTML === '')
@@ -87,9 +61,6 @@ export class SearchListWidget extends FileListWidget
 		});
 	}
 
-	/**
-	 * DOM Event Binding for Search Input & Results List
-	 */
 	private bindSearchEvents(): void
 	{
 		const input = this.node.querySelector<HTMLInputElement>(`.search-input-field`);
@@ -106,100 +77,6 @@ export class SearchListWidget extends FileListWidget
 		}
 	}
 
-	// ─── SEARCH WORKER TRANSACTION ROUTING ───
-
-	private handleWorkerMessage(e: MessageEvent): void
-	{
-		const { type, results, callbackId, query } = e.data;
-
-		if(type === 'clear')
-		{
-			this.activeSearchTransactions.delete(callbackId);
-			this.handleSearchWorkerResponse([], query);
-			return;
-		}
-
-		if(!this.activeSearchTransactions.has(callbackId))
-		{
-			this.activeSearchTransactions.set(callbackId, { paths: [], contents: [], github: [] });
-		}
-
-		const txn = this.activeSearchTransactions.get(callbackId)!;
-		(txn as any)[type] = results;
-
-		const flatCombined = [...txn.paths, ...txn.contents, ...txn.github];
-
-		// Group matches by unique file path
-		const groupedMap = new Map<string, GroupedSearchResult>();
-		flatCombined.forEach(item =>
-		{
-			const key = `${item.repoSource}:${item.path}`;
-			if(!groupedMap.has(key))
-			{
-				groupedMap.set(key, {
-					path: item.path,
-					repo: item.repoSource,
-					localMatches: [],
-					remoteMatches: []
-				});
-			}
-
-			const group = groupedMap.get(key)!;
-			if(item.isRemote)
-			{
-				group.remoteMatches.push(item);
-			} else if(!group.localMatches.some(l => l.line === item.line && l.matchText === item.matchText))
-			{
-				group.localMatches.push(item);
-			}
-		});
-
-		const finalGroupedArray = Array.from(groupedMap.values());
-		this.handleSearchWorkerResponse(finalGroupedArray, query);
-	}
-
-	private handleSearchWorkerResponse(incomingGroupedResults: GroupedSearchResult[], rawQueryUsed: string): void
-	{
-		const input = this.node.querySelector<HTMLInputElement>('.search-input-field');
-
-		if(incomingGroupedResults.length > 0)
-		{
-			this.searchHistoryStack = this.searchHistoryStack.filter(h => h.query !== rawQueryUsed);
-			this.searchHistoryStack.push({
-				query: rawQueryUsed,
-				resultsSnapshot: incomingGroupedResults
-			});
-
-			if(this.searchHistoryStack.length > 10)
-			{
-				this.searchHistoryStack.shift();
-			}
-
-			if(input) input.placeholder = `${incomingGroupedResults.length} matches for: "${rawQueryUsed}"`;
-			this.renderSearchResults(incomingGroupedResults);
-			this.buildTreeNodesFromSearch(incomingGroupedResults);
-			return;
-		}
-
-		// Handle empty results or historical fallback state
-		const lastValidState = this.searchHistoryStack[this.searchHistoryStack.length - 1];
-		if(lastValidState)
-		{
-			if(input) input.placeholder = `❌ 0 results found for "${rawQueryUsed}"`;
-			this.renderSearchResults(lastValidState.resultsSnapshot, lastValidState.query);
-		} else
-		{
-			if(input) input.placeholder = `❌ 0 search results found for "${rawQueryUsed}"`;
-			const container = this.node.querySelector(`#${this.treeContainerId}`);
-			if(container)
-			{
-				container.innerHTML = `<div class="empty-placeholder">No assets matching workspace parameters.</div>`;
-			}
-		}
-	}
-
-	// ─── EXECUTION / THROTTLING GATES ───
-
 	private handleSearchKeyDown(e: KeyboardEvent, input: HTMLInputElement): void
 	{
 		if(e.key === 'Enter')
@@ -213,7 +90,7 @@ export class SearchListWidget extends FileListWidget
 					clearTimeout(this.federatedSearchTimer);
 					this.federatedSearchTimer = null;
 				}
-				this.executeWorkerQuery(currentQuery);
+				this.executeSearch(currentQuery);
 			}
 			return;
 		}
@@ -255,7 +132,7 @@ export class SearchListWidget extends FileListWidget
 			}
 
 			this.lastExecutedQueryVal = this.latestQueryVal;
-			this.executeWorkerQuery(this.latestQueryVal);
+			this.executeSearch(this.latestQueryVal);
 			this.federatedSearchTimer = null;
 
 			if(this.latestQueryVal !== this.lastExecutedQueryVal)
@@ -265,25 +142,69 @@ export class SearchListWidget extends FileListWidget
 		}, 300);
 	}
 
-	private executeWorkerQuery(query: string): void
+	private executeSearch(query: string): void
 	{
-		this.searchWorker.postMessage({
-			callbackId: `search-widget-${this.id}`,
-			query: query,
-			caseSensitive: false,
-			gitHubToken: localStorage.getItem('github_token') || (window as any).api?.github_token,
-			activeRepositories: [
-				window.engineRepository,
-				window.gameRepository,
-				window.assetRepository,
-				window.toolsRepository,
-				window.tools2Repository,
-				window.environmentRepository
-			].filter(Boolean)
+		if(this.currentCallbackId)
+		{
+			window.searchService.cancelSearch(this.currentCallbackId);
+			this.currentCallbackId = null;
+		}
+
+		const { callbackId, promise } = window.searchService.search(
+			{ query, caseSensitive: false },
+			(partialResults) => this.handleSearchWorkerResponse(partialResults, query),
+			`search-widget-${this.id}`
+		);
+
+		this.currentCallbackId = callbackId;
+
+		promise.then((finalResults) =>
+		{
+			if(this.currentCallbackId === callbackId)
+			{
+				this.handleSearchWorkerResponse(finalResults, query);
+			}
 		});
 	}
 
-	// ─── DOM RENDERING PASS ───
+	private handleSearchWorkerResponse(incomingGroupedResults: GroupedSearchResult[], rawQueryUsed: string): void
+	{
+		const input = this.node.querySelector<HTMLInputElement>('.search-input-field');
+
+		if(incomingGroupedResults.length > 0)
+		{
+			this.searchHistoryStack = this.searchHistoryStack.filter(h => h.query !== rawQueryUsed);
+			this.searchHistoryStack.push({
+				query: rawQueryUsed,
+				resultsSnapshot: incomingGroupedResults
+			});
+
+			if(this.searchHistoryStack.length > 10)
+			{
+				this.searchHistoryStack.shift();
+			}
+
+			if(input) input.placeholder = `${incomingGroupedResults.length} matches for: "${rawQueryUsed}"`;
+			this.renderSearchResults(incomingGroupedResults);
+			this.buildTreeNodesFromSearch(incomingGroupedResults);
+			return;
+		}
+
+		const lastValidState = this.searchHistoryStack[this.searchHistoryStack.length - 1];
+		if(lastValidState)
+		{
+			if(input) input.placeholder = `❌ 0 results found for "${rawQueryUsed}"`;
+			this.renderSearchResults(lastValidState.resultsSnapshot, lastValidState.query);
+		} else
+		{
+			if(input) input.placeholder = `❌ 0 search results found for "${rawQueryUsed}"`;
+			const container = this.node.querySelector(`#${this.treeContainerId}`);
+			if(container)
+			{
+				container.innerHTML = `<div class="empty-placeholder">No assets matching workspace parameters.</div>`;
+			}
+		}
+	}
 
 	private renderSearchResults(groupedItems: GroupedSearchResult[], lastValidQuery?: string): void
 	{
@@ -372,8 +293,6 @@ export class SearchListWidget extends FileListWidget
 		});
 	}
 
-	// ─── CLICK INTERACTION DELEGATION ───
-
 	private async handleSearchResultsClick(event: MouseEvent, noBounce: boolean = false): Promise<void>
 	{
 		const target = event.target as HTMLElement;
@@ -430,9 +349,6 @@ export class SearchListWidget extends FileListWidget
 		}
 	}
 
-	/**
-	 * Stores search results in loadedDatabases as a virtual tree
-	 */
 	private buildTreeNodesFromSearch(groupedItems: GroupedSearchResult[]): void
 	{
 		const searchDbKey = `search-db-${this.id}`;
@@ -468,9 +384,12 @@ export class SearchListWidget extends FileListWidget
 
 	protected override onBeforeDetach(msg: Message): void
 	{
-		this.searchWorker.terminate();
+		if(this.currentCallbackId)
+		{
+			window.searchService.cancelSearch(this.currentCallbackId);
+			this.currentCallbackId = null;
+		}
 		if(this.federatedSearchTimer) clearTimeout(this.federatedSearchTimer);
 		super.onBeforeDetach(msg);
 	}
 }
-

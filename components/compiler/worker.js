@@ -463,7 +463,7 @@ const onAnyMessage = async event =>
 		//
 		case 'remove':
 			api.extract(event.data.data);
-			const rx = globToRegex(filename);
+			const rx = window.globToRegex(filename);
 			for(let path of Object.keys(self.FS.virtual))
 			{
 				if(rx.test(path))
