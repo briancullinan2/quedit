@@ -1,5 +1,14 @@
 
 
+const formatBytes = (bytes) =>
+{
+	if(bytes === 0) return '0B';
+	const k = 1024;
+	const sizes = ['B', 'KB', 'MB', 'GB'];
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+	return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + sizes[i];
+};
+
 async function ls(argv, database)
 {
 	let selected = window.toolsRepository || database;
@@ -64,10 +73,11 @@ async function ls(argv, database)
 
 		entries.forEach(e =>
 		{
+			if(!e) return;
 			const size = e.contents ? flags.human ? formatBytes(e.contents.length) : e.contents.length.toString() : '0B';
 			const nameStr = e.path.padEnd(maxName + 2);
 			const sizeStr = size.padEnd(10);
-			const color = e.mode === FS_DIR ? '\x1b[1;34m' : '\x1b[0m'; // Blue for dirs
+			const color = e.mode === self.FS_DIR ? '\x1b[1;34m' : '\x1b[0m'; // Blue for dirs
 
 			terminalWrite(`${color}${nameStr}\x1b[0m${sizeStr}${e.mode}\n\r`);
 		});

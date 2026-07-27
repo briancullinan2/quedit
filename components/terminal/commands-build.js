@@ -5,7 +5,11 @@ async function buildCommand(argv, database)
 {
 	const mode = argv[0] || 'release';
 
-	let selected = api.database = argv[1] || engineRepository || database;
+	let selected = argv[1] || self.engineRepository || database;
+	if(api)
+	{
+		api.database = selected;
+	}
 	if(mode === 'q3lcc'
 		|| mode === 'q3rcc'
 		|| mode === 'q3cpp'

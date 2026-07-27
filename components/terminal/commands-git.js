@@ -7,7 +7,7 @@ async function clone(argv)
 	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 
-	const branch = argv[1];
+	let branch = argv[1];
 	if(!branch)
 	{
 		branch = await getDefaultBranch(ownerName, repoName);
@@ -25,10 +25,10 @@ async function clone(argv)
 /**
  * Executes terminal 'status' layout profiling pass
  */
-async function status(args, flags)
+async function statusCommand(args, flags)
 {
 	// Fall back to engine target context if no path argument is supplied directly
-	let repoPath = args[0] || SettingsManager.get('github', 'engineRepository');
+	let repoPath = args[0] || window.SettingsManager.get('github', 'engineRepository');
 	if(!repoPath)
 	{
 		console.log("Error: Missing repository configuration context path mapping rules.");
@@ -125,11 +125,11 @@ async function push(args, flags)
 		return;
 	}
 
-	let repoPath = args[1] || SettingsManager.get('github', 'engineRepository');
+	let repoPath = args[1] || self.SettingsManager.get('github', 'engineRepository');
 	const parts = repoPath.split('/');
 	const owner = parts[0];
 	const repo = parts[1];
-	const branch = await getDefaultBranch(owner, repo);
+	const branch = await self.getDefaultBranch(owner, repo);
 	const callbackId = `term_push_${Date.now()}`;
 
 	console.log(`Assembling commit data layout package context structures to push directly...`);

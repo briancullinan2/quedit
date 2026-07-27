@@ -41,7 +41,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	status: {
-		execute: status,
+		execute: statusCommand,
 		description: "Show working file mutations, additions, or deletions against the remote repository branch.",
 		args: [
 			{ name: "repo_path", type: ARG_TYPES.DATABASE, description: "Target repository identifier string (Defaults to engine context)" }
@@ -209,16 +209,6 @@ const COMMAND_SCHEMA = {
 		args: [],
 		flags: {},
 		demos: [{ cmd: "kill", desc: "Force stop all active asynchronous layout thread routines" }]
-	},
-
-	hello: {
-		execute: hello,
-		description: "Initialize environment greeting routines and log terminal session handshake diagnostic parameters.",
-		args: [],
-		flags: {},
-		demos: [
-			{ cmd: "hello", desc: "Trigger console connection banner state check" }
-		]
 	},
 	header: {
 		execute: header,
@@ -616,9 +606,7 @@ async function hello(argv)
 
 async function error(argv)
 {
-	const name = argv[0] || 'User';
-	let user = (void 0).login;
-	terminalWrite(`Hello, ${user || name}!\n\r`);
+	throw new Error('test');
 }
 
 
