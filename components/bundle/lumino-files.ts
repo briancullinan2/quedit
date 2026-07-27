@@ -214,9 +214,10 @@ export class FileManager
 					for(const item of jsonResponse as GitHubFileEntry[])
 					{
 						const itemPath = (parentFolder ? `${parentFolder}/${item.path ?? item.name}` : item.path ?? item.name);
+						const virtualPath = repoKey + '/' + itemPath;
 						const isDir = item.type === 'dir';
 
-						filesRepo[repoKey][itemPath] = window.FS.virtual[itemPath] = {
+						filesRepo[repoKey][itemPath] = window.FS.virtual[virtualPath] = {
 							...item,
 							path: itemPath,
 							mode: item.mode ?? (isDir ? (0o040000 | 0o755) : (0o100000 | 0o644)),
@@ -291,7 +292,7 @@ export class FileManager
 						}
 						trees['#database'].nodesById[testFileKey] = record;
 					}
-					FS.virtual[currentPath] = record;
+					FS.virtual[testFileKey] = record;
 					this.updateDatabaseTreeValues(dbMeta.key);
 					return { dbKey: dbMeta.key, fileNode: record };
 				}
@@ -343,6 +344,7 @@ export class FileManager
 			// Check if the widget has an active FileSystemDirectoryHandle
 			const rootHandle: FileSystemDirectoryHandle = widget?.handle;
 			const dbKey: string = widget?.defaultRepository ?? widget?.handleKey ?? widget?.id ?? 'local_fs';
+			const virtualPath = dbKey + '/' + cleanPath;
 
 			if(!rootHandle || typeof rootHandle.getDirectoryHandle !== 'function')
 			{
@@ -390,7 +392,7 @@ export class FileManager
 					{
 						window.filesRepo[dbKey] = {};
 					}
-					window.filesRepo[dbKey][cleanPath] = window.FS.virtual[cleanPath] = fileNode;
+					window.filesRepo[dbKey][cleanPath] = window.FS.virtual[virtualPath] = fileNode;
 
 					return { dbKey, fileNode };
 				}
@@ -497,7 +499,7 @@ export class FileManager
 	 */
 	private async ingestFileContent(owner: string, repo: string, path: string, sha: string): Promise<ArrayBuffer | null>
 	{
-		let content = await cacheFile(owner, repo, path, sha, true);
+		let content = await cacheFile(DB_STORE_NAME, owner, repo, path, sha, true);
 		if(content && content.byteLength > 0)
 		{
 			return content;

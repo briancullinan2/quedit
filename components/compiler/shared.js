@@ -2153,7 +2153,7 @@ const API = (function ()
 
 
 			if(input && contents)
-				FS.virtual[input] = {
+				FS.virtual[this.database + '/' + input] = {
 					timestamp: new Date(),
 					mode: FS_FILE,
 					contents: contents,
@@ -2163,7 +2163,7 @@ const API = (function ()
 
 			await prepInputOutput(input, obj, this.database, true);
 
-			if(!FS.virtual[input] || !FS.virtual[input].contents)
+			if(!FS.virtual[this.database + '/' + input] || !FS.virtual[this.database + '/' + input].contents)
 			{
 				debugger;
 				console.error('Input file empty: ' + input);
@@ -2175,7 +2175,7 @@ const API = (function ()
 			{
 				this.memfs.mkdirp(input.substring(0, input.lastIndexOf('/')));
 				this.memfs.mkdirp(obj.substring(0, obj.lastIndexOf('/')));
-				this.memfs.addFile(input, FS.virtual[input].contents);
+				this.memfs.addFile(input, FS.virtual[this.database + '/' + input].contents);
 			}
 
 
@@ -2196,7 +2196,7 @@ const API = (function ()
 			if(this.memfs && this.memfs.exists(obj))
 			{
 				let bytes = this.memfs.getFileContents(obj);
-				FS.virtual[obj] = {
+				FS.virtual[this.database + '/' + obj] = {
 					timestamp: new Date(),
 					mode: FS_FILE,
 					contents: bytes.slice(),
@@ -2207,7 +2207,7 @@ const API = (function ()
 				try
 				{
 					if(this.database)
-						await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database);
+						await putRecord(DB_STORE_NAME, FS.virtual[this.database + '/' + obj], this.database);
 
 					console.log('Compile succeeded: ' + obj + '\n\r');
 				} catch(e)
@@ -2216,11 +2216,11 @@ const API = (function ()
 					console.log(`${e.message}\n\r${e.stack || e.stacktrace}`);
 				}
 			}
-			else if(this.database && FS.virtual[obj])
+			else if(this.database && FS.virtual[this.database + '/' + obj])
 			{
 				try
 				{
-					await putRecord(DB_STORE_NAME, FS.virtual[obj], this.database);
+					await putRecord(DB_STORE_NAME, FS.virtual[this.database + '/' + obj], this.database);
 				} catch(e)
 				{
 					debugger;
@@ -2358,7 +2358,7 @@ const API = (function ()
 					let bytes = this.memfs.getFileContents(wasm);
 					if(bytes.length > 0)
 					{
-						FS.virtual[wasm] = {
+						FS.virtual[this.database + '/' + wasm] = {
 							timestamp: new Date(),
 							mode: FS_FILE,
 							contents: bytes,
@@ -2367,21 +2367,21 @@ const API = (function ()
 						};
 
 						if(this.database)
-							await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database);
+							await putRecord(DB_STORE_NAME, FS.virtual[this.database + '/' + wasm], this.database);
 
 					}
-				} else if(this.database && FS.virtual[wasm] && FS.virtual[wasm].contents)
-					await putRecord(DB_STORE_NAME, FS.virtual[wasm], this.database);
+				} else if(this.database && FS.virtual[this.database + '/' + wasm] && FS.virtual[this.database + '/' + wasm].contents)
+					await putRecord(DB_STORE_NAME, FS.virtual[this.database + '/' + wasm], this.database);
 
 			} catch(e)
 			{
 				console.log(`${e.message}\n\r${e.stack || e.stacktrace}`);
 			}
 
-			if(FS.virtual[wasm].contents.length > 1024)
+			if(FS.virtual[this.database + '/' + wasm].contents.length > 1024)
 				console.log('Link succeeded: ' + wasm + '\n\r');
 
-			return FS.virtual[wasm];
+			return FS.virtual[this.database + '/' + wasm];
 		}
 
 
@@ -2550,7 +2550,7 @@ const API = (function ()
 			await this.link({ obj, wasm });
 
 			const testMod = await this.hostLogAsync(`Compiling ${wasm}`,
-				WebAssembly.compile(FS.virtual[wasm].contents));
+				WebAssembly.compile(FS.virtual[this.database + '/' + wasm].contents));
 			return await this.run(testMod, wasm);
 		}
 	}

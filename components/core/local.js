@@ -32,6 +32,9 @@ async function getDB(dbName = null, dbVersion = null)
 	});
 }
 
+/**
+ * @param {string | null} [dbName=null]
+ */
 async function deleteOldDatabase(dbName = null)
 {
 	return new Promise((rs) =>
@@ -222,6 +225,15 @@ async function putRecord(storeName, record, dbName = null, noBounce = false)
 
 
 
+/**
+ * Retrieves a record from IndexedDB.
+ *
+ * @param {string} storeName - The name of the object store.
+ * @param {any} record - The key, query, or record payload to look up.
+ * @param {string | null} [dbName=null] - Optional database name override.
+ * @param {boolean} [noBounce=false] - Whether to bypass debouncing.
+ * @returns {Promise<any>}
+ */
 async function getRecord(storeName, record, dbName = null, noBounce = false)
 {
 	return await debounceRecords(storeName, 'path', record, null, null, dbName, 'get', noBounce);
@@ -271,7 +283,7 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 		else if(MODE === 'query')
 			return queryIndexInternal(storeName, indexName, record, lower, upper, dbName); // Fixed typo: passed indexName
 		else if(MODE === 'cache')
-			return cacheFileInternal(ownerName, repoName, record, lower, upper, dbName);
+			return cacheFileInternal(storeName, ownerName, repoName, record, lower, upper, dbName);
 		else
 			throw new Error('MODE not recognized in debounceRecords: ' + MODE);
 	}
@@ -329,7 +341,7 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 			else if(MODE === 'query')
 				result = await queryIndexInternal(sName, iName, rec, low, up, dName);
 			else if(MODE === 'cache')
-				result = await cacheFileInternal(oName, rName, rec, low, up, dName);
+				result = await cacheFileInternal(sName, oName, rName, rec, low, up, dName);
 			else
 				throw new Error('MODE not recognized in debounceRecords: ' + MODE);
 

@@ -182,8 +182,8 @@ export class GithubListWidget extends FileListWidget
 			// Ensure remote baseline structure exists in memory
 			if(!window.filesRepo[database])
 			{
-				const branch = await (window as any).getDefaultBranch?.(parts[0], parts[1]);
-				await (window as any).loadGitHubTree?.(parts[0], parts[1], branch);
+				const branch = await window.getDefaultBranch(parts[0], parts[1]);
+				await window.loadGitHubTree(parts[0], parts[1], branch);
 			}
 
 			// LAYER A: Repository Root Node Expansion (Inject Modified / Added / Staged roots)
@@ -225,7 +225,7 @@ export class GithubListWidget extends FileListWidget
 			const callbackId = `tree_sync_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 			this.pendingTreeRequests[callbackId] = { target, folderId };
 
-			const branch = await (window as any).getDefaultBranch?.(parts[0], parts[1]);
+			const branch = await window.getDefaultBranch(parts[0], parts[1]);
 
 			this.githubWorker.postMessage({
 				type: 'COMMIT_STATUS_CHECK',

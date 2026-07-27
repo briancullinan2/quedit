@@ -283,10 +283,15 @@ export async function setupDatabase(dbName: string, stores: SchemaStoreConfig[])
 
 async function putRecordInternal(storeName: string, record: FileRecord, dbName: string | null = null): Promise<any>
 {
+	const filePath = dbName + '/' + record.path;
 	const newRecord: FileRecord = {
 		timestamp: record.timestamp,
 		mode: record.mode,
-		contents: record.contents instanceof FileSystemDirectoryHandle ? record.contents : typeof FS !== 'undefined' ? (record.contents = FS.virtual[record.path]?.contents || record.contents?.slice(0)) : record.contents?.slice(0),
+		contents: record.contents instanceof FileSystemDirectoryHandle
+			? record.contents
+			: typeof FS !== 'undefined'
+				? (record.contents = FS.virtual[filePath]?.contents || FS.virtual[record.path]?.contents || record.contents?.slice(0))
+				: record.contents?.slice(0),
 		path: record.path,
 		sha: record.sha,
 		parent: record.parent
@@ -484,7 +489,7 @@ export function debounceRecords(
 		if(MODE === 'get') return getRecordInternal(storeName, record, dbName, lower);
 		if(MODE === 'put') return putRecordInternal(storeName, record, dbName);
 		if(MODE === 'query') return queryIndexInternal(storeName, indexName, record, lower, upper, dbName);
-		if(MODE === 'cache') return cacheFileInternal(ownerName, repoName, record, lower, upper, dbName);
+		if(MODE === 'cache') return cacheFileInternal(storeName, ownerName, repoName, record, lower, upper);
 		throw new Error('MODE not recognized in debounceRecords: ' + MODE);
 	}
 
@@ -533,7 +538,7 @@ export function debounceRecords(
 			if(MODE === 'get') result = await getRecordInternal(sName, rec, dName, low);
 			else if(MODE === 'put') result = await putRecordInternal(sName, rec, dName);
 			else if(MODE === 'query') result = await queryIndexInternal(sName, iName, rec, low, up, dName);
-			else if(MODE === 'cache') result = await cacheFileInternal(oName, rName, rec, low, up, dName);
+			else if(MODE === 'cache') result = await cacheFileInternal(sName, oName, rName, rec, low, up);
 			else throw new Error('MODE not recognized in debounceRecords: ' + MODE);
 
 			if(currentExecutionState.resolve) currentExecutionState.resolve(result);

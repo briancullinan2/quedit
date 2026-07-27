@@ -108,7 +108,7 @@ const dirs = {
 
 
 const TERMINALS = (typeof document !== 'undefined'
-	? Array.from(document.querySelectorAll('#terminals [href^="#"]')).map(el => el.href.split('#')[1])
+	? Array.from(document.querySelectorAll('#terminals [href^="#"]')).map(el => el.getAttribute('href')?.split('#')[1])
 	: ['all', 'error', 'warn', 'info', 'soft', 'immediate', 'build', 'console', 'ai'])
 	.concat(['language'])
 	.filter((a, i, arr) => arr.indexOf(a) === i);

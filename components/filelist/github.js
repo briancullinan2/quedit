@@ -1,4 +1,4 @@
-/// <reference path="../bundle/github.d.ts" />
+/// <reference path="../bundle/global.d.ts" />
 
 
 if(!self.trees)
@@ -14,8 +14,8 @@ if(!self.filesRepo)
 
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false)
 {
-	if(typeof SettingsManager != 'undefined' && window.api)
-		window.api.github_token = SettingsManager.get('github', 'githubToken');
+	if(typeof self.SettingsManager != 'undefined' && self.api)
+		self.api.github_token = self.SettingsManager.get('github', 'githubToken');
 
 	const fullUrl = `https://api.github.com/repos/${ownerName}/${repoName}`
 		+ (url.startsWith('/') || url.trim().length == 0 ? '' : '/') + url + (url.includes('?') ? '&' : '?') + `t=${Date.now()}`;
@@ -62,11 +62,14 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
 		return await response.json();
 	} catch(up)
 	{
-		if(authorize && up.message === 'UNAUTHORIZED_ACCESS')
+		if(up instanceof Error)
 		{
-			return await githubRequest(ownerName, repoName, url, false, buffer);
-		} else if(up.message === 'UNAUTHORIZED_ACCESS')
-		{
+			if(authorize && up.message === 'UNAUTHORIZED_ACCESS')
+			{
+				return await githubRequest(ownerName, repoName, url, false, buffer);
+			} else if(up.message === 'UNAUTHORIZED_ACCESS')
+			{
+			}
 		}
 		console.error("Failed to github: " + fullUrl, up);
 		throw up;
@@ -134,7 +137,7 @@ async function githubGraphQL(query, variables = {})
 
 	let token = typeof api !== 'undefined'
 		? api.github_token
-		: SettingsManager.get('github', 'githubToken');
+		: self.SettingsManager.get('github', 'githubToken');
 
 
 	const response = await fetch('https://api.github.com/graphql', {
@@ -168,7 +171,7 @@ async function loadGitHubTree(repoOwner, repoName, branch)
 		const commitData = await githubRequest(repoOwner, repoName, `commits/${branch}`);
 		const buildDate = new Date(commitData.commit.author.date);
 
-		filesRepo[database] = treeData.tree.reduce((obj, a) =>
+		self.filesRepo[database] = treeData.tree.reduce((obj, a) =>
 		{
 			// Attach the buildDate to every file as a fallback mtime
 			if(a.path.toLowerCase().includes('.map') || a.path.toLowerCase().includes('.bsp'))
@@ -191,12 +194,12 @@ async function loadGitHubTree(repoOwner, repoName, branch)
 			await setupDatabase(database, DB_SCHEME);
 		}
 
-		if(Object.keys(mapFiles).length > 1 && typeof updateSelectOptions !== 'undefined')
+		if(Object.keys(mapFiles).length > 1 && typeof self.updateSelectOptions !== 'undefined')
 		{
-			updateSelectOptions('map', mapFiles);
+			self.updateSelectOptions('map', mapFiles);
 		}
 
-		return filesRepo[database];
+		return self.filesRepo[database];
 	} catch(error)
 	{
 		console.error('Failed to load GitHub tree:', error);
@@ -239,9 +242,9 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 	try
 	{
 		// Initialize the tracking database allocation if it hasn't happened yet
-		if(typeof filesRepo[database] === 'undefined')
+		if(typeof self.filesRepo[database] === 'undefined')
 		{
-			filesRepo[database] = {};
+			self.filesRepo[database] = {};
 		}
 
 		const filesToHydrate = [];
@@ -278,11 +281,11 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 				const isFile = entry.type === 'blob';
 
 				// Map out the flat file cache signature
-				filesRepo[database][entry.path] = {
+				self.filesRepo[database][entry.path] = {
 					path: entry.path,
 					sha: entry.oid,
 					type: isFile ? 'file' : 'dir',
-					mode: isFile ? FS_FILE : FS_DIR,
+					mode: isFile ? self.FS_FILE : self.FS_DIR,
 					size: entry.object?.byteSize || 0,
 					timestamp: null, // Will be hydrated later if file
 					parent: entry.path.includes('/') ? entry.path.substring(0, entry.path.lastIndexOf('/')) : ''
@@ -294,7 +297,7 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 				} else
 				{
 					// Set directory runtime fallback timestamp
-					filesRepo[database][entry.path].timestamp = new Date();
+					self.filesRepo[database][entry.path].timestamp = new Date();
 					// Push the newly uncovered subdirectory straight into the queue loop to look deeper
 					directoryQueue.push(entry.path);
 				}
@@ -308,13 +311,13 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 		for(let i = 0; i < filesToHydrate.length; i += BATCH_SIZE)
 		{
 			const chunk = filesToHydrate.slice(i, i + BATCH_SIZE);
-			batchPromises.push(hydrateFileMTimes(repoOwner, repoName, branchName, chunk, filesRepo[database]));
+			batchPromises.push(hydrateFileMTimes(repoOwner, repoName, branchName, chunk, self.filesRepo[database]));
 		}
 
 		// Concurrently populate file modification records across all chunks
 		await Promise.all(batchPromises);
 
-		return filesRepo[database];
+		return self.filesRepo[database];
 
 	} catch(error)
 	{
@@ -470,13 +473,13 @@ async function getGitShaBrowser(content)
 		.join('');
 }
 
-async function cacheFile(repoOwner, repoName, filePath, sha, forceReload = false)
+async function cacheFile(storeName, repoOwner, repoName, filePath, sha, forceReload = false)
 {
 	return await debounceRecords(DB_STORE_NAME, 'path', filePath, sha, forceReload, repoOwner + '/' + repoName, 'cache');
 }
 
 
-async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload = false)
+async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, forceReload = false)
 {
 
 	const selected = repoOwner + '/' + repoName;
@@ -485,7 +488,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
 
 		// TODO: this once from front end or backend, but not both
-		if(!filesRepo[selected])
+		if(!self.filesRepo[selected])
 		{
 			let branch = await getDefaultBranch(repoOwner, repoName);
 			await loadGitHubTree(repoOwner, repoName, branch);
@@ -496,11 +499,11 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 			|| !FS.virtual[filePath].contents.length === 0
 		)
 		{
-			FS.virtual[filePath] = await getRecord(DB_STORE_NAME, filePath, selected);
+			FS.virtual[filePath] = await getRecord(storeName || DB_STORE_NAME, filePath, selected);
 		}
-		if(filesRepo[selected][filePath] && FS.virtual[filePath])
+		if(self.filesRepo[selected][filePath] && FS.virtual[filePath])
 		{
-			if(FS.virtual[filePath].timestamp > filesRepo[selected][filePath].timestamp)
+			if(FS.virtual[filePath].timestamp > self.filesRepo[selected][filePath].timestamp)
 			{
 				console.info(`Skipping changed (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 				return FS.virtual[filePath].contents;
@@ -535,7 +538,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
 
 		// TODO: only continue if the file is in github
-		const shouldDownload = filesRepo[selected] && filesRepo[selected][filePath];
+		const shouldDownload = self.filesRepo[selected] && self.filesRepo[selected][filePath];
 
 
 		// TODO: IF GITHUB, ALWAYS UPDATE
@@ -603,7 +606,7 @@ async function cacheFileInternal(repoOwner, repoName, filePath, sha, forceReload
 
 		// async to filesystem
 		// does it REALLY matter if it makes it? wont it just redownload?
-		await putRecord(DB_STORE_NAME, FS.virtual[filePath], selected);
+		await putRecord(storeName || DB_STORE_NAME, FS.virtual[filePath], selected);
 
 		try
 		{

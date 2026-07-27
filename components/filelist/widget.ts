@@ -27,7 +27,7 @@ declare global
 		getBranches: (repoOwner: string | undefined, repoName: string | undefined) => Promise<GitHubBranch[]>;
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
 		loadFileTree: (repoOwner: string, repoName: string, branch: string, selector: string) => Promise<void>;
-		cacheFile: (repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload?: boolean) => Promise<any>;
+		cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload?: boolean) => Promise<any>;
 		trees: Record<string, any>;
 		filesRepo: Record<string, GitHubFileTree | undefined>;
 		RepositoryToolbar: typeof RepositoryToolbar;

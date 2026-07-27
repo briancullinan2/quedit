@@ -236,10 +236,10 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 		console.log(`Compiling ${name} module...`);
 
 
-		if(!database) database = gameRepo || api.database;
+		if(!database) database = self.gameRepository || api.database;
 		const parts = database.split('/');
-		const ownerName = parts.length == 2 ? parts[0] : owner.value;
-		const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+		const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+		const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 
 
 		if(needsHeaders)
@@ -256,10 +256,10 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 		console.log(`Building ${name}.qvm...`);
 
-		if(!filesRepo[database])
+		if(!self.filesRepo[database])
 		{
-			let branch = await getDefaultBranch(ownerName, repoName);
-			await loadGitHubTree(ownerName, repoName, branch);
+			let branch = await self.getDefaultBranch(ownerName, repoName);
+			await self.loadGitHubTree(ownerName, repoName, branch);
 		}
 
 
@@ -299,28 +299,31 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 					continue;
 
 
+				const virtualSrc = database + '/' + src;
+				const virtualObj = database + '/' + obj;
 				const tempPath = path.join(CONFIGURATION, sourceDir, file.replace('.o', '.i'));
 
 
 				let content;
-				if(FS.virtual[src])
-					content = FS.virtual[src].contents;
+				if(self.FS.virtual[virtualSrc])
+					content = self.FS.virtual[virtualSrc].contents;
 				else if(!src.includes(config.BUILD_DIR + '/'))
-					content = await cacheFile(ownerName, repoName, src);
+					content = await self.cacheFile(ownerName, repoName, src);
 				else
 				{
-					FS.virtual[src] = await getRecord(DB_STORE_NAME, src, database);
-					if(!FS.virtual[src])
+					self.FS.virtual[virtualSrc] = await getRecord(DB_STORE_NAME, src, database);
+					if(!self.FS.virtual[virtualSrc])
 						throw new Error('Output file not found: ' + src);
 				}
 
 
 
 				let objRecord = await getRecord(DB_STORE_NAME, obj, database);
-				FS.virtual[obj] = objRecord;
+				self.FS.virtual[virtualObj] = objRecord;
 
-				if(FS.virtual[obj]
-					&& FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+				if(self.FS.virtual[virtualObj]?.timestamp
+					&& self.FS.virtual[virtualSrc]?.timestamp
+					&& self.FS.virtual[virtualSrc].timestamp < self.FS.virtual[virtualObj].timestamp
 					&& !forceChanged
 				)
 				{
@@ -432,7 +435,10 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 			} catch(e)
 			{
-				console.error(`CC: ${src}: ${e.message}\n\r${e.stack || e.stacktrace}`);
+				if(e instanceof Error)
+				{
+					console.error(`CC: ${src}: ${e.message}\n\r${e.stack}`);
+				}
 			}
 		}
 
@@ -464,10 +470,10 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 async function linkModule(database, name, sourceDir, filesList, forceChanged = false, noModule = false /* from buildModule */, noBounce = false)
 {
-	if(!database) database = gameRepo || api.database;
+	if(!database) database = self.gameRepository || api.database;
 	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
 
 
 	if(buildDebounce)
@@ -493,6 +499,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
 		// Link phase (q3asm)
 		const qvmOutput = path.join(CONFIGURATION, repoName || config.MOD, `${name === 'game' ? 'qagame' : name}.${QVM_MODE ? 'qvm' : 'wasm'}`);
+		const virtualQVM = path.join(database, qvmOutput);
 
 		let qvmObjs = filesList.map(file => path.join(CONFIGURATION, sourceDir, file));
 		if(QVM_MODE)
@@ -538,6 +545,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 			syscalls = path.join(sourceDir, 'cg_syscalls.asm');
 		if(name === 'ui' || name === 'q3_ui')
 			syscalls = path.join(sourceDir, 'ui_syscalls.asm');
+		const virtualSyscalls = database + '/' + syscalls;
 
 
 		let q3asm = path.join(config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
@@ -545,6 +553,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 			q3asm = path.join(config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
 		if(name === 'ui' || name === 'q3_ui')
 			q3asm = path.join(config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
+		const virtualAsm = database + '/' + q3asm;
 
 
 
@@ -554,27 +563,27 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
 
 			let content;
-			if(FS.virtual[syscalls])
-				content = FS.virtual[syscalls].contents;
+			if(self.FS.virtual[virtualSyscalls])
+				content = self.FS.virtual[virtualSyscalls].contents;
 
-			content = await cacheFile(ownerName, repoName, syscalls);
-			if(!FS.virtual[syscalls])
+			content = await self.cacheFile(ownerName, repoName, syscalls);
+			if(!self.FS.virtual[virtualSyscalls])
 			{
-				FS.virtual[syscalls] = await getRecord(DB_STORE_NAME, syscalls, database);
-				if(!FS.virtual[syscalls])
+				self.FS.virtual[virtualSyscalls] = await getRecord(DB_STORE_NAME, syscalls, database);
+				if(!self.FS.virtual[virtualSyscalls])
 					throw new Error('Syscalls file not found: ' + syscalls);
 			}
 
 
 			let content2;
-			if(FS.virtual[q3asm])
-				content2 = FS.virtual[q3asm].contents;
+			if(self.FS.virtual[virtualAsm])
+				content2 = self.FS.virtual[virtualAsm].contents;
 
-			content2 = await cacheFile(ownerName, repoName, q3asm);
-			if(!FS.virtual[q3asm])
+			content2 = await self.cacheFile(ownerName, repoName, q3asm);
+			if(!self.FS.virtual[virtualAsm])
 			{
-				FS.virtual[q3asm] = await getRecord(DB_STORE_NAME, q3asm, database);
-				if(!FS.virtual[q3asm])
+				self.FS.virtual[virtualAsm] = await getRecord(DB_STORE_NAME, q3asm, database);
+				if(!self.FS.virtual[virtualAsm])
 					throw new Error('Syscalls file not found: ' + q3asm);
 			}
 
@@ -583,11 +592,11 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
 
 		let exeRecord = await getRecord(DB_STORE_NAME, qvmOutput, database);
-		FS.virtual[qvmOutput] = exeRecord;
+		self.FS.virtual[virtualQVM] = exeRecord;
 
 		console.log(`Assembling ${qvmOutput}...`);
 
-		if(FS.virtual[qvmOutput] && !forceChanged)
+		if(self.FS.virtual[virtualQVM] && !forceChanged)
 		{
 			console.log(qvmOutput + " already up to date...");
 			return;
@@ -647,8 +656,10 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 		console.log(`Success: ${qvmOutput}`);
 	} catch(e)
 	{
-
-		console.error(`Linker Error in ${name}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+		if(e instanceof Error)
+		{
+			console.error(`Linker Error in ${name}\n\r${e.message}\n\r${e.stack}`);
+		}
 		throw e;
 	}
 	finally
@@ -658,30 +669,24 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 }
 
 
-
+/**
+ * @param {string | null} database
+ **/
 async function buildGame(database = null, forceChanged = true)
 {
-	if(!database) database = gameRepo || api.database;
-	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	if(!database) database = self.gameRepository || api.database;
 
-
-
-
+	await buildModule('game', dirs.QADIR, gameFiles, database, ['GAME'], forceChanged);
 
 
 }
 
-
+/**
+ * @param {string | null} database
+ **/
 async function buildCGame(database = null, forceChanged = true)
 {
-	if(!database) database = gameRepo || api.database;
-	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
-
-
+	if(!database) database = self.gameRepository || api.database;
 
 	await buildModule('cgame', dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged);
 
@@ -689,15 +694,12 @@ async function buildCGame(database = null, forceChanged = true)
 }
 
 
-
+/**
+ * @param {string | null} database
+ **/
 async function buildUI(database = null, forceChanged = true)
 {
-	if(!database) database = gameRepo || api.database;
-	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
-
-
+	if(!database) database = self.gameRepository || api.database;
 
 	await buildModule('ui', dirs.UIDIR, uiFiles, database, ['UI'], forceChanged);
 
@@ -706,10 +708,12 @@ async function buildUI(database = null, forceChanged = true)
 
 
 
-
+/**
+ * @param {string | null} database
+ **/
 async function buildQ3UI(database = null, forceChanged = true)
 {
-	if(!database) database = gameRepo || api.database;
+	if(!database) database = self.gameRepository || api.database;
 
 
 
@@ -723,17 +727,12 @@ async function buildQ3UI(database = null, forceChanged = true)
 
 
 
-
+/**
+ * @param {string | null} database
+ **/
 async function buildQVM(database = null, forceChanged = false, noBounce = false)
 {
-	if(!database) database = gameRepo || api.database;
-	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
-
-
-
-
+	if(!database) database = self.gameRepository || api.database;
 
 	if(buildDebounce)
 	{

@@ -122,8 +122,9 @@ export class ServiceWorkerManager
 	{
 		const content = JSON.stringify(SettingsManager.exportPayload(), null, 4);
 		const newSha = await getGitShaBrowser(content);
+		const virtualPath = database + '/' + this.settingsFilePath;
 
-		FS.virtual[this.settingsFilePath] = {
+		FS.virtual[virtualPath] = {
 			timestamp: new Date(),
 			mode: FS_FILE,
 			contents: new TextEncoder().encode(content),
@@ -132,7 +133,7 @@ export class ServiceWorkerManager
 			parent: ''
 		};
 
-		await putRecord(DB_STORE_NAME, FS.virtual[this.settingsFilePath] as FileRecord, database);
+		await putRecord(DB_STORE_NAME, FS.virtual[virtualPath] as FileRecord, database);
 	}
 
 	/**

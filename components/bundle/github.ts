@@ -17,15 +17,16 @@ export async function downloadRepoZip(ownerName: string, repo: string, branch = 
 		console.info(`Requesting archive from ${ownerName}/${repo}...`);
 
 		const buffer = await githubRequest(ownerName, repo, `zipball/${branch}`, true, true);
-		const zipPath = path.join(config.MOUNT_DIR, 'branch.zip');
+		const zipPath = path.join(targetDatabase, config.MOUNT_DIR, 'branch.zip');
+		const localPath = path.join(config.MOUNT_DIR, 'branch.zip');
 
 		FS.virtual[zipPath] = {
 			timestamp: new Date(),
 			mode: FS_FILE,
 			contents: buffer,
-			path: zipPath,
+			path: localPath,
 			sha: await getGitShaBrowser(buffer),
-			parent: zipPath.substring(0, zipPath.lastIndexOf('/'))
+			parent: localPath.substring(0, localPath.lastIndexOf('/'))
 		};
 
 		putRecord(DB_STORE_NAME, FS.virtual[zipPath], targetDatabase);
@@ -42,15 +43,16 @@ export async function downloadRepoZip(ownerName: string, repo: string, branch = 
 			unzipPromises.push(file.async('uint8array').then(async (data: Uint8Array) =>
 			{
 				const cleanedPath = relativePath.substring(relativePath.indexOf('/') + 1);
-				const fullPath = path.join(config.MOUNT_DIR, cleanedPath);
+				const fullPath = path.join(targetDatabase, config.MOUNT_DIR, cleanedPath);
+				const localPath = path.join(config.MOUNT_DIR, cleanedPath);
 
 				FS.virtual[fullPath] = {
 					timestamp: new Date(),
 					mode: FS_FILE,
 					contents: data,
-					path: fullPath,
+					path: localPath,
 					sha: await getGitShaBrowser(data),
-					parent: fullPath.substring(0, fullPath.lastIndexOf('/'))
+					parent: localPath.substring(0, localPath.lastIndexOf('/'))
 				};
 
 				putRecord(DB_STORE_NAME, FS.virtual[fullPath], targetDatabase);

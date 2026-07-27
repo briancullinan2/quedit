@@ -50,6 +50,8 @@
 	// ==========================================
 	"javascript.suggest.jsdoc": true,
 	"jsdoc.generateDescription": true,
+	"javascript.implicitProjectConfig.checkJs": true,
+	"js/js.validate.enable": true,
 	// ==========================================
 	// File & Folder Naming Enforcement Rules
 	// ==========================================

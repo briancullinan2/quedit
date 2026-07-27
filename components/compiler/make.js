@@ -523,14 +523,14 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 	let sha = filesRepo[database][stringify].sha;
 	let content = await cacheFile(ownerName, repoName, stringify, sha);
 
-	if(!FS.virtual[obj] && !forceChanged)
-		FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database);
+	if(!FS.virtual[database + '/' + obj] && !forceChanged)
+		FS.virtual[database + '/' + obj] = await getRecord(DB_STORE_NAME, obj, database);
 
 	let hasChanged = false;
 
-	if(FS.virtual[obj]
+	if(FS.virtual[database + '/' + obj]
 		// compare input and output mtime
-		&& FS.virtual[stringify]?.timestamp < FS.virtual[obj]?.timestamp
+		&& FS.virtual[database + '/' + stringify]?.timestamp < FS.virtual[database + '/' + obj]?.timestamp
 		&& !forceChanged
 	)
 	{
@@ -595,14 +595,10 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 
 	let stringifyExe = CONFIGURATION + '/stringify' + config.BINEXT;
 
-	let exeRecord = await getRecord(DB_STORE_NAME, stringifyExe, database);
-	FS.virtual[stringifyExe] = exeRecord;
+	FS.virtual[database + '/' + stringifyExe] = await getRecord(DB_STORE_NAME, stringifyExe, database);
 
 
-	if(FS.virtual[stringifyExe]
-		// TODO: compare LATEST input and output mtime
-		&& !forceChanged
-	)
+	if(FS.virtual[database + '/' + stringifyExe] && !forceChanged)
 	{
 		console.log(stringifyExe + " already up to date...");
 		return;
@@ -651,23 +647,23 @@ function mkdirp(path, database)
 
 		try
 		{
-			let hadnt = !FS.virtual[accumulated] || FS.virtual[accumulated].default === true;
+			let hadnt = !FS.virtual[database + '/' + accumulated] || FS.virtual[database + '/' + accumulated].default === true;
 			if(hadnt)
-				FS.virtual[accumulated] = {
+				FS.virtual[database + '/' + accumulated] = {
 					timestamp: new Date(),
 					mode: FS_DIR,
 					size: 4096,
 					path: accumulated,
 					parent: accumulated.substring(0, accumulated.lastIndexOf('/'))
 				};
-			FS.virtual[accumulated + '/.'] = FS.virtual[accumulated];
+			FS.virtual[database + '/' + accumulated + '/.'] = FS.virtual[database + '/' + accumulated];
 			if(previousPath)
-				FS.virtual[accumulated + '/..'] = FS.virtual[previousPath];
+				FS.virtual[database + '/' + accumulated + '/..'] = FS.virtual[database + '/' + previousPath];
 			if(database && hadnt) // TODO: good for checking build times?
-				putRecord(DB_STORE_NAME, FS.virtual[accumulated], database);
-			if(FS.virtual[accumulated].default)
+				putRecord(DB_STORE_NAME, FS.virtual[database + '/' + accumulated], database);
+			if(FS.virtual[database + '/' + accumulated].default)
 			{
-				FS.virtual[accumulated].default = false;
+				FS.virtual[database + '/' + accumulated].default = false;
 			}
 		} catch(e)
 		{
@@ -708,6 +704,8 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 		mkdirp(config.TEMPDIR, database);
 	if(makeDirs && !FS.virtual[config.HOMEDIR])
 		mkdirp(config.HOMEDIR, database);
+	if(makeDirs && !FS.virtual[database])
+		mkdirp(database, database);
 
 	if(api.memfs)
 	{
@@ -734,10 +732,10 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 		} catch(e) { console.error(`${e.message}\n\r${e.stack || e.stacktrace}`); }
 	}
 
-	if(!FS.virtual[file]
-		|| (FS.virtual[file] >> 12) !== ST_DIR
-		&& (!FS.virtual[file].contents
-			|| FS.virtual[file].contents.length === 0)
+	if(!FS.virtual[database + '/' + file]
+		|| (FS.virtual[database + '/' + file] >> 12) !== ST_DIR
+		&& (!FS.virtual[database + '/' + file].contents
+			|| FS.virtual[database + '/' + file].contents.length === 0)
 	)
 	{
 		if(!loadedDirectories.includes(buildDir) && makeDirs)
@@ -748,24 +746,26 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 				mkdirp(buildDir, database);
 			let currentDir = await queryIndex(DB_STORE_NAME, 'parent', buildDir, null, null, database);
 			for(let r of currentDir)
-				FS.virtual[r.path] = r;
+				FS.virtual[database + '/' + r.path] = r;
 		}
 
 		// TODO!!!!! check if commit has changed or file has changed on disk
-		if((!FS.virtual[file] || !FS.virtual[file].contents || FS.virtual[file].contents.length === 0) && makeDirs /* only load github if its a controlled file */)
+		if((!FS.virtual[database + '/' + file]
+			|| !FS.virtual[database + '/' + file].contents
+			|| FS.virtual[database + '/' + file].contents.length === 0) && makeDirs /* only load github if its a controlled file */)
 		{
 			console.log(`Loading IDB/Github (${api.worker ? 'frontend' : 'worker'}): ${file}`);
 			await cacheFile(ownerName, repoName, file, null, makeDirs);
 		}
 
-		if(FS.virtual[file] && (FS.virtual[file].mode >> 12) === ST_FILE)
+		if(FS.virtual[database + '/' + file] && (FS.virtual[database + '/' + file].mode >> 12) === ST_FILE)
 		{
 			if(api.memfs)
 			{
 				if(!api.memfs.exists(file))
 				{
 					api.memfs.mem.check;
-					api.memfs.addFile(file, FS.virtual[file].contents);
+					api.memfs.addFile(file, FS.virtual[database + '/' + file].contents);
 				} else
 					console.log(`Already have from query (${api.worker ? 'frontend' : 'worker'}): ${file}`);
 			}
@@ -778,14 +778,14 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 	{
 		if(api.memfs)
 		{
-			if((FS.virtual[file].mode >> 12) === ST_DIR)
+			if((FS.virtual[database + '/' + file].mode >> 12) === ST_DIR)
 			{
-				api.memfs.addDirectory(file);
+				api.memfs.addDirectory(database + '/' + file);
 			}
 			else
 			{
 				//api.memfs.mem.check
-				api.memfs.addFile(file, FS.virtual[file].contents);
+				api.memfs.addFile(file, FS.virtual[database + '/' + file].contents);
 			}
 		}
 		console.log(`Already have contents (${api.worker ? 'frontend' : 'worker'}): ${file}`);
@@ -793,16 +793,16 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 
 	try
 	{
-		if(api.memfs && makeDirs && FS.virtual[file] && FS.virtual[file].contents)
+		if(api.memfs && makeDirs && FS.virtual[database + '/' + file] && FS.virtual[database + '/' + file].contents)
 		{
-			if((FS.virtual[file].mode >> 12) === ST_DIR)
+			if((FS.virtual[database + '/' + file].mode >> 12) === ST_DIR)
 			{
 				api.memfs.addDirectory(file);
 			}
 			else
 			{
 				api.memfs.mem.check;
-				api.memfs.addFile(file, FS.virtual[file].contents);
+				api.memfs.addFile(file, FS.virtual[database + '/' + file].contents);
 			}
 		}
 	} catch(e)
@@ -812,7 +812,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 
 	if(!obj) return;
 
-	if(!FS.virtual[obj])
+	if(!FS.virtual[database + '/' + obj])
 	{
 		if(!loadedDirectories.includes(outDir) && makeDirs)
 		{
@@ -821,15 +821,15 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 				mkdirp(outDir, database);
 			let currentDir = await queryIndex(DB_STORE_NAME, 'parent', outDir, null, null, database);
 			for(let r of currentDir)
-				FS.virtual[r.path] = r;
+				FS.virtual[database + '/' + r.path] = r;
 			loadedDirectories.push(outDir);
 		}
 
 		// don't load object files from github
-		if(!FS.virtual[obj])
+		if(!FS.virtual[database + '/' + obj])
 		{
 			console.log(`Loading IDB output (${api.worker ? 'frontend' : 'worker'}): ${obj}`);
-			FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database);
+			FS.virtual[database + '/' + obj] = await getRecord(DB_STORE_NAME, obj, database);
 		} else
 		{
 			console.log(`Already have object (${api.worker ? 'frontend' : 'worker'}): ${file}`);
@@ -933,9 +933,9 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 				if(!forceChanged)
 					await prepInputOutput(file, obj, database, true /* controlled directory */);
 
-				if(FS.virtual[obj]
+				if(FS.virtual[database + '/' + obj]
 					// compare input and output mtime
-					&& FS.virtual[file]?.timestamp < FS.virtual[obj]?.timestamp
+					&& FS.virtual[database + '/' + file]?.timestamp < FS.virtual[database + '/' + obj]?.timestamp
 					&& !forceChanged
 				)
 				{
@@ -963,7 +963,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 				await api.compile({
 					CFLAGS: CCFLAGS,
-					contents: FS.virtual[file].contents,
+					contents: FS.virtual[database + '/' + file].contents,
 					input: file,
 					database,
 					obj
@@ -1023,11 +1023,10 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 
 	let engineExe = CONFIGURATION + '/' + config.CNAME + config.BINEXT;
 
-	let exeRecord = await getRecord(DB_STORE_NAME, engineExe, database);
-	FS.virtual[engineExe] = exeRecord;
+	FS.virtual[database + '/' + engineExe] = await getRecord(DB_STORE_NAME, engineExe, database);
 
 
-	if(FS.virtual[engineExe]
+	if(FS.virtual[database + '/' + engineExe]
 		// TODO: compare LATEST input and output mtime
 		&& !forceChanged
 	)
@@ -1107,8 +1106,8 @@ async function buildShaders(database = null, forceChanged = false)
 			if(!forceChanged) // because we'll create it anyways so don't load it here
 				await prepInputOutput(shader, obj, database, true /* controlled paths */);
 
-			if(FS.virtual[obj]
-				&& FS.virtual[shader]?.timestamp < FS.virtual[obj]?.timestamp
+			if(FS.virtual[database + '/' + obj]
+				&& FS.virtual[database + '/' + shader]?.timestamp < FS.virtual[database + '/' + obj]?.timestamp
 				&& !forceChanged
 			)
 			{
@@ -1119,7 +1118,7 @@ async function buildShaders(database = null, forceChanged = false)
 
 			console.log(`GLSL: ${obj}`);
 
-			const cCode = generateFallbackC(shader, FS.virtual[shader].contents);
+			const cCode = generateFallbackC(shader, FS.virtual[database + '/' + shader].contents);
 
 			let hasChanged = true;
 
@@ -1187,22 +1186,22 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 						await loadGitHubTree('briancullinan2', 'quedit', 'main');
 					}
 					await cacheFile('briancullinan2', 'quedit', localName);
-					if(!FS.virtual[localName])
+					if(!FS.virtual[database + '/' + localName])
 					{
 						debugger;
 						console.error('Goddamnit you suck at programming.');
 					}
-					FS.virtual[header] =
+					FS.virtual[database + '/' + header] =
 					{
 						timestamp: new Date(),
 						mode: FS_FILE,
-						contents: FS.virtual[localName].contents,
+						contents: FS.virtual[database + '/' + localName].contents,
 						path: header,
-						sha: FS.virtual[localName].sha,
+						sha: FS.virtual[database + '/' + localName].sha,
 						parent: header.substring(0, header.lastIndexOf('/'))
 
 					};
-					await putRecord(DB_STORE_NAME, FS.virtual[header], thisDatabase);
+					await putRecord(DB_STORE_NAME, FS.virtual[database + '/' + header], thisDatabase);
 				}
 				else
 				{
@@ -1256,8 +1255,8 @@ function loadEntry(cursor)
 	}
 	// already exists on filesystem,
 	//   it must have come with page
-	if(FS.virtual[cursor.path]
-		&& FS.virtual[cursor.path].timestamp
+	if(FS.virtual[database + '/' + cursor.path]
+		&& FS.virtual[database + '/' + cursor.path].timestamp
 		> cursor.timestamp)
 	{
 		// embedded file is newer, start with that
@@ -1267,7 +1266,7 @@ function loadEntry(cursor)
 
 	console.log('Loading: ' + cursor.path);
 
-	FS.virtual[cursor.path] = {
+	FS.virtual[database + '/' + cursor.path] = {
 		timestamp: cursor.timestamp,
 		mode: cursor.mode,
 		contents: cursor.contents,

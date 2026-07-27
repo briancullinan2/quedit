@@ -89,7 +89,7 @@ const LCC_CFLAGS = [
 	//"-pthread",
 	"-std=gnu11",
 
-	...(COMPILE_PLATFORM === 'darwin' ? ["-DMACOS_X"] : [])
+	//...(COMPILE_PLATFORM === 'darwin' ? ["-DMACOS_X"] : [])
 ];
 
 
@@ -145,13 +145,13 @@ const toolLdFlags = [
 
 
 
+
+/**
+ * @param {string | null} database
+ **/
 async function buildLBurg(database = null, forceChanged = false, noLinking = false)
 {
-	if(!database) database = toolsRepository || api.database;
-	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
-
+	if(!database) database = self.toolsRepository || api.database;
 
 	let CONFIGURATION = api.configuration == 'release'
 		? dirs.ENGINE_RELEASE
@@ -172,9 +172,12 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
 
 			const src = path.join("lburg", file.replace('.o', '.c'));
 			const obj = path.join(CONFIGURATION + '/' + toolDirs.LBURG, file);
+			const virtualSrc = path.join(database, src);
+			const virtualObj = path.join(database, obj);
 
-			if(FS.virtual[obj]
-				&& FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+			if(self.FS.virtual[virtualObj]?.timestamp
+				&& self.FS.virtual[virtualSrc]?.timestamp
+				&& self.FS.virtual[virtualSrc]?.timestamp < self.FS.virtual[virtualObj]?.timestamp
 				&& !forceChanged
 			)
 			{
@@ -188,8 +191,10 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
 			await compileToolFile(src, obj, "lburg", database, [], forceChanged);
 		} catch(e)
 		{
-
-			console.error(`Build error in lburg: ${file}\n\r${e.message}\n\r${e.stack || e.stacktrace}`);
+			if(e instanceof Error)
+			{
+				console.error(`Build error in lburg: ${file}\n\r${e.message}\n\r${e.stack}`);
+			}
 		}
 
 	}
@@ -210,7 +215,7 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
 
 async function linkLburg(database, forceChanged = false, noBuild = false)
 {
-	if(!database) database = toolsRepository || api.database;
+	if(!database) database = self.toolsRepository || api.database;
 
 	let CONFIGURATION = api.configuration == 'release'
 		? dirs.ENGINE_RELEASE
@@ -220,6 +225,7 @@ async function linkLburg(database, forceChanged = false, noBuild = false)
 
 
 	const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
+	const virtualLburg = path.join(database, lburgExe);
 	const lburgObjs = lburgFiles.map(f => path.join(CONFIGURATION + '/' + toolDirs.LBURG, f));
 
 	if(!noBuild
@@ -233,10 +239,10 @@ async function linkLburg(database, forceChanged = false, noBuild = false)
 
 
 	let exeRecord = await getRecord(DB_STORE_NAME, lburgExe, database);
-	FS.virtual[lburgExe] = exeRecord;
+	self.FS.virtual[virtualLburg] = exeRecord;
 
 
-	if(FS.virtual[lburgExe]
+	if(self.FS.virtual[virtualLburg]
 		&& !forceChanged
 	)
 	{
@@ -270,29 +276,31 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
 {
 	try
 	{
-		if(!database) database = toolsRepository || api.database;
+		if(!database) database = self.toolsRepository || api.database;
 		const parts = database.split('/');
 		const ownerName = parts.length == 2 ? parts[0] : owner.value;
 		const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
 
+		const virtualSrc = path.join(database, src);
+		const virtualObj = path.join(database, obj);
 
 
 		if(!BRANCH || !FILELIST)
 		{
-			BRANCH = await getDefaultBranch(ownerName, repoName);
-			FILELIST = await loadGitHubTree(ownerName, repoName, BRANCH);
+			BRANCH = await self.getDefaultBranch(ownerName, repoName);
+			FILELIST = await self.loadGitHubTree(ownerName, repoName, BRANCH);
 		}
 
 
 		let content;
-		if(FS.virtual[src])
-			content = FS.virtual[src].contents;
+		if(self.FS.virtual[virtualSrc])
+			content = self.FS.virtual[virtualSrc].contents;
 		else if(!src.includes(config.BUILD_DIR + '/'))
-			content = await cacheFile(ownerName, repoName, src);
+			content = await self.cacheFile(ownerName, repoName, src);
 		else
 		{
-			FS.virtual[src] = await getRecord(DB_STORE_NAME, src, database);
-			if(!FS.virtual[src])
+			FS.virtual[virtualSrc] = await getRecord(DB_STORE_NAME, src, database);
+			if(!FS.virtual[virtualSrc])
 				throw new Error('Output file not found: ' + src);
 		}
 
@@ -310,10 +318,10 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
 
 
 		let objRecord = await getRecord(DB_STORE_NAME, obj, database);
-		FS.virtual[obj] = objRecord;
+		self.FS.virtual[virtualObj] = objRecord;
 
-		if(FS.virtual[obj]
-			&& FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+		if(self.FS.virtual[virtualObj]
+			&& self.FS.virtual[virtualSrc]?.timestamp < self.FS.virtual[virtualObj]?.timestamp
 			&& !forceChanged
 		)
 		{
@@ -335,23 +343,29 @@ async function compileToolFile(src, obj, includeDir, database, extraFlags = [], 
 		return obj;
 	} catch(e)
 	{
-
-		console.error(`Error compiling: ${src}: ${e}\n\r${e.stack || e.stacktrace}`);
-		let newError = new Error(e.message);
-		newError.stack = newError.stacktrace = e.stack || e.stacktrace;
-		throw newError;
+		if(e instanceof Error)
+		{
+			console.error(`Error compiling: ${src}: ${e}\n\r${e.stack}`);
+			let newError = new Error(e.message);
+			newError.stack = e.stack;
+			throw newError;
+		}
 	}
 }
 
 let needsHeaders = true;
 
 
+
+/**
+ * @param {string | null} database
+ **/
 async function buildRCC(database = null, skipTool = false, forceChanged = false, noLinking = false)
 {
-	if(!database) database = toolsRepository || api.database;
-	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : owner.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || repository.value;
+	if(!database) database = self.toolsRepository || api.database;
+	const parts = database?.split('/');
+	const ownerName = parts?.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
+	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || self.RepositoryToolbar?.repository?.value;
 
 
 	let CONFIGURATION = api.configuration == 'release'
@@ -362,6 +376,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
 
 
 	const lburgExe = path.join(CONFIGURATION, "lburg" + config.BINEXT);
+	const virtualLburg = path.join(database, lburgExe);
 
 	if(!skipTool)
 	{
@@ -372,7 +387,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
 			await buildLBurg(database, forceChanged);
 			exeRecord = await getRecord(DB_STORE_NAME, lburgExe, database);
 		}
-		FS.virtual[lburgExe] = exeRecord;
+		self.FS.virtual[virtualLburg] = exeRecord;
 
 	}
 
@@ -396,14 +411,14 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
 				const dagMd = "src/dagcheck.md";
 				const dagC = path.join(CONFIGURATION, "src/dagcheck.c");
 
-				if(!FS.virtual[obj] && !forceChanged)
-					FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database);
+				if(!FS.virtual[virtualObj] && !forceChanged)
+					FS.virtual[virtualObj] = await getRecord(DB_STORE_NAME, obj, database);
 
-				if(!FS.virtual[dagMd] && !forceChanged)
-					FS.virtual[dagMd] = await getRecord(DB_STORE_NAME, dagMd, database);
+				if(!FS.virtual[database + '/' + dagMd] && !forceChanged)
+					FS.virtual[database + '/' + dagMd] = await getRecord(DB_STORE_NAME, dagMd, database);
 
-				if(FS.virtual[obj]
-					&& FS.virtual[dagMd]?.timestamp < FS.virtual[obj]?.timestamp
+				if(FS.virtual[virtualObj]
+					&& FS.virtual[database + '/' + dagMd]?.timestamp < FS.virtual[virtualObj]?.timestamp
 					&& !forceChanged
 				)
 				{
@@ -431,11 +446,11 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
 			{
 				const src = path.join("src", file.replace('.o', '.c'));
 
-				if(!FS.virtual[obj] && !forceChanged)
-					FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database);
+				if(!FS.virtual[virtualObj] && !forceChanged)
+					FS.virtual[virtualObj] = await getRecord(DB_STORE_NAME, obj, database);
 
-				if(FS.virtual[obj]
-					&& FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+				if(FS.virtual[virtualObj]
+					&& FS.virtual[virtualSrc]?.timestamp < FS.virtual[virtualObj]?.timestamp
 					&& !forceChanged
 				)
 				{
@@ -480,8 +495,7 @@ async function linkRCC(database = null, forceChanged = false, noBuild = false)
 	const rccObjs = rccFiles.map(file => path.join(CONFIGURATION + '/' + toolDirs.RCC, file));
 	const rccExe = path.join(CONFIGURATION, "q3rcc" + config.BINEXT);
 
-	let exeRecord = await getRecord(DB_STORE_NAME, rccExe, database);
-	FS.virtual[rccExe] = exeRecord;
+	FS.virtual[database + '/' + rccExe] = await getRecord(DB_STORE_NAME, rccExe, database);
 
 	if(!noBuild)
 	{
@@ -489,9 +503,7 @@ async function linkRCC(database = null, forceChanged = false, noBuild = false)
 	}
 
 
-	if(FS.virtual[rccExe]
-		&& !forceChanged
-	)
+	if(FS.virtual[database + '/' + rccExe] && !forceChanged)
 	{
 		console.log(rccExe + " already up to date...");
 		return;
@@ -540,11 +552,11 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
 			const src = path.join("cpp", file.replace('.o', '.c'));
 			const obj = path.join(CONFIGURATION + '/' + toolDirs.CPP, file);
 
-			if(!FS.virtual[obj] && !forceChanged)
-				FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database);
+			if(!FS.virtual[virtualObj] && !forceChanged)
+				FS.virtual[virtualObj] = await getRecord(DB_STORE_NAME, obj, database);
 
-			if(FS.virtual[obj]
-				&& FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+			if(FS.virtual[virtualObj]
+				&& FS.virtual[virtualSrc]?.timestamp < FS.virtual[virtualObj]?.timestamp
 				&& !forceChanged
 			)
 			{
@@ -584,8 +596,7 @@ async function linkCPP(database = null, forceChanged = false, noBuild = false)
 	const cppExe = path.join(CONFIGURATION, "q3cpp" + config.BINEXT);
 
 
-	let exeRecord = await getRecord(DB_STORE_NAME, cppExe, database);
-	FS.virtual[cppExe] = exeRecord;
+	FS.virtual[database + '/' + cppExe] = await getRecord(DB_STORE_NAME, cppExe, database);
 
 
 	if(!noBuild)
@@ -593,9 +604,7 @@ async function linkCPP(database = null, forceChanged = false, noBuild = false)
 		await buildCPP(database, false, true);
 	}
 
-	if(FS.virtual[cppExe]
-		&& !forceChanged
-	)
+	if(FS.virtual[database + '/' + cppExe] && !forceChanged)
 	{
 		console.log(cppExe + " already up to date...");
 		return;
@@ -651,11 +660,11 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
 			const obj = path.join(CONFIGURATION + '/' + toolDirs.ETC, file);
 			const lccFlags = [`-DTEMPDIR=\"${config.TEMPDIR}\"`, `-DSYSTEM=\"\"`];
 
-			if(!FS.virtual[obj] && !forceChanged)
-				FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database);
+			if(!FS.virtual[virtualObj] && !forceChanged)
+				FS.virtual[virtualObj] = await getRecord(DB_STORE_NAME, obj, database);
 
-			if(FS.virtual[obj]
-				&& FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+			if(FS.virtual[virtualObj]
+				&& FS.virtual[virtualSrc]?.timestamp < FS.virtual[virtualObj]?.timestamp
 				&& !forceChanged
 			)
 			{
@@ -706,14 +715,10 @@ async function linkLCC(database = null, forceChanged = false, noBuild = false)
 		await buildLCC(database, false, true);
 	}
 
-	let exeRecord = await getRecord(DB_STORE_NAME, lccExe, database);
-	FS.virtual[lccExe] = exeRecord;
+	FS.virtual[database + '/' + lccExe] = await getRecord(DB_STORE_NAME, lccExe, database);
 
 
-	if(FS.virtual[lccExe]
-		// TODO: compare LATEST input and output mtime
-		&& !forceChanged
-	)
+	if(FS.virtual[database + '/' + lccExe] && !forceChanged)
 	{
 		console.log(lccExe + " already up to date...");
 		return;
@@ -887,15 +892,15 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 
 			const src = file;
 			const obj = path.join(CONFIGURATION, file.replace('.c', '.o'));
-			const content = await cacheFile(ownerName, repoName, src);
+			const content = await self.cacheFile(ownerName, repoName, src);
 
 
 
-			if(!FS.virtual[obj] && !forceChanged)
-				FS.virtual[obj] = await getRecord(DB_STORE_NAME, obj, database);
+			if(!self.FS.virtual[virtualObj] && !forceChanged)
+				self.FS.virtual[virtualObj] = await getRecord(DB_STORE_NAME, obj, database);
 
-			if(FS.virtual[obj]
-				&& FS.virtual[src]?.timestamp < FS.virtual[obj]?.timestamp
+			if(self.FS.virtual[virtualObj]
+				&& self.FS.virtual[virtualSrc]?.timestamp < self.FS.virtual[virtualObj]?.timestamp
 				&& !forceChanged
 			)
 			{
@@ -950,14 +955,10 @@ async function linkAsm(database = null, forceChanged = false, noBuild = false)
 
 	const q3asmExe = path.join(CONFIGURATION, "q3asm" + config.BINEXT);
 
-	let exeRecord = await getRecord(DB_STORE_NAME, q3asmExe, database);
-	FS.virtual[q3asmExe] = exeRecord;
+	FS.virtual[database + '/' + q3asmExe] = await getRecord(DB_STORE_NAME, q3asmExe, database);
 
 
-	if(FS.virtual[q3asmExe]
-		// TODO: compare LATEST input and output mtime
-		&& !forceChanged
-	)
+	if(FS.virtual[database + '/' + q3asmExe] && !forceChanged)
 	{
 		console.log(q3asmExe + " already up to date...");
 		return;

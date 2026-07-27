@@ -22,7 +22,7 @@ declare global
 		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
 		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
 		loadFileTree: (repoOwner: string, repoName: string, branch: string, selector: string) => Promise<void>;
-		cacheFile: (repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload?: boolean) => Promise<any>;
+		cacheFile: (storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload?: boolean) => Promise<any>;
 		sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[];
 	}
 }
@@ -61,17 +61,20 @@ export async function getGitShaBrowser(content: string | Uint8Array | ArrayBuffe
 window.getGitShaBrowser = getGitShaBrowser;
 
 
-export async function cacheFile(repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload = false): Promise<any>
+export async function cacheFile(storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string, forceReload = false): Promise<any>
 {
-	return await debounceRecords(DB_STORE_NAME, 'path', filePath, sha, forceReload, `${repoOwner}/${repoName}`, 'cache');
+	return await debounceRecords(storeName ?? DB_STORE_NAME, 'path', filePath, sha, forceReload, `${repoOwner}/${repoName}`, 'cache');
 }
 
 window.cacheFile = cacheFile;
 
 
-export async function cacheFileInternal(repoOwner: string, repoName: string, filePath: string, sha?: string, forceReload = false, dbName?: string | null): Promise<any>
+export async function cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string, forceReload = false): Promise<any>
 {
 	const selected = `${repoOwner}/${repoName}`;
+	const filePath = selected + '/' + localPath;
+	localPath = localPath.replace(selected, '');
+
 	try
 	{
 		if(!filesRepo[selected])
@@ -85,14 +88,14 @@ export async function cacheFileInternal(repoOwner: string, repoName: string, fil
 			|| FS.virtual[filePath].contents.length === 0
 		)
 		{
-			FS.virtual[filePath] = await getRecord(DB_STORE_NAME, filePath, selected);
+			FS.virtual[filePath] = await getRecord(storeName ?? DB_STORE_NAME, localPath, selected);
 		}
 
-		if(filesRepo[selected] && filesRepo[selected][filePath] && FS.virtual[filePath]
-			&& FS.virtual[filePath].timestamp && filesRepo[selected][filePath].timestamp
+		if(filesRepo[selected] && filesRepo[selected][localPath] && FS.virtual[filePath]
+			&& FS.virtual[filePath].timestamp && filesRepo[selected][localPath].timestamp
 		)
 		{
-			if(FS.virtual[filePath].timestamp > filesRepo[selected][filePath].timestamp)
+			if(FS.virtual[filePath].timestamp > filesRepo[selected][localPath].timestamp!)
 			{
 				console.info(`Skipping changed (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 				return FS.virtual[filePath].contents;
@@ -125,7 +128,7 @@ export async function cacheFileInternal(repoOwner: string, repoName: string, fil
 			}
 		}
 
-		const shouldDownload = filesRepo[selected] && filesRepo[selected][filePath];
+		const shouldDownload = filesRepo[selected] && filesRepo[selected][localPath];
 
 		if(!shouldDownload && FS.virtual[filePath])
 		{
@@ -171,12 +174,12 @@ export async function cacheFileInternal(repoOwner: string, repoName: string, fil
 		}
 
 		FS.virtual[filePath] = {
-			timestamp: filesRepo[selected] ? filesRepo[selected][filePath].timestamp : undefined,
+			timestamp: filesRepo[selected] ? filesRepo[selected][localPath].timestamp : undefined,
 			mode: FS_FILE,
 			contents: bytes,
-			path: filePath,
+			path: localPath,
 			sha: jsonResponse.sha,
-			parent: filePath.substring(0, filePath.lastIndexOf('/'))
+			parent: localPath.substring(0, localPath.lastIndexOf('/'))
 		};
 
 		await putRecord(DB_STORE_NAME, FS.virtual[filePath], selected);
@@ -202,9 +205,9 @@ export async function cacheFileInternal(repoOwner: string, repoName: string, fil
 			console.error(`${e.message}\n\r${e.stack || e.stacktrace}`);
 		}
 
-		if(filesRepo[selected] && filesRepo[selected][filePath])
+		if(filesRepo[selected] && filesRepo[selected][localPath])
 		{
-			return filesRepo[selected][filePath].contents;
+			return filesRepo[selected][localPath].contents;
 		}
 		throw e;
 	}
