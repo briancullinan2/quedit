@@ -29,7 +29,7 @@ export async function githubRequest(ownerName: string, repoName: string, url: st
 		githubSelf.api.github_token = SettingsManager.get('github', 'githubToken');
 	}
 
-	const fullUrl = `https://githubSelf.api.github.com/repos/${ownerName}/${repoName}`
+	const fullUrl = `https://api.github.com/repos/${ownerName}/${repoName}`
 		+ (url.startsWith('/') || url.trim().length === 0 ? '' : '/') + url + (url.includes('?') ? '&' : '?') + `t=${Date.now()}`;
 
 	try
@@ -143,7 +143,7 @@ export async function githubGraphQL(query: string, variables: Record<string, any
 		? githubSelf.api.github_token
 		: SettingsManager.get('github', 'githubToken');
 
-	const response = await fetch('https://githubSelf.api.github.com/graphql', {
+	const response = await fetch('https://api.github.com/graphql', {
 		method: 'POST',
 		headers: {
 			'Authorization': `Bearer  ${token}`,
@@ -381,7 +381,7 @@ export async function searchGitHubRepositories(query: string, ownerName?: string
 		queryString += ` user:${ownerName}`;
 	}
 
-	const fullUrl = `https://githubSelf.api.github.com/search/repositories?q=${encodeURIComponent(queryString)}`;
+	const fullUrl = `https://api.github.com/search/repositories?q=${encodeURIComponent(queryString)}`;
 
 	const token = typeof githubSelf.api !== 'undefined'
 		? githubSelf.api.github_token
@@ -412,7 +412,7 @@ export async function searchGitHubCode(query: string, activeRepositories: string
 
 	const primaryRepo = activeRepositories[0];
 	const queryString = `${query} repo:${primaryRepo}`;
-	const fullUrl = `https://githubSelf.api.github.com/search/code?q=${encodeURIComponent(queryString)}`;
+	const fullUrl = `https://api.github.com/search/code?q=${encodeURIComponent(queryString)}`;
 
 	const headers: Record<string, string> = {
 		'Accept': 'application/vnd.github+json',

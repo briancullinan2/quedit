@@ -15,7 +15,15 @@ if(!githubSelf.filesRepo)
 	githubSelf.filesRepo = {};
 }
 
-
+/**
+ *
+ * @param {string} ownerName
+ * @param {string} repoName
+ * @param {string} url
+ * @param {boolean} authorize
+ * @param {boolean} buffer
+ * @returns
+ */
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false)
 {
 	if(typeof githubSelf.SettingsManager != 'undefined' && githubSelf.api)
@@ -85,6 +93,12 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
 
 
 let defaultBranches = {};
+/**
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @returns
+ */
 async function getDefaultBranch(owner, repo)
 {
 	if(defaultBranches[owner + '/' + repo]) return defaultBranches[owner + '/' + repo];
@@ -93,6 +107,13 @@ async function getDefaultBranch(owner, repo)
 	return data.default_branch; // Usually "main" or "master"
 }
 
+/**
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} branch
+ * @returns
+ */
 async function getBranchVersion(owner, repo, branch)
 {
 	// Fallback to default branch if not specified
@@ -111,6 +132,12 @@ async function getBranchVersion(owner, repo, branch)
 }
 
 
+/**
+ *
+ * @param {string} repoOwner
+ * @param {string} repoName
+ * @returns
+ */
 async function getBranches(repoOwner, repoName)
 {
 
@@ -137,7 +164,12 @@ async function getBranches(repoOwner, repoName)
 }
 
 
-
+/**
+ *
+ * @param {string} query
+ * @param {any} variables
+ * @returns
+ */
 async function githubGraphQL(query, variables = {})
 {
 
@@ -165,6 +197,13 @@ const mapFiles = {
 	"": "Current map"
 };
 
+/**
+ *
+ * @param {string} repoOwner
+ * @param {string} repoName
+ * @param {string} branch
+ * @returns
+ */
 async function loadGitHubTree(repoOwner, repoName, branch)
 {
 
@@ -220,7 +259,7 @@ async function loadGitHubTree(repoOwner, repoName, branch)
 /**
  * Main Orchestrator: Instantiates an in-memory virtual filesystem cache
  * populated with accurate historical mtimes from Git history via recursive GraphQL.
- * * @param {string} repoOwner - The owner of the GitHub repository.
+ * @param {string} repoOwner - The owner of the GitHub repository.
  * @param {string} repoName - The repository name.
  * @param {string} branch - The branch target (defaults to 'main').
  * @param {string} initialPath - Optional directory subdirectory path to scope the initialization tree.
@@ -320,10 +359,13 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 		const BATCH_SIZE = 50;
 		const batchPromises = [];
 
-		for(let i = 0; i < filesToHydrate.length; i += BATCH_SIZE)
+		if(githubSelf.filesRepo?.[database])
 		{
-			const chunk = filesToHydrate.slice(i, i + BATCH_SIZE);
-			batchPromises.push(hydrateFileMTimes(repoOwner, repoName, branchName, chunk, githubSelf.filesRepo?.[database]));
+			for(let i = 0; i < filesToHydrate.length; i += BATCH_SIZE)
+			{
+				const chunk = filesToHydrate.slice(i, i + BATCH_SIZE);
+				batchPromises.push(hydrateFileMTimes(repoOwner, repoName, branchName, chunk, githubSelf.filesRepo[database]));
+			}
 		}
 
 		// Concurrently populate file modification records across all chunks
@@ -341,6 +383,12 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 
 /**
  * Compiles and runs an aliased GraphQL query targeting a specific array of paths.
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} branch
+ * @param {string[]} filePaths
+ * @param {Record<string, import('../bundle/local.d').FileRecord | null | undefined>} targetCache
+ * @returns
  */
 async function hydrateFileMTimes(owner, repo, branch, filePaths, targetCache)
 {
@@ -392,11 +440,11 @@ async function hydrateFileMTimes(owner, repo, branch, filePaths, targetCache)
 			const safeAlias = `file_${index}`;
 			const historyNodes = repoData[safeAlias]?.target?.history?.nodes;
 
-			if(historyNodes && historyNodes.length > 0)
+			if(historyNodes && historyNodes.length > 0 && targetCache[path])
 			{
 				// Map the authentic Git modification time from the latest commit targeting this path
 				targetCache[path].timestamp = new Date(historyNodes[0].committedDate);
-			} else
+			} else if(targetCache[path])
 			{
 				// Fallback safe assignment if no file mutations are tracked in current branch ref history
 				targetCache[path].timestamp = new Date();
@@ -409,7 +457,7 @@ async function hydrateFileMTimes(owner, repo, branch, filePaths, targetCache)
 		// Fallback gracefully so an individual chunk failure doesn't brick the entire initialization process
 		filePaths.forEach(path =>
 		{
-			if(!targetCache[path].timestamp) targetCache[path].timestamp = new Date();
+			if(targetCache[path] && !targetCache[path].timestamp) targetCache[path].timestamp = new Date();
 		});
 	}
 }
@@ -694,8 +742,7 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null)
 		console.info(`Downloaded ${buffer.byteLength} bytes. Processing...`);
 
 		// Use JSZip to hydrate FS.virtual
-		const zip = new JSZip();
-		const contents = await zip.loadAsync(buffer);
+		const contents = githubSelf.JSZip ? await new githubSelf.JSZip().loadAsync(buffer) : [];
 
 		const unzipPromises = [];
 
@@ -762,7 +809,7 @@ async function listReleases(owner, repo)
 
 async function getAuthenticatedUser()
 {
-	const token = githubSelf.SettingsManager.get('github', 'githubToken');
+	const token = githubSelf.settingsManager?.get('github', 'githubToken');
 	if(!token) return null;
 
 	try
@@ -794,6 +841,13 @@ async function getAuthenticatedUser()
 githubSelf.getAuthenticatedUser = getAuthenticatedUser;
 
 
+/**
+ *
+ * @param {string} query
+ * @param {string} ownerName
+ * @param {string} repoName
+ * @returns
+ */
 async function searchGitHubRepositories(query, ownerName, repoName)
 {
 	let queryString = query;
@@ -810,8 +864,8 @@ async function searchGitHubRepositories(query, ownerName, repoName)
 	// Now safely encode the entire combined query string
 	const fullUrl = `https://api.github.com/search/repositories?q=${encodeURIComponent(queryString)}`;
 
-	let token = typeof api !== 'undefined'
-		? api.github_token
+	let token = typeof githubSelf.api !== 'undefined'
+		? githubSelf.api.github_token
 		: localStorage.getItem('github_token');
 
 	const headers = {
@@ -838,6 +892,10 @@ async function searchGitHubRepositories(query, ownerName, repoName)
 
 /**
  * Dispatches the safe GitHub global query pass
+ * @param {string} query
+ * @param {string[]} activeRepositories
+ * @param {string} token
+ * @returns
  */
 async function searchGitHubCode(query, activeRepositories, token)
 {

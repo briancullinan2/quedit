@@ -1,3 +1,4 @@
+import JSZip from "jszip";
 import { BuildWindow, MakeSystemGlobals, MakeWindow } from "./make";
 
 
@@ -111,8 +112,9 @@ export interface WorkerWindow extends
 	BuildWindow,
 	MakeSystemGlobals
 {
+	JSZip?: typeof JSZip;
 	API?: typeof WorkerAPI;
-	importScripts(...urls: (string | URL)[]): void;
+	importScripts?: (...urls: (string | URL)[]) => void;
 }
 
 

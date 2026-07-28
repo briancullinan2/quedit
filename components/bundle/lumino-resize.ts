@@ -1,16 +1,10 @@
 import { BoxPanel, DockPanel, FocusTracker, MenuBar, Panel, Widget } from "@lumino/widgets";
 import { LayoutAdjuster, MOBILEMODE, WIDESCREEN, TALLSCREEN, WidgetType } from "./lumino-widget";
-import type { RepositoryToolbar } from "./menu-repos";
-import type { ScriptToolbar } from "./menu-script";
-import type { ApplicationToolbar, LayoutState } from "./menu-app";
-import type { FileToolbar } from "./menu-file";
-import type { HistoryToolbar } from "./menu-history";
-import type { SettingsToolbar } from "./menu-settings";
-import type { EngineToolbar } from "./menu-engine";
 import type { LuminoLayoutWindow } from "./lumino.d";
+import type { GlobalToolbarsWindow } from "./menu.d";
 
 
-const luminoSelf: LuminoLayoutWindow = self as unknown as any;
+const luminoSelf: LuminoLayoutWindow & GlobalToolbarsWindow = self as unknown as any;
 
 
 export interface LuminoLayoutNode

@@ -1,7 +1,7 @@
 
 // @ts-check
 
-/** @type {import('./worker.d').WorkerWindow} */
+/** @type {Worker & import('./worker.d').WorkerWindow} */
 const workerSelf = /** @type {any} */ (self);
 
 
@@ -21,17 +21,17 @@ const workerSelf = /** @type {any} */ (self);
  * limitations under the License.
  */
 
-workerSelf.importScripts('../core/preambles.js');
-workerSelf.importScripts('../compiler/logging.js');
-workerSelf.importScripts('../compiler/shared.js');
-workerSelf.importScripts('../core/local.js');
-workerSelf.importScripts('../engine/sys_fs.js');
-workerSelf.importScripts('../engine/sys_std.js');
-workerSelf.importScripts('../engine/sys_web.js');
-workerSelf.importScripts('../filelist/github.js');
-workerSelf.importScripts('../compiler/make.js');
-workerSelf.importScripts('../compiler/make-tools.js');
-workerSelf.importScripts('../compiler/make-qvm.js');
+workerSelf.importScripts?.('../core/preambles.js');
+workerSelf.importScripts?.('../compiler/logging.js');
+workerSelf.importScripts?.('../compiler/shared.js');
+workerSelf.importScripts?.('../core/local.js');
+workerSelf.importScripts?.('../engine/sys_fs.js');
+workerSelf.importScripts?.('../engine/sys_std.js');
+workerSelf.importScripts?.('../engine/sys_web.js');
+workerSelf.importScripts?.('../filelist/github.js');
+workerSelf.importScripts?.('../compiler/make.js');
+workerSelf.importScripts?.('../compiler/make-tools.js');
+workerSelf.importScripts?.('../compiler/make-qvm.js');
 
 if(typeof workerSelf.TERMINATE === 'undefined')
 {
@@ -136,38 +136,42 @@ const apiOptions = {
 
 let currentApp = null;
 
+/**
+ *
+ * @param {MessageEvent} event
+ */
 const onAnyMessage = async event =>
 {
-	if(api && event.data.data && event.data.data.github_token)
-		api.github_token = event.data.data.github_token;
-	if(api && event.data.data && event.data.data.width)
-		api.width = event.data.data.width;
-	if(api && event.data.data && event.data.data.database)
-		api.database = event.data.data.database;
-	if(api && event.data.data && event.data.data.toolsRepo)
-		api.toolsRepo = event.data.data.toolsRepo;
-	if(api && event.data.data && event.data.data.engineRepo)
-		api.engineRepo = event.data.data.engineRepo;
-	if(api && event.data.data && event.data.data.gameRepo)
-		api.gameRepo = event.data.data.gameRepo;
-	if(api && event.data.data && event.data.data.assetRepo)
-		api.assetRepo = event.data.data.assetRepo;
-	if(api && event.data.data && event.data.data.toolsRepo2)
-		api.toolsRepo2 = event.data.data.toolsRepo2;
+	if(workerSelf.api && event.data.data && event.data.data.github_token)
+		workerSelf.api.github_token = event.data.data.github_token;
+	if(workerSelf.api && event.data.data && event.data.data.width)
+		workerSelf.api.width = event.data.data.width;
+	if(workerSelf.api && event.data.data && event.data.data.database)
+		workerSelf.api.database = event.data.data.database;
+	if(workerSelf.api && event.data.data && event.data.data.toolsRepo)
+		workerSelf.api.toolsRepo = event.data.data.toolsRepo;
+	if(workerSelf.api && event.data.data && event.data.data.engineRepo)
+		workerSelf.api.engineRepo = event.data.data.engineRepo;
+	if(workerSelf.api && event.data.data && event.data.data.gameRepo)
+		workerSelf.api.gameRepo = event.data.data.gameRepo;
+	if(workerSelf.api && event.data.data && event.data.data.assetRepo)
+		workerSelf.api.assetRepo = event.data.data.assetRepo;
+	if(workerSelf.api && event.data.data && event.data.data.toolsRepo2)
+		workerSelf.api.toolsRepo2 = event.data.data.toolsRepo2;
 	const responseId = event.data?.responseId || (event.data?.id === 0 ? 0 : null);
 	switch(event.data.id)
 	{
 		case 'constructor':
 			port = event.data.data;
 			port.onmessage = onAnyMessage;
-			api = new API(apiOptions);
-			await api?.ready;
+			workerSelf.api = new workerSelf.API(apiOptions);
+			await workerSelf.api?.ready;
 			break;
 
 		case 'setShowTiming':
-			if(api)
+			if(workerSelf.api)
 			{
-				api.showTiming = event.data.data;
+				workerSelf.api.showTiming = event.data.data;
 			}
 			break;
 
@@ -176,13 +180,13 @@ const onAnyMessage = async event =>
 
 			try
 			{
-				output = await api?.compileToAssembly(event.data.data);
+				output = await workerSelf.api?.compileToAssembly(event.data.data);
 			}
 			catch(e)
 			{
 				if(e instanceof Error)
 				{
-					api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
+					workerSelf.api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
 				}
 				output = e;
 				throw e;
@@ -199,13 +203,13 @@ const onAnyMessage = async event =>
 
 			try
 			{
-				output = await api?.compileTo6502(event.data.data);
+				output = await workerSelf.api?.compileTo6502(event.data.data);
 			}
 			catch(e)
 			{
 				if(e instanceof Error)
 				{
-					api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
+					workerSelf.api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
 				}
 				output = e;
 				throw e;
@@ -219,17 +223,17 @@ const onAnyMessage = async event =>
 
 		case 'header': {
 			let output = null;
-			api?.extract(event.data.data);
+			workerSelf.api?.extract(event.data.data);
 
 			try
 			{
-				output = await api?.header(event.data.data.header, true);
+				output = await workerSelf.api?.header?.(event.data.data.header, true);
 			}
 			catch(e)
 			{
 				if(e instanceof Error)
 				{
-					api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
+					workerSelf.api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
 				}
 				output = e;
 				throw e;
@@ -246,13 +250,13 @@ const onAnyMessage = async event =>
 
 			try
 			{
-				output = await api?.upload(event.data.data);
+				output = await workerSelf.api?.upload(event.data.data);
 			}
 			catch(e)
 			{
 				if(e instanceof Error)
 				{
-					api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
+					workerSelf.api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
 				}
 				output = e;
 				throw e;
@@ -267,23 +271,23 @@ const onAnyMessage = async event =>
 
 		case 'build': {
 			let output = null;
-			let selected = event.data.data.database || api?.database;
+			let selected = event.data.data.database || workerSelf.api?.database;
 			let mode = event.data.data.action;
-			if(api && event.data.data.configuration)
+			if(workerSelf.api && event.data.data.configuration)
 			{
-				api.database = selected;
-				api.configuration = event.data.data.configuration;
+				workerSelf.api.database = selected;
+				workerSelf.api.configuration = event.data.data.configuration;
 			}
 
 			try
 			{
-				api?.build(selected, mode);
+				workerSelf.api?.build?.(selected, mode);
 			}
 			catch(e)
 			{
 				if(e instanceof Error)
 				{
-					api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
+					workerSelf.api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
 				}
 				output = e;
 				throw e;
@@ -303,13 +307,13 @@ const onAnyMessage = async event =>
 
 			try
 			{
-				output = await api?.download?.(event.data.data);
+				output = await workerSelf.api?.download?.(event.data.data);
 			}
 			catch(e)
 			{
 				if(e instanceof Error)
 				{
-					api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
+					workerSelf.api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
 				}
 				output = e;
 				throw e;
@@ -326,13 +330,13 @@ const onAnyMessage = async event =>
 
 			try
 			{
-				output = await api?.link(event.data.data);
+				output = await workerSelf.api?.link?.(event.data.data);
 			}
 			catch(e)
 			{
 				if(e instanceof Error)
 				{
-					api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
+					workerSelf.api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
 				}
 				output = e;
 				throw e;
@@ -349,13 +353,13 @@ const onAnyMessage = async event =>
 
 			try
 			{
-				output = await api?.compile(event.data.data);
+				output = await workerSelf.api?.compile?.(event.data.data);
 			}
 			catch(e)
 			{
 				if(e instanceof Error)
 				{
-					api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
+					workerSelf.api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
 				}
 				output = e;
 				throw e;
@@ -372,26 +376,26 @@ const onAnyMessage = async event =>
 			let filePath;
 			try
 			{
-				if(api && event.data.data.database)
-					api.database = event.data.data.database;
-				if(api && event.data.data.toolsRepo)
-					api.toolsRepo = event.data.data.toolsRepo;
-				if(api && event.data.data.configuration)
-					api.configuration = event.data.data.configuration;
+				if(workerSelf.api && event.data.data.database)
+					workerSelf.api.database = event.data.data.database;
+				if(workerSelf.api && event.data.data.toolsRepo)
+					workerSelf.api.toolsRepo = event.data.data.toolsRepo;
+				if(workerSelf.api && event.data.data.configuration)
+					workerSelf.api.configuration = event.data.data.configuration;
 
-				await api?.ready;
+				await workerSelf.api?.ready;
 
-				let module = await api?.getModule(event.data.data.tool);
-				let app = new API.App(api, api?.hostWrite, module, api?.sysrootFilename, ...event.data.data.args || []);
+				let module = await workerSelf.api?.getModule(event.data.data.tool);
+				let app = new workerSelf.API.App(workerSelf.api, workerSelf.api?.hostWrite, module, workerSelf.api?.sysrootFilename, ...event.data.data.args || []);
 
 
 				let paths = event.data.data.paths;
-				if(paths && api?.database)
+				if(paths && workerSelf.api?.database)
 				{
 					for(filePath of paths)
 					{
 						if(!filePath) continue;
-						await api.header(filePath, true);
+						await workerSelf.api.header?.(filePath, true);
 					}
 				}
 
@@ -400,17 +404,17 @@ const onAnyMessage = async event =>
 					for(filePath of event.data.data.args)
 					{
 						if(!filePath) continue;
-						await api.header(filePath);
+						await workerSelf.api?.header?.(filePath);
 					}
 				}
 
-				await api?.run(
+				await workerSelf.api?.run?.(
 					app || event.data.data.tool,
 					...event.data.data.args || []
 				);
 
 
-				if(paths && api?.database)
+				if(paths && workerSelf.api?.database)
 				{
 					for(filePath of paths)
 					{
@@ -419,9 +423,9 @@ const onAnyMessage = async event =>
 						{
 
 
-							if(api.memfs && api.memfs.exists(filePath))
+							if(workerSelf.api.memfs && workerSelf.api.memfs.exists(filePath))
 							{
-								let bytes = api.memfs.getFileContents(filePath);
+								let bytes = workerSelf.api.memfs.getFileContents(filePath);
 								if(bytes.length > 0)
 								{
 									workerSelf.FS.virtual[filePath] = {
@@ -435,9 +439,9 @@ const onAnyMessage = async event =>
 
 								}
 							}
-							else if(api.memfs && workerSelf.FS.virtual[filePath] && workerSelf.FS.virtual[filePath]?.contents)
+							else if(workerSelf.api.memfs && workerSelf.FS.virtual[filePath] && workerSelf.FS.virtual[filePath]?.contents)
 							{
-								api.memfs.addFile(filePath, workerSelf.FS.virtual[filePath]?.contents);
+								workerSelf.api.memfs.addFile(filePath, workerSelf.FS.virtual[filePath]?.contents);
 							}
 
 
@@ -446,9 +450,9 @@ const onAnyMessage = async event =>
 							{
 								console.log('Run succeeded: ' + filePath + '\n\r');
 
-								if(api?.database)
+								if(workerSelf.api?.database)
 								{
-									await workerSelf.putRecord(workerSelf.DB_STORE_NAME, record, api?.database);
+									await workerSelf.putRecord(workerSelf.DB_STORE_NAME, record, workerSelf.api.database);
 								}
 							}
 						} catch(e)
@@ -466,7 +470,7 @@ const onAnyMessage = async event =>
 			{
 				if(e instanceof Error)
 				{
-					api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
+					workerSelf.api?.hostWrite?.(`${e.toString()}\n\r${e.stack}\n\r`);
 				}
 				output = e;
 				throw e;
@@ -485,7 +489,7 @@ const onAnyMessage = async event =>
 				// Stop running rAF on the previous app, if any.
 				currentApp.allowRequestAnimationFrame = false;
 			}
-			currentApp = await api?.compileLinkRun(event.data.data);
+			currentApp = await workerSelf.api?.compileLinkRun(event.data.data);
 			console.log(`finished compileLinkRun. currentApp = ${currentApp}.`);
 			break;
 
@@ -495,30 +499,30 @@ const onAnyMessage = async event =>
 			break;
 		//
 		case 'remove':
-			api.extract(event.data.data);
-			const rx = window.globToRegex(filename);
+			workerSelf.api?.extract(event.data.data);
+			const rx = workerSelf.globToRegex(filename);
 			for(let path of Object.keys(workerSelf.FS.virtual))
 			{
 				if(rx.test(path))
 				{
 					delete workerSelf.FS.virtual[filename];
-					terminalWrite(`Removing ${filename} from worker memory\n\r`);
+					console.log(`Removing ${filename} from worker memory\n\r`);
 				}
 			}
 
 			// TODO: fix this
 			try
 			{
-				if(api?.memfs)
+				if(workerSelf.api?.memfs)
 				{
-					await api?.ready;
-					api.memfs.mem.check();
-					if(api.memfs.exists(filename))
+					await workerSelf.api?.ready;
+					workerSelf.api.memfs.mem.check();
+					if(workerSelf.api.memfs.exists(filename))
 					{
-						api.memfs.mem.check();
-						const buf = api.memfs.exports.GetPathBuf();
-						api.memfs.mem.write(buf, path);
-						api.memfs.exports.path_unlink_file(buf);
+						workerSelf.api.memfs.mem.check();
+						const buf = workerSelf.api.memfs.exports.GetPathBuf();
+						workerSelf.api.memfs.mem.write(buf, path);
+						workerSelf.api.memfs.exports.path_unlink_file(buf);
 					}
 				}
 			} catch(e)
@@ -528,7 +532,7 @@ const onAnyMessage = async event =>
 			break;
 	}
 
-	port.postMessage({ id: 'done', responseId, data: api?.pid || true });
+	port.postMessage({ id: 'done', responseId, data: workerSelf.api?.pid || true });
 };
 
 workerSelf.addEventListener('message', onAnyMessage);

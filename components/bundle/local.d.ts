@@ -67,6 +67,7 @@ export interface DebounceToken
 
 export interface LocalWindow extends GlobalToolbars
 {
+	getDB?: (dbName: string | null, dbVersion?: number | null) => Promise<IDBDatabase>;
 	setupDatabase?: (dbName: string, stores: SchemaStoreConfig[]) => Promise<SetupDatabaseResult>;
 	deleteOldDatabase?: (dbName: string | null = null) => Promise<boolean>;
 	needsInstall?: (dbName: string | null, expectedStores: SchemaStoreConfig[]) => Promise<InstallCheckResult>;
@@ -82,6 +83,7 @@ export interface LocalWindow extends GlobalToolbars
 	) => Promise<FileRecord[]>;
 	putRecord?: (storeName: string, record: FileRecord, dbName: string | null, noBounce?: boolean) => Promise<any>;
 	getRecord?: (storeName: string, record: string, dbName: string | null, dbVersion?: number, noBounce?: boolean) => Promise<FileRecord | null>;
+	readAll?: (dbName: string, callback?: (item: any) => void) => Promise<any[]>;
 	globToRegex?: (pattern: string, caseSensitive?: boolean) => RegExp;
 	deleteRecord?: (storeName: string, key: string, dbName: string | null) => Promise<boolean>;
 

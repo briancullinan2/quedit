@@ -26,7 +26,7 @@ export interface LuminoLayoutWindow
 		messaging: any;
 		commands: any;
 	};
-	JSZip: typeof JSZip;
+	JSZip?: typeof JSZip;
 
 	mainDock?: DockPanel;
 	toolbarWidget?: Widget;

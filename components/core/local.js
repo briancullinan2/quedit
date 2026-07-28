@@ -2,6 +2,8 @@
 
 // @ts-check
 
+/** @type {import('../bundle/github.d').GithubWindow & import('../bundle/local.d').LocalWindow & import('../bundle/menu.d').GlobalToolbarsWindow & import('../compiler/make.d').BuildWindow} */
+const localSelf = /** @type {any} */ (self);
 
 
 const DB_VERSION = 1; // Increment this when you add new C# Entities!
@@ -20,8 +22,15 @@ const DB_SCHEME = [
 		}
 	}
 ];
-self.DB_SCHEME = DB_SCHEME;
 
+localSelf.DB_SCHEME = DB_SCHEME;
+
+/**
+ *
+ * @param {*} dbName
+ * @param {*} dbVersion
+ * @returns
+ */
 async function getDB(dbName = null, dbVersion = null)
 {
 	return new Promise((rs, rj) =>
@@ -38,6 +47,8 @@ async function getDB(dbName = null, dbVersion = null)
 	});
 }
 
+localSelf.getDB = getDB;
+
 /**
  * @param {string | null} [dbName=null]
  */
@@ -51,6 +62,9 @@ async function deleteOldDatabase(dbName = null)
 		req.onblocked = () => rs(true);
 	});
 }
+
+
+localSelf.deleteOldDatabase = deleteOldDatabase;
 
 
 async function getDatabaseMetadata()
@@ -67,6 +81,8 @@ async function getDatabaseMetadata()
 	return dbs //.filter(db => db.name != DB_NAME)
 		.map(db => ({ key: db.name || '', value: db.version || 0 }));
 }
+
+localSelf.getDatabaseMetadata = getDatabaseMetadata;
 
 
 async function needsInstall(dbName, expectedStores)
@@ -100,6 +116,8 @@ async function needsInstall(dbName, expectedStores)
 		};
 	});
 }
+
+localSelf.needsInstall = needsInstall;
 
 
 async function setupDatabase(dbName, stores)
@@ -168,7 +186,7 @@ async function setupDatabase(dbName, stores)
 	});
 }
 
-
+localSelf.setupDatabase = setupDatabase;
 
 
 async function putRecordInternal(storeName, record, dbName = null)
@@ -176,7 +194,11 @@ async function putRecordInternal(storeName, record, dbName = null)
 	const newRecord = {
 		timestamp: record.timestamp,
 		mode: record.mode,
-		contents: record.contents instanceof FileSystemDirectoryHandle ? record.contents : typeof FS !== 'undefined' ? (record.contents = FS.virtual[record.path]?.contents || record.contents?.slice(0)) : record.contents?.slice(0),
+		contents: record.contents instanceof FileSystemDirectoryHandle
+			? record.contents
+			: typeof localSelf.FS !== 'undefined'
+				? (record.contents = localSelf.FS.virtual[record.path]?.contents || record.contents?.slice(0))
+				: record.contents?.slice(0),
 		path: record.path,
 		sha: record.sha,
 		parent: record.parent
@@ -233,6 +255,7 @@ async function putRecord(storeName, record, dbName = null, noBounce = false)
 	return await debounceRecords(storeName, 'path', record, null, null, dbName, 'put', noBounce);
 }
 
+localSelf.putRecord = putRecord;
 
 
 /**
@@ -244,25 +267,38 @@ async function putRecord(storeName, record, dbName = null, noBounce = false)
  * @param {boolean} [noBounce=false] - Whether to bypass debouncing.
  * @returns {Promise<any>}
  */
-async function getRecord(storeName, record, dbName = null, noBounce = false)
+async function getRecord(storeName, record, dbName = null, dbVersion = 1, noBounce = false)
 {
-	return await debounceRecords(storeName, 'path', record, null, null, dbName, 'get', noBounce);
+	return await debounceRecords(storeName, 'path', record, dbVersion, null, dbName, 'get', noBounce);
 }
 
+localSelf.getRecord = getRecord;
 
 
+/**
+ *
+ * @param {string} storeName
+ * @param {string} indexName
+ * @param {any} exactIndex
+ * @param {any} lower
+ * @param {any} upper
+ * @param {string | null} dbName
+ * @param {boolean} noBounce
+ * @returns
+ */
 async function queryIndex(storeName, indexName, exactIndex = null, lower = null, upper = null, dbName = null, noBounce = false)
 {
 	return await debounceRecords(storeName, indexName, exactIndex, lower, upper, dbName, 'query', noBounce);
 }
 
+localSelf.queryIndex = queryIndex;
 
 function debounceRecords(storeName, indexName, record, lower, upper, dbName, MODE = 'get', noBounce = false)
 {
 	const path = typeof record === 'string' ? record : record?.path || '';
 	const parts = dbName.split('/');
-	const ownerName = parts.length === 2 ? parts[0] : self.RepositoryToolbar?.owner?.value || '';
-	const repoName = parts.length === 2 ? parts[1] : (parts[0] || self.RepositoryToolbar?.repository?.value || '');
+	const ownerName = parts.length === 2 ? parts[0] : localSelf.RepositoryToolbar?.owner?.value || '';
+	const repoName = parts.length === 2 ? parts[1] : (parts[0] || localSelf.RepositoryToolbar?.repository?.value || '');
 
 	// 1. Generate a comprehensive unique composite signature key out of all input arguments
 	// This isolates variations in stores, indices, query ranges, and databases entirely.
@@ -287,13 +323,13 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 		}
 
 		if(MODE === 'get')
-			return getRecordInternal(storeName, record, dbName);
+			return getRecordInternal(storeName, record, dbName, lower);
 		else if(MODE === 'put')
 			return putRecordInternal(storeName, record, dbName);
 		else if(MODE === 'query')
 			return queryIndexInternal(storeName, indexName, record, lower, upper, dbName); // Fixed typo: passed indexName
 		else if(MODE === 'cache')
-			return self.cacheFileInternal(storeName, ownerName, repoName, record, lower, upper);
+			return localSelf.cacheFileInternal?.(storeName, ownerName, repoName, record, lower, upper);
 		else
 			throw new Error('MODE not recognized in debounceRecords: ' + MODE);
 	}
@@ -345,13 +381,13 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 		{
 			let result;
 			if(MODE === 'get')
-				result = await getRecordInternal(sName, rec, dName);
+				result = await getRecordInternal(sName, rec, dName, low);
 			else if(MODE === 'put')
 				result = await putRecordInternal(sName, rec, dName);
 			else if(MODE === 'query')
 				result = await queryIndexInternal(sName, iName, rec, low, up, dName);
 			else if(MODE === 'cache')
-				result = await self.cacheFileInternal(sName, oName, rName, rec, low, up);
+				result = await localSelf.cacheFileInternal?.(sName, oName, rName, rec, low, up);
 			else
 				throw new Error('MODE not recognized in debounceRecords: ' + MODE);
 
@@ -376,11 +412,19 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 }
 
 
-async function getRecordInternal(storeName, key, dbName = null)
+/**
+ *
+ * @param {string} storeName
+ * @param {string} key
+ * @param {string | null} dbName
+ * @param {number} dbVersion
+ * @returns
+ */
+async function getRecordInternal(storeName, key, dbName = null, dbVersion = 1)
 {
 
 
-	const db = await getDB(dbName);
+	const db = await getDB(dbName, dbVersion);
 	const tx = db.transaction(storeName, 'readonly');
 	const store = tx.objectStore(storeName);
 
@@ -435,7 +479,16 @@ async function getRecordInternal(storeName, key, dbName = null)
 
 
 
-
+/**
+ *
+ * @param {string} storeName
+ * @param {string} indexName
+ * @param {any} exactIndex
+ * @param {any} lower
+ * @param {any} upper
+ * @param {string | null} dbName
+ * @returns
+ */
 async function queryIndexInternal(storeName, indexName, exactIndex = null, lower = null, upper = null, dbName = null)
 {
 	const db = await getDB(dbName);
@@ -488,7 +541,13 @@ async function queryIndexInternal(storeName, indexName, exactIndex = null, lower
 }
 
 
-
+/**
+ *
+ * @param {string} storeName
+ * @param {any} key
+ * @param {string | null} dbName
+ * @returns
+ */
 async function deleteRecord(storeName, key, dbName = null)
 {
 	const db = await getDB(dbName);
@@ -507,7 +566,16 @@ async function deleteRecord(storeName, key, dbName = null)
 	});
 }
 
-async function readAll(dbName, callback)
+localSelf.deleteRecord = deleteRecord;
+
+
+/**
+ *
+ * @param {string} dbName
+ * @param {((item: any) => void) | undefined} callback
+ * @returns {Promise<any[]>}
+ */
+async function readAll(dbName, callback = void 0)
 {
 	// ... your existing setup/install logic ...
 
@@ -520,6 +588,7 @@ async function readAll(dbName, callback)
 
 	return new Promise((resolve, reject) =>
 	{
+
 		request.onsuccess = async (event) =>
 		{
 			const allItems = event.target.result;
@@ -540,22 +609,35 @@ async function readAll(dbName, callback)
 	});
 }
 
+localSelf.readAll = readAll;
+
+
+/**
+ *
+ * @param {string} globPattern
+ * @returns
+ */
 function findVirtualFiles(globPattern)
 {
-	const filePaths = Object.keys(FS.virtual);
+	const filePaths = Object.keys(localSelf.FS.virtual);
 	const rx = globToRegex(globPattern);
 
 	return filePaths.reduce((accumulator, path) =>
 	{
 		if(rx.test(path))
 		{
-			accumulator[path] = FS.virtual[path];
+			accumulator[path] = localSelf.FS.virtual[path];
 		}
 		return accumulator;
 	}, {});
 }
 
-
+/**
+ *
+ * @param {string} pattern
+ * @param {boolean} caseSensitive
+ * @returns {RegExp}
+ */
 function globToRegex(pattern, caseSensitive = false)
 {
 	// Clean up leading/trailing slashes so matching is uniform
@@ -578,5 +660,4 @@ function globToRegex(pattern, caseSensitive = false)
 	return new RegExp(`^(?:.*\\/)?${regexStr}$`, !caseSensitive ? "i" : void 0);
 }
 
-window.globToRegex = globToRegex;
-
+localSelf.globToRegex = globToRegex;

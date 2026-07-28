@@ -67,6 +67,8 @@ export async function getDB(dbName: string | null = null, dbVersion: number | nu
 	});
 }
 
+localSelf.getDB = getDB;
+
 export async function deleteOldDatabase(dbName: string | null = null): Promise<boolean>
 {
 	return new Promise((rs) =>
@@ -531,6 +533,8 @@ export async function readAll(dbName: string, callback?: (item: any) => void): P
 		};
 	});
 }
+
+localSelf.readAll = readAll;
 
 // --- Virtual Paths Global VFS System Glob Filters ---
 

@@ -1,7 +1,8 @@
-/// <reference path="../bundle/global.d.ts" />
 
-/** @type {WorkerGlobalScope & { api?: { github_token?: string | null | undefined } }} */
-const workerSelf2 = self;
+// @ts-check
+
+/** @type {Worker & import('./widget.d').CommitWorkerWindow} */
+const workerSelf2 = /** @type {any} */ (self);
 
 if(!workerSelf2.api)
 {
@@ -10,16 +11,24 @@ if(!workerSelf2.api)
 	};
 }
 
-importScripts('/components/core/preambles.js');
-importScripts('/components/core/local.js');
-importScripts('/components/engine/sys_fs.js');
-importScripts('/components/filelist/github.js');
+workerSelf2.importScripts?.('/components/core/preambles.js');
+workerSelf2.importScripts?.('/components/core/local.js');
+workerSelf2.importScripts?.('/components/engine/sys_fs.js');
+workerSelf2.importScripts?.('/components/filelist/github.js');
 
-
-async function pushLocalChangesToGitHub(repoOwner, repoName, branch, commitMessage, staging)
+/**
+ *
+ * @param {string} repoOwner
+ * @param {string} repoName
+ * @param {string} branch
+ * @param {string} commitMessage
+ * @param {import('./widget.d').GithubChanges | undefined} staging
+ * @returns
+ */
+async function pushLocalChangesToGitHub(repoOwner, repoName, branch, commitMessage, staging = void 0)
 {
 	// 1. Fetch current branch parent pointer references
-	const commitData = await self.githubRequest(repoOwner, repoName, `commits/${branch}`);
+	const commitData = await workerSelf2.githubRequest?.(repoOwner, repoName, `commits/${branch}`);
 	const parentCommitSha = commitData.sha;
 	const baseTreeSha = commitData.commit.tree.sha;
 
@@ -54,26 +63,53 @@ async function pushLocalChangesToGitHub(repoOwner, repoName, branch, commitMessa
 	await updateBranchReference(repoOwner, repoName, branch, newCommitSha);
 
 	// 5. Hard alignment flush
-	await self.loadGitHubTree(repoOwner, repoName, branch);
+	await workerSelf2.loadGitHubTree?.(repoOwner, repoName, branch);
 	return newCommitSha;
 }
 
 
 /**
+ * Safely converts Uint8Array to base64 in chunks to prevent stack overflow.
+ * @param {Uint8Array} bytes
+ * @returns {string}
+ */
+function uint8ToBase64(bytes)
+{
+	let binary = '';
+	const len = bytes.byteLength;
+	const CHUNK_SIZE = 0x8000; // 32KB chunks
+
+	for(let i = 0; i < len; i += CHUNK_SIZE)
+	{
+		const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+		binary += String.fromCharCode.apply(null, Array.from(chunk));
+	}
+
+	return btoa(binary);
+}
+
+
+/**
  * Creates a raw binary blob structure on GitHub's structural servers.
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string | Uint16Array | ArrayBuffer} contents
+ * @returns {Promise<string>}
  */
 async function createGitHubBlob(owner, repo, contents)
 {
 	let base64Content;
 	if(contents instanceof Uint8Array)
 	{
-		base64Content = btoa(String.fromCharCode.apply(null, contents));
-	} else if(contents instanceof ArrayBuffer)
+		base64Content = uint8ToBase64(contents);
+	}
+	else if(contents instanceof ArrayBuffer)
 	{
-		base64Content = btoa(String.fromCharCode.apply(null, new Uint8Array(contents)));
-	} else
+		base64Content = uint8ToBase64(new Uint8Array(contents));
+	}
+	else
 	{
-		base64Content = btoa(unescape(encodeURIComponent(contents)));
+		base64Content = btoa(unescape(encodeURIComponent(String(contents))));
 	}
 
 	const payload = {
@@ -138,6 +174,11 @@ async function createGitHubCommit(owner, repo, message, treeSha, parentCommitSha
 
 /**
  * Patches the structural reference point pointer configuration for a remote branch layout.
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} branch
+ * @param {string} commitSha
+ * @returns
  */
 async function updateBranchReference(owner, repo, branch, commitSha)
 {
@@ -158,10 +199,11 @@ async function updateBranchReference(owner, repo, branch, commitSha)
 
 /**
  * Internal parsing token helper targeting local context variables inside workers
+ * @returns {any}
  */
 function getGitHubHeaders()
 {
-	let token = typeof api !== 'undefined' ? api.github_token : localStorage.getItem('github_token');
+	let token = typeof workerSelf2.api !== 'undefined' ? workerSelf2.api.github_token : localStorage.getItem('github_token');
 	return {
 		'Accept': 'application/vnd.github+json',
 		'X-GitHub-Api-Version': '2022-11-28',
@@ -177,18 +219,24 @@ function getGitHubHeaders()
  * Compares IndexedDB local storage data against the remote tree cache
  * to calculate unstaged modifications, new additions, or deletions.
  * Dynamically loads and respects a root-level .gitignore file via glob matching.
+ * @param {string} repoOwner
+ * @param {string} repoName
+ * @param {string} branch
+ * @param {boolean} listDeleted
+ * @returns  {Promise<import('./widget.d').GithubChanges>}
  */
 async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted = false)
 {
 	const selected = `${repoOwner}/${repoName}`;
 
 	// 1. Ensure the remote baseline tree layout skeleton is hydrated locally
-	if(!self.filesRepo[selected])
+	if(!workerSelf2.filesRepo?.[selected])
 	{
-		await self.loadGitHubTree(repoOwner, repoName, branch);
+		await workerSelf2.loadGitHubTree?.(repoOwner, repoName, branch);
 	}
-	const remoteTree = self.filesRepo[selected] || {};
+	const remoteTree = workerSelf2.filesRepo?.[selected] || {};
 
+	/** @type {import('./widget.d').GithubChanges} */
 	const changes = {
 		modified: [],   // { path, localSha, remoteSha }
 		added: [],      // { path, localSha }
@@ -202,11 +250,11 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 	try
 	{
 		// 2. Open up the repository's dedicated IndexedDB storage space
-		const db = await getDB(selected);
-		if(!db.objectStoreNames.contains(DB_STORE_NAME))
+		const db = await workerSelf2.getDB?.(selected);
+		if(!db?.objectStoreNames.contains(workerSelf2.DB_STORE_NAME ?? ''))
 		{
-			db.close();
-			console.log(`Target store ${DB_STORE_NAME} not allocated yet for database: ${selected}`);
+			db?.close();
+			console.log(`Target store ${workerSelf2.DB_STORE_NAME} not allocated yet for database: ${selected}`);
 			return changes;
 		}
 
@@ -215,7 +263,7 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 		let gitignoreRecord = null;
 		try
 		{
-			gitignoreRecord = await self.cacheFile(repoOwner, repoName, '.gitignore');
+			gitignoreRecord = await workerSelf2.cacheFile?.(workerSelf2.DB_STORE_NAME ?? '', repoOwner, repoName, '.gitignore');
 		} catch(e)
 		{
 			// Non-fatal if .gitignore doesn't exist yet
@@ -246,7 +294,7 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 				try
 				{
 					// Adapt your worker's native glob translation rule engine
-					const ruleRegex = globToRegex(trimmed, false);
+					const ruleRegex = workerSelf2.globToRegex?.(trimmed, false);
 					ignoreRules.push(ruleRegex);
 				} catch(err)
 				{
@@ -257,10 +305,10 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 		}
 
 
-		const ruleRegex1 = globToRegex(dirs.ENGINE_DEBUG + '/**', false);
+		const ruleRegex1 = workerSelf2.globToRegex?.(workerSelf2.dirs.ENGINE_DEBUG + '/**', false);
 		ignoreRules.push(ruleRegex1);
 
-		const ruleRegex2 = globToRegex(dirs.ENGINE_RELEASE + '/**', false);
+		const ruleRegex2 = workerSelf2.globToRegex?.(workerSelf2.dirs.ENGINE_RELEASE + '/**', false);
 		ignoreRules.push(ruleRegex2);
 
 		// Inline matcher to evaluate structural patterns
@@ -279,13 +327,13 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 		};
 
 		// --- PHASE 2: SCAN LOCAL INDEXEDDB RECORDS ---
-		await readAll(selected, async (fileRecord) =>
+		await workerSelf2.readAll?.(selected, async (fileRecord) =>
 		{
 			if(!fileRecord || !fileRecord.path) return;
 
 			const filePath = fileRecord.path;
 
-			if((fileRecord.mode >> 12) !== self.ST_FILE) return;
+			if((fileRecord.mode >> 12) !== workerSelf2.ST_FILE) return;
 
 			// Run item directly through combined glob evaluation
 			if(isIgnored(filePath)) return;
@@ -299,7 +347,7 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 			let localSha = fileRecord.sha;
 			if(!localSha)
 			{
-				localSha = await self.getGitShaBrowser(contents);
+				localSha = await workerSelf2.getGitShaBrowser?.(contents);
 			}
 
 			const remoteRecord = remoteTree[filePath];
@@ -352,21 +400,26 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 }
 
 
-self.onmessage = async function (e)
+/**
+ *
+ * @param {MessageEvent} e
+ * @returns
+ */
+workerSelf2.onmessage = async function (e)
 {
 
 	// --- ROUTE A: GET STAGING STATUS (Safe / Read-Only) ---
 	if(e.data.type === 'COMMIT_STATUS_CHECK')
 	{
 		const { owner, repo, branch, callbackId, gitHubToken } = e.data;
-		if(api)
+		if(workerSelf2.api)
 		{
-			api.github_token = gitHubToken;
+			workerSelf2.api.github_token = gitHubToken;
 		}
 		try
 		{
 			const stagingDetails = await calculateStagedChanges(owner, repo, branch);
-			self.postMessage({
+			workerSelf2.postMessage({
 				type: 'staging_status',
 				status: 'SUCCESS',
 				modified: stagingDetails.modified.map(f => f.path),
@@ -377,7 +430,7 @@ self.onmessage = async function (e)
 		{
 			if(err instanceof Error)
 			{
-				self.postMessage({ type: 'staging_status', status: 'ERROR', error: err.message, callbackId });
+				workerSelf2.postMessage({ type: 'staging_status', status: 'ERROR', error: err.message, callbackId });
 			}
 		}
 		return;
@@ -387,19 +440,19 @@ self.onmessage = async function (e)
 	if(e.data.type === 'COMMIT_PUSH')
 	{
 		const { owner, repo, branch, message, callbackId, gitHubToken } = e.data;
-		if(api)
+		if(workerSelf2.api)
 		{
-			api.github_token = gitHubToken;
+			workerSelf2.api.github_token = gitHubToken;
 		}
 		try
 		{
 			const finalSha = await pushLocalChangesToGitHub(owner, repo, branch, message);
-			self.postMessage({ type: 'commit_status', status: 'SUCCESS', sha: finalSha, callbackId });
+			workerSelf2.postMessage({ type: 'commit_status', status: 'SUCCESS', sha: finalSha, callbackId });
 		} catch(err)
 		{
 			if(err instanceof Error)
 			{
-				self.postMessage({ type: 'commit_status', status: 'ERROR', error: err.message, callbackId });
+				workerSelf2.postMessage({ type: 'commit_status', status: 'ERROR', error: err.message, callbackId });
 			}
 		}
 		return;

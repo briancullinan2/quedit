@@ -6,7 +6,7 @@ import type { GithubWindow } from '../bundle/github.d';
 import type { LocalWindow } from "../bundle/local.d";
 import type { FileListWidget, GameListWidget } from "./widget";
 import type { LuminoWindow } from '../bundle/lumino.d';
-import type { ApiWindow } from "../compiler/worker.d";
+import type { ApiWindow, WorkerWindow } from "../compiler/worker.d";
 import type { BuildWindow } from "../compiler/make.d";
 
 
@@ -44,7 +44,20 @@ export interface FilelistWindow extends EditorUtilities, GlobalToolbars, Setting
 
 declare var self: Window & FilelistWindow & typeof globalThis;
 
-export interface GithubWorkerWindow extends ApiWindow, GithubWindow, GlobalToolbarsWindow, BuildWindow
+export interface GithubWorkerWindow extends ApiWindow, GithubWindow, GlobalToolbarsWindow, BuildWindow, WorkerWindow
 {
 
 }
+
+export type GithubChanges = {
+	modified: FileRecord[],
+	added: FileRecord[],
+	deleted: FileRecord[],
+	treeEntries: FileRecord[];
+};
+
+export interface CommitWorkerWindow extends ApiWindow, GithubWindow, WorkerWindow
+{
+
+}
+

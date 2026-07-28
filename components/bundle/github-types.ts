@@ -1,7 +1,7 @@
 import { GithubWindow } from "./github.d";
 import { FileRecord } from "./local.d";
 
-export interface GitHubFileTree
+export interface GitHubFileTree extends Record<string, FileRecord | null | undefined>
 {
 	[key: string]: GitHubFileEntry;
 }
@@ -10,7 +10,7 @@ export interface GitHubFileTree
 export interface GitHubFileEntry extends FileRecord
 {
 	name?: string;
-	type?: 'file' | 'dir';
+	type?: 'file' | 'dir' | 'tree';
 	size?: number | undefined;
 }
 

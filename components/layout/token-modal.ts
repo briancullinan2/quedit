@@ -1,6 +1,9 @@
+import { ApiWindow } from '../compiler/worker.d';
 
 export const GITHUB_LINK = 'https://github.com/settings/tokens?type=beta';
 
+
+const modalSelf: ApiWindow = self as unknown as any;
 
 export class TokenModal
 {
@@ -163,7 +166,7 @@ export class TokenModal
 	{
 		if(!this.tokenInput || !this.modal) return;
 
-		const globalApiToken = window.api?.github_token;
+		const globalApiToken = modalSelf.api?.github_token;
 		const token = globalApiToken && globalApiToken.length > 0
 			? globalApiToken
 			: localStorage.getItem('github_token');
