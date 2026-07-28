@@ -516,8 +516,8 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 	headerRow.node.style.minHeight = '30px';
 
 	// 4. Build the inline toolbar segment
-	const repoToolbar = RepositoryToolbar.getInstance().initialize(commands);
-	menuSelf.repositoryToolbar = repoToolbar;
+	const repositoryToolbar = RepositoryToolbar.getInstance().initialize(commands);
+	menuSelf.repositoryToolbar = repositoryToolbar;
 	const scriptToolbar = ScriptToolbar.getInstance().initialize(commands);
 	menuSelf.scriptToolbar = scriptToolbar;
 	const appToolbar = ApplicationToolbar.getInstance().initialize(commands);
@@ -532,7 +532,7 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 	menuSelf.engineToolbar = engineToolbar;
 
 	headerRow.addWidget(menuBar);
-	headerRow.addWidget(repoToolbar);
+	headerRow.addWidget(repositoryToolbar);
 	headerRow.addWidget(scriptToolbar);
 	headerRow.addWidget(appToolbar);
 	headerRow.addWidget(fileToolbar);

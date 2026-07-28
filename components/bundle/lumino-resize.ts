@@ -32,7 +32,7 @@ export interface SafeDockLayoutConfig
 }
 
 
-export type ToolbarKey = 'repoToolbar' | 'scriptToolbar' | 'appToolbar' | 'fileToolbar' | 'historyToolbar' | 'settingsToolbar' | 'engineToolbar';
+export type ToolbarKey = 'repositoryToolbar' | 'scriptToolbar' | 'appToolbar' | 'fileToolbar' | 'historyToolbar' | 'settingsToolbar' | 'engineToolbar';
 
 
 export const OUTLINE_WIDGET_TYPES = [
@@ -57,7 +57,7 @@ export const TOOLBAR_CONTEXT_MAP: Record<ToolbarKey, string[]> = {
 	scriptToolbar: [
 		'TerminalWidget', 'AceEditorWidget'
 	],
-	repoToolbar: [
+	repositoryToolbar: [
 		'FileListWidget', 'GameListWidget', 'GithubWidget'
 	],
 	engineToolbar: [
