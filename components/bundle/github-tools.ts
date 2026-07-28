@@ -12,7 +12,7 @@ import
 } from "./local";
 import { GithubWindow } from "./github.d";
 
-const githubSelf: GithubWindow = /** @type {any} */ (self);
+const githubSelf: GithubWindow = self as unknown as any;
 
 export async function getGitShaBrowser(content: string | Uint8Array | ArrayBuffer): Promise<string>
 {

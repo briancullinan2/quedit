@@ -6,10 +6,12 @@ import type { RepositoryToolbar } from "./menu-repos";
 import type {
 	LocalWindow, DatabaseMetadata, FileRecord,
 	SchemaStoreConfig, DebounceToken, InstallCheckResult,
-	SetupDatabaseResult } from './local.d';
+	SetupDatabaseResult
+} from './local.d';
+import type { GlobalToolbarsWindow } from "./menu.d";
 
 
-const localSelf: LocalWindow = /** @type {any} */ (self);
+const localSelf: LocalWindow & GlobalToolbarsWindow = self as unknown as any;
 
 
 
@@ -380,8 +382,8 @@ export function debounceRecords(
 {
 	const path: string = typeof record === 'string' ? record : record?.path || '';
 	const parts = (dbName || '').split('/');
-	const ownerName = parts.length === 2 ? parts[0] : (typeof localSelf.RepositoryToolbar.owner !== 'undefined' ? localSelf.RepositoryToolbar.owner?.value ?? '' : '');
-	const repoName = parts.length === 2 ? parts[1] : (parts[0] || (typeof localSelf.RepositoryToolbar.repository !== 'undefined' ? localSelf.RepositoryToolbar.repository?.value ?? '' : ''));
+	const ownerName = parts.length === 2 ? parts[0] : (typeof localSelf.RepositoryToolbar?.owner !== 'undefined' ? localSelf.RepositoryToolbar.owner?.value ?? '' : '');
+	const repoName = parts.length === 2 ? parts[1] : (parts[0] || (typeof localSelf.RepositoryToolbar?.repository !== 'undefined' ? localSelf.RepositoryToolbar.repository?.value ?? '' : ''));
 
 	const compositeArgs = {
 		storeName,

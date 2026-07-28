@@ -1,5 +1,9 @@
+import type { ApiWindow } from "../compiler/worker.d";
+import type { GlobalToolbarsWindow, RepositorySettingsWindow } from "./menu.d";
 
-import type { WorkerAPI } from './global.d';
+
+const luminoSelf: GlobalToolbarsWindow & ApiWindow & RepositorySettingsWindow = self as unknown as any;
+
 
 export interface SearchMatchItem
 {
@@ -39,26 +43,8 @@ export interface SearchParams
 	gitHubToken?: string;
 }
 
-declare global
-{
-	interface Window
-	{
-		searchWorker?: Worker;
-		engineRepository?: string | null;
-		gameRepository?: string | null;
-		assetRepository?: string | null;
-		toolsRepository?: string | null;
-		tools2Repository?: string | null;
-		environmentRepository?: string | null;
-		api?: WorkerAPI;
-		SearchService: typeof SearchService;
-		searchService: SearchService;
-	}
-}
-
 export class SearchService
 {
-	private worker: Worker | null = null;
 	private transactions = new Map<string, SearchTransactionState>();
 	private requestCounter = 0;
 
@@ -71,12 +57,11 @@ export class SearchService
 	{
 		if(typeof window === 'undefined') return;
 
-		if(!window.searchWorker)
+		if(!luminoSelf.searchWorker)
 		{
-			window.searchWorker = new Worker('/components/filelist/search-worker.js');
+			luminoSelf.searchWorker = new Worker('/components/filelist/search-worker.js');
 		}
-		this.worker = window.searchWorker;
-		this.worker.onmessage = this.handleWorkerMessage.bind(this);
+		luminoSelf.searchWorker.onmessage = this.handleWorkerMessage.bind(this);
 	}
 
 	private handleWorkerMessage(e: MessageEvent): void
@@ -120,7 +105,7 @@ export class SearchService
 		callbackIdPrefix: string = 'req'
 	): { callbackId: string; promise: Promise<GroupedSearchResult[]>; }
 	{
-		if(!this.worker)
+		if(!luminoSelf.searchWorker)
 		{
 			this.initWorker();
 		}
@@ -128,15 +113,15 @@ export class SearchService
 		const callbackId = `${callbackIdPrefix}-${++this.requestCounter}-${Date.now()}`;
 
 		const activeRepositories = params.activeRepositories || [
-			window.engineRepository,
-			window.gameRepository,
-			window.assetRepository,
-			window.toolsRepository,
-			window.tools2Repository,
-			window.environmentRepository
+			luminoSelf.engineRepository,
+			luminoSelf.gameRepository,
+			luminoSelf.assetRepository,
+			luminoSelf.toolsRepository,
+			luminoSelf.tools2Repository,
+			luminoSelf.environmentRepository
 		].filter(Boolean) as string[];
 
-		const gitHubToken = params.gitHubToken || localStorage.getItem('github_token') || window.api?.github_token || '';
+		const gitHubToken = params.gitHubToken || localStorage.getItem('github_token') || luminoSelf.api?.github_token || '';
 
 		let resolveFn!: (results: GroupedSearchResult[]) => void;
 		let rejectFn!: (error: Error) => void;
@@ -156,7 +141,7 @@ export class SearchService
 			reject: rejectFn
 		});
 
-		this.worker?.postMessage({
+		luminoSelf.searchWorker?.postMessage({
 			callbackId,
 			query: params.query,
 			caseSensitive: params.caseSensitive ?? false,
@@ -171,7 +156,7 @@ export class SearchService
 	{
 		if(!this.transactions.has(callbackId)) return;
 
-		this.worker?.postMessage({
+		luminoSelf.searchWorker?.postMessage({
 			callbackId,
 			type: 'cancel'
 		});
@@ -216,4 +201,4 @@ export class SearchService
 }
 
 export const searchService = new SearchService();
-window.searchService = searchService;
+luminoSelf.searchService = searchService;

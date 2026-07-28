@@ -49,26 +49,6 @@ export interface CommandDefinition
 
 export type CommandSchema = Record<string, CommandDefinition>;
 
-// --- GLOBAL WINDOW EXTENSION ---
-
-declare global
-{
-	interface Window
-	{
-		COMMAND_SCHEMA: CommandSchema;
-		ARG_TYPES: {
-			FILE: 'file',          // Local file path validation/completion
-			DATABASE: 'database',  // GitHub user/repo path pattern tracking
-			STRING: 'string',      // Plain text argument
-			NUMERIC: 'number';
-		};
-		levDist(s: string, t: string): number;
-		findMatchesWithFuzzy(currentValue: string, candidatesPool: string[]): string[];
-		FileManager: typeof FileManager;
-	}
-}
-
-
 
 export function tokenizeCommandLine(input: string): CommandToken[]
 {

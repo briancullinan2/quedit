@@ -7,6 +7,11 @@ import type { FileToolbar } from "./menu-file";
 import type { HistoryToolbar } from "./menu-history";
 import type { SettingsToolbar } from "./menu-settings";
 import type { EngineToolbar } from "./menu-engine";
+import type { LuminoLayoutWindow } from "./lumino.d";
+
+
+const luminoSelf: LuminoLayoutWindow = self as unknown as any;
+
 
 export interface LuminoLayoutNode
 {
@@ -32,27 +37,6 @@ export interface SafeDockLayoutConfig
 	main: SafeLayoutNode | null;
 }
 
-declare global
-{
-	interface Window
-	{
-		isModifierPressed?: boolean;
-		isShiftPressed?: boolean;
-		workspaceBox: BoxPanel;
-		toolbarWidget: Widget;
-		lastInteractedWidget: Widget | null;
-		previousInteractedWidget: Widget | null;
-		repoToolbar: RepositoryToolbar;
-		scriptToolbar: ScriptToolbar;
-		appToolbar: ApplicationToolbar;
-		fileToolbar: FileToolbar;
-		historyToolbar: HistoryToolbar;
-		settingsToolbar: SettingsToolbar;
-		engineToolbar: EngineToolbar;
-		layoutState: LayoutState;
-		updateModifierPressed: (e: KeyboardEvent) => void;
-	}
-}
 
 export type ToolbarKey = 'repoToolbar' | 'scriptToolbar' | 'appToolbar' | 'fileToolbar' | 'historyToolbar' | 'settingsToolbar' | 'engineToolbar';
 
@@ -281,7 +265,7 @@ export class ResponsiveManager
 						{
 							// First file tree / outline splits left relative to main editor
 							firstRefWidget['outline'] = widget;
-							mainDock.addWidget(widget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-left' : 'split-right', ref: primaryWidget });
+							mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.panels === 'left-hand-files' ? 'split-left' : 'split-right', ref: primaryWidget });
 						}
 						else
 						{
@@ -295,12 +279,12 @@ export class ResponsiveManager
 						{
 							// First terminal splits bottom relative to the primary editor
 							firstRefWidget[widgetName] = widget;
-							mainDock.addWidget(widget, { mode: window.layoutState.order === 'normal-order' ? 'split-right' : 'split-left', ref: primaryWidget });
+							mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.order === 'normal-order' ? 'split-right' : 'split-left', ref: primaryWidget });
 						}
 						else if(!firstRefWidget[widgetName] && !isHeightMobile)
 						{
 							firstRefWidget[widgetName] = widget;
-							mainDock.addWidget(widget, { mode: window.layoutState.order === 'normal-order' ? 'split-bottom' : 'split-top', ref: primaryWidget });
+							mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.order === 'normal-order' ? 'split-bottom' : 'split-top', ref: primaryWidget });
 						}
 						else
 						{
@@ -316,10 +300,10 @@ export class ResponsiveManager
 							firstRefWidget[widgetName] = widget;
 							if(OUTLINE_WIDGET_TYPES.includes(primaryWidget.constructor.name))
 							{
-								mainDock.addWidget(widget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-right' : 'split-left', ref: primaryWidget });
+								mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.panels === 'left-hand-files' ? 'split-right' : 'split-left', ref: primaryWidget });
 							} else
 							{
-								mainDock.addWidget(widget, { mode: window.layoutState.order === 'normal-order' ? 'split-right' : 'split-left', ref: primaryWidget });
+								mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.order === 'normal-order' ? 'split-right' : 'split-left', ref: primaryWidget });
 							}
 						}
 						else
@@ -339,11 +323,11 @@ export class ResponsiveManager
 					{
 						if(count === 2)
 						{
-							layout.main.sizes = window.layoutState.panels === 'left-hand-files' ? [0.25, 0.75] : [0.75, 0.25];
+							layout.main.sizes = luminoSelf.layoutState?.panels === 'left-hand-files' ? [0.25, 0.75] : [0.75, 0.25];
 						}
 						else if(count === 3)
 						{
-							layout.main.sizes = window.layoutState.panels === 'left-hand-files' ? [0.20, 0.40, 0.40] : [0.40, 0.40, 0.20];
+							layout.main.sizes = luminoSelf.layoutState?.panels === 'left-hand-files' ? [0.20, 0.40, 0.40] : [0.40, 0.40, 0.20];
 						}
 					} else
 					{
@@ -421,13 +405,13 @@ export class ResponsiveManager
 						if(!firstRefWidget[widgetName] && OUTLINE_WIDGET_TYPES.includes(primaryWidget.constructor.name))
 						{
 							firstRefWidget[widgetName] = widget;
-							mainDock.addWidget(widget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-right' : 'split-left', ref: nonTerminal ?? primaryWidget });
+							mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.panels === 'left-hand-files' ? 'split-right' : 'split-left', ref: nonTerminal ?? primaryWidget });
 						}
 						else if(!firstRefWidget[widgetName] && !isMobileHeight)
 						{
 							// First terminal splits below the primary editor / non-terminal container
 							firstRefWidget[widgetName] = widget;
-							mainDock.addWidget(widget, { mode: window.layoutState.order === 'normal-order' ? 'split-bottom' : 'split-top', ref: nonTerminal });
+							mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.order === 'normal-order' ? 'split-bottom' : 'split-top', ref: nonTerminal });
 						}
 						else
 						{
@@ -440,17 +424,17 @@ export class ResponsiveManager
 						const nonTerminal = LayoutAdjuster._findNonOutlineOrTerminal(mainDock);
 						if(OUTLINE_WIDGET_TYPES.includes(widget.constructor.name) && nonTerminal)
 						{
-							mainDock.addWidget(widget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-left' : 'split-right', ref: nonTerminal });
+							mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.panels === 'left-hand-files' ? 'split-left' : 'split-right', ref: nonTerminal });
 						} else if(nonTerminal)
 						{
 							firstRefWidget[widgetName] = widget;
 							mainDock.addWidget(widget, { mode: 'tab-after', ref: nonTerminal ?? primaryWidget });
 						} else if(firstRefWidget['TerminalWidget'])
 						{
-							mainDock.addWidget(widget, { mode: window.layoutState.order === 'normal-order' ? 'split-top' : 'split-bottom', ref: firstRefWidget['TerminalWidget'] });
+							mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.order === 'normal-order' ? 'split-top' : 'split-bottom', ref: firstRefWidget['TerminalWidget'] });
 						} else if(OUTLINE_WIDGET_TYPES.includes(primaryWidget.constructor.name))
 						{
-							mainDock.addWidget(widget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-right' : 'split-left', ref: firstRefWidget['outline'] });
+							mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.panels === 'left-hand-files' ? 'split-right' : 'split-left', ref: firstRefWidget['outline'] });
 						} else
 						{
 							mainDock.addWidget(widget, { mode: 'tab-after', ref: primaryWidget });
@@ -464,7 +448,7 @@ export class ResponsiveManager
 					//const count = layout.main.children.length;
 					if(widgetTypes['outline'])
 					{
-						layout.main.sizes = window.layoutState.panels === 'left-hand-files' ? [0.25, 0.75] : [0.75, 0.25];
+						layout.main.sizes = luminoSelf.layoutState?.panels === 'left-hand-files' ? [0.25, 0.75] : [0.75, 0.25];
 					}
 					mainDock.restoreLayout(layout as any);
 				}
@@ -505,12 +489,12 @@ export class ResponsiveManager
 		}
 
 		// 2. DYNAMIC REGISTRY VISIBILITY LOGIC (ON GLOBAL WINDOW TOOLBARS)
-		const currentClass = window.lastInteractedWidget?.constructor.name || '';
-		const previousClass = window.previousInteractedWidget?.constructor.name || '';
+		const currentClass = luminoSelf.lastInteractedWidget?.constructor.name || '';
+		const previousClass = luminoSelf.previousInteractedWidget?.constructor.name || '';
 
 		ALL_TOOLBARS.forEach((key) =>
 		{
-			const globalToolbar = window[key];
+			const globalToolbar = luminoSelf[key];
 			if(!globalToolbar || !globalToolbar.node) return;
 
 			const allowedWidgets = TOOLBAR_CONTEXT_MAP[key] || [];
@@ -798,30 +782,30 @@ export function isDevToolsOpen(): boolean
 
 export function updateModifierPressed(e: KeyboardEvent)
 {
-	window.isModifierPressed = e.ctrlKey || e.metaKey;
-	window.isShiftPressed = e.shiftKey;
+	luminoSelf.isModifierPressed = e.ctrlKey || e.metaKey;
+	luminoSelf.isShiftPressed = e.shiftKey;
 
 	const hasClass = document.body.classList.contains('modifier');
 
 	// TODO: set engine to 1 FPS if debugger is open, not only because it runs
 	//   slower but the nature of debugging is seeing the frames
-	if(!window.isModifierPressed && hasClass)
+	if(!luminoSelf.isModifierPressed && hasClass)
 		document.body.classList.remove('modifier');
-	if(window.isModifierPressed && !hasClass)
+	if(luminoSelf.isModifierPressed && !hasClass)
 		document.body.classList.add('modifier');
 
 
 	const hasShift = document.body.classList.contains('shift');
-	if(!window.isShiftPressed && hasShift)
+	if(!luminoSelf.isShiftPressed && hasShift)
 		document.body.classList.remove('shift');
-	if(window.isShiftPressed && !hasShift)
+	if(luminoSelf.isShiftPressed && !hasShift)
 		document.body.classList.add('shift');
 
 
 	isDevToolsOpen();
 }
 
-window.updateModifierPressed = updateModifierPressed;
+luminoSelf.updateModifierPressed = updateModifierPressed;
 
 
 export function serializeDockLayout(config: any): SafeDockLayoutConfig

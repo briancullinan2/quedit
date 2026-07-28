@@ -2,23 +2,12 @@ import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
 import { MenuConfig, MenuManager } from "./menu-manager";
 import type { PaintWidget } from '../paint/widget';
-import type { AceEditorWidget } from "../editor/widget";
 import { triggerPanelRoute } from "./menu";
+import type { GlobalToolbarsWindow, LuminoMenuWindow } from "./menu.d";
+import type { FileSystemWindow, LuminoLayoutWindow } from "./lumino.d";
+import type { EditorWindow } from "../editor/widget.d";
 
-declare global
-{
-	interface Window
-	{
-		tempCount: number;
-		lastInteractedWidget: Widget | null;
-		previousInteractedWidget: Widget | null;
-		globalModules?: Record<string, Record<string, Function>>;
-		fileToolbar: FileToolbar;
-		FileToolbar: typeof FileToolbar;
-		AceEditorWidget: typeof AceEditorWidget;
-		registerAllCommands: (menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry) => void;
-	}
-}
+const menuSelf: LuminoMenuWindow & GlobalToolbarsWindow & FileSystemWindow & LuminoLayoutWindow & EditorWindow = self as unknown as any;
 
 const FILE_MENU: MenuConfig = {
 	name: "File",
@@ -351,7 +340,7 @@ export class FileToolbar extends Widget
 		if(!FileToolbar._instance)
 		{
 			FileToolbar._instance = new FileToolbar();
-			window.fileToolbar = FileToolbar._instance;
+			menuSelf.fileToolbar = FileToolbar._instance;
 		}
 		return FileToolbar._instance;
 	}
@@ -359,10 +348,10 @@ export class FileToolbar extends Widget
 	public initialize(commands: CommandRegistry): FileToolbar
 	{
 		this._commands = commands;
-		window.registerAllCommands(FILE_MENU);
-		window.registerAllCommands(EDIT_MENU);
-		window.registerAllCommands(VIEW_MENU);
-		window.registerAllCommands(HELP_MENU);
+		menuSelf.registerAllCommands?.(FILE_MENU);
+		menuSelf.registerAllCommands?.(EDIT_MENU);
+		menuSelf.registerAllCommands?.(VIEW_MENU);
+		menuSelf.registerAllCommands?.(HELP_MENU);
 		MenuManager.injectMenus(null, FILE_MENU);
 		MenuManager.injectMenus(null, EDIT_MENU);
 		MenuManager.injectMenus(null, VIEW_MENU);
@@ -416,7 +405,7 @@ export class FileToolbar extends Widget
 	}
 }
 
-window.FileToolbar = FileToolbar;
+menuSelf.FileToolbar = FileToolbar;
 
 const fileGroups = {
 	// Standard Web/Texture assets
@@ -461,25 +450,25 @@ const targetAcceptString = Object.values(fileGroups)
 	.reduce((acc, currentGroup) => acc.concat(currentGroup), [])
 	.join(',');
 
-if(!window.globalModules)
+if(!menuSelf.globalModules)
 {
-	window.globalModules = {};
+	menuSelf.globalModules = {};
 }
 
-window.globalModules['file/exit'] = {
+menuSelf.globalModules['file/exit'] = {
 	exit: FileToolbar.closeApp
 };
-window.globalModules['file/open'] = {
+menuSelf.globalModules['file/open'] = {
 	open_file: function ()
 	{
 		var _this = this;
 
-		if(window.lastInteractedWidget?.constructor.name === 'PaintWidget'
-			&& (window.lastInteractedWidget as PaintWidget)._instance
-			&& (window.lastInteractedWidget as PaintWidget)._instance?.alertify
+		if(menuSelf.lastInteractedWidget?.constructor.name === 'PaintWidget'
+			&& (menuSelf.lastInteractedWidget as PaintWidget)._instance
+			&& (menuSelf.lastInteractedWidget as PaintWidget)._instance?.alertify
 		)
 		{
-			const alertify = (window.lastInteractedWidget as PaintWidget)._instance!.alertify;
+			const alertify = (menuSelf.lastInteractedWidget as PaintWidget)._instance!.alertify;
 			alertify.success('You can also drag and drop items into browser.');
 		}
 
@@ -522,24 +511,24 @@ window.globalModules['file/open'] = {
 	}
 };
 
-window.globalModules['file/new'] = {
+menuSelf.globalModules['file/new'] = {
 	new: function ()
 	{
 		const candidateTypes = ['AceEditorWidget', 'PaintWidget'];
 		// TODO: scan widgets for open editors and create a new file inside that editor
 		//   if there is none, make a new ace editor file
 		const editorCandidates: string[] = [];
-		if(window.lastInteractedWidget
-			&& candidateTypes.includes(window.lastInteractedWidget.constructor.name))
+		if(menuSelf.lastInteractedWidget
+			&& candidateTypes.includes(menuSelf.lastInteractedWidget.constructor.name))
 		{
-			editorCandidates.push(window.lastInteractedWidget.constructor.name);
+			editorCandidates.push(menuSelf.lastInteractedWidget.constructor.name);
 		}
-		if(window.previousInteractedWidget
-			&& candidateTypes.includes(window.previousInteractedWidget.constructor.name))
+		if(menuSelf.previousInteractedWidget
+			&& candidateTypes.includes(menuSelf.previousInteractedWidget.constructor.name))
 		{
-			editorCandidates.push(window.previousInteractedWidget.constructor.name);
+			editorCandidates.push(menuSelf.previousInteractedWidget.constructor.name);
 		}
-		for(let panel in window.mainDock.widgets())
+		for(let panel in menuSelf.mainDock?.widgets() ?? [])
 		{
 			if(candidateTypes.includes(panel.constructor.name))
 			{
@@ -548,19 +537,22 @@ window.globalModules['file/new'] = {
 		}
 		if(editorCandidates[0] === 'AceEditorWidget')
 		{
-			window.AceEditorWidget.openFileInNewTab('new-file-' + (++window.tempCount), 'New File', '');
+			menuSelf.AceEditorWidget?.openFileInNewTab('new-file-' + menuSelf.nextTemp?.(), 'New File', '');
 		} else if(editorCandidates[0] === 'PaintWidget')
 		{
-			window.PaintWidget.openFileInNewTab('new-file-' + (++window.tempCount), 'New File');
+			menuSelf.PaintWidget?.openFileInNewTab('new-file-' + menuSelf.nextTemp?.(), 'New File');
 		}
 	}
 
 };
 
 
-window.globalModules['edit/find'] = {
+menuSelf.globalModules['edit/find'] = {
 	find_all: async function ()
 	{
-		await triggerPanelRoute('searchlist', window.mainDock, true);
+		if(menuSelf.mainDock)
+		{
+			await triggerPanelRoute('searchlist', menuSelf.mainDock, true);
+		}
 	}
 };

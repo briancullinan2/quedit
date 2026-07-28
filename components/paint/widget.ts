@@ -139,23 +139,6 @@ declare interface MiniPaintActions
 	[key: string]: any;
 }
 
-// Global declaration augmentation so the compiler understands window attachment targets
-declare global
-{
-	interface Window
-	{
-		resizeHandler: () => void;
-		injectMenus: (ownerId: string, config: MenuConfig[] | MenuConfig) => void;
-		removeMenus: (ownerId: string) => void;
-		initializeMiniPaint?: (targetNode?: HTMLElement | null) => MiniPaintApp;
-		registerAllCommands: (menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry) => void;
-		commandRegistry: CommandRegistry;
-		globalMenuBar: MenuBar;
-		historyToolbar: HistoryToolbar;
-		PaintWidget: typeof PaintWidget;
-	}
-}
-
 
 export class PaintWidget extends Widget implements MenuModules
 {
@@ -201,7 +184,7 @@ export class PaintWidget extends Widget implements MenuModules
 
 	public static getNextTempName(): string
 	{
-		return 'temp' + (++window.tempCount) + '.bmp';
+		return 'temp' + (nextTemp()) + '.bmp';
 	}
 
 

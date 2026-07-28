@@ -28,7 +28,7 @@ export class GithubListWidget extends FileListWidget
 	constructor(titleStr: string = 'GitHub Workspace')
 	{
 		super(titleStr);
-		this.id = `github-list-panel-${++window.tempCount}`;
+		this.id = `github-list-panel-${nextTemp()}`;
 		this.addClass('ide-github-tree-widget');
 
 		// Spin up dedicated worker thread for commit/staging tracking

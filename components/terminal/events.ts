@@ -34,24 +34,6 @@ export interface TerminalEventPayload
 	history: number | null;
 }
 
-// Global window extension declarations matching environment specifics
-declare global
-{
-	interface Window
-	{
-		terminalLog: TerminalLogEntry[];
-		isModifierPressed?: boolean;
-		isShiftPressed?: boolean;
-		moveLookLocked?: (mx: number, my: number) => void;
-		playerMover?: { jump: () => void; };
-		updateModifierPressed: (arg: KeyboardEvent) => void;
-		lastNewLine?: boolean;
-		handleCommand: (command: string, term: Terminal) => Promise<void>;
-		terminalWrite?: typeof terminalWrite;
-		TERMINATE: boolean;
-		TerminalEventManager: typeof TerminalEventManager;
-	}
-}
 
 export const LINES_TO_SAVE = 1000;
 
@@ -60,7 +42,6 @@ export class TerminalEventManager
 {
 	private pooledCtx: IPooledTerminal;
 	private container: HTMLElement;
-	private statusBar: StatusBarWidget;
 	public historyManager: TerminalHistoryManager;
 
 	// Ephemeral instance trackers

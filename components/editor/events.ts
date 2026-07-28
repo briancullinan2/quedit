@@ -17,16 +17,6 @@ export interface AceTrackingPayload
 	file: string | null;
 }
 
-declare global
-{
-	interface Window
-	{
-		statusBar: StatusBarWidget;
-		previousHashLineNumber?: number | null;
-	}
-}
-
-
 export class AceEventManager
 {
 	private _widget: AceEditorWidget;

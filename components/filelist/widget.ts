@@ -17,20 +17,17 @@ import
 import type { FilelistWindow } from './widget.d';
 
 
-const filelistSelf: FilelistWindow = /** @type {any} */ (self);
+const filelistSelf: FilelistWindow = self as unknown as any;
 
 
 type PermissionState = 'granted' | 'denied' | 'prompt';
 
-
-declare global
+interface FileSystemHandle
 {
-	interface FileSystemHandle
-	{
-		queryPermission(descriptor?: { mode?: 'read' | 'readwrite'; }): Promise<PermissionState>;
-		requestPermission(descriptor?: { mode?: 'read' | 'readwrite'; }): Promise<PermissionState>;
-	}
+	queryPermission(descriptor?: { mode?: 'read' | 'readwrite'; }): Promise<PermissionState>;
+	requestPermission(descriptor?: { mode?: 'read' | 'readwrite'; }): Promise<PermissionState>;
 }
+
 
 if(!filelistSelf.fileListWidgets)
 {
@@ -57,7 +54,7 @@ export class FileListWidget extends Widget
 	constructor(titleStr: string)
 	{
 		super();
-		this.id = `filelist-panel-${++filelistSelf.tempCount}`;
+		this.id = `filelist-panel-${nextTemp()}`;
 		this.title.label = titleStr;
 		if(filelistSelf.fileListWidgets)
 		{

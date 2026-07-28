@@ -1,3 +1,4 @@
+import { GithubWindow } from "./github.d";
 import { FileRecord } from "./local.d";
 
 export interface GitHubFileTree
@@ -78,26 +79,18 @@ export interface GitHubCodeSearchResult
 	isRemote: true;
 }
 
+const githubSelf: GithubWindow = self as unknown as any;
+
 // --- State Repositories ---
 export const defaultBranches: Record<string, string> = {};
 export const mapFiles: Record<string, string> = {
 	"": "Current map"
 };
-window.mapFiles = mapFiles;
+githubSelf.mapFiles = mapFiles;
 
 export const trees: Record<string, any> = {};
 export const filesRepo: Record<string, GitHubFileTree | undefined> = {};
 
 
-declare global
-{
-	interface Window
-	{
-		trees: Record<string, any>;
-		filesRepo: Record<string, GitHubFileTree | undefined>;
-		mapFiles: Record<string, string>;
-	}
-}
-
-window.trees = trees;
-window.filesRepo = filesRepo;
+githubSelf.trees = trees;
+githubSelf.filesRepo = filesRepo;

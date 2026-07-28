@@ -15,7 +15,7 @@ import
 } from "./local";
 
 
-const githubSelf: GithubWindow = /** @type {any} */ (self);
+const githubSelf: GithubWindow = self as unknown as any;
 
 
 // --- Overloaded Function Signatures for Request Layer ---

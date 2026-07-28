@@ -9,19 +9,13 @@ import { SettingsManager } from './settings';
 import { getGitShaBrowser } from './github-tools';
 import { path } from './global';
 import type { ComponentRoute } from './menu';
+import type { LuminoLayoutWindow } from './lumino.d';
 
 const parseBabel = packages.parser.parse;
 const traverse = packages.traverse.default;
 
+const compileSelf: LuminoLayoutWindow = self as unknown as any;
 
-declare global
-{
-	interface Window
-	{
-		loadScript(src: string): Promise<any>;
-		loadStyle(href: string): Promise<void>;
-	}
-}
 
 
 export const registry = new Map<string, Promise<void>>(
@@ -184,7 +178,7 @@ export async function preloadDependencies(dependenciesToFetch: string[]): Promis
 	console.log('Finishing bullshit: ' + JSON.stringify(dependenciesToFetch));
 }
 
-window.loadScript = loadScript;
+compileSelf.loadScript = loadScript;
 
 
 
@@ -230,7 +224,7 @@ async function loadStyle(href: string): Promise<void>
 }
 
 
-window.loadStyle = loadStyle;
+compileSelf.loadStyle = loadStyle;
 
 
 // Define the class property registry somewhere above this method in your class:

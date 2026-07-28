@@ -2,14 +2,6 @@ import { Message } from '@lumino/messaging';
 import { FileListWidget } from './widget';
 import type { SearchService, GroupedSearchResult } from '../bundle/lumino-search';
 
-declare global
-{
-	interface Window
-	{
-		searchService: SearchService;
-	}
-}
-
 export interface HistorySnapshot
 {
 	query: string;
@@ -31,7 +23,7 @@ export class SearchListWidget extends FileListWidget
 	constructor(titleStr: string = 'Search Workspace')
 	{
 		super(titleStr);
-		this.id = `search-list-panel-${++(window as any).tempCount}`;
+		this.id = `search-list-panel-${nextTemp()}`;
 		this.addClass('ide-search-list-widget');
 	}
 

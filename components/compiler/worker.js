@@ -2,7 +2,7 @@
 /// <reference path="./worker.d.ts" />
 
 /** @type {import('./worker.d').WorkerWindow} */
-const workerSelf = /** @type {any} */ (self);
+const workerSelf = self as unknown as any;
 
 
 /*

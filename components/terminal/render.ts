@@ -3,15 +3,6 @@ import type { FrameRater } from '../bundle/frame-rater';
 import { DockPanel } from '@lumino/widgets';
 import { TerminalEventManager } from './events';
 
-declare global
-{
-	interface Window
-	{
-		mainDock: DockPanel;
-		triggerPanelRoute: (panelId: string, mainDock: DockPanel, noHide?: boolean) => Promise<void>;
-		TerminalEventManager: typeof TerminalEventManager;
-	}
-}
 
 export interface RenderFootprint
 {

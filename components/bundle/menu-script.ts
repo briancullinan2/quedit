@@ -4,28 +4,6 @@ import { RepositoryToolbar } from "./menu-repos";
 import { triggerPanelRoute } from "./menu";
 
 
-declare global
-{
-	interface Window
-	{
-		scriptToolbar: ScriptToolbar;
-		ScriptToolbar: typeof ScriptToolbar;
-		RepositoryToolbar: typeof RepositoryToolbar;
-		BUILD_SCRIPTS: string[];
-		buildTools: (database?: string | null) => Promise<void>;
-		buildQVM: (database?: string | null) => Promise<void>;
-		buildClient: (database?: string | null) => Promise<void>;
-		engineRepository?: string | undefined | null;
-		gameRepository?: string | undefined | null;
-		assetRepository?: string | undefined | null;
-		toolsRepository?: string | undefined | null;
-		tools2Repository?: string | undefined | null;
-		environmentRepository?: string | undefined | null;
-		TERMINATE: boolean;
-	}
-}
-
-
 const BUILD_SCRIPTS = [
 	'/components/compiler/compiler.js',
 	'/components/compiler/shared.js',

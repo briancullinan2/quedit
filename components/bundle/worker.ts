@@ -14,15 +14,6 @@ import { FileRecord } from './local.d';
 import { SettingsManager } from "./settings";
 
 
-declare global
-{
-	interface Window
-	{
-		ensureDatabaseContainer(database: string): Promise<void>;
-	}
-}
-
-
 export class ServiceWorkerManager
 {
 	private readonly defaultOwner = 'briancullinan2';

@@ -31,19 +31,6 @@ interface TrackedMenuItem extends Menu.IItem
 }
 
 
-declare global
-{
-	interface Window
-	{
-		injectMenus: (ownerId: string, config: MenuConfig[] | MenuConfig) => void;
-		removeMenus: (ownerId: string) => void;
-		registerAllCommands: (menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry) => void;
-		commandRegistry: CommandRegistry;
-		globalMenuBar: MenuBar;
-		globalModules?: Record<string, Record<string, Function>>;
-	}
-}
-
 export class MenuManager
 {
 

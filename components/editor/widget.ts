@@ -42,35 +42,6 @@ export type AceEditor = typeof Ace & {
 	require: (modules: string[], callback: (moduleExports: any) => void) => void;
 };
 
-declare global
-{
-	const ace: AceEditor;
-
-	interface Window
-	{
-		tempCount: number;
-		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
-		ace: typeof ace;
-		LayoutAdjuster: typeof LayoutAdjuster;
-		mainDock: DockPanel;
-		getGitShaBrowser: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
-		compilerDiagnostics?: {
-			log: (msg: string) => void;
-			clear: () => void;
-			getBridge: () => {
-				refreshActiveEditorView: (session: AceSession) => void;
-			};
-		};
-		diagnosticsBridge: any;
-		AceEditorWidget: typeof AceEditorWidget;
-		historyToolbar: HistoryToolbar;
-		SettingsManager: Settings;
-		terminalLog: TerminalLogEntry[];
-		SETTINGS_CONTROLS: ControlConfig[];
-	}
-}
-
-
 
 /**
  * Global static coordinator managing pool instances to facilitate cross-widget reuse.
@@ -241,7 +212,7 @@ export class AceEditorPool
 
 	public static getNextTempName(): string
 	{
-		return 'temp' + (++window.tempCount) + '.c';
+		return 'temp' + nextTemp() + '.c';
 	}
 
 	public static get keybinding(): HTMLSelectElement | null

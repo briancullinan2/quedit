@@ -7,28 +7,6 @@ import { Message } from '@lumino/messaging';
 
 
 
-declare global
-{
-	interface Window
-	{
-		getDatabaseMetadata(): Promise<DatabaseMetadata[]>;
-		sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[];
-		queryIndex(
-			storeName: string,
-			indexName: string,
-			exactIndex: any,
-			lower: any,
-			upper: any,
-			dbName: string | null,
-			noBounce?: boolean
-		): Promise<FileRecord[]>;
-		filesRepo: Record<string, GitHubFileTree | undefined>;
-		DB_STORE_NAME: string;
-		ST_DIR: number;
-	}
-}
-
-
 export class DatabaseListWidget extends FileListWidget
 {
 	constructor(titleStr: string)

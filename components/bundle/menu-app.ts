@@ -1,29 +1,14 @@
 import { CommandRegistry } from "@lumino/commands";
 import { DockPanel, Widget } from "@lumino/widgets";
 import { triggerPanelRoute } from "./menu";
-import type { FrameRater } from "../bundle/frame-rater";
 import { SettingsManager } from "./settings";
-import type { AceEditorWidget } from "../editor/widget";
 import { loadAndInstantiate } from "./babel-compile";
 import { LayoutAdjuster } from "./lumino-widget";
-import type { TerminalWidget } from "../terminal/widget";
-import type { FileListWidget } from "../filelist/widget";
 import { LuminoLayoutNode, serializeDockLayout } from "./lumino-resize";
+import type { GlobalToolbarsWindow } from "./menu.d";
+import type { LuminoLayoutWindow } from "./lumino.d";
 
-
-declare global
-{
-	interface Window
-	{
-		appToolbar: ApplicationToolbar;
-		ApplicationToolbar: typeof ApplicationToolbar;
-		mainDock: DockPanel;
-		AceEditorWidget: typeof AceEditorWidget;
-		TerminalWidget: typeof TerminalWidget;
-		layoutState: LayoutState;
-		fileListWidgets?: Array<FileListWidget>;
-	}
-}
+const menuSelf: GlobalToolbarsWindow & LuminoLayoutWindow = self as unknown as any;
 
 export class ApplicationToolbar extends Widget
 {
@@ -42,7 +27,7 @@ export class ApplicationToolbar extends Widget
 		if(!ApplicationToolbar._instance)
 		{
 			ApplicationToolbar._instance = new ApplicationToolbar();
-			window.appToolbar = ApplicationToolbar._instance;
+			menuSelf.appToolbar = ApplicationToolbar._instance;
 		}
 		return ApplicationToolbar._instance;
 	}
@@ -105,7 +90,10 @@ export class ApplicationToolbar extends Widget
 				iconClass: 'bx bx-terminal',
 				execute: async () =>
 				{
-					await triggerPanelRoute('terminal-container', window.mainDock);
+					if(menuSelf.mainDock)
+					{
+						await triggerPanelRoute('terminal-container', menuSelf.mainDock);
+					}
 				}
 			});
 		}
@@ -118,7 +106,7 @@ export class ApplicationToolbar extends Widget
 				execute: async () =>
 				{
 					const [fileId, fileName, settingsJson] = await SettingsManager.settings();
-					window.AceEditorWidget.openFileInNewTab(fileId ?? 'settings.json', fileName ?? 'settings.json', settingsJson ?? '');
+					menuSelf.AceEditorWidget?.openFileInNewTab(fileId ?? 'settings.json', fileName ?? 'settings.json', settingsJson ?? '');
 				}
 			});
 		}
@@ -189,7 +177,7 @@ export class ApplicationToolbar extends Widget
 	}
 }
 
-window.ApplicationToolbar = ApplicationToolbar;
+menuSelf.ApplicationToolbar = ApplicationToolbar;
 
 
 // TODO: lumino-resize and lumino-widget will adjust their behavior based on the selected layout
@@ -213,24 +201,34 @@ const LAYOUT_AXES = {
 
 function rotateLayout()
 {
+	if(!menuSelf.layoutState)
+	{
+		return;
+	}
+
 	Object.keys(LAYOUT_AXES).forEach(axis =>
 	{
+		if(!menuSelf.layoutState)
+		{
+			return;
+		}
+
 		// Find which variant inside this specific axis array is currently on the element
 		const matchedClass = LAYOUT_AXES[axis].find(variant => document.body.classList.contains(`layout-${variant}`));
 
 		if(matchedClass)
 		{
 			// Update the state with the discovered active class
-			window.layoutState[axis] = matchedClass;
+			menuSelf.layoutState[axis] = matchedClass;
 
 			// Strip the old atomic layout class from the DOM token list
 			document.body.classList.remove(`layout-${matchedClass}`);
 		}
 	});
 
-	const oldState = Object.assign({}, window.layoutState);
+	const oldState = Object.assign({}, menuSelf.layoutState);
 
-	const currentLayoutClass = `layout-${window.layoutState.panels} layout-${window.layoutState.order} layout-${window.layoutState.terminal} layout-${window.layoutState.mode}`;
+	const currentLayoutClass = `layout-${menuSelf.layoutState.panels} layout-${menuSelf.layoutState.order} layout-${menuSelf.layoutState.terminal} layout-${menuSelf.layoutState.mode}`;
 
 	// Find where it lives in your 16-element permutation list
 	const currentIndex = ALL_LAYOUTS.indexOf(currentLayoutClass);
@@ -244,17 +242,22 @@ function rotateLayout()
 	console.log(`🔄 Layout rotated from [${currentLayoutClass || 'None'}] ➡️ [${newLayoutClass}] (Index: ${nextIndex})`);
 	Object.keys(LAYOUT_AXES).forEach(axis =>
 	{
+		if(!menuSelf.layoutState)
+		{
+			return;
+		}
+
 		const matchedClass = LAYOUT_AXES[axis].find(variant => document.body.classList.contains(`layout-${variant}`));
 
 		if(matchedClass)
 		{
-			window.layoutState[axis] = matchedClass;
+			menuSelf.layoutState[axis] = matchedClass;
 		}
 	});
 
-	localStorage.setItem('layout', JSON.stringify(window.layoutState));
+	localStorage.setItem('layout', JSON.stringify(menuSelf.layoutState));
 	// 6. Rearrange panels based on layout controls
-	rearrangePanels(window.layoutState, oldState);
+	rearrangePanels(menuSelf.layoutState, oldState);
 
 	return newLayoutClass;
 }
@@ -262,7 +265,7 @@ function rotateLayout()
 
 async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promise<void>
 {
-	const dockPanel = window.mainDock;
+	const dockPanel = menuSelf.mainDock;
 	if(!dockPanel) return;
 
 	// ---------------------------------------------------------------------
@@ -270,14 +273,14 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 	// ---------------------------------------------------------------------
 	if(state.terminal === 'terminal' && oldState.terminal === 'no-terminal')
 	{
-		if(!LayoutAdjuster._findBestEditorForProject(dockPanel, window.TerminalWidget?.name, 'terminal'))
+		if(!LayoutAdjuster._findBestEditorForProject(dockPanel, 'TerminalWidget', 'terminal'))
 		{
 			await triggerPanelRoute('terminal', dockPanel);
 		}
 
-		if(window.terminalWidgets)
+		if(menuSelf.terminalWidgets)
 		{
-			for(let widget of window.terminalWidgets)
+			for(let widget of menuSelf.terminalWidgets)
 			{
 				widget.show();
 				LayoutAdjuster.addOptimalWidgetLayout(dockPanel, widget, {
@@ -289,9 +292,9 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 	}
 	else if(state.terminal === 'no-terminal' && oldState.terminal === 'terminal')
 	{
-		if(window.terminalWidgets)
+		if(menuSelf.terminalWidgets)
 		{
-			for(let widget of window.terminalWidgets)
+			for(let widget of menuSelf.terminalWidgets)
 			{
 				widget.hide();
 				widget.parent = null; // Detaches cleanly from the Lumino tree
@@ -302,7 +305,7 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 	// ---------------------------------------------------------------------
 	// 2. PANELS AXIS: Move File Trees / Outlines (Left <-> Right)
 	// ---------------------------------------------------------------------
-	if(window.fileListWidgets && state.panels !== oldState.panels)
+	if(menuSelf.fileListWidgets && state.panels !== oldState.panels)
 	{
 		const isRightHand = state.panels === 'right-hand-files';
 		const targetSide = isRightHand ? 'right' : 'left';
@@ -314,7 +317,7 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 
 		let firstOutline: Widget | null = null;
 
-		for(let widget of window.fileListWidgets)
+		for(let widget of menuSelf.fileListWidgets)
 		{
 			if(!firstOutline)
 			{
@@ -344,7 +347,7 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 	if(state.order !== oldState.order)
 	{
 		const primaryEditor = LayoutAdjuster._findNonOutlineOrTerminal(dockPanel);
-		const terminals = window.terminalWidgets?.filter(w => w.isVisible && w.isAttached) || [];
+		const terminals = menuSelf.terminalWidgets?.filter(w => w.isVisible && w.isAttached) || [];
 
 		if(primaryEditor && terminals.length > 0)
 		{
@@ -377,9 +380,9 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 		if(state.mode === 'focus-mode')
 		{
 			// HIDE all File Lists
-			if(window.fileListWidgets)
+			if(menuSelf.fileListWidgets)
 			{
-				for(let widget of window.fileListWidgets)
+				for(let widget of menuSelf.fileListWidgets)
 				{
 					widget.hide();
 					widget.parent = null;
@@ -387,9 +390,9 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 			}
 
 			// HIDE all Terminals
-			if(window.terminalWidgets)
+			if(menuSelf.terminalWidgets)
 			{
-				for(let widget of window.terminalWidgets)
+				for(let widget of menuSelf.terminalWidgets)
 				{
 					widget.hide();
 					widget.parent = null;
@@ -399,9 +402,9 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 		else if(state.mode === 'full-mode')
 		{
 			// RESTORE File Lists
-			if(window.fileListWidgets)
+			if(menuSelf.fileListWidgets)
 			{
-				for(let widget of window.fileListWidgets)
+				for(let widget of menuSelf.fileListWidgets)
 				{
 					widget.show();
 					LayoutAdjuster.addOptimalWidgetLayout(dockPanel, widget, {
@@ -412,9 +415,9 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 			}
 
 			// RESTORE Terminals (only if state allows)
-			if(state.terminal === 'terminal' && window.terminalWidgets)
+			if(state.terminal === 'terminal' && menuSelf.terminalWidgets)
 			{
-				for(let widget of window.terminalWidgets)
+				for(let widget of menuSelf.terminalWidgets)
 				{
 					widget.show();
 					LayoutAdjuster.addOptimalWidgetLayout(dockPanel, widget, {
@@ -431,13 +434,13 @@ async function rearrangePanels(state: LayoutState, oldState: LayoutState): Promi
 
 	window.requestAnimationFrame(() =>
 	{
-		window.resizeHandler();
-		const layout = window.mainDock.saveLayout();
+		menuSelf.resizeHandler?.();
+		const layout = menuSelf.mainDock?.saveLayout();
 		localStorage.setItem('layout_config', JSON.stringify(serializeDockLayout(layout)));
 
 		setTimeout(() =>
 		{
-			window.resizeHandler();
+			menuSelf.resizeHandler?.();
 		}, 200);
 	});
 }
@@ -531,7 +534,7 @@ const ALL_LAYOUTS = Object.values(LAYOUT_AXES).reduce((combinations, currentAxis
  */
 function getValidatedLayoutClassNames(rawInput)
 {
-	const resolvedState = { ...window.layoutState };
+	const resolvedState = { ...menuSelf.layoutState };
 
 	if(typeof rawInput === 'string')
 	{
@@ -586,10 +589,13 @@ export function applyInitialLayout(storedInput)
 	// 1. Get validated class list in the exact required order
 	const validatedClasses = getValidatedLayoutClassNames(storedInput);
 
-	// 2. Update window.layoutState from validated output
+	// 2. Update menuSelf.layoutState from validated output
 	Object.keys(LAYOUT_AXES).forEach((axis, index) =>
 	{
-		window.layoutState[axis] = validatedClasses[index].replace('layout-', '');
+		if(menuSelf.layoutState)
+		{
+			menuSelf.layoutState[axis] = validatedClasses[index].replace('layout-', '');
+		}
 	});
 
 	// 3. Remove any existing layout-* classes from body to avoid collisions

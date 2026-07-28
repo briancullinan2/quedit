@@ -2,9 +2,9 @@ import type { ApiWindow } from "../compiler/worker.d";
 import type { NestedTreeNode } from "./github-tools";
 import type { GitHubBranch, GitHubFileTree } from "./github-types";
 import type { LocalWindow } from "./local.d";
-import type { SettingsWindow } from "./menu.d";
+import type { RepositorySettingsWindow } from "./menu.d";
 
-export interface GithubWindow extends SettingsWindow, LocalWindow, ApiWindow
+export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, ApiWindow
 {
 	githubRequest?: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
 	loadGitHubTree?: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
@@ -35,6 +35,7 @@ export interface GithubWindow extends SettingsWindow, LocalWindow, ApiWindow
 		forceReload?: boolean
 	) => Promise<any>;
 
-	trees: Record<string, any>;
-	filesRepo: Record<string, GitHubFileTree | undefined>;
+	trees?: Record<string, any>;
+	filesRepo?: Record<string, GitHubFileTree | undefined>;
+	mapFiles?: Record<string, string>;
 }

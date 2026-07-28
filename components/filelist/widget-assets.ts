@@ -1,23 +1,11 @@
-import { Message } from "@lumino/messaging";
-import type { FlatFileNode, NestedTreeNode } from "../bundle/github-tools";
+import type { NestedTreeNode } from "../bundle/github-tools";
 import { FileListWidget } from "./widget";
 import Tree from './tree.js';
-import type { GitHubFileTree } from "../bundle/github-types.js";
+import type { GlobalToolbarsWindow } from "../bundle/menu.d";
+import type { GithubWindow } from "../bundle/github.d";
+import type { BuildWindow } from "../compiler/make.d";
 
-
-declare global
-{
-	interface Window
-	{
-		loadGitHubTree: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
-		convertFlatToNested: (data: FlatFileNode[]) => NestedTreeNode[];
-		ST_DIR: number;
-		ST_FILE: number;
-		FS_FILE: number;
-		FS_DIR: number;
-	}
-}
-
+const menuSelf: GlobalToolbarsWindow & GithubWindow & BuildWindow = self as unknown as any;
 
 export class AssetListWidget extends FileListWidget
 {
@@ -30,7 +18,7 @@ export class AssetListWidget extends FileListWidget
 
 	public override get defaultRepository()
 	{
-		return window.SettingsManager.get('github', 'assetRepository');
+		return menuSelf.settingsManager?.get('github', 'assetRepository');
 	}
 
 
@@ -42,7 +30,7 @@ export class AssetListWidget extends FileListWidget
 		if(this.treeLoading) return;
 		if(folderId.endsWith('[Recursive]')) return;
 
-		const activeTree = window.trees[this.selector];
+		const activeTree = menuSelf.trees?.[this.selector];
 		if(!activeTree || !activeTree.nodesById[folderId]) return;
 
 		const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement).value;
@@ -64,24 +52,27 @@ export class AssetListWidget extends FileListWidget
 
 			// TODO: load the next level from loadGitHubTree(path = baseDir)
 
-			if(!window.filesRepo[database])
+			if(menuSelf.filesRepo && !menuSelf.filesRepo?.[database])
 			{
-				window.filesRepo[database] = {};
+				menuSelf.filesRepo[database] = {};
 			}
 
 			// TODO: put github call here:
-			const result = await window.loadGitHubTree(owner, repo, branch, baseDir);
-			const nodes = window.convertFlatToNested(Object.values(result ?? {}));
-			for(const r of nodes)
+			const result = await menuSelf.loadGitHubTree?.(owner, repo, branch, baseDir);
+			const nodes = menuSelf.convertFlatToNested?.(Object.values(result ?? {}));
+			for(const r of nodes ?? [])
 			{
 				r.path = basePath + '/' + r.path;
-				window.filesRepo[database][r.path] = window.FS.virtual[r.path] = Object.assign(r, {
-					mode: r.mode ?? window.FS_FILE,
-				});
+				if(menuSelf.filesRepo?.[database] && menuSelf.FS)
+				{
+					menuSelf.filesRepo[database][r.path] = menuSelf.FS.virtual[r.path] = Object.assign(r, {
+						mode: r.mode ?? menuSelf.FS_FILE,
+					});
+				}
 			}
 
 
-			resultSet = Object.values(window.filesRepo[database]).reduce((acc: any, r: any) =>
+			resultSet = Object.values(menuSelf.filesRepo?.[database] ?? {}).reduce((acc: any, r: any) =>
 			{
 				acc[r.path] = r;
 				return acc;
@@ -105,7 +96,7 @@ export class AssetListWidget extends FileListWidget
 			const newChildren = childrenKeys.map(path =>
 			{
 				const node = resultSet[path];
-				const isDir = (node.mode >> 12) & window.ST_DIR; // FS_DIR mock or standard directory mode mask
+				const isDir = (node.mode >> 12) & (menuSelf.ST_DIR ?? 4); // FS_DIR mock or standard directory mode mask
 				const name = path.split('/').pop() || path;
 
 				const newNode: NestedTreeNode = {
@@ -144,7 +135,7 @@ export class AssetListWidget extends FileListWidget
 				});
 			}
 
-			window.sortNodes(newChildren);
+			menuSelf.sortNodes?.(newChildren);
 			this.loadedDatabases[folderId].children = activeTree.nodesById[folderId].children = newChildren;
 
 		} catch(err: any)
@@ -186,22 +177,22 @@ export class AssetListWidget extends FileListWidget
 		const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement).value;
 		const database = `${owner}/${repo}`;
 
-		if(!this.loadedDatabases[database])
+		if(!this.loadedDatabases[database] && menuSelf.filesRepo)
 		{
 			// TODO: replace with call to loadGitHubTree(path = '/')
-			window.filesRepo[this.selector] = await window.loadGitHubTree(owner, repo, branch, '/');
-			if(!window.filesRepo[database])
+			menuSelf.filesRepo[this.selector] = await menuSelf.loadGitHubTree?.(owner, repo, branch, '/');
+			if(!menuSelf.filesRepo[database])
 			{
-				window.filesRepo[database] = {};
+				menuSelf.filesRepo[database] = {};
 			}
-			const nodes = window.convertFlatToNested(Object.values(window.filesRepo[this.selector] ?? {}));
-			for(let n of nodes)
+			const nodes = menuSelf.convertFlatToNested?.(Object.values(menuSelf.filesRepo[this.selector] ?? {}));
+			for(let n of nodes ?? [])
 			{
 				n.id = database + '/' + n.id;
-				const isDir = n.mode ? (n.mode >> 12) & window.ST_DIR : false;
+				const isDir = n.mode ? (n.mode >> 12) & (menuSelf.ST_DIR ?? 4) : false;
 				n.children = isDir ? [{ text: 'Loading...', id: `${n.path}/loading`, path: `${n.path}/loading`, status: 0, state: { open: false, expanded: false } } as NestedTreeNode] : null;
-				window.filesRepo[database][n.path] = window.FS.virtual[n.path] = this.loadedDatabases[n.id] = Object.assign(n, {
-					mode: n.mode ?? window.FS_FILE,
+				menuSelf.filesRepo[database][n.path] = menuSelf.FS.virtual[n.path] = this.loadedDatabases[n.id] = Object.assign(n, {
+					mode: n.mode ?? menuSelf.FS_FILE,
 				});;
 			}
 			this.loadedDatabases[database] = {
@@ -214,10 +205,10 @@ export class AssetListWidget extends FileListWidget
 			};
 		}
 
-		const activeTree = window.trees[this.selector];
-		if(!activeTree)
+		const activeTree = menuSelf.trees?.[this.selector];
+		if(!activeTree && menuSelf.trees)
 		{
-			window.trees[this.selector] = window.trees[database] = new Tree(this.selector, {
+			menuSelf.trees[this.selector] = menuSelf.trees[database] = new Tree(this.selector, {
 				data: this.loadedDatabases[database].children,
 				autoOpen: false,
 				closeDepth: null

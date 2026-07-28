@@ -46,9 +46,7 @@ export interface LoggingWindow extends ApiWindow
 		};
 	};
 
-	terminalLog: TerminalLogEntry[];
-	mainDock: DockPanel;
-	lastInteractedWidget: Widget | null;
+	terminalLog?: TerminalLogEntry[];
 	terminalWrite?: typeof terminalWrite;
 	runningCommand?: boolean;
 	detachedConsole?: boolean;

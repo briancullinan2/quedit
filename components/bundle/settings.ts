@@ -2,9 +2,14 @@ import { getGitShaBrowser } from "./github";
 import { filesRepo } from "./github-types";
 import { FS_FILE } from "./local";
 import { RepositoryToolbar } from "./menu-repos";
-import type { AceEditorWidget } from "../editor/widget";
-import { DockPanel } from "@lumino/widgets";
 import { IMPORT_SETTINGS as LOCAL_SETTINGS } from "./settings-coalesced";
+import type { LuminoLayoutWindow } from "./lumino.d";
+import type { EditorWindow } from "../editor/widget.d";
+import type { GlobalToolbarsWindow, RepositorySettingsWindow } from "./menu.d";
+
+
+const luminoSelf: LuminoLayoutWindow & EditorWindow & RepositorySettingsWindow & GlobalToolbarsWindow & RepositorySettingsWindow = self as unknown as any;
+
 
 export interface SettingConfig
 {
@@ -21,39 +26,39 @@ export interface SettingConfig
 }
 
 
-declare global
+luminoSelf.tempCount = 0;
+
+
+function nextTemp()
 {
-	interface Window
+	if(typeof luminoSelf.tempCount !== 'undefined')
 	{
-		tempCount: number;
-		mainDock: DockPanel;
-		SettingsManager: Settings;
-		engineRepository?: string | undefined | null;
-		AceEditorWidget: typeof AceEditorWidget;
-		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
-		//[key: string]: any;
+		return ++luminoSelf.tempCount;
+	}
+	else
+	{
+		return Math.random() * 1000;
 	}
 }
 
+luminoSelf.nextTemp = nextTemp;
 
-window.tempCount = 0;
 
-
-if(!window.IMPORT_SETTINGS)
+if(!luminoSelf.IMPORT_SETTINGS)
 {
-	window.IMPORT_SETTINGS = {};
+	luminoSelf.IMPORT_SETTINGS = {};
 }
 
 for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
 {
-	window.IMPORT_SETTINGS[moduleKey] = {
+	luminoSelf.IMPORT_SETTINGS[moduleKey] = {
 		...configs,
-		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+		...(luminoSelf.IMPORT_SETTINGS[moduleKey] || {}),
 	};
 }
 
 
-export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
+export const IMPORT_SETTINGS = luminoSelf.IMPORT_SETTINGS;
 
 
 export type FileOpenTuple = [
@@ -80,7 +85,7 @@ export class Settings
 		if(!Settings._instance)
 		{
 			Settings._instance = new Settings();
-			window.SettingsManager = Settings._instance;
+			luminoSelf.settingsManager = Settings._instance;
 		}
 		return Settings._instance;
 	}
@@ -381,9 +386,9 @@ export class Settings
 	public async settings(): Promise<FileOpenTuple>
 	{
 		const database = `${RepositoryToolbar.owner?.value}/${RepositoryToolbar.repository?.value}`;
-		const filePath = `settings${++window.tempCount}.json`;
+		const filePath = `settings${nextTemp()}.json`;
 
-		if(window.engineRepository?.startsWith('Quake3e'))
+		if(luminoSelf.engineRepository?.startsWith('Quake3e'))
 		{
 			console.error('Assertion owner set to Quake3e instead of briancullinan');
 			debugger;

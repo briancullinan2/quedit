@@ -2,16 +2,6 @@ import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
 
 
-declare global
-{
-	interface Window
-	{
-		repoToolbar: RepositoryToolbar;
-		RepositoryToolbar: typeof RepositoryToolbar;
-	}
-}
-
-
 
 export class RepositoryToolbar extends Widget
 {

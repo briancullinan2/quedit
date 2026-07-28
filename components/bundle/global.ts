@@ -1,5 +1,6 @@
-import { FileRecord } from "./local.d";
+import type { BuildWindow } from "../compiler/make.d";
 
+const buildSelf: BuildWindow = /** @type {any} */ (self as unknown as any);
 
 export const path = {
 	join: (...parts: string[]): string =>
@@ -113,48 +114,26 @@ const UI_MEMORY_BASE = 32;
 const CGAME_MEMORY_BASE = 16 * 1024 * 1024;
 const GAME_MEMORY_BASE = 32 * 1024 * 1024;
 
-declare global
-{
-	interface Window
-	{
-		FS: {
-			virtual: Record<string, FileRecord | null | undefined>;
-			pointers: ([number, string, FileRecord, string, number, number])[];
-		};
-		path: typeof path;
-		config: typeof config;
-		dirs: typeof dirs;
-		ENGINE_MEMORY_BASE: number;
-		UI_MEMORY_BASE: number;
-		CGAME_MEMORY_BASE: number;
-		GAME_MEMORY_BASE: number;
-		COMPILE_PLATFORM: string;
-		COMPILE_ARCH: string;
-		GAME_PLATFORM: string;
-		GAME_ARCH: string;
-	}
-}
+buildSelf.path = path;
+buildSelf.config = config;
+buildSelf.dirs = dirs;
 
-self.path = path;
-self.config = config;
-self.dirs = dirs;
+buildSelf.ENGINE_MEMORY_BASE = ENGINE_MEMORY_BASE;
+buildSelf.UI_MEMORY_BASE = UI_MEMORY_BASE;
+buildSelf.CGAME_MEMORY_BASE = CGAME_MEMORY_BASE;
+buildSelf.GAME_MEMORY_BASE = GAME_MEMORY_BASE;
 
-self.ENGINE_MEMORY_BASE = ENGINE_MEMORY_BASE;
-self.UI_MEMORY_BASE = UI_MEMORY_BASE;
-self.CGAME_MEMORY_BASE = CGAME_MEMORY_BASE;
-self.GAME_MEMORY_BASE = GAME_MEMORY_BASE;
-
-self.COMPILE_PLATFORM = COMPILE_PLATFORM;
-self.COMPILE_ARCH = COMPILE_ARCH;
-self.GAME_PLATFORM = GAME_PLATFORM;
-self.GAME_ARCH = GAME_ARCH;
+buildSelf.COMPILE_PLATFORM = COMPILE_PLATFORM;
+buildSelf.COMPILE_ARCH = COMPILE_ARCH;
+buildSelf.GAME_PLATFORM = GAME_PLATFORM;
+buildSelf.GAME_ARCH = GAME_ARCH;
 
 // 2. Safely capture or initialize the instance on window
-const FSInstance = self.FS || { virtual: {} };
+const FSInstance = buildSelf.FS || { virtual: {} };
 
-if(!self.FS)
+if(!buildSelf.FS)
 {
-	self.FS = FSInstance;
+	buildSelf.FS = FSInstance;
 }
 
 // 3. Export it cleanly for module usage

@@ -1,15 +1,6 @@
 import type { SettingConfig } from "../bundle/settings";
 import { AceEditorPool, AceEditorWidget } from "./widget";
 
-declare global
-{
-	interface Window
-	{
-		tempCount: number;
-		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
-	}
-}
-
 export class SettingsWidget extends AceEditorWidget
 {
 	constructor(fileId?: string, initialContent?: string)

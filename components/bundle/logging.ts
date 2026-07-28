@@ -2,8 +2,9 @@
 
 import type { TerminalWidget } from '../terminal/widget';
 import type { SourceMetadata, ParsedStackFrame, CalleeInfo, LoggingWindow } from './logging.d';
+import type { LuminoLayoutWindow } from './lumino.d';
 
-const loggingSelf: LoggingWindow = /** @type {any} */ (self);
+const loggingSelf: LoggingWindow & LuminoLayoutWindow = self as unknown as any;
 
 export const LINES_TO_SAVE = 1000;
 

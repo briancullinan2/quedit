@@ -7,13 +7,8 @@ import type { LocalWindow } from "../bundle/local.d";
 import type { FileListWidget, GameListWidget } from "./widget";
 import type { LuminoWindow } from '../bundle/lumino.d';
 
-export interface EditorUtilities
-{
-	tempCount: number;
-}
 
-
-interface DirectoryPickerOptions
+export interface DirectoryPickerOptions
 {
 	/** An optional string identifier to remember the last opened directory */
 	id?: string;

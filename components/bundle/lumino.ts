@@ -14,36 +14,19 @@ import { isDevToolsOpen, OUTLINE_WIDGET_TYPES, ResponsiveManager } from './lumin
 import '@lumino/widgets/style/index.css';
 import { applyInitialLayout } from './menu-app';
 import JSZip from 'jszip';
+import type { LuminoLayoutWindow } from './lumino.d';
+import type { LuminoMenuWindow, RepositorySettingsWindow } from './menu.d';
 
 
-declare global
-{
-	interface Window
-	{
-		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
-		Lumino?: {
-			widgets: any;
-			messaging: any;
-			commands: any;
-		};
-		JSZip: typeof JSZip;
-		statusBar: StatusBarWidget;
-		envStatusNode: HTMLDivElement;
-		mainDock: DockPanel;
-		commandRegistry: commands.CommandRegistry;
-		workspaceBox: BoxPanel;
-		toolbarWidget: Widget;
-		resizeHandler: () => void;
-		lastInteractedWidget: Widget | null;
-	}
-}
+const luminoSelf: LuminoLayoutWindow & LuminoMenuWindow & RepositorySettingsWindow = self as unknown as any;
 
-window.Lumino = {
+
+luminoSelf.Lumino = {
 	widgets,
 	messaging,
 	commands
 };
-window.JSZip = JSZip;
+luminoSelf.JSZip = JSZip;
 
 
 
@@ -55,14 +38,14 @@ function main(): void
 	const commandRegistry = new commands.CommandRegistry();
 	// TODO: interesting, i actually meant to do this in the previous version
 	//   and now Gemini and Lumino combined forced me to set it up anyways.
-	window.commandRegistry = commandRegistry;
+	luminoSelf.commandRegistry = commandRegistry;
 
 	// Create the central DockPanel target area
 	const mainDock = new DockPanel({
 		mode: 'multiple-document'
 	});
 	mainDock.id = 'main-workspace';
-	window.mainDock = mainDock;
+	luminoSelf.mainDock = mainDock;
 
 	// Generate the top application header structures using our unified layout export
 	const { headerRow, menuBar } = createTopBar(commandRegistry);
@@ -70,22 +53,21 @@ function main(): void
 	// Build a manual sidebar widget for the left boundary (VSCode style)
 	const toolbar = new Widget();
 	toolbar.id = 'left-toolbar';
-	window.toolbarWidget = toolbar;
+	luminoSelf.toolbarWidget = toolbar;
 	toolbar.node.style.minWidth = '50px';
 
 	// Initialize remaining menus safely passing down the clean tracking components
 	initializeMenus(commandRegistry, menuBar, mainDock, toolbar.node);
 
 	const statusBar = new StatusBarWidget();
-	window.statusBar = statusBar;
+	luminoSelf.statusBar = statusBar;
 	const envStatusNode = statusBar.addStatusItem('env-state', 'Initializing Sync...', 'bx bx-sync bx-spin', 'left');
 	statusBar.addStatusItem('git-branch', 'main', 'bx bx-git-branch', 'right');
-	window.envStatusNode = envStatusNode;
+	luminoSelf.envStatusNode = envStatusNode;
 
 	// Construct the global parent layout anchor structure
 	const workspaceBox = new BoxPanel({ direction: 'left-to-right', spacing: 0 });
 	workspaceBox.id = 'workspace-box';
-	window.workspaceBox = workspaceBox;
 	BoxPanel.setStretch(toolbar, 0);
 	BoxPanel.setStretch(mainDock, 1);
 	workspaceBox.addWidget(toolbar);
@@ -110,7 +92,7 @@ function main(): void
 	{
 		const remainingWidgets = Array.from(mainDock.widgets());
 		console.log('Dock layout updated. Remaining widget count:', remainingWidgets.length);
-		window.resizeHandler();
+		luminoSelf.resizeHandler?.();
 	});
 
 
@@ -121,18 +103,18 @@ function main(): void
 		{
 			const shownWidget = (msg as any).child as Widget;
 			const newType = shownWidget?.constructor.name;
-			const lastType = window.lastInteractedWidget?.constructor.name;
+			const lastType = luminoSelf.lastInteractedWidget?.constructor.name;
 
 			if(newType !== lastType)
 			{
-				window.previousInteractedWidget = window.lastInteractedWidget;
-				window.lastInteractedWidget = shownWidget;
+				luminoSelf.previousInteractedWidget = luminoSelf.lastInteractedWidget;
+				luminoSelf.lastInteractedWidget = shownWidget;
 			}
 
-			console.log('Active: ' + window.lastInteractedWidget?.constructor.name + ' inActive: ' + window.previousInteractedWidget?.constructor.name);
+			console.log('Active: ' + luminoSelf.lastInteractedWidget?.constructor.name + ' inActive: ' + luminoSelf.previousInteractedWidget?.constructor.name);
 			requestAnimationFrame(() =>
 			{
-				window.resizeHandler();
+				luminoSelf.resizeHandler?.();
 			});
 		}
 
@@ -141,19 +123,19 @@ function main(): void
 		{
 			const addingWidget = (msg as any).child as Widget;
 			const newType = addingWidget?.constructor.name;
-			const lastType = window.lastInteractedWidget?.constructor.name;
+			const lastType = luminoSelf.lastInteractedWidget?.constructor.name;
 
 			// Only update history if the incoming widget type is different from the last tracked type
 			if(newType !== lastType)
 			{
-				window.previousInteractedWidget = window.lastInteractedWidget;
-				window.lastInteractedWidget = addingWidget;
+				luminoSelf.previousInteractedWidget = luminoSelf.lastInteractedWidget;
+				luminoSelf.lastInteractedWidget = addingWidget;
 			}
 
-			console.log('Added widget: ' + window.lastInteractedWidget?.constructor.name + ' inActive: ' + window.previousInteractedWidget?.constructor.name);
+			console.log('Added widget: ' + luminoSelf.lastInteractedWidget?.constructor.name + ' inActive: ' + luminoSelf.previousInteractedWidget?.constructor.name);
 			requestAnimationFrame(() =>
 			{
-				window.resizeHandler();
+				luminoSelf.resizeHandler?.();
 			});
 		}
 
@@ -168,10 +150,10 @@ function main(): void
 			let fallbackWidget: Widget | null = null;
 
 			// Strategy A: Fallback to the last tracked active widget if it's still alive and not the closing one
-			if(window.previousInteractedWidget && window.previousInteractedWidget !== closingWidget
-				&& window.previousInteractedWidget.parent && !window.previousInteractedWidget.isDisposed)
+			if(luminoSelf.previousInteractedWidget && luminoSelf.previousInteractedWidget !== closingWidget
+				&& luminoSelf.previousInteractedWidget.parent && !luminoSelf.previousInteractedWidget.isDisposed)
 			{
-				fallbackWidget = window.previousInteractedWidget;
+				fallbackWidget = luminoSelf.previousInteractedWidget;
 			} else
 			{
 				// Strategy B: Pull remaining widgets and find the first non-filelist editor
@@ -187,9 +169,9 @@ function main(): void
 				{
 					if(!target.isDisposed && !target.isHidden)
 					{
-						window.lastInteractedWidget = target;
+						luminoSelf.lastInteractedWidget = target;
 						mainDock.activateWidget(target);
-						window.resizeHandler();
+						luminoSelf.resizeHandler?.();
 					}
 				});
 			}
@@ -203,7 +185,7 @@ function main(): void
 		ResponsiveManager.getInstance().handleResize(windowRoot, workspaceBox, headerRow, menuBar, toolbar, mainDock);
 	};
 	setTimeout(resizeHandler, 100);
-	window.resizeHandler = resizeHandler;
+	luminoSelf.resizeHandler = resizeHandler;
 	window.addEventListener('resize', resizeHandler);
 
 	SettingsManager.hydrateAll();
@@ -229,8 +211,8 @@ function startServiceWorker()
 		.then(() =>
 		{
 			// Update status to 'Worker Ready' and swap spin icon to a solid verified check shield
-			window.statusBar.updateStatusItem('env-state', 'Worker Ready');
-			const iconNode = window.envStatusNode.querySelector('i');
+			luminoSelf.statusBar?.updateStatusItem('env-state', 'Worker Ready');
+			const iconNode = luminoSelf.envStatusNode?.querySelector('i');
 			if(iconNode)
 			{
 				iconNode.className = 'bx bx-check-shield';
@@ -239,7 +221,7 @@ function startServiceWorker()
 			// 3. Clear the status notification text after exactly 5 seconds (5000ms)
 			setTimeout(() =>
 			{
-				window.statusBar.updateStatusItem('env-state', '');
+				luminoSelf.statusBar?.updateStatusItem('env-state', '');
 				if(iconNode)
 				{
 					iconNode.className = ''; // Remove the icon asset footprint too
@@ -249,8 +231,8 @@ function startServiceWorker()
 		.catch((err) =>
 		{
 			console.error("Critical worker boot fault:", err);
-			window.statusBar.updateStatusItem('env-state', 'Sync Error');
-			const iconNode = window.envStatusNode.querySelector('i');
+			luminoSelf.statusBar?.updateStatusItem('env-state', 'Sync Error');
+			const iconNode = luminoSelf.envStatusNode?.querySelector('i');
 			if(iconNode)
 			{
 				iconNode.className = 'bx bx-error-circle';
@@ -333,20 +315,20 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 	}
 };
 
-if(!window.IMPORT_SETTINGS)
+if(!luminoSelf.IMPORT_SETTINGS)
 {
-	window.IMPORT_SETTINGS = {};
+	luminoSelf.IMPORT_SETTINGS = {};
 }
 
 for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
 {
-	window.IMPORT_SETTINGS[moduleKey] = {
-		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+	luminoSelf.IMPORT_SETTINGS[moduleKey] = {
+		...(luminoSelf.IMPORT_SETTINGS[moduleKey] || {}),
 		...configs
 	};
 }
 
 // 4. Export the unified reference for standard module compilation tracking
-export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
+export const IMPORT_SETTINGS = luminoSelf.IMPORT_SETTINGS;
 
-window.document.addEventListener('DOMContentLoaded', main);
+document.addEventListener('DOMContentLoaded', main);

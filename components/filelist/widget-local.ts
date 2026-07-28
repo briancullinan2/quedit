@@ -15,28 +15,12 @@ interface FileSystemHandlePermissionDescriptor
 }
 
 
-declare global
-{
-	interface Window
-	{
-		RepositoryToolbar: typeof RepositoryToolbar;
-		IMPORT_SETTINGS?: Record<string, Record<string, SettingConfig>>;
-		AceEditorWidget: typeof AceEditorWidget;
-		PaintWidget: typeof PaintWidget;
-		FileManager: typeof FileManager;
-		triggerPanelRoute: (panelId: string, mainDock: DockPanel, noHide?: boolean) => Promise<void>;
-		mainDock: DockPanel;
-		getRegistryIdFromWidget(widget: string | HTMLElement | FileListWidget): string | null | undefined | void;
-
-	}
-}
-
 export const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 	filelist: {
 		defaultLocation: {
 			key: 'default_location',
 			default: '',
-			elementId: window.RepositoryToolbar.locations?.id,
+			elementId: window.RepositoryToolbar?.locations?.id,
 			description: 'The fallback or preferred primary repository string formatted as "owner/repo" used when loading the workspace workspace initial state.',
 			get: (storage: string | null, defaultLocation: string): string =>
 			{
@@ -283,7 +267,7 @@ export function configureFileHandle(newLocation: FileSystemDirectoryHandle, conf
 		return;
 	}
 
-	const handleValue = `${config?.key}/${newLocation.name}-${++window.tempCount}`;
+	const handleValue = `${config?.key}/${newLocation.name}-${nextTemp()}`;
 
 	if(newLocation.name.trim().length > 0 && !window.RepositoryToolbar.locations?.querySelector(`option[value="${handleValue}"]`))
 	{

@@ -11,24 +11,6 @@ import { captureRenderToTerminalCorner } from './render';
 
 const LINES_TO_SCROLLBACK = 5000;
 
-declare global
-{
-	interface Window
-	{
-		mainDock: DockPanel;
-		terminalFrameLimiter: FrameRater;
-		commandHistory: string[];
-		SettingsManager: Settings;
-		statusBar: StatusBarWidget;
-		terminalLog: TerminalLogEntry[];
-		TerminalWidget: typeof TerminalWidget;
-		terminalWidgets?: Array<TerminalWidget>;
-		terminalLoaded?: boolean;
-		TERMINAL_REGISTRY: TerminalFilter[];
-		mostRecentTerminalCols?: number;
-	}
-}
-
 
 window.terminalFrameLimiter = new FrameRater(25, (e, t, frame) =>
 {

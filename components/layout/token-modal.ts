@@ -1,15 +1,6 @@
 
 export const GITHUB_LINK = 'https://github.com/settings/tokens?type=beta';
 
-declare global
-{
-	interface Window
-	{
-		api?: {
-			github_token?: string;
-		};
-	}
-}
 
 export class TokenModal
 {

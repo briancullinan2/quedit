@@ -1,23 +1,14 @@
 import { DockPanel, Menu, Widget } from '@lumino/widgets';
 import { OUTLINE_WIDGET_TYPES } from './lumino-resize';
-import { LayoutState } from './menu-app';
+import type { LuminoLayoutWindow } from './lumino.d';
+import type { GlobalToolbarsWindow, LuminoMenuWindow } from './menu.d';
 
 export const WIDESCREEN = 1200;
 export const MOBILEMODE = 600;
 export const TALLSCREEN = 700;
 
-declare global
-{
-	interface Window
-	{
-		LayoutAdjuster: typeof LayoutAdjuster;
-		lastInteractedWidget: Widget | null;
-		previousInteractedWidget: Widget | null;
-		resizeHandler: () => void;
-		layoutState: LayoutState;
-		tabsMenu: Menu;
-	}
-}
+
+const luminoSelf: LuminoLayoutWindow & LuminoMenuWindow & GlobalToolbarsWindow = self as unknown as any;
 
 // Define strict types for our layout configuration
 export type WidgetType = 'editor' | 'outline' | 'terminal' | 'sidebar';
@@ -46,16 +37,16 @@ function trackWidgetInteraction(widget: Widget): void
 	const registerSelection = (): void =>
 	{
 		const newType = widget?.constructor.name;
-		const lastType = window.lastInteractedWidget?.constructor.name;
+		const lastType = luminoSelf.lastInteractedWidget?.constructor.name;
 
 		if(newType !== lastType)
 		{
-			window.previousInteractedWidget = window.lastInteractedWidget;
-			window.lastInteractedWidget = widget;
+			luminoSelf.previousInteractedWidget = luminoSelf.lastInteractedWidget;
+			luminoSelf.lastInteractedWidget = widget;
 		}
 
-		console.log('Focused: ' + window.lastInteractedWidget?.constructor.name + ' unFocused: ' + window.previousInteractedWidget?.constructor.name);
-		window.resizeHandler();
+		console.log('Focused: ' + luminoSelf.lastInteractedWidget?.constructor.name + ' unFocused: ' + luminoSelf.previousInteractedWidget?.constructor.name);
+		luminoSelf.resizeHandler?.();
 	};
 
 	widget.node.addEventListener('focusin', registerSelection);
@@ -91,12 +82,12 @@ export class LayoutAdjuster
 		HTMLElement.dataset.projectId = projectId;
 		HTMLElement.dataset.type = type;
 
-		const menuExists = window.tabsMenu.items.some(
+		const menuExists = luminoSelf.tabsMenu?.items.some(
 			(existing) => existing.args.value === newWidget.id
 		);
 		if(!menuExists)
 		{
-			const insertedMenuItem = window.tabsMenu.insertItem(0, {
+			const insertedMenuItem = luminoSelf.tabsMenu?.insertItem(0, {
 				command: 'select-tab', args: { value: newWidget.id, label: newWidget.title.label }
 			});
 		}
@@ -110,19 +101,19 @@ export class LayoutAdjuster
 			if(lastNonOutline && isTallscreen && !existingTerminal)
 			{
 				dockPanel.addWidget(newWidget, {
-					mode: window.layoutState.order === 'normal-order' ? 'split-bottom' : 'split-top',
-					ref: lastNonOutline ?? window.lastInteractedWidget ?? undefined
+					mode: luminoSelf.layoutState?.order === 'normal-order' ? 'split-bottom' : 'split-top',
+					ref: lastNonOutline ?? luminoSelf.lastInteractedWidget ?? undefined
 				});
 			} else if(lastNonOutline || existingTerminal)
 			{
 				dockPanel.addWidget(newWidget, {
 					mode: 'tab-after',
-					ref: existingTerminal ?? lastNonOutline ?? window.lastInteractedWidget ?? undefined
+					ref: existingTerminal ?? lastNonOutline ?? luminoSelf.lastInteractedWidget ?? undefined
 				});
 			} else
 			{
 				dockPanel.addWidget(newWidget, {
-					mode: window.layoutState.panels === 'left-hand-files' ? 'split-right' : 'split-left'
+					mode: luminoSelf.layoutState?.panels === 'left-hand-files' ? 'split-right' : 'split-left'
 				});
 			}
 			if(shouldActivate)
@@ -131,7 +122,7 @@ export class LayoutAdjuster
 			}
 			if(shouldResize)
 			{
-				window.resizeHandler();
+				luminoSelf.resizeHandler?.();
 			}
 			return;
 		}
@@ -148,7 +139,7 @@ export class LayoutAdjuster
 				});
 			} else
 			{
-				dockPanel.addWidget(newWidget, { mode: window.layoutState.panels === 'left-hand-files' ? 'split-left' : 'split-right' });
+				dockPanel.addWidget(newWidget, { mode: luminoSelf.layoutState?.panels === 'left-hand-files' ? 'split-left' : 'split-right' });
 			}
 			if(shouldActivate)
 			{
@@ -156,7 +147,7 @@ export class LayoutAdjuster
 			}
 			if(shouldResize)
 			{
-				window.resizeHandler();
+				luminoSelf.resizeHandler?.();
 			}
 			return;
 		}
@@ -175,8 +166,8 @@ export class LayoutAdjuster
 			}
 
 			const bestRef = this._findRankedReference(dockPanel, projectId);
-			const splitOrder = window.layoutState.order === 'normal-order' ? 'split-top' : 'split-bottom';
-			const splitFiles = window.layoutState.panels === 'left-hand-files' ? 'split-right' : 'split-left';
+			const splitOrder = luminoSelf.layoutState?.order === 'normal-order' ? 'split-top' : 'split-bottom';
+			const splitFiles = luminoSelf.layoutState?.panels === 'left-hand-files' ? 'split-right' : 'split-left';
 
 			if(bestRef && bestRef.dataset?.type === 'terminal')
 			{
@@ -211,7 +202,7 @@ export class LayoutAdjuster
 			}
 			if(shouldResize)
 			{
-				window.resizeHandler();
+				luminoSelf.resizeHandler?.();
 			}
 			return;
 		}
@@ -219,7 +210,7 @@ export class LayoutAdjuster
 		// Default Fallback
 		dockPanel.addWidget(newWidget, {
 			mode: 'tab-after',
-			ref: window.lastInteractedWidget ?? undefined
+			ref: luminoSelf.lastInteractedWidget ?? undefined
 		});
 		if(shouldActivate)
 		{
@@ -227,7 +218,7 @@ export class LayoutAdjuster
 		}
 		if(shouldResize)
 		{
-			window.resizeHandler();
+			luminoSelf.resizeHandler?.();
 		}
 	}
 
@@ -273,12 +264,12 @@ export class LayoutAdjuster
 	private static _findRankedReference(dockPanel: DockPanel, projectId: string): Widget | null
 	{
 		// Rank 1: Check last global interaction
-		if(window.lastInteractedWidget && window.lastInteractedWidget.isAttached)
+		if(luminoSelf.lastInteractedWidget && luminoSelf.lastInteractedWidget.isAttached)
 		{
-			const lastEl = window.lastInteractedWidget.node as HTMLElement;
+			const lastEl = luminoSelf.lastInteractedWidget.node as HTMLElement;
 			if(lastEl.dataset?.projectId === projectId)
 			{
-				return window.lastInteractedWidget;
+				return luminoSelf.lastInteractedWidget;
 			}
 		}
 
@@ -329,9 +320,9 @@ export class LayoutAdjuster
 		}
 
 		// Rank 3: Fallback to whatever was last touched globally
-		if(window.lastInteractedWidget && window.lastInteractedWidget.isAttached)
+		if(luminoSelf.lastInteractedWidget && luminoSelf.lastInteractedWidget.isAttached)
 		{
-			return window.lastInteractedWidget;
+			return luminoSelf.lastInteractedWidget;
 		}
 
 		return null;
@@ -343,16 +334,16 @@ export class LayoutAdjuster
 	public static _findBestEditorForProject(dockPanel: DockPanel, projectId: string | null | undefined, type: string): Widget | null
 	{
 		let fallbackType: Widget | null = null;
-		if(window.lastInteractedWidget && window.lastInteractedWidget.isAttached)
+		if(luminoSelf.lastInteractedWidget && luminoSelf.lastInteractedWidget.isAttached)
 		{
-			const lastEl = window.lastInteractedWidget.node as HTMLElement;
+			const lastEl = luminoSelf.lastInteractedWidget.node as HTMLElement;
 			if(lastEl.dataset?.projectId === projectId)
 			{
-				return window.lastInteractedWidget;
+				return luminoSelf.lastInteractedWidget;
 			}
 			if(lastEl.dataset?.type === type)
 			{
-				fallbackType = window.lastInteractedWidget;
+				fallbackType = luminoSelf.lastInteractedWidget;
 			}
 		}
 
@@ -424,5 +415,5 @@ export class LayoutAdjuster
 	}
 }
 
-window.LayoutAdjuster = LayoutAdjuster;
+luminoSelf.LayoutAdjuster = LayoutAdjuster;
 

@@ -1,36 +1,13 @@
+import type { LevenshteinWindow } from "./lumino.d";
+
 export interface LevSearchConfig
 {
 	keys: string | string[];
 	id?: string;
 }
 
-declare global
-{
-	interface Window
-	{
-		// 1. levDist
-		levDist(s: string, t: string): number;
+const compileSelf: LevenshteinWindow = self as unknown as any;
 
-		// 2. levSort (Optional parameters use '?' instead of default values)
-		levSort<T>(
-			arr: T[],
-			search: string,
-			getStr?: (item: T) => string
-		): T[];
-
-		// 3. levSearch
-		levSearch<T extends Record<string, any> = Record<string, any>>(
-			cache: T[],
-			config: LevSearchConfig,
-			search: string
-		): any[];
-
-		// 4. getStr helper
-		getStr(keys: string | string[], obj: Record<string, any>): string[];
-
-		findMatchesWithFuzzy(currentValue: string, candidatesPool: string[]): string[];
-	}
-}
 
 /**
  * Calculates the Levenshtein / Damerau-Levenshtein distance between two strings.
@@ -92,7 +69,7 @@ export function levDist(s: string, t: string): number
 	return d[n][m];
 }
 
-window.levDist = levDist;
+compileSelf.levDist = levDist;
 
 
 /**
@@ -114,7 +91,7 @@ export function levSort<T>(
 	return result;
 }
 
-window.levSort = levSort;
+compileSelf.levSort = levSort;
 
 
 
@@ -149,7 +126,7 @@ export function getStr(keys: string | string[], obj: Record<string, any>): strin
 	}, []);
 }
 
-window.getStr = getStr;
+compileSelf.getStr = getStr;
 
 
 /**
@@ -183,7 +160,7 @@ export function levSearch<T extends Record<string, any>>(
 	return result;
 }
 
-window.levSearch = levSearch;
+compileSelf.levSearch = levSearch;
 
 
 /**
@@ -202,8 +179,7 @@ function findMatchesWithFuzzy(currentValue: string, candidatesPool: string[]): s
 	}
 
 	// Levenshtein fallback check (q3e threshold: dist / length <= 0.25)
-	const levDistFunc = window.levDist;
-	if(typeof levDistFunc !== 'function') return [];
+	if(typeof levDist !== 'function') return [];
 
 	const fuzzyMatches: string[] = [];
 	for(const candidate of candidatesPool)
@@ -212,7 +188,7 @@ function findMatchesWithFuzzy(currentValue: string, candidatesPool: string[]): s
 		const len = candidate.length;
 		if(len === 0) continue;
 
-		const dist = levDistFunc(lowerCurrent, candidate.toLowerCase());
+		const dist = levDist(lowerCurrent, candidate.toLowerCase());
 		if(dist / len <= 0.25)
 		{
 			fuzzyMatches.push(candidate);
@@ -222,5 +198,5 @@ function findMatchesWithFuzzy(currentValue: string, candidatesPool: string[]): s
 	return fuzzyMatches;
 }
 
-window.findMatchesWithFuzzy = findMatchesWithFuzzy;
+compileSelf.findMatchesWithFuzzy = findMatchesWithFuzzy;
 

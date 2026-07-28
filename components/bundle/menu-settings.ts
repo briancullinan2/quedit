@@ -2,16 +2,6 @@ import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
 import { SettingsManager } from "./settings";
 
-declare global
-{
-	interface Window
-	{
-		settingsToolbar: SettingsToolbar;
-		SettingsToolbar: typeof SettingsToolbar;
-		SETTINGS_CONTROLS: ControlConfig[];
-	}
-}
-
 export type SelectOption = { value: string; label: string; selected?: boolean; isDark?: boolean; };
 export type OptGroup = { label: string; options: SelectOption[]; };
 

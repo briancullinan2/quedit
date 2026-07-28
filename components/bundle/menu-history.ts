@@ -3,18 +3,6 @@ import { Widget } from "@lumino/widgets";
 import type { RepositoryToolbar } from "./menu-repos";
 import type { AceEditorWidget } from "../editor/widget";
 
-declare global
-{
-	interface Window
-	{
-		historyToolbar: HistoryToolbar;
-		HistoryToolbar: typeof HistoryToolbar;
-		RepositoryToolbar: typeof RepositoryToolbar;
-		currentOpenFileId?: any;
-		trees: Record<string, any>;
-	}
-}
-
 export type NavPoint = {
 	fileId: string;
 	row: number;

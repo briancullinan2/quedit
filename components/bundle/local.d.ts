@@ -1,4 +1,4 @@
-import type { GlobalToolbars } from "./menu.d";
+import type { GlobalToolbars, GlobalToolbarsWindow, RepositorySettingsWindow } from "./menu.d";
 
 
 export interface DatabaseMetadata

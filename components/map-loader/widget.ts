@@ -17,14 +17,7 @@ declare const XRWebGLLayer: any;
 
 declare global
 {
-	interface Window
-	{
-		tojiFrameLimiter: FrameRater;
-		loadScript(src: string): Promise<any>;
-		engineToolbar: EngineToolbar;
-		TojiWidget: typeof TojiWidget;
-		SettingsManager: Settings;
-	}
+
 	interface Navigator
 	{
 		xr?: {

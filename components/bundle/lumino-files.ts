@@ -4,12 +4,11 @@ import { filesRepo, GitHubFileEntry, trees } from "./github-types";
 import { FS } from "./global";
 import { DB_STORE_NAME, getDatabaseMetadata, getRecord } from "./local";
 import type { FileRecord } from './local.d';
-import type { HistoryToolbar } from "./menu-history";
 import { AssetInspector, hasSequentialBinaryRegex, hexDump } from "../rosetta/binary.mjs";
-import type { DockPanel } from "@lumino/widgets";
-import type { AceEditorWidget } from "../editor/widget";
 import { triggerPanelRoute } from "./menu";
+import type { LuminoFilesWindow } from "./lumino.d";
 
+const luminoSelf: LuminoFilesWindow = self as unknown as any;
 
 export interface PathCandidate
 {
@@ -123,12 +122,12 @@ export class FileManager
 	public static getActiveRepositories(): string[]
 	{
 		return [
-			window.engineRepository,
-			window.gameRepository,
-			window.assetRepository,
-			window.toolsRepository,
-			window.tools2Repository,
-			window.environmentRepository
+			luminoSelf.engineRepository,
+			luminoSelf.gameRepository,
+			luminoSelf.assetRepository,
+			luminoSelf.toolsRepository,
+			luminoSelf.tools2Repository,
+			luminoSelf.environmentRepository
 		].filter((repo): repo is string => typeof repo === 'string' && repo.length > 0);
 	}
 
@@ -163,14 +162,14 @@ export class FileManager
 
 			// 2. Partial fetch targeting only the parent directory
 			const parts = repoKey.split('/');
-			const ownerName = parts.length === 2 ? parts[0] : window.owner?.value || '';
-			const repoName = parts.length === 2 ? parts[1] : (parts[0] || window.repository?.value || '');
+			const ownerName = parts.length === 2 ? parts[0] : luminoSelf.RepositoryToolbar?.owner?.value || '';
+			const repoName = parts.length === 2 ? parts[1] : (parts[0] || luminoSelf.RepositoryToolbar?.repository?.value || '');
 
 			try
 			{
 				// Request contents specifically for the target parent directory
 				const endpoint = parentFolder ? `contents/${parentFolder}` : 'contents';
-				const jsonResponse = await window.githubRequest(ownerName, repoName, endpoint);
+				const jsonResponse = await luminoSelf.githubRequest?.(ownerName, repoName, endpoint);
 
 				if(Array.isArray(jsonResponse))
 				{
@@ -186,10 +185,10 @@ export class FileManager
 						const virtualPath = repoKey + '/' + itemPath;
 						const isDir = item.type === 'dir';
 
-						filesRepo[repoKey][itemPath] = window.FS.virtual[virtualPath] = {
+						filesRepo[repoKey][itemPath] = FS.virtual[virtualPath] = {
 							...item,
 							path: itemPath,
-							mode: item.mode ?? (isDir ? (0o040000 | 0o755) : (0o100000 | 0o644)),
+							mode: item.mode ?? (isDir ? (0o040000 | 0o755) : (0o100000 | 0o666)),
 						} as FileRecord;
 					}
 				}
@@ -198,10 +197,10 @@ export class FileManager
 				// Fallback: If partial contents call fails, fall back to loadGitHubTree for parentFolder
 				try
 				{
-					if(typeof window.loadGitHubTree === 'function')
+					if(typeof luminoSelf.loadGitHubTree === 'function')
 					{
 						const branch = await getDefaultBranch(ownerName, repoName);
-						await window.loadGitHubTree(ownerName, repoName, branch, parentFolder);
+						await luminoSelf.loadGitHubTree(ownerName, repoName, branch, parentFolder);
 					}
 				} catch(fallbackErr)
 				{
@@ -295,7 +294,7 @@ export class FileManager
 		currentPath: string
 	): Promise<{ dbKey: string; fileNode: FileRecord; } | null>
 	{
-		if(!window.mainDock) return null;
+		if(!luminoSelf.mainDock) return null;
 
 		const cleanPath = currentPath.replace(/^\/+/, '');
 		const pathSegments = cleanPath.split('/');
@@ -304,8 +303,8 @@ export class FileManager
 		if(!targetFileName) return null;
 
 		// Get all widgets from mainDock
-		const widgets = typeof window.mainDock.widgets === 'function'
-			? Array.from(window.mainDock.widgets())
+		const widgets = typeof luminoSelf.mainDock.widgets === 'function'
+			? Array.from(luminoSelf.mainDock.widgets())
 			: [];
 
 		for(const widget of widgets as any[])
@@ -344,7 +343,7 @@ export class FileManager
 					}
 
 					// Standard bitmask mode for regular file (0100644)
-					const MODE_FILE = 0o100000 | 0o644;
+					const MODE_FILE = 0o100000 | 0o666;
 
 					const fileNode: GitHubFileEntry = {
 						name: targetFileName,
@@ -357,11 +356,11 @@ export class FileManager
 					};
 
 					// Sync with virtual filesystem cache
-					if(!window.filesRepo[dbKey])
+					if(!filesRepo[dbKey])
 					{
-						window.filesRepo[dbKey] = {};
+						filesRepo[dbKey] = {};
 					}
-					window.filesRepo[dbKey][cleanPath] = window.FS.virtual[virtualPath] = fileNode;
+					filesRepo[dbKey][cleanPath] = FS.virtual[virtualPath] = fileNode;
 
 					return { dbKey, fileNode };
 				}
@@ -425,10 +424,10 @@ export class FileManager
 		this.updateUIVisibility(payload, filePath);
 
 		// Phase 7: Post-render Updates
-		window.resizeHandler();
+		luminoSelf.resizeHandler?.();
 		if(recordHistory)
 		{
-			window.historyToolbar.recordFileHistory(filePath, sha);
+			luminoSelf.historyToolbar?.recordFileHistory(filePath, sha);
 		}
 	}
 
@@ -539,14 +538,18 @@ export class FileManager
 	 */
 	private async bootstrapVisualEngines(payload: FilePayload, filePath: string): Promise<void>
 	{
+		if(!luminoSelf.mainDock)
+		{
+			return;
+		}
 		if(payload.isImageFile)
 		{
-			await triggerPanelRoute('paint', window.mainDock);
+			await triggerPanelRoute('paint', luminoSelf.mainDock);
 
 			// TODO: openImage(payload.content, filePath);
 		} else
 		{
-			await triggerPanelRoute('editor', window.mainDock);
+			await triggerPanelRoute('editor', luminoSelf.mainDock);
 		}
 	}
 
@@ -561,12 +564,12 @@ export class FileManager
 		if(payload.isImageFile)
 		{
 
-		} else if(typeof window.AceEditorWidget !== 'undefined')
+		} else if(typeof luminoSelf.AceEditorWidget !== 'undefined')
 		{
-			window.AceEditorWidget.openFileInNewTab(filePath, filePath, payload.outputString);
+			luminoSelf.AceEditorWidget.openFileInNewTab(filePath, filePath, payload.outputString);
 		}
 	}
 }
 
-window.FileManager = FileManager;
-window.resolveDirectoryHandle = FileManager.resolveDirectoryHandle;
+luminoSelf.FileManager = FileManager;
+luminoSelf.resolveDirectoryHandle = FileManager.resolveDirectoryHandle;

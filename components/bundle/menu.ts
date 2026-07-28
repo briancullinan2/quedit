@@ -23,31 +23,6 @@ export interface TopBarComponents
 }
 
 
-declare global
-{
-	interface Window
-	{
-		resizeHandler: () => void;
-		triggerPanelRoute: (panelId: string, mainDock: DockPanel, noHide?: boolean) => Promise<void>;
-		registerAllCommands: (menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry) => void;
-		repoToolbar: RepositoryToolbar;
-		scriptToolbar: ScriptToolbar;
-		appToolbar: ApplicationToolbar;
-		fileToolbar: FileToolbar;
-		historyToolbar: HistoryToolbar;
-		settingsToolbar: SettingsToolbar;
-		engineToolbar: EngineToolbar;
-		fileListWidgets?: Array<FileListWidget>;
-		terminalWidgets?: Array<TerminalWidget>;
-		globalMenuBar: MenuBar;
-		tabsMenu: Menu;
-		MODULE_REGISTRY: Record<string, ComponentRoute>;
-		TERMINAL_REGISTRY: TerminalFilter[];
-		previousHashLineNumber?: number | null;
-	}
-}
-
-
 export interface TerminalFilter
 {
 	id: string;

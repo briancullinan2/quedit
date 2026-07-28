@@ -1,12 +1,11 @@
 import { getBranches } from "./github-api";
-import { SettingsWindow } from "./menu.d";
 import { RepositoryToolbar } from "./menu-repos";
 import { SettingConfig } from "./settings";
 import { GithubWindow } from "./github.d";
 
 
 
-const githubSelf: GithubWindow = /** @type {any} */ (self);
+const githubSelf: GithubWindow = self as unknown as any;
 
 
 export function addRepoIfNotExists(newRepo: string): void
