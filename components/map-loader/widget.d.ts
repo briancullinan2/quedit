@@ -6,6 +6,6 @@ export interface TojiWindow
 {
 	moveLookLocked?: (mx: number, my: number) => void;
 	playerMover?: { jump: () => void; };
-	tojiFrameLimiter: FrameRater;
-	TojiWidget: typeof TojiWidget;
+	tojiFrameLimiter?: FrameRater;
+	TojiWidget?: typeof TojiWidget;
 }

@@ -1,4 +1,7 @@
-/// <reference path="../bundle/global.d.ts" />
+// @ts-check
+
+/** @type {import('./widget.d').TerminalCommandWindow} */
+const commandSelf = /** @type {any} */ (self);
 
 const LINES_TO_SAVE = 1000;
 
@@ -44,7 +47,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	status: {
-		execute: statusCommand,
+		execute: commandSelf.statusCommand,
 		description: "Show working file mutations, additions, or deletions against the remote repository branch.",
 		args: [
 			{ name: "repo_path", type: ARG_TYPES.DATABASE, description: "Target repository identifier string (Defaults to engine context)" }
@@ -56,7 +59,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	push: {
-		execute: push,
+		execute: commandSelf.push,
 		description: "Pack up staged modifications and atomically advance the remote head pointer via a Git commit.",
 		args: [
 			{ name: "message", type: ARG_TYPES.STRING, description: "Descriptive message log for the new commit point" },
@@ -68,7 +71,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	find: {
-		execute: find,
+		execute: commandSelf.find,
 		description: "Execute a workspace-wide structural glob pattern or deep content text match via background workers.",
 		args: [{ name: "query", type: ARG_TYPES.STRING, description: "Text string or glob pattern to locate across repositories" }],
 		flags: {
@@ -94,7 +97,7 @@ const COMMAND_SCHEMA = {
 		demos: [{ cmd: "reset", desc: "Reinitialize active graphic canvas streams and terminals" }]
 	},
 	ls: {
-		execute: ls,
+		execute: commandSelf.ls,
 		description: "List workspace data entries within the current execution path.",
 		args: [],
 		flags: {
@@ -110,7 +113,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	build: {
-		execute: buildCommand,
+		execute: commandSelf.buildCommand,
 		prereqs: ['build'],
 		description: "Execute compilation procedures across targeted project modules.",
 		args: [
@@ -130,7 +133,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	remove: {
-		execute: remove,
+		execute: commandSelf.remove,
 		description: "Purge targeted structural documents from persistent storage matrices.",
 		args: [
 			{ name: "filename", type: ARG_TYPES.FILE, description: "File path targeted for deletion" }
@@ -141,7 +144,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	open: {
-		execute: openCommand,
+		execute: commandSelf.openCommand,
 		prereqs: ['editor'],
 		description: "Load a specified document directly into the active editing layout space.",
 		args: [
@@ -155,7 +158,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	compile: {
-		execute: compileWorker,
+		execute: commandSelf.compileWorker,
 		prereqs: ['build'],
 		description: "Trigger compiler pipelines on target code assets.",
 		args: [
@@ -168,7 +171,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	run: {
-		execute: runWorker,
+		execute: commandSelf.runWorker,
 		prereqs: ['build'],
 		description: "Invoke binary runtime tasks or specialized compiler utility tools.",
 		args: [
@@ -181,7 +184,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	lburg: {
-		execute: lburg,
+		execute: commandSelf.lburg,
 		prereqs: ['build'],
 		description: "Run code generator bottom-up rewrite system compilation tools.",
 		args: [
@@ -194,7 +197,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	clone: {
-		execute: clone,
+		execute: commandSelf.clone,
 		description: "Clone external structures down into local indexed DB instances.",
 		args: [
 			{ name: "repo_path", type: ARG_TYPES.DATABASE, description: "Target remote owner/repository pathway" },
@@ -207,14 +210,14 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	kill: {
-		execute: kill,
+		execute: commandSelf.kill,
 		description: "Terminate all running workers or low-level application processes immediately.",
 		args: [],
 		flags: {},
 		demos: [{ cmd: "kill", desc: "Force stop all active asynchronous layout thread routines" }]
 	},
 	header: {
-		execute: header,
+		execute: commandSelf.header,
 		description: "Upload header files to the background worker before trying to compile code that includes them.",
 		args: [
 			{ name: "filename", type: ARG_TYPES.FILE, description: "Target include header file structure context" }
@@ -225,7 +228,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	link: {
-		execute: link,
+		execute: commandSelf.link,
 		prereqs: ['build'],
 		description: "Link compiled sandbox application object segments or virtual image fragments into unified module payloads.",
 		args: [
@@ -257,7 +260,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	clang: {
-		execute: clang,
+		execute: commandSelf.clang,
 		prereqs: ['build'],
 		description: "Direct compiler frontend interface for raw wasm32-wasi compilation.",
 		args: [
@@ -282,7 +285,7 @@ const COMMAND_SCHEMA = {
 		]
 	},
 	wasm: {
-		execute: wasm,
+		execute: commandSelf.wasm,
 		prereqs: ['build'],
 		description: "Direct LLVM static linker (wasm-ld) and diagnostic utility wrapper engine.",
 		args: [
@@ -335,7 +338,7 @@ const COMMAND_SCHEMA = {
 };
 
 
-window.COMMAND_SCHEMA = COMMAND_SCHEMA;
+commandSelf.COMMAND_SCHEMA = COMMAND_SCHEMA;
 
 
 
@@ -346,25 +349,25 @@ function writeCommandHelp(targetCommand, argv)
 	const schema = COMMAND_SCHEMA[targetCommand];
 	if(!schema)
 	{
-		terminalWrite(`\x1b[38;5;203m[HELP ERROR]\x1b[0m Unknown command entity descriptor: "${targetCommand}"\n\r`);
+		commandSelf.terminalWrite?.(`\x1b[38;5;203m[HELP ERROR]\x1b[0m Unknown command entity descriptor: "${targetCommand}"\n\r`);
 		return;
 	}
 
 	// Handle Symbolic Redirection Hooks instantly
 	if(schema.alias)
 	{
-		terminalWrite(`\x1b[38;5;221m[ALIAS]\x1b[0m Command \x1b[1m"${targetCommand}"\x1b[0m is a symbolic link to: \x1b[38;5;118m${schema.alias}\x1b[0m\n\r`);
-		terminalWrite(`Execute "help ${schema.alias}" to view operational engine constraints.\n\r`);
+		commandSelf.terminalWrite?.(`\x1b[38;5;221m[ALIAS]\x1b[0m Command \x1b[1m"${targetCommand}"\x1b[0m is a symbolic link to: \x1b[38;5;118m${schema.alias}\x1b[0m\n\r`);
+		commandSelf.terminalWrite?.(`Execute "help ${schema.alias}" to view operational engine constraints.\n\r`);
 		return;
 	}
 
-	terminalWrite(`\n\r\x1b[1;38;5;33mMANUAL LOOKUP: ${targetCommand.toUpperCase()}\x1b[0m\n\r`);
-	terminalWrite(`\x1b[4mDescription:\x1b[0m ${schema.description}\n\r\n\r`);
+	commandSelf.terminalWrite?.(`\n\r\x1b[1;38;5;33mMANUAL LOOKUP: ${targetCommand.toUpperCase()}\x1b[0m\n\r`);
+	commandSelf.terminalWrite?.(`\x1b[4mDescription:\x1b[0m ${schema.description}\n\r\n\r`);
 
 	// Render Arguments and Typings
 	if(schema.args && schema.args.length > 0)
 	{
-		terminalWrite(`\x1b[4mArguments:\x1b[0m\n\r`);
+		commandSelf.terminalWrite?.(`\x1b[4mArguments:\x1b[0m\n\r`);
 		schema.args.forEach((arg, index) =>
 		{
 			let typeString = '';
@@ -375,31 +378,31 @@ function writeCommandHelp(targetCommand, argv)
 			{
 				typeString = `<${arg.type}>`;
 			}
-			terminalWrite(`  argv[${index}] : ${arg.name.padEnd(14)} \x1b[38;5;214m${typeString.padEnd(30)}\x1b[0m # ${arg.description}\n\r`);
+			commandSelf.terminalWrite?.(`  argv[${index}] : ${arg.name.padEnd(14)} \x1b[38;5;214m${typeString.padEnd(30)}\x1b[0m # ${arg.description}\n\r`);
 		});
-		terminalWrite(`\n\r`);
+		commandSelf.terminalWrite?.(`\n\r`);
 	}
 
 	// Render Compilation and Runtime Flags
 	const flagKeys = Object.keys(schema.flags || []);
 	if(flagKeys.length > 0)
 	{
-		terminalWrite(`\x1b[4mAvailable Flags:\x1b[0m\n\r`);
+		commandSelf.terminalWrite?.(`\x1b[4mAvailable Flags:\x1b[0m\n\r`);
 		flagKeys.forEach(flag =>
 		{
-			terminalWrite(`  ${flag.padEnd(10)} : ${typeof schema.flags?.[flag] === 'string' ? schema.flags?.[flag] : schema.flags?.[flag].description}\n\r`);
+			commandSelf.terminalWrite?.(`  ${flag.padEnd(10)} : ${typeof schema.flags?.[flag] === 'string' ? schema.flags?.[flag] : schema.flags?.[flag].description}\n\r`);
 		});
-		terminalWrite(`\n\r`);
+		commandSelf.terminalWrite?.(`\n\r`);
 	}
 
 	if(schema.demos && schema.demos.length > 0)
 	{
-		terminalWrite(`\x1b[4mSample Execution Demos (Interactive):\x1b[0m\n\r`);
+		commandSelf.terminalWrite?.(`\x1b[4mSample Execution Demos (Interactive):\x1b[0m\n\r`);
 		schema.demos.forEach(demo =>
 		{
 			// Bright Turquoise underlines on the actual target command sequence lines
 			// making them instantly targetable for stage two processing maps
-			terminalWrite(`\x1b[1;38;5;81m${demo.cmd.padEnd(50)}\x1b[0m \x1b[38;5;244m# ${demo.desc}\x1b[0m\n\r`);
+			commandSelf.terminalWrite?.(`\x1b[1;38;5;81m${demo.cmd.padEnd(50)}\x1b[0m \x1b[38;5;244m# ${demo.desc}\x1b[0m\n\r`);
 		});
 	}
 
@@ -428,11 +431,11 @@ async function loadCommand(argv, database, commandName)
 
 	if(moduleToLoad === 'build')
 	{
-		for(let src of window.BUILD_SCRIPTS)
+		for(let src of commandSelf.BUILD_SCRIPTS ?? [])
 		{
-			await window.loadScript(src);
+			await commandSelf.loadScript?.(src);
 		}
-	} else if(!window.MODULE_REGISTRY[moduleToLoad])
+	} else if(!commandSelf.MODULE_REGISTRY?.[moduleToLoad])
 	{
 		console.log('Invalid module specified: ' + argv[0]);
 		console.log('Valid options:');
@@ -440,7 +443,7 @@ async function loadCommand(argv, database, commandName)
 		return;
 	}
 
-	await window.triggerPanelRoute(moduleToLoad, window.mainDock, true);
+	await commandSelf.triggerPanelRoute?.(moduleToLoad, commandSelf.mainDock, true);
 
 }
 
@@ -461,7 +464,7 @@ async function help(argv, database, commandName, term)
 	}
 
 	// Scenario B: Global lookup list pass (Default plain "help" execution context)
-	terminalWrite(`\n\r\x1b[1;38;5;118m=== AVAILABLE SYSTEM COMMANDS ===\x1b[0m\n\r`);
+	commandSelf.terminalWrite?.(`\n\r\x1b[1;38;5;118m=== AVAILABLE SYSTEM COMMANDS ===\x1b[0m\n\r`);
 
 	// Sort keys to maintain a clean layout presentation
 	const keys = Object.keys(COMMAND_SCHEMA).sort();
@@ -477,11 +480,11 @@ async function help(argv, database, commandName, term)
 		if(item.alias)
 		{
 			// Render basic alias linkage markers concisely
-			terminalWrite(`  \x1b[38;5;244m${keyNameDisplay} -> alias to [${item.alias}]\x1b[0m\n\r`);
+			commandSelf.terminalWrite?.(`  \x1b[38;5;244m${keyNameDisplay} -> alias to [${item.alias}]\x1b[0m\n\r`);
 		} else
 		{
 			// Render active descriptions
-			terminalWrite(`  \x1b[1;38;5;45m${keyNameDisplay}\x1b[0m : ${item.description}\n\r`);
+			commandSelf.terminalWrite?.(`  \x1b[1;38;5;45m${keyNameDisplay}\x1b[0m : ${item.description}\n\r`);
 		}
 	}
 	for(const key of keys)
@@ -490,11 +493,11 @@ async function help(argv, database, commandName, term)
 		{
 			writeCommandHelp(key);
 			// Boundary line divider separating operational tools
-			terminalWrite(`\x1b[38;5;238m${'-'.repeat(term.cols || 80)}\x1b[0m\n\r`);
+			commandSelf.terminalWrite?.(`\x1b[38;5;238m${'-'.repeat(term.cols || 80)}\x1b[0m\n\r`);
 		}
 	}
 
-	terminalWrite(`\n\rRun "help <command>" to query explicit option arguments and value types.\n\r`);
+	commandSelf.terminalWrite?.(`\n\rRun "help <command>" to query explicit option arguments and value types.\n\r`);
 }
 
 
@@ -521,24 +524,24 @@ const CWD = '';
 const HISTORY = [];
 
 
-window.runningCommand = false;
+commandSelf.runningCommand = false;
 let detachedConsole = false;
 async function handleCommand(input, term)
 {
-	const database = window.RepositoryToolbar.owner?.value + '/' + window.RepositoryToolbar.repository?.value;
+	const database = commandSelf.RepositoryToolbar?.owner?.value + '/' + commandSelf.RepositoryToolbar?.repository?.value;
 	const tokens = tokenize(input.trim());
 
-	if(window.api)
+	if(commandSelf.api)
 	{
-		window.api.configuration = window.SettingsToolbar?.configuration?.value === 'debug' ? 'debug' : 'release';
+		commandSelf.api.configuration = commandSelf.SettingsToolbar?.configuration?.value === 'debug' ? 'debug' : 'release';
 	}
 
 	if(tokens.length === 0) return;
 
-	if(!window.runningCommand)
+	if(!commandSelf.runningCommand)
 	{
-		window.TERMINATE = false;
-		window.alreadyWroteDetached = false;
+		commandSelf.TERMINATE = false;
+		commandSelf.alreadyWroteDetached = false;
 	}
 
 	const [commandName, ...args] = tokens;
@@ -555,20 +558,20 @@ async function handleCommand(input, term)
 
 	if(targetExecutionRoute)
 	{
-		window.runningCommand = true;
+		commandSelf.runningCommand = true;
 
 		if(schemaMatch && schemaMatch.prereqs)
 		{
 			for(let importFirst of schemaMatch.prereqs)
 			{
-				if(window.MODULE_REGISTRY[importFirst])
+				if(commandSelf.MODULE_REGISTRY?.[importFirst])
 				{
-					await window.triggerPanelRoute(importFirst, window.mainDock, true);
+					await commandSelf.triggerPanelRoute?.(importFirst, commandSelf.mainDock, true);
 				} else if(importFirst === 'build')
 				{
-					for(let src of window.BUILD_SCRIPTS)
+					for(let src of commandSelf.BUILD_SCRIPTS ?? [])
 					{
-						await window.loadScript(src);
+						await commandSelf.loadScript?.(src);
 					}
 				}
 			}
@@ -579,30 +582,33 @@ async function handleCommand(input, term)
 			await targetExecutionRoute(args, database, commandName, term);
 		} catch(execError)
 		{
-			if(typeof self.originalConsole !== 'undefined')
-				self.originalConsole.error(execError);
+			if(typeof commandSelf.originalConsole !== 'undefined')
+				commandSelf.originalConsole.error(execError);
 			console.error(`Failed executing: ${resolvedCommandKey}`, execError);
 		}
 	} else
 	{
-		terminalWrite(`Command not found: ${commandName}\n\r`);
+		commandSelf.terminalWrite?.(`Command not found: ${commandName}\n\r`);
 	}
 
 	// TODO: undetach the console by reporting "done" from the worker
-	if(!window.detachedConsole)
+	if(!commandSelf.detachedConsole)
 	{
-		window.runningCommand = false;
+		commandSelf.runningCommand = false;
 		//writePrompt() stop fucking writing this here and look at case '\r': // Enter / Return
 	}
 
 }
 
 
+commandSelf.handleCommand = handleCommand;
+
+
 async function hello(argv)
 {
 	const name = argv[0] || 'User';
-	let user = (await window.getAuthenticatedUser())?.login;
-	terminalWrite(`Hello, ${user || name}!\n\r`);
+	let user = (await commandSelf.getAuthenticatedUser?.())?.login;
+	commandSelf.terminalWrite?.(`Hello, ${user || name}!\n\r`);
 }
 
 

@@ -9,7 +9,6 @@ import type { ApiWindow, MockAPI, WorkerWindow } from "./worker.d";
 
 export interface MakeWindow
 {
-	BUILD_SCRIPTS?: string[];
 	buildTools?: (database?: string | null) => Promise<void>;
 	buildQVM?: (database?: string | null) => Promise<void>;
 	buildClient?: (database?: string | null) => Promise<void>;
@@ -22,6 +21,7 @@ export interface MakeWindow
 
 export interface MakeSystemGlobals
 {
+	BUILD_SCRIPTS?: string[];
 	TERMINATE?: boolean;
 	needsHeaders?: boolean;
 	undefinedFlags?: string[];

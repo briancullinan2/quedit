@@ -1,36 +1,46 @@
+// @ts-check
 
-/// <reference path="../bundle/global.d.ts" />
+/** @type {import('./widget.d').TerminalCommandGitWindow} */
+const commandGitSelf = /** @type {any} */ (self);
 
 
+/**
+ *
+ * @param {string[]} argv
+ */
 async function clone(argv)
 {
-	const selected = argv[0] || self.toolsRepository || 'briancullinan2/quedit';
+	const selected = argv[0] || commandGitSelf.toolsRepository || 'briancullinan2/quedit';
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
+	const ownerName = parts.length == 2 ? parts[0] : commandGitSelf.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || commandGitSelf.RepositoryToolbar?.repository?.value;
 
 	let branch = argv[1];
-	if(!branch)
+	if(!branch && ownerName && repoName)
 	{
-		branch = await self.getDefaultBranch(ownerName, repoName);
+		branch = await commandGitSelf.getDefaultBranch?.(ownerName, repoName);
 	}
-	await self.loadGitHubTree(ownerName, repoName, branch);
+	if(ownerName && repoName && branch)
+	{
+		await commandGitSelf.loadGitHubTree?.(ownerName, repoName, branch);
+	}
 
-	terminalWrite('Checked out: ' + branch + ' from ' + ownerName + '/' + repoName + '\n\r');
+	commandSelf.terminalWrite?.('Checked out: ' + branch + ' from ' + ownerName + '/' + repoName + '\n\r');
 
 	//TODO: await readAll(selected)
 }
 
-
+commandGitSelf.clone = clone;
 
 
 /**
  * Executes terminal 'status' layout profiling pass
+ * @param {string[]} args
  */
-async function statusCommand(args, flags)
+async function statusCommand(args)
 {
 	// Fall back to engine target context if no path argument is supplied directly
-	let repoPath = args[0] || window.SettingsManager.get('github', 'engineRepository');
+	let repoPath = args[0] || commandGitSelf.settingsManager?.get('github', 'engineRepository');
 	if(!repoPath)
 	{
 		console.log("Error: Missing repository configuration context path mapping rules.");
@@ -46,7 +56,7 @@ async function statusCommand(args, flags)
 
 	const owner = parts[0];
 	const repo = parts[1];
-	const branch = await self.getDefaultBranch(owner, repo);
+	const branch = await commandGitSelf.getDefaultBranch?.(owner, repo);
 	const callbackId = `term_status_${Date.now()}`;
 
 	console.log(`Calculating changes for ${owner}/${repo} on branch [${branch}]...`);
@@ -109,16 +119,19 @@ async function statusCommand(args, flags)
 			owner,
 			repo,
 			branch,
-			gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
+			gitHubToken: localStorage.getItem('github_token') || commandGitSelf.api?.github_token,
 			callbackId
 		});
 	});
 }
 
+commandGitSelf.statusCommand = statusCommand;
+
 /**
  * Executes terminal 'push' network transaction pass
+ * @param {string[]} args
  */
-async function push(args, flags)
+async function push(args)
 {
 	const commitMessage = args[0];
 	if(!commitMessage || commitMessage.trim().length === 0)
@@ -127,11 +140,11 @@ async function push(args, flags)
 		return;
 	}
 
-	let repoPath = args[1] || self.SettingsManager.get('github', 'engineRepository');
+	let repoPath = args[1] || commandGitSelf.settingsManager?.get('github', 'engineRepository');
 	const parts = repoPath.split('/');
 	const owner = parts[0];
 	const repo = parts[1];
-	const branch = await self.getDefaultBranch(owner, repo);
+	const branch = await commandGitSelf.getDefaultBranch?.(owner, repo);
 	const callbackId = `term_push_${Date.now()}`;
 
 	console.log(`Assembling commit data layout package context structures to push directly...`);
@@ -151,7 +164,7 @@ async function push(args, flags)
 				console.log(`New Remote Commit OID: ${sha}`);
 
 				// Optional: Re-render matching UI subtrees to reflect reset modifications state
-				if(self.trees['#github'] && loadedGithubTreeNodes[repoPath])
+				if(commandGitSelf.trees?.['#github'] && loadedGithubTreeNodes[repoPath])
 				{
 					// Force an instant re-sync evaluation tree updates pass
 					expandGithubTree(document.querySelector(`[data-id="${repoPath}"]`), repoPath);
@@ -171,8 +184,10 @@ async function push(args, flags)
 			repo,
 			branch,
 			message: commitMessage,
-			gitHubToken: localStorage.getItem('github_token') || window.api?.github_token,
+			gitHubToken: localStorage.getItem('github_token') || commandGitSelf.api?.github_token,
 			callbackId
 		});
 	});
 }
+
+commandGitSelf.push = push;

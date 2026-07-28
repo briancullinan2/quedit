@@ -1,8 +1,11 @@
 import type { Terminal, IDecoration } from '@xterm/xterm';
-import type { FrameRater } from '../bundle/frame-rater';
-import { DockPanel } from '@lumino/widgets';
-import { TerminalEventManager } from './events';
+import type { LuminoMenuWindow } from '../bundle/menu.d';
+import type { LuminoLayoutWindow } from '../bundle/lumino.d';
+import type { TojiWindow } from '../map-loader/widget.d';
+import type { TerminalWindow } from './widget.d';
 
+
+const renderSelf: LuminoMenuWindow & LuminoLayoutWindow & TojiWindow & TerminalWindow = self as unknown as any;
 
 export interface RenderFootprint
 {
@@ -114,10 +117,10 @@ export async function captureRenderToTerminalCorner(term: Terminal): Promise<voi
 {
 	if(!term.element) return;
 
-	await window.triggerPanelRoute('toji', window.mainDock);
+	await renderSelf.triggerPanelRoute?.('toji', renderSelf.mainDock);
 
 	const viewport = document.getElementById("viewport") as HTMLCanvasElement;
-	const gl = window.TojiWidget.getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
+	const gl = renderSelf.TojiWidget?.getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
 
 	const coreService = (term as any)._core._renderService;
 	const charSizeService = coreService._charSizeService;
@@ -176,10 +179,10 @@ export async function captureRenderToTerminalCorner(term: Terminal): Promise<voi
  */
 export async function captureRenderToTerminal(term: Terminal): Promise<void>
 {
-	await window.triggerPanelRoute('toji', window.mainDock);
+	await renderSelf.triggerPanelRoute?.('toji', renderSelf.mainDock);
 
 	const viewport = document.getElementById("viewport") as HTMLCanvasElement;
-	const gl = window.TojiWidget.getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
+	const gl = renderSelf.TojiWidget?.getAvailableContext(viewport, ['webgl2', 'webgl', 'experimental-webgl']);
 	const cols = term.cols;
 	const rows = term.rows - 2;
 
@@ -373,7 +376,7 @@ export function terminalClickEvent(term: Terminal)
 	{
 		term.element.requestPointerLock();
 	}
-	window.TerminalEventManager.refreshBlinkerState(term);
+	renderSelf.TerminalEventManager?.refreshBlinkerState(term);
 }
 
 export function terminalDblClickEvent(term: Terminal, event: MouseEvent)

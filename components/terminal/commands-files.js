@@ -1,7 +1,16 @@
-/// <reference path="../bundle/global.d.ts" />
+
+// @ts-check
 
 
+/** @type {import('./widget.d').TerminalCommandFileWindow} */
+const commandFileSelf = /** @type {any} */ (self);
 
+
+/**
+ *
+ * @param {number} bytes
+ * @returns
+ */
 const formatBytes = (bytes) =>
 {
 	if(bytes === 0) return '0B';
@@ -11,17 +20,22 @@ const formatBytes = (bytes) =>
 	return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + sizes[i];
 };
 
+/**
+ *
+ * @param {*} argv
+ * @param {*} database
+ */
 async function ls(argv, database)
 {
-	let selected = window.toolsRepository || database;
+	let selected = commandFileSelf.toolsRepository || database;
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
+	const ownerName = parts.length == 2 ? parts[0] : commandFileSelf.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || commandFileSelf.RepositoryToolbar?.repository?.value;
 
-	if(!window.filesRepo[selected])
+	if(!commandFileSelf.filesRepo[selected])
 	{
-		let branch = await window.getDefaultBranch(ownerName, repoName);
-		await window.loadGitHubTree(ownerName, repoName, branch);
+		let branch = await commandFileSelf.getDefaultBranch(ownerName, repoName);
+		await commandFileSelf.loadGitHubTree(ownerName, repoName, branch);
 	}
 
 	const flags = {
@@ -31,8 +45,8 @@ async function ls(argv, database)
 	};
 
 	// Assuming FS.virtual.readdir returns objects with {name, size, type}
-	const entries = Object.values(window.FS.virtual)
-		.concat(Object.values(window.filesRepo[selected] || {}) || [])
+	const entries = Object.values(commandFileSelf.FS.virtual)
+		.concat(Object.values(commandFileSelf.filesRepo[selected] || {}) || [])
 		.filter(p =>
 		{
 			if(!p)
@@ -87,7 +101,7 @@ async function ls(argv, database)
 			const size = e.contents ? flags.human ? formatBytes(e.contents.length) : e.contents.length.toString() : '0B';
 			const nameStr = e.path.padEnd(maxName + 2);
 			const sizeStr = size.padEnd(10);
-			const color = e.mode === self.FS_DIR ? '\x1b[1;34m' : '\x1b[0m'; // Blue for dirs
+			const color = e.mode === commandFileSelf.FS_DIR ? '\x1b[1;34m' : '\x1b[0m'; // Blue for dirs
 
 			terminalWrite(`${color}${nameStr}\x1b[0m${sizeStr}${e.mode}\n\r`);
 		});
@@ -115,7 +129,7 @@ async function remove(argv, database)
 	}
 
 	// Resolve target databases
-	const metas = await window.getDatabaseMetadata?.() || [];
+	const metas = await commandFileSelf.getDatabaseMetadata?.() || [];
 	const targetDatabases = [database, ...metas.map((m) => m.key)].filter(Boolean);
 
 	terminalWrite(`\x1b[38;5;242m[Worker Thread] Locating candidate files for removal matching: "${cleanQuery}"...\x1b[0m\n\r`);
@@ -123,7 +137,7 @@ async function remove(argv, database)
 	let timerId = null;
 
 	// Dispatch query through shared service
-	const { callbackId, promise } = self.searchService.search(
+	const { callbackId, promise } = commandFileSelf.searchService.search(
 		{
 			query: cleanQuery,
 			caseSensitive: caseSensitiveActive,
@@ -138,7 +152,7 @@ async function remove(argv, database)
 	{
 		timerId = setTimeout(() =>
 		{
-			self.searchService.cancelSearch(callbackId);
+			commandFileSelf.searchService.cancelSearch(callbackId);
 			resolve([]);
 		}, 8000);
 	});
@@ -147,7 +161,7 @@ async function remove(argv, database)
 
 	if(timerId) clearTimeout(timerId);
 
-	const rx = self.globToRegex(filename);
+	const rx = commandFileSelf.globToRegex(filename);
 
 	// 1. Purge matching records across repositories
 	await Promise.all(
@@ -156,13 +170,13 @@ async function remove(argv, database)
 			if(rx.test(group.path))
 			{
 				terminalWrite(`Removing ${group.path} on ${group.repo}\n\r`);
-				await self.deleteRecord(self.DB_STORE_NAME, group.path, group.repo);
+				await commandFileSelf.deleteRecord(commandFileSelf.DB_STORE_NAME, group.path, group.repo);
 			}
 		})
 	);
 
 	// 2. Clear matching in-memory entries from FS.virtual
-	const virtualFS = self.FS?.virtual;
+	const virtualFS = commandFileSelf.FS?.virtual;
 	if(virtualFS)
 	{
 		for(const path of Object.keys(virtualFS))
@@ -178,7 +192,7 @@ async function remove(argv, database)
 	// 3. Notify remote storage backend
 	try
 	{
-		await window.api?.remove?.(filename);
+		await commandFileSelf.api?.remove?.(filename);
 	} catch(e)
 	{
 		// Silently swallow backend removal errors if unhandled
@@ -191,10 +205,10 @@ async function remove(argv, database)
 
 function openCommand(argv, database)
 {
-	let selected = self.toolsRepository || argv[1] || database;
+	let selected = commandFileSelf.toolsRepository || argv[1] || database;
 	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
+	const ownerName = parts.length == 2 ? parts[0] : commandFileSelf.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || commandFileSelf.RepositoryToolbar?.repository?.value;
 	let fileName = argv[0];
 	// TODO: I did this backwards, i should have had the terminal click execute the command, and put it in history
 	// navigateFile(fileName, null);
@@ -259,7 +273,7 @@ async function find(argv)
 		});
 	};
 
-	const { callbackId, promise } = self.searchService.search(
+	const { callbackId, promise } = commandFileSelf.searchService.search(
 		{
 			query: cleanQuery,
 			caseSensitive: caseSensitiveActive
@@ -275,7 +289,7 @@ async function find(argv)
 	{
 		timerId = setTimeout(() =>
 		{
-			self.searchService.cancelSearch(callbackId);
+			commandFileSelf.searchService.cancelSearch(callbackId);
 			resolve([]);
 		}, 8000);
 	});

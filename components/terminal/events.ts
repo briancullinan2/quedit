@@ -1,11 +1,14 @@
 import type { IDisposable, Terminal } from '@xterm/xterm';
 import { TerminalHistoryManager } from './history'; // Adjust path accordingly
-import type { StatusBarWidget } from '../bundle/status';
-import type { IPooledTerminal, TerminalLogEntry } from './widget-types';
+import type { IPooledTerminal } from './widget-types';
 import { FILE_NAME_REGEX, SearchTerminal } from './search';
-import type { terminalWrite } from '../bundle/logging';
 import { clearCompletionState, handleTabAutocomplete } from './commands-complete';
 import { renderState } from './render';
+import type { TerminalEvents } from './widget.d';
+
+
+const termEventSelf: TerminalEvents = self as unknown as any;
+
 
 // --- Types & Structural Interfaces ---
 export interface ExtractedFile
@@ -59,11 +62,10 @@ export class TerminalEventManager
 	// Event cleanup references
 	private listeners: IDisposable[] = [];
 
-	constructor(pooledCtx: IPooledTerminal, container: HTMLElement, statusBar: StatusBarWidget)
+	constructor(pooledCtx: IPooledTerminal, container: HTMLElement)
 	{
 		this.pooledCtx = pooledCtx;
 		this.container = container;
-		this.statusBar = statusBar;
 		this.historyManager = TerminalHistoryManager.getInstance();
 
 		this.init();
@@ -194,7 +196,7 @@ export class TerminalEventManager
 		historyIndexValue: number | null
 	): void
 	{
-		if(!this.statusBar) return;
+		if(!termEventSelf.statusBar) return;
 
 		const buffer = this.pooledCtx.term.buffer.active;
 		const startRow = buffer.viewportY;
@@ -203,7 +205,7 @@ export class TerminalEventManager
 		// Contextually locate active instance buffers safely outside the root loop
 		const currentCursorPos = this.historyManager.getHistory().length > 0 ? activeRow : 0;
 
-		this.statusBar.updateStatusItem('env-state',
+		termEventSelf.statusBar.updateStatusItem('env-state',
 			`Terminal: Mouse: ${col}x${row}, `
 			+ `Cursor: ${currentCursorPos}x${activeRow}, `
 			+ `Viewport: ${startRow}x${endRow}, `
@@ -294,9 +296,10 @@ export class TerminalEventManager
 			this.previousUpdate.y = currentY;
 		}
 
-		if(event && (window.isModifierPressed || document.pointerLockElement !== null) && typeof window.moveLookLocked === 'function')
+		if(event && (termEventSelf.isModifierPressed || document.pointerLockElement !== null)
+			&& typeof termEventSelf.moveLookLocked === 'function')
 		{
-			window.moveLookLocked(event.movementX, event.movementY);
+			termEventSelf.moveLookLocked(event.movementX, event.movementY);
 		}
 
 		if(this.isDragging && event)
@@ -373,7 +376,7 @@ export class TerminalEventManager
 			return false;
 		}
 
-		if(!event.ctrlKey && !event.metaKey && !window.isModifierPressed) return false;
+		if(!event.ctrlKey && !event.metaKey && !termEventSelf.isModifierPressed) return false;
 
 		// Command Prompt Input Locus Shifting mapped via context routing
 		if(data.row === data.activeRow)
@@ -402,9 +405,9 @@ export class TerminalEventManager
 
 		if(arg.type === "keydown" || arg.type === "keyup")
 		{
-			if(typeof window.updateModifierPressed === 'function')
+			if(typeof termEventSelf.updateModifierPressed === 'function')
 			{
-				window.updateModifierPressed(arg);
+				termEventSelf.updateModifierPressed(arg);
 			}
 		}
 
@@ -422,7 +425,7 @@ export class TerminalEventManager
 			}
 
 			// --- Ctrl+F: Focus Search Box ---
-			if(window.isModifierPressed && arg.code === "KeyF")
+			if(termEventSelf.isModifierPressed && arg.code === "KeyF")
 			{
 				arg.preventDefault?.();
 				const searchTerminal = document.getElementById('search-terminal') as HTMLInputElement | null;
@@ -439,7 +442,7 @@ export class TerminalEventManager
 			}
 
 			// --- Ctrl+C: Copy / Cancel ---
-			if(window.isModifierPressed && arg.code === "KeyC")
+			if(termEventSelf.isModifierPressed && arg.code === "KeyC")
 			{
 				const selection = this.pooledCtx.term.getSelection();
 				if(selection)
@@ -448,7 +451,7 @@ export class TerminalEventManager
 					return false;
 				}
 				this.pooledCtx.term.write('\n\rCTRL+C');
-				window.TERMINATE = true;
+				termEventSelf.TERMINATE = true;
 				if((window as any).building) this.pooledCtx.term.write('\n\rStopping build...');
 				this.historyManager.writePrompt(this.pooledCtx.term);
 				state.cursorPosition = 0;
@@ -484,7 +487,7 @@ export class TerminalEventManager
 			}
 
 			// --- Ctrl+V: Paste Filter Loop ---
-			if(window.isModifierPressed && arg.code === "KeyV")
+			if(termEventSelf.isModifierPressed && arg.code === "KeyV")
 			{
 				arg.preventDefault?.();
 
@@ -528,9 +531,9 @@ export class TerminalEventManager
 					(window as any).pressed[targetKeyCode] = false;
 				}, 120);
 
-				if(lowerChar === ' ' && typeof window.playerMover !== 'undefined')
+				if(lowerChar === ' ' && typeof termEventSelf.playerMover !== 'undefined')
 				{
-					window.playerMover.jump();
+					termEventSelf.playerMover.jump();
 				}
 				return;
 			}
@@ -547,9 +550,9 @@ export class TerminalEventManager
 				{
 					committedCommand = this.historyManager.commitLine(this.pooledCtx.term, state.currentLine);
 
-					if(typeof window.terminalWrite === 'function')
+					if(typeof termEventSelf.terminalWrite === 'function')
 					{
-						window.terminalWrite(committedCommand + '\n\r', 'user-input', true);
+						termEventSelf.terminalWrite(committedCommand + '\n\r', 'user-input', true);
 					}
 				} else
 				{
@@ -558,18 +561,18 @@ export class TerminalEventManager
 
 				try
 				{
-					window.lastNewLine = true;
+					//window.lastNewLine = true;
 					this.pooledCtx.term.write('\n\r');
 
-					if(typeof window.handleCommand === 'function')
+					if(typeof termEventSelf.handleCommand === 'function')
 					{
-						await window.handleCommand(committedCommand, this.pooledCtx.term);
+						await termEventSelf.handleCommand(committedCommand, this.pooledCtx.term);
 					}
 				} catch(e: any)
 				{
-					if(typeof window.terminalWrite === 'function')
+					if(typeof termEventSelf.terminalWrite === 'function')
 					{
-						window.terminalWrite(e.toString() + '\r\n' + (e.stack || e.stacktrace || '') + '\r\n');
+						termEventSelf.terminalWrite(e.toString() + '\r\n' + (e.stack || e.stacktrace || '') + '\r\n');
 					}
 				}
 

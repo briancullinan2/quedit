@@ -1,18 +1,19 @@
-import type { SettingConfig, Settings } from '../bundle/settings';
-import { DockPanel, Title, Widget } from '@lumino/widgets';
+import type { SettingConfig } from '../bundle/settings';
+import { Widget } from '@lumino/widgets';
 import { Terminal } from '@xterm/xterm';
 import { TerminalEventManager } from './events';
-import type { StatusBarWidget } from '../bundle/status';
 import { SearchTerminal } from './search';
 import { FrameRater } from '../bundle/frame-rater';
-import type { IPooledTerminal, TerminalLogEntry } from './widget-types';
-import type { TerminalFilter } from '../bundle/menu';
-import { captureRenderToTerminalCorner } from './render';
+import type { IPooledTerminal } from './widget-types';
+import type { TerminalWindow } from './widget.d';
+import type { LuminoLayoutWindow } from '../bundle/lumino.d';
+import type { GlobalToolbarsWindow, RepositorySettingsWindow } from '../bundle/menu.d';
 
 const LINES_TO_SCROLLBACK = 5000;
 
+const terminalSelf: TerminalWindow & LuminoLayoutWindow & GlobalToolbarsWindow & RepositorySettingsWindow = self as unknown as any;
 
-window.terminalFrameLimiter = new FrameRater(25, (e, t, frame) =>
+terminalSelf.terminalFrameLimiter = new FrameRater(25, (e, t, frame) =>
 {
 
 	for(const pooled of TerminalPoolManager.getInstance().pool.values())
@@ -29,7 +30,7 @@ window.terminalFrameLimiter = new FrameRater(25, (e, t, frame) =>
 		}
 	}
 
-	window.terminalFrameLimiter.requestFrameUpdate();
+	terminalSelf.terminalFrameLimiter?.requestFrameUpdate();
 });
 
 
@@ -58,10 +59,10 @@ class TerminalPoolManager
 		{
 			for(let src of this.SCRIPTS_TO_LOAD)
 			{
-				await window.loadScript(src);
+				await terminalSelf.loadScript?.(src);
 			}
 
-			window.terminalFrameLimiter.requestFrameUpdate();
+			terminalSelf.terminalFrameLimiter?.requestFrameUpdate();
 		})();
 		window.addEventListener('beforeunload', () =>
 		{
@@ -136,7 +137,7 @@ class TerminalPoolManager
 			resizeObserver,
 			activeOwner: widget,
 		};
-		pooledContext.events = new TerminalEventManager(pooledContext, container, window.statusBar);
+		pooledContext.events = new TerminalEventManager(pooledContext, container);
 
 		this.pool.set(terminalId, pooledContext);
 
@@ -188,14 +189,14 @@ class TerminalPoolManager
 
 		const cols = Math.max(120, Math.floor(container.clientWidth / dims.css.cell.width));
 		const rows = Math.max(1, Math.floor(container.clientHeight / dims.css.cell.height));
-		window.mostRecentTerminalCols = cols;
+		terminalSelf.mostRecentTerminalCols = cols;
 		term.resize(cols, rows);
 	}
 }
 
-if(!window.terminalWidgets)
+if(!terminalSelf.terminalWidgets)
 {
-	window.terminalWidgets = new Array<TerminalWidget>();
+	terminalSelf.terminalWidgets = new Array<TerminalWidget>();
 }
 
 /**
@@ -212,10 +213,10 @@ export class TerminalWidget extends Widget
 		super();
 		if(filterId === 'Show Console')
 		{
-			this.filterId = window.TERMINAL_REGISTRY[0].id;
+			this.filterId = terminalSelf.TERMINAL_REGISTRY?.[0].id ?? 'all';
 			this.id = `terminal-panel-${this.filterId}`;
 			this.title.className = this.id;
-			this.title.label = window.TERMINAL_REGISTRY[0].label;
+			this.title.label = terminalSelf.TERMINAL_REGISTRY?.[0].label ?? 'Terminal Logs';
 		} else
 		{
 			this.filterId = filterId;
@@ -227,12 +228,12 @@ export class TerminalWidget extends Widget
 		this.dataset.type = 'terminal';
 		this.addClass('terminal-filter-widget');
 
-		if(window.terminalWidgets)
+		if(terminalSelf.terminalWidgets)
 		{
-			window.terminalWidgets[window.terminalWidgets.length] = this;
+			terminalSelf.terminalWidgets[terminalSelf.terminalWidgets.length] = this;
 		}
 
-		window.SettingsManager.hydrateAll(LOCAL_SETTINGS.editor);
+		terminalSelf.settingsManager?.hydrateAll(LOCAL_SETTINGS.editor);
 	}
 
 
@@ -493,14 +494,14 @@ export class TerminalWidget extends Widget
 		this.syncThemeWithAce(term);
 
 		// Pull systemic historical logs from global/window structures
-		const sharedLogs = window.terminalLog;
+		const sharedLogs = terminalSelf.terminalLog;
 		if(!sharedLogs || !Array.isArray(sharedLogs)) return;
 
 		if(this.filterId === 'soft')
 		{
 			term.options.scrollback = 0;
 			//captureRenderToTerminalCorner(term);
-			window.terminalLoaded = true;
+			terminalSelf.terminalLoaded = true;
 			return;
 		}
 
@@ -526,7 +527,7 @@ export class TerminalWidget extends Widget
 			core._cursorBlinkContext.restartInterval();
 		}
 
-		window.terminalLoaded = true;
+		terminalSelf.terminalLoaded = true;
 	}
 
 
@@ -583,7 +584,7 @@ export class TerminalWidget extends Widget
 	{
 
 		// Mount all widgets into the unified layout terminal area stack
-		window.TERMINAL_REGISTRY.forEach((filter, index) =>
+		terminalSelf.TERMINAL_REGISTRY?.forEach((filter, index) =>
 		{
 			if(document.querySelector(`#terminal-panel-${filter.id}`))
 			{
@@ -594,20 +595,20 @@ export class TerminalWidget extends Widget
 
 			if(index === 0)
 			{
-				window.mainDock.addWidget(widget);
+				terminalSelf.mainDock?.addWidget(widget);
 			} else
 			{
-				const existingTerminals = Array.from(window.mainDock.widgets()); // incase the closed something
+				const existingTerminals = Array.from(terminalSelf.mainDock?.widgets() ?? []); // incase the closed something
 				const mainTerminal = existingTerminals.find(w => w.id === 'terminal-panel-all')
 					?? existingTerminals.find(w => w.dataset.type === 'terminal');
 				// Dock as tab items inside the same workspace panel grouping setup by default
-				window.mainDock.addWidget(widget, { mode: 'tab-before', ref: mainTerminal });
+				terminalSelf.mainDock?.addWidget(widget, { mode: 'tab-before', ref: mainTerminal });
 			}
 		});
 	}
 }
 
-window.TerminalWidget = TerminalWidget;
+terminalSelf.TerminalWidget = TerminalWidget;
 
 
 const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
@@ -620,11 +621,11 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 			set: (val) =>
 			{
 				const newValue = val.slice(0);
-				if(!window.commandHistory) window.commandHistory = [];
-				window.commandHistory.length = 0;
+				if(!terminalSelf.commandHistory) terminalSelf.commandHistory = [];
+				terminalSelf.commandHistory.length = 0;
 				if(Array.isArray(newValue))
 				{
-					newValue.forEach(cmd => { if(cmd.trim()) window.commandHistory.push(cmd); });
+					newValue.forEach(cmd => { if(cmd.trim()) terminalSelf.commandHistory?.push(cmd); });
 				}
 			}
 		},
@@ -640,17 +641,17 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 };
 
 
-if(!window.IMPORT_SETTINGS)
+if(!terminalSelf.IMPORT_SETTINGS)
 {
-	window.IMPORT_SETTINGS = {};
+	terminalSelf.IMPORT_SETTINGS = {};
 }
 
 for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
 {
-	window.IMPORT_SETTINGS[moduleKey] = {
-		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+	terminalSelf.IMPORT_SETTINGS[moduleKey] = {
+		...(terminalSelf.IMPORT_SETTINGS[moduleKey] || {}),
 		...configs
 	};
 }
 
-export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
+export const IMPORT_SETTINGS = terminalSelf.IMPORT_SETTINGS;
