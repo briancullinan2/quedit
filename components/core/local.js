@@ -1,4 +1,6 @@
-﻿/// <reference path="../bundle/global.d.ts" />
+﻿
+
+// @ts-check
 
 
 

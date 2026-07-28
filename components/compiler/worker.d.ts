@@ -1,3 +1,4 @@
+import { BuildWindow, MakeSystemGlobals, MakeWindow } from "./make";
 
 
 export interface MockAPI
@@ -105,7 +106,10 @@ export interface ApiWindow
 }
 
 
-export interface WorkerWindow extends ApiWindow
+export interface WorkerWindow extends
+	ApiWindow,
+	BuildWindow,
+	MakeSystemGlobals
 {
 	API?: typeof WorkerAPI;
 	importScripts(...urls: (string | URL)[]): void;

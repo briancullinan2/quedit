@@ -1,11 +1,13 @@
 import type { GitHubBranchLike } from "../bundle/github-settings";
 import type { RepositoryToolbar } from "../bundle/menu-repos";
 import type { Settings } from "../bundle/settings";
-import type { GlobalToolbars, SettingsWindow } from '../bundle/menu.d';
+import type { GlobalToolbars, GlobalToolbarsWindow, SettingsWindow } from '../bundle/menu.d';
 import type { GithubWindow } from '../bundle/github.d';
 import type { LocalWindow } from "../bundle/local.d";
 import type { FileListWidget, GameListWidget } from "./widget";
 import type { LuminoWindow } from '../bundle/lumino.d';
+import type { ApiWindow } from "../compiler/worker.d";
+import type { BuildWindow } from "../compiler/make.d";
 
 
 type PermissionState = 'granted' | 'denied' | 'prompt';
@@ -41,3 +43,8 @@ export interface FilelistWindow extends EditorUtilities, GlobalToolbars, Setting
 }
 
 declare var self: Window & FilelistWindow & typeof globalThis;
+
+export interface GithubWorkerWindow extends ApiWindow, GithubWindow, GlobalToolbarsWindow, BuildWindow
+{
+
+}

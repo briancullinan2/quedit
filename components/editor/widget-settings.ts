@@ -1,5 +1,10 @@
+import { RepositorySettingsWindow, GlobalToolbarsWindow } from "../bundle/menu.d";
 import type { SettingConfig } from "../bundle/settings";
 import { AceEditorPool, AceEditorWidget } from "./widget";
+
+
+const editorSelf: GlobalToolbarsWindow & RepositorySettingsWindow = self as unknown as any;
+
 
 export class SettingsWidget extends AceEditorWidget
 {
@@ -7,7 +12,7 @@ export class SettingsWidget extends AceEditorWidget
 	{
 		super(fileId, initialContent);
 		const self = this;
-		window.SettingsManager.settings().then(settings =>
+		editorSelf.settingsManager?.settings().then(settings =>
 		{
 			self._fileId = settings[0] ?? self._fileId;
 			self._initialContent = settings[2] ?? self._initialContent;
@@ -78,18 +83,18 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 };
 
 
-if(!window.IMPORT_SETTINGS)
+if(!editorSelf.IMPORT_SETTINGS)
 {
-	window.IMPORT_SETTINGS = {};
+	editorSelf.IMPORT_SETTINGS = {};
 }
 
 for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
 {
-	window.IMPORT_SETTINGS[moduleKey] = {
-		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+	editorSelf.IMPORT_SETTINGS[moduleKey] = {
+		...(editorSelf.IMPORT_SETTINGS[moduleKey] || {}),
 		...configs
 	};
 }
 
 // 4. Export the unified reference for standard module compilation tracking
-export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
+export const IMPORT_SETTINGS = editorSelf.IMPORT_SETTINGS;

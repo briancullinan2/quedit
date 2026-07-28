@@ -3,7 +3,7 @@
 // @ts-check
 
 /** @type {import('./widget.d').GithubWorkerWindow} */
-const githubSelf = /** @type {any} */ self;
+const githubSelf = /** @type {any} */ (self);
 
 if(!githubSelf.trees)
 {
@@ -19,7 +19,7 @@ if(!githubSelf.filesRepo)
 async function githubRequest(ownerName, repoName, url, authorize = true, buffer = false)
 {
 	if(typeof githubSelf.SettingsManager != 'undefined' && githubSelf.api)
-		githubSelf.api.github_token = githubSelf.SettingsManager.get('github', 'githubToken');
+		githubSelf.api.github_token = githubSelf.settingsManager?.get('github', 'githubToken');
 
 	const fullUrl = `https://api.github.com/repos/${ownerName}/${repoName}`
 		+ (url.startsWith('/') || url.trim().length == 0 ? '' : '/') + url + (url.includes('?') ? '&' : '?') + `t=${Date.now()}`;
@@ -30,8 +30,8 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
 			'X-GitHub-Api-Version': '2022-11-28'
 		};
 
-		let token = typeof api !== 'undefined'
-			? api.github_token
+		let token = typeof githubSelf.api !== 'undefined'
+			? githubSelf.api.github_token
 			: localStorage.getItem('github_token');
 
 		// Only add auth if explicitly requested AND we have a token
@@ -141,9 +141,9 @@ async function getBranches(repoOwner, repoName)
 async function githubGraphQL(query, variables = {})
 {
 
-	let token = typeof api !== 'undefined'
-		? api.github_token
-		: githubSelf.SettingsManager.get('github', 'githubToken');
+	let token = typeof githubSelf.api !== 'undefined'
+		? githubSelf.api.github_token
+		: githubSelf.settingsManager?.get('github', 'githubToken');
 
 
 	const response = await fetch('https://api.github.com/graphql', {
@@ -177,27 +177,30 @@ async function loadGitHubTree(repoOwner, repoName, branch)
 		const commitData = await githubRequest(repoOwner, repoName, `commits/${branch}`);
 		const buildDate = new Date(commitData.commit.author.date);
 
-		githubSelf.filesRepo[database] = treeData.tree.reduce((obj, a) =>
+		if(githubSelf.filesRepo)
 		{
-			// Attach the buildDate to every file as a fallback mtime
-			if(a.path.toLowerCase().includes('.map') || a.path.toLowerCase().includes('.bsp'))
+			githubSelf.filesRepo[database] = treeData.tree.reduce((obj, a) =>
 			{
-				if(!mapFiles[a.path])
+				// Attach the buildDate to every file as a fallback mtime
+				if(a.path.toLowerCase().includes('.map') || a.path.toLowerCase().includes('.bsp'))
 				{
-					mapFiles[a.path] = a.path.split('/').pop();
+					if(!mapFiles[a.path])
+					{
+						mapFiles[a.path] = a.path.split('/').pop();
+					}
 				}
-			}
-			a.timestamp = buildDate;
-			obj[a.path] = a;
-			return obj;
-		}, {});
+				a.timestamp = buildDate;
+				obj[a.path] = a;
+				return obj;
+			}, {});
+		}
 
-		let databases = await githubSelf.getDatabaseMetadata();
+		let databases = await githubSelf.getDatabaseMetadata?.() ?? [];
 		if(databases.filter(d => d.key == database).length == 0
-			|| (await githubSelf.needsInstall(database, githubSelf.DB_SCHEME)).item3)
+			|| (await githubSelf.needsInstall?.(database, githubSelf.DB_SCHEME ?? []))?.item3)
 		{
-			await githubSelf.deleteOldDatabase(database);
-			await githubSelf.setupDatabase(database, githubSelf.DB_SCHEME);
+			await githubSelf.deleteOldDatabase?.(database);
+			await githubSelf.setupDatabase?.(database, githubSelf.DB_SCHEME ?? []);
 		}
 
 		if(Object.keys(mapFiles).length > 1 && typeof githubSelf.updateSelectOptions !== 'undefined')
@@ -205,7 +208,7 @@ async function loadGitHubTree(repoOwner, repoName, branch)
 			githubSelf.updateSelectOptions('map', mapFiles);
 		}
 
-		return githubSelf.filesRepo[database];
+		return githubSelf.filesRepo?.[database];
 	} catch(error)
 	{
 		console.error('Failed to load GitHub tree:', error);
@@ -248,7 +251,7 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 	try
 	{
 		// Initialize the tracking database allocation if it hasn't happened yet
-		if(typeof githubSelf.filesRepo[database] === 'undefined')
+		if(githubSelf.filesRepo && typeof githubSelf.filesRepo?.[database] === 'undefined')
 		{
 			githubSelf.filesRepo[database] = {};
 		}
@@ -287,20 +290,23 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 				const isFile = entry.type === 'blob';
 
 				// Map out the flat file cache signature
-				githubSelf.filesRepo[database][entry.path] = {
-					path: entry.path,
-					sha: entry.oid,
-					type: isFile ? 'file' : 'dir',
-					mode: isFile ? githubSelf.FS_FILE : githubSelf.FS_DIR,
-					size: entry.object?.byteSize || 0,
-					timestamp: null, // Will be hydrated later if file
-					parent: entry.path.includes('/') ? entry.path.substring(0, entry.path.lastIndexOf('/')) : ''
-				};
+				if(githubSelf.filesRepo?.[database])
+				{
+					githubSelf.filesRepo[database][entry.path] = {
+						path: entry.path,
+						sha: entry.oid,
+						type: isFile ? 'file' : 'dir',
+						mode: isFile ? (githubSelf.FS_FILE ?? (0o100000 | 0o666)) : (githubSelf.FS_DIR ?? (0o040000 | 0o755)),
+						size: entry.object?.byteSize || 0,
+						timestamp: null, // Will be hydrated later if file
+						parent: entry.path.includes('/') ? entry.path.substring(0, entry.path.lastIndexOf('/')) : ''
+					};
+				}
 
 				if(isFile)
 				{
 					filesToHydrate.push(entry.path);
-				} else
+				} else if(githubSelf.filesRepo?.[database])
 				{
 					// Set directory runtime fallback timestamp
 					githubSelf.filesRepo[database][entry.path].timestamp = new Date();
@@ -317,13 +323,13 @@ async function loadGitHubTreeNew(repoOwner, repoName, branch, initialPath = '')
 		for(let i = 0; i < filesToHydrate.length; i += BATCH_SIZE)
 		{
 			const chunk = filesToHydrate.slice(i, i + BATCH_SIZE);
-			batchPromises.push(hydrateFileMTimes(repoOwner, repoName, branchName, chunk, githubSelf.filesRepo[database]));
+			batchPromises.push(hydrateFileMTimes(repoOwner, repoName, branchName, chunk, githubSelf.filesRepo?.[database]));
 		}
 
 		// Concurrently populate file modification records across all chunks
 		await Promise.all(batchPromises);
 
-		return githubSelf.filesRepo[database];
+		return githubSelf.filesRepo?.[database];
 
 	} catch(error)
 	{
@@ -494,7 +500,7 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 
 		// TODO: this once from front end or backend, but not both
-		if(!githubSelf.filesRepo[selected])
+		if(!githubSelf.filesRepo?.[selected])
 		{
 			let branch = await getDefaultBranch(repoOwner, repoName);
 			await loadGitHubTree(repoOwner, repoName, branch);
@@ -505,16 +511,17 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 			|| githubSelf.FS.virtual[filePath].contents.length === 0
 		)
 		{
-			githubSelf.FS.virtual[filePath] = await githubSelf.getRecord(storeName || githubSelf.DB_STORE_NAME, filePath, selected);
+			githubSelf.FS.virtual[filePath] = await githubSelf.getRecord?.(storeName || githubSelf.DB_STORE_NAME, filePath, selected);
 		}
-		if(githubSelf.filesRepo[selected]
+		if(githubSelf.filesRepo?.[selected]
 			&& githubSelf.filesRepo[selected][filePath] && githubSelf.FS.virtual[filePath])
 		{
 			if(githubSelf.FS.virtual[filePath].timestamp
 				&& githubSelf.filesRepo[selected][filePath].timestamp
 				&& githubSelf.FS.virtual[filePath].timestamp > githubSelf.filesRepo[selected][filePath].timestamp)
 			{
-				console.info(`Skipping changed (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+				console.info(`Skipping changed (${typeof githubSelf.api !== 'undefined'
+					&& githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 				return githubSelf.FS.virtual[filePath].contents;
 			}
 			//FS.virtual[filePath].timestamp = filesRepo[selected][filePath].timestamp
@@ -522,8 +529,9 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 		try
 		{
-			if(typeof api !== 'undefined' && api.memfs && githubSelf.FS.virtual[filePath] && !api.memfs.exists(filePath))
-				api.memfs.addFile(filePath, githubSelf.FS.virtual[filePath].contents);
+			if(typeof githubSelf.api !== 'undefined' && githubSelf.api.memfs
+				&& githubSelf.FS.virtual[filePath] && !githubSelf.api.memfs.exists(filePath))
+				githubSelf.api.memfs.addFile(filePath, githubSelf.FS.virtual[filePath].contents);
 		} catch(e)
 		{
 			if(e instanceof Error)
@@ -538,19 +546,19 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 		{
 			if(githubSelf.FS.virtual[filePath])
 			{
-				console.info(`Already compiled (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+				console.info(`Already compiled (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 				return githubSelf.FS.virtual[filePath].contents;
 			}
 			else
 			{
-				console.info(`Skipping output (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+				console.info(`Skipping output (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 				return null;
 			}
 		}
 
 
 		// TODO: only continue if the file is in github
-		const shouldDownload = githubSelf.filesRepo[selected] && githubSelf.filesRepo[selected][filePath];
+		const shouldDownload = githubSelf.filesRepo?.[selected] && githubSelf.filesRepo[selected][filePath];
 
 
 		// TODO: IF GITHUB, ALWAYS UPDATE
@@ -561,13 +569,13 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 				debugger;
 				console.error('No you fucking dont: ' + filePath);
 			}
-			console.info(`Already have cached (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+			console.info(`Already have cached (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 			return githubSelf.FS.virtual[filePath].contents;
 		}
 
 		if(!shouldDownload)
 		{
-			console.info(`Skipping unimportant (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+			console.info(`Skipping unimportant (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 			return null;
 		}
 
@@ -575,11 +583,11 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 		// TODO: use this to indicate whether we should update against file change time
 		if(!forceReload && githubSelf.FS.virtual[filePath])
 		{
-			console.info(`Skipping important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+			console.info(`Skipping important (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 			return githubSelf.FS.virtual[filePath].contents;
 		} else
 		{
-			console.info(`Downloading important (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+			console.info(`Downloading important (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 		}
 
 
@@ -607,8 +615,8 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 
 		githubSelf.FS.virtual[filePath] = {
-			timestamp: githubSelf.filesRepo[selected]?.[filePath].timestamp,
-			mode: githubSelf.FS_FILE,
+			timestamp: githubSelf.filesRepo?.[selected]?.[filePath].timestamp,
+			mode: githubSelf.FS_FILE ?? (0o100000 | 0o666),
 			contents: bytes,
 			path: filePath,
 			sha: jsonResponse.sha,
@@ -618,13 +626,13 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 		// async to filesystem
 		// does it REALLY matter if it makes it? wont it just redownload?
-		await githubSelf.putRecord(storeName || githubSelf.DB_STORE_NAME, githubSelf.FS.virtual[filePath], selected);
+		await githubSelf.putRecord?.(storeName || githubSelf.DB_STORE_NAME, githubSelf.FS.virtual[filePath], selected);
 
 		try
 		{
 
-			if(typeof api !== 'undefined' && api.memfs && !api.memfs.exists(filePath))
-				api.memfs.addFile(filePath, bytes);
+			if(typeof githubSelf.api !== 'undefined' && githubSelf.api.memfs && !githubSelf.api.memfs.exists(filePath))
+				githubSelf.api.memfs.addFile(filePath, bytes);
 
 		} catch(e)
 		{
@@ -634,7 +642,7 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 			}
 		}
 
-		console.info(`Downloaded fresh (${typeof api !== 'undefined' && api.worker ? 'frontend' : 'worker'}): ${filePath}`);
+		console.info(`Downloaded fresh (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 
 		return bytes;
 	} catch(e)
@@ -645,7 +653,7 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 			console.error(`${e.message}\n\r${e.stack}`);
 		}
 
-		if(githubSelf.filesRepo[selected]?.[filePath])
+		if(githubSelf.filesRepo?.[selected]?.[filePath])
 			return githubSelf.filesRepo[selected][filePath].contents;
 		throw e;
 	}
@@ -673,16 +681,16 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null)
 		console.info(`Requesting archive from ${owner}/${repo}...`);
 
 		const buffer = await githubRequest(owner, repo, `zipball/${branch}`, true, true);
-		const zipPath = path.join(githubSelf.config.MOUNT_DIR, 'branch.zip');
+		const zipPath = githubSelf.path.join(githubSelf.config.MOUNT_DIR, 'branch.zip');
 		githubSelf.FS.virtual[zipPath] = {
 			timestamp: new Date(),
-			mode: githubSelf.FS_FILE,
+			mode: githubSelf.FS_FILE ?? (0o100000 | 0o666),
 			contents: buffer,
 			path: zipPath,
 			sha: await getGitShaBrowser(buffer),
 			parent: zipPath.substring(0, zipPath.lastIndexOf('/'))
 		};
-		githubSelf.putRecord(githubSelf.DB_STORE_NAME, githubSelf.FS.virtual[zipPath], database);
+		githubSelf.putRecord?.(githubSelf.DB_STORE_NAME ?? '', githubSelf.FS.virtual[zipPath], database);
 		console.info(`Downloaded ${buffer.byteLength} bytes. Processing...`);
 
 		// Use JSZip to hydrate FS.virtual
@@ -699,18 +707,18 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null)
 			{
 				// Remove the top-level GitHub folder name (e.g., 'repo-master/')
 				const cleanedPath = relativePath.substring(relativePath.indexOf('/') + 1);
-				const fullPath = path.join(githubSelf.config.MOUNT_DIR, cleanedPath);
+				const fullPath = githubSelf.path.join(githubSelf.config.MOUNT_DIR, cleanedPath);
 
 				githubSelf.FS.virtual[fullPath] = {
 					timestamp: new Date(),
-					mode: githubSelf.FS_FILE,
+					mode: githubSelf.FS_FILE ?? (0o100000 | 0o666),
 					contents: data,
 					path: fullPath,
 					sha: await getGitShaBrowser(data),
 					parent: fullPath.substring(0, fullPath.lastIndexOf('/'))
 				};
 
-				githubSelf.putRecord(githubSelf.DB_STORE_NAME, githubSelf.FS.virtual[fullPath], database);
+				githubSelf.putRecord?.(githubSelf.DB_STORE_NAME ?? '', githubSelf.FS.virtual[fullPath], database);
 			}));
 		});
 

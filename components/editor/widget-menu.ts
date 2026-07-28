@@ -1,5 +1,9 @@
 
 import type { AceEditorWidget } from './widget';
+import type { EditorWindow } from './widget.d';
+
+
+const editorSelf: EditorWindow = self as unknown as any;
 
 export interface MenuConfig
 {
@@ -577,7 +581,7 @@ ACE_MODULES['help/shortcuts'] = {
 	{
 		if(widget._editor)
 		{
-			ace.config.loadModule(["ext", "ace/ext/keybinding_menu"], function (...args: any[])
+			editorSelf.ace?.config.loadModule(["ext", "ace/ext/keybinding_menu"], function (...args: any[])
 			{
 				//if(widget._editor && typeof widget._editor.showKeyboardShortcuts === 'function')
 				//{

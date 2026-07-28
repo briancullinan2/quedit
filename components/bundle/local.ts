@@ -78,6 +78,8 @@ export async function deleteOldDatabase(dbName: string | null = null): Promise<b
 	});
 }
 
+localSelf.deleteOldDatabase = deleteOldDatabase;
+
 export async function getDatabaseMetadata(): Promise<DatabaseMetadata[]>
 {
 	// Returns a list of { name, version } objects
@@ -127,6 +129,8 @@ export async function needsInstall(dbName: string | null, expectedStores: Schema
 		};
 	});
 }
+
+localSelf.needsInstall = needsInstall;
 
 export async function setupDatabase(dbName: string, stores: SchemaStoreConfig[]): Promise<SetupDatabaseResult>
 {
@@ -197,6 +201,8 @@ export async function setupDatabase(dbName: string, stores: SchemaStoreConfig[])
 		request.onblocked = () => rj("Database upgrade blocked. Close other tabs.");
 	});
 }
+
+localSelf.setupDatabase = setupDatabase;
 
 // --- Internal Engine Logic Operations ---
 

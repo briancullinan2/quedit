@@ -67,6 +67,9 @@ export interface DebounceToken
 
 export interface LocalWindow extends GlobalToolbars
 {
+	setupDatabase?: (dbName: string, stores: SchemaStoreConfig[]) => Promise<SetupDatabaseResult>;
+	deleteOldDatabase?: (dbName: string | null = null) => Promise<boolean>;
+	needsInstall?: (dbName: string | null, expectedStores: SchemaStoreConfig[]) => Promise<InstallCheckResult>;
 	getDatabaseMetadata?: () => Promise<DatabaseMetadata[]>;
 	queryIndex?: (
 		storeName: string,

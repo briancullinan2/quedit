@@ -2,7 +2,7 @@
 // @ts-check
 
 /** @type {import('./worker.d').WorkerWindow} */
-const workerSelf = /** @type {any} */ self;
+const workerSelf = /** @type {any} */ (self);
 
 
 /*
@@ -65,6 +65,12 @@ const apiOptions = {
 		});
 		return response.arrayBuffer();
 	},
+
+	/**
+	 *
+	 * @param {string | Uint8Array | ArrayBuffer} filename
+	 * @returns
+	 */
 	async compileStreaming(filename)
 	{
 		try
@@ -117,7 +123,11 @@ const apiOptions = {
 		}
 	},
 
-
+	/**
+	 *
+	 * @param {string} s
+	 * @param {string | string[]} source
+	 */
 	hostWrite(s, source)
 	{
 		port.postMessage({ id: 'write', data: { text: s, source: source } });

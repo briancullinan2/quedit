@@ -5,7 +5,6 @@
 const makeQVMSelf = /** @type {any} */ (self);
 
 
-
 /**
  * Quake3e Build Configuration Script - QVM Version
  */
@@ -319,7 +318,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 				if(makeQVMSelf.FS?.virtual[virtualSrc])
 					content = makeQVMSelf.FS?.virtual[virtualSrc].contents;
 				else if(!src.includes(makeQVMSelf.config.BUILD_DIR + '/'))
-					content = await makeQVMSelf.cacheFile?.(ownerName, repoName, src);
+					content = await makeQVMSelf.cacheFile?.(makeQVMSelf.DB_STORE_NAME ?? '', ownerName, repoName, src);
 				else
 				{
 					if(makeQVMSelf.FS)
@@ -582,7 +581,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 			if(makeQVMSelf.FS?.virtual[virtualSyscalls])
 				content = makeQVMSelf.FS.virtual[virtualSyscalls].contents;
 
-			content = await makeQVMSelf.cacheFile?.(ownerName, repoName, syscalls);
+			content = await makeQVMSelf.cacheFile?.(makeQVMSelf.DB_STORE_NAME ?? '', ownerName, repoName, syscalls);
 			if(makeQVMSelf.FS && !makeQVMSelf.FS.virtual[virtualSyscalls])
 			{
 				makeQVMSelf.FS.virtual[virtualSyscalls] = await makeQVMSelf.getRecord?.(makeQVMSelf.DB_STORE_NAME ?? '', syscalls, database);
@@ -595,7 +594,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 			if(makeQVMSelf.FS?.virtual[virtualAsm])
 				content2 = makeQVMSelf.FS.virtual[virtualAsm].contents;
 
-			content2 = await makeQVMSelf.cacheFile?.(ownerName, repoName, q3asm);
+			content2 = await makeQVMSelf.cacheFile?.(makeQVMSelf.DB_STORE_NAME ?? '', ownerName, repoName, q3asm);
 			if(makeQVMSelf.FS && !makeQVMSelf.FS.virtual[virtualAsm])
 			{
 				makeQVMSelf.FS.virtual[virtualAsm] = await makeQVMSelf.getRecord?.(makeQVMSelf.DB_STORE_NAME ?? '', q3asm, database);

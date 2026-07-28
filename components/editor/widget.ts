@@ -1,16 +1,21 @@
-import { DockPanel, Widget } from '@lumino/widgets';
+import { Widget } from '@lumino/widgets';
 import { Message } from '@lumino/messaging';
 import { Ace } from 'ace-builds';
-import type { SettingConfig, Settings } from '../bundle/settings';
-import type { HistoryToolbar, NavPoint } from '../bundle/menu-history';
-import type { LayoutAdjuster } from '../bundle/lumino-widget';
-import type { TerminalLogEntry } from '../terminal/widget-types';
 import { AceEventManager, bindBlockTrackerToSession, onBlockTrackerCursorChange } from "./events";
 import { EXTENSION_TO_MODE, getModeByFilename } from './widget-modes';
 import { ACE_MODULES, VSCODE_ACE_MENUS } from './widget-menu';
 import type { MenuModules } from '../bundle/menu-manager';
 import { LOCAL_SETTINGS } from '../filelist/widget-local';
-import type { ControlConfig, OptGroup } from '../bundle/menu-settings';
+import type { OptGroup } from '../bundle/menu-settings';
+import type { AceSession, EditorWindow } from './widget.d';
+import type { GithubWindow } from '../bundle/github.d';
+import type { GlobalToolbarsWindow, LuminoMenuWindow } from '../bundle/menu.d';
+import type { LuminoLayoutWindow } from '../bundle/lumino.d';
+import type { TerminalWindow } from '../terminal/widget.d';
+
+
+const editorSelf: EditorWindow & GithubWindow & GlobalToolbarsWindow & LuminoLayoutWindow & LuminoMenuWindow & TerminalWindow = self as unknown as any;
+
 
 interface ISessionCache
 {
@@ -23,24 +28,6 @@ declare module "ace-builds" {
 		getSession(): AceSession;
 	}
 }
-
-export interface AceSession extends Ace.EditSession
-{
-	workspaceFileId?: string;
-	$worker?: Worker;
-}
-
-export type AceEditor = typeof Ace & {
-	edit(el: string | HTMLElement, options?: any): any;
-	createEditSession(text: string | Ace.Document, mode?: any): AceSession;
-	Range: new (startRow: number, startColumn: number, endRow: number, endColumn: number) => Ace.Range;
-	config: {
-		setModuleUrl: (name: string, subst: string) => string;
-		loadModule: (module: [string, string], callback: () => void) => void;
-		set: (key: string, value: string) => void;
-	};
-	require: (modules: string[], callback: (moduleExports: any) => void) => void;
-};
 
 
 /**
@@ -58,12 +45,15 @@ export class AceEditorPool
 			return this.sessionCache[fileId];
 		}
 
-		const session = ace.createEditSession(content);
+		const session = editorSelf.ace?.createEditSession(content);
+		if(!session) return;
+
 		session.workspaceFileId = fileId;
 
-		if(typeof window.getGitShaBrowser === 'function')
+
+		if(typeof editorSelf.getGitShaBrowser === 'function')
 		{
-			window.getGitShaBrowser(content).then((sha: string) =>
+			editorSelf.getGitShaBrowser(content).then((sha: string) =>
 			{
 				this.sessionCache[sha] = session;
 			});
@@ -87,7 +77,7 @@ export class AceEditorPool
 		editor.resize();
 		editor.renderer.updateFull();
 		tryLoadingTerminalEditorBridge(editor);
-		ace.require(["ace/mode/antlr_worker"], (antlrWorkerModule) =>
+		editorSelf.ace?.require(["ace/mode/antlr_worker"], (antlrWorkerModule) =>
 		{
 			if(antlrWorkerModule && antlrWorkerModule.switchActiveSession)
 			{
@@ -109,17 +99,17 @@ export class AceEditorPool
 			container.style.width = '100%';
 			container.style.height = '100%';
 			//ace.config.set("extPath", "/ace");
-			ace.config.setModuleUrl(
+			editorSelf.ace?.config.setModuleUrl(
 				"ace/ext/keybinding_menu",
 				"/ace/ext-keybinding_menu.js"
 			);
-			ace.config.set('basePath', '/ace');
-			ace.config.set('modePath', '/ace');
-			ace.config.set('workerPath', '/ace');
-			ace.config.set('themePath', '/ace');
+			editorSelf.ace?.config.set('basePath', '/ace');
+			editorSelf.ace?.config.set('modePath', '/ace');
+			editorSelf.ace?.config.set('workerPath', '/ace');
+			editorSelf.ace?.config.set('themePath', '/ace');
 
-			const editor: Ace.Editor = ace.edit(container);
-			const theme = window.SettingsManager.get('editor', 'savedTheme');
+			const editor: Ace.Editor = editorSelf.ace?.edit(container);
+			const theme = editorSelf.settingsManager?.get('editor', 'savedTheme');
 			if(theme)
 			{
 				editor.setTheme(theme);
@@ -193,7 +183,7 @@ export class AceEditorPool
 			delta: delta
 		};
 
-		window.historyToolbar.appendHistoryItem(actionPayload, 'editor');
+		editorSelf.historyToolbar?.appendHistoryItem(actionPayload, 'editor');
 	}
 
 	public static releaseEditor(editor: any): void
@@ -212,7 +202,7 @@ export class AceEditorPool
 
 	public static getNextTempName(): string
 	{
-		return 'temp' + nextTemp() + '.c';
+		return 'temp-' + editorSelf.nextTemp?.() + '.c';
 	}
 
 	public static get keybinding(): HTMLSelectElement | null
@@ -260,12 +250,12 @@ export class AceEditorWidget extends Widget implements MenuModules
 		this.title.label = fileId || this._fileId;
 		this.title.closable = true;
 
-		window.SettingsManager.hydrateAll(LOCAL_SETTINGS.editor);
+		editorSelf.settingsManager?.hydrateAll(LOCAL_SETTINGS.editor);
 
 		this.node.addEventListener('focusin', () =>
 		{
 			this._eventManager.attachListeners();
-			window.injectMenus(AceEditorWidget.name, VSCODE_ACE_MENUS);
+			editorSelf.injectMenus?.(AceEditorWidget.name, VSCODE_ACE_MENUS);
 		});
 		this.node.addEventListener('focusout', (e) =>
 		{
@@ -287,7 +277,7 @@ export class AceEditorWidget extends Widget implements MenuModules
 
 	protected onBeforeHide(msg: Message): void
 	{
-		window.removeMenus(AceEditorWidget.name);
+		editorSelf.removeMenus?.(AceEditorWidget.name);
 		super.onBeforeHide(msg);
 	}
 
@@ -307,14 +297,14 @@ export class AceEditorWidget extends Widget implements MenuModules
 		// Fetch original or structural cache descriptors targeting tracking layers
 		const session = AceEditorPool.getOrCreateAceSession(this._fileId, this._initialContent, this._editor);
 		tryLoadingTerminalEditorBridge(this._editor);
-		window.registerAllCommands(VSCODE_ACE_MENUS);
-		window.injectMenus(AceEditorWidget.name, VSCODE_ACE_MENUS);
+		editorSelf.registerAllCommands?.(VSCODE_ACE_MENUS);
+		editorSelf.injectMenus?.(AceEditorWidget.name, VSCODE_ACE_MENUS);
 
-		ace.config.loadModule(['ext', "ace/ext/themelist"], (...args: any[]) =>
+		editorSelf.ace?.config.loadModule(['ext', "ace/ext/themelist"], (...args: any[]) =>
 		{
 			if(args[0] && args[0].themes instanceof Array)
 			{
-				const themeSetting = window.SETTINGS_CONTROLS.find(s => s.name === 'theme');
+				const themeSetting = editorSelf.SETTINGS_CONTROLS?.find(s => s.name === 'theme');
 				if(themeSetting)
 				{
 
@@ -343,7 +333,7 @@ export class AceEditorWidget extends Widget implements MenuModules
 
 
 
-		ace.config.loadModule(['ext', "ace/ext/modelist"], (...args: any[]) =>
+		editorSelf.ace?.config.loadModule(['ext', "ace/ext/modelist"], (...args: any[]) =>
 		{
 			const getExtensionsForMode = (targetMode) =>
 				Object.entries(EXTENSION_TO_MODE)
@@ -375,7 +365,7 @@ export class AceEditorWidget extends Widget implements MenuModules
 
 
 
-		ace.config.loadModule(['ext', "ace/ext/options"], (...args: any[]) =>
+		editorSelf.ace?.config.loadModule(['ext', "ace/ext/options"], (...args: any[]) =>
 		{
 			if(args[0] && args[0].OptionPanel)
 			{
@@ -444,7 +434,7 @@ export class AceEditorWidget extends Widget implements MenuModules
 		{
 			this._editor.focus();
 		}
-		window.injectMenus(AceEditorWidget.name, VSCODE_ACE_MENUS);
+		editorSelf.injectMenus?.(AceEditorWidget.name, VSCODE_ACE_MENUS);
 	}
 
 	// Call this function inside your file tree selection/click event listener
@@ -455,14 +445,14 @@ export class AceEditorWidget extends Widget implements MenuModules
 			fileContent = new TextDecoder().decode(fileContent);
 		}
 		// 1. Optional Check: Look for an existing open tab matching this file ID to prevent duplicates
-		const tabs = Array.from(window.mainDock.widgets());
+		const tabs = Array.from(editorSelf.mainDock?.widgets() ?? []);
 		const existingTab = tabs.find(t => t.constructor.name === AceEditorWidget.name
 			&& (t as AceEditorWidget).fileId === fileId);
 
 		if(existingTab)
 		{
 			// If it's already open, just activate it and bring it to focus
-			window.mainDock.activateWidget(existingTab);
+			editorSelf.mainDock?.activateWidget(existingTab);
 			return;
 		}
 
@@ -476,7 +466,7 @@ export class AceEditorWidget extends Widget implements MenuModules
 			existingDefault.title.label = fileName.split('/').pop() ?? fileName;
 			existingDefault._initialContent = fileContent;
 			const session = AceEditorPool.getOrCreateAceSession(fileId, fileContent, existingDefault._editor);
-			window.mainDock.activateWidget(existingDefault);
+			editorSelf.mainDock?.activateWidget(existingDefault);
 			return;
 		}
 
@@ -488,14 +478,17 @@ export class AceEditorWidget extends Widget implements MenuModules
 		newTab.title.label = fileName.split('/').pop() ?? fileName;
 		newTab.title.closable = true;
 
-		window.LayoutAdjuster.addOptimalWidgetLayout(window.mainDock, newTab, {
-			type: 'editor',
-			projectId: newTab.constructor.name
-		});
+		if(editorSelf.mainDock)
+		{
+			editorSelf.LayoutAdjuster?.addOptimalWidgetLayout(editorSelf.mainDock, newTab, {
+				type: 'editor',
+				projectId: newTab.constructor.name
+			});
+		}
 	}
 }
 
-window.AceEditorWidget = AceEditorWidget;
+editorSelf.AceEditorWidget = AceEditorWidget;
 
 
 // Define declarations for Ace and missing global window bindings
@@ -508,16 +501,16 @@ function tryLoadingTerminalEditorBridge(aceEditor: Ace.Editor | null | undefined
 		return;
 	}
 
-	if(window.compilerDiagnostics /* already setup */)
+	if(editorSelf.compilerDiagnostics /* already setup */)
 	{
-		window.compilerDiagnostics.getBridge().refreshActiveEditorView(aceEditor?.getSession());
+		editorSelf.compilerDiagnostics.getBridge().refreshActiveEditorView(aceEditor?.getSession());
 		return;
 	}
 
 	// Force Ace to locate, download, and compile the extension module asynchronously
-	ace.config.loadModule(["ext", "compiler_diagnostics"], function ()
+	editorSelf.ace?.config.loadModule(["ext", "compiler_diagnostics"], function ()
 	{
-		ace.require(["ace/ext/compiler_diagnostics"], function (moduleExports: any)
+		editorSelf.ace?.require(["ace/ext/compiler_diagnostics"], function (moduleExports: any)
 		{
 			if(!moduleExports)
 			{
@@ -525,17 +518,17 @@ function tryLoadingTerminalEditorBridge(aceEditor: Ace.Editor | null | undefined
 				return;
 			}
 
-			window.compilerDiagnostics = moduleExports;
-			window.diagnosticsBridge = moduleExports.getBridge(aceEditor?.getSession());
+			editorSelf.compilerDiagnostics = moduleExports;
+			editorSelf.diagnosticsBridge = moduleExports.getBridge(aceEditor?.getSession());
 
-			if(window.diagnosticsBridge)
+			if(editorSelf.diagnosticsBridge)
 			{
 				// TODO: the bridge takes errors from parsing and displays little squigglies and gutter exclaimnations
 				//   this on the other hand, takes error from actually compiling with clang and adds them to the bridge
-				window.diagnosticsBridge.collectedLogLines = window.terminalLog?.map(log =>
+				editorSelf.diagnosticsBridge.collectedLogLines = editorSelf.terminalLog?.map(log =>
 					typeof log === 'object' && log !== null ? (log.text || '') : log
 				);
-				window.diagnosticsBridge.triggerBridgeRefresh(aceEditor.getSession());
+				editorSelf.diagnosticsBridge.triggerBridgeRefresh(aceEditor.getSession());
 			}
 
 			console.log("[Ace Lazy] Compiler diagnostics overlay successfully linked.");

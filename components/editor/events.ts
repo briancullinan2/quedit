@@ -1,7 +1,12 @@
 import type { StatusBarWidget } from '../bundle/status';
-import type { AceEditor, AceEditorWidget, AceSession } from './widget'; // Adjust path if needed
+import type { AceEditorWidget } from './widget';
+import type { AceEditor, AceSession, EditorWindow } from './widget.d';
 import type { NavPoint } from '../bundle/menu-history';
 import { Ace } from 'ace-builds';
+import type { LuminoLayoutWindow } from '../bundle/lumino.d';
+import type { GlobalToolbarsWindow } from '../bundle/menu.d';
+
+const editorSelf: EditorWindow & LuminoLayoutWindow & GlobalToolbarsWindow = self as unknown as any;
 
 export interface AceTrackingPayload
 {
@@ -89,7 +94,7 @@ export class AceEventManager
 				this._currentBlockMarkerId = null;
 			}
 
-			(ace as AceEditor).require(["ace/mode/antlr_worker"], (antlrWorkerModule: any) =>
+			editorSelf.ace?.require(["ace/mode/antlr_worker"], (antlrWorkerModule: any) =>
 			{
 				if(antlrWorkerModule && antlrWorkerModule.switchActiveSession)
 				{
@@ -176,7 +181,10 @@ export class AceEventManager
 			file: (this._widget as any).filePath ?? null,
 		};
 
-		updateAceStatus(updatePayload, this._widget._editor, window.statusBar);
+		if(editorSelf.statusBar)
+		{
+			updateAceStatus(updatePayload, this._widget._editor, editorSelf.statusBar);
+		}
 
 		this._previousAceUpdate = updatePayload;
 		return updatePayload;
@@ -207,11 +215,11 @@ export class AceEventManager
 	{
 		const hasClass = document.body.classList.contains('dragging');
 
-		if(!window.isModifierPressed && hasClass)
+		if(!editorSelf.isModifierPressed && hasClass)
 		{
 			document.body.classList.remove('dragging');
 		}
-		if(window.isModifierPressed && !hasClass)
+		if(editorSelf.isModifierPressed && !hasClass)
 		{
 			document.body.classList.add('dragging');
 		}
@@ -351,7 +359,7 @@ let navTimer: ReturnType<typeof setTimeout> | undefined;
 // TODO: fix block tracker
 export function onBlockTrackerCursorChange(session: AceSession, aceEditor: Ace.Editor): void
 {
-	if(typeof window.historyToolbar !== "undefined" && window.historyToolbar.isNavigating)
+	if(typeof editorSelf.historyToolbar !== "undefined" && editorSelf.historyToolbar.isNavigating)
 	{
 		return;
 	}
@@ -366,20 +374,20 @@ export function onBlockTrackerCursorChange(session: AceSession, aceEditor: Ace.E
 		if(!session) return;
 
 		const pos = aceEditor.getCursorPosition();
-		const currentFile = typeof window.currentOpenFileId !== "undefined" ? window.currentOpenFileId : null;
+		const currentFile = typeof editorSelf.currentOpenFileId !== "undefined" ? editorSelf.currentOpenFileId : null;
 
 		const humanRow = pos.row + 1;
 		const humanCol = pos.column + 1;
 
-		const lastPoint: NavPoint | null = typeof window.historyToolbar !== "undefined"
-			? window.historyToolbar.stack[window.historyToolbar.index]
+		const lastPoint: NavPoint | null = typeof editorSelf.historyToolbar !== "undefined"
+			? editorSelf.historyToolbar.stack[editorSelf.historyToolbar.index]
 			: null;
 
 		if(!lastPoint || lastPoint.fileId !== currentFile || Math.abs(lastPoint.row - humanRow) > 5)
 		{
-			if(typeof window.historyToolbar !== "undefined")
+			if(typeof editorSelf.historyToolbar !== "undefined")
 			{
-				window.historyToolbar.push(currentFile, humanRow, humanCol);
+				editorSelf.historyToolbar.push(currentFile, humanRow, humanCol);
 			}
 		}
 
@@ -451,8 +459,8 @@ export function updateEditorLineIds(session: AceSession, aceEditor: Ace.Editor)
 
 	let currentLine = aceEditor.getCursorPosition();
 	document.body.classList.add('line-' + (currentLine.row + 1));
-	document.body.classList.add('hash-' + (window.previousHashLineNumber || 0));
-	if(currentLine.row + 1 === window.previousHashLineNumber)
+	document.body.classList.add('hash-' + (editorSelf.previousHashLineNumber || 0));
+	if(currentLine.row + 1 === editorSelf.previousHashLineNumber)
 		document.body.classList.add('line-match');
 	if(session.getAnnotations)
 	{
