@@ -1,10 +1,13 @@
 import type { NestedTreeNode } from '../bundle/github-tools';
-import type { DatabaseMetadata, FileRecord } from '../bundle/local';
 import { FileListWidget } from './widget';
 import Tree from './tree.js';
-import type { GitHubFileEntry, GitHubFileTree } from '../bundle/github-types';
-import { Message } from '@lumino/messaging';
+import type { LuminoLayoutWindow } from '../bundle/lumino.d';
+import type { GlobalToolbarsWindow } from '../bundle/menu.d';
+import type { FilelistWindow } from './widget.d';
+import { BuildWindow } from '../compiler/make.js';
 
+
+const filelistSelf: LuminoLayoutWindow & GlobalToolbarsWindow & FilelistWindow & BuildWindow = self as unknown as any;
 
 
 export class DatabaseListWidget extends FileListWidget
@@ -29,7 +32,7 @@ export class DatabaseListWidget extends FileListWidget
 		if(this.treeLoading) return;
 		if(folderId.endsWith('[Recursive]')) return;
 
-		const activeTree = window.trees[this.selector];
+		const activeTree = filelistSelf.trees?.[this.selector];
 		if(!activeTree || !activeTree.nodesById[folderId]) return;
 
 		const parts = folderId.split('/');
@@ -47,32 +50,34 @@ export class DatabaseListWidget extends FileListWidget
 
 			if(database === 'Virtual Memory')
 			{
-				resultSet = window.FS?.virtual ?? {};
-				resultKeys = Object.keys(window.FS?.virtual ?? {});
+				resultSet = filelistSelf.FS?.virtual ?? {};
+				resultKeys = Object.keys(filelistSelf.FS?.virtual ?? {});
 			} else
 			{
-				if(!window.filesRepo[database])
+				if(filelistSelf.filesRepo)
 				{
-					window.filesRepo[database] = {};
+					if(!filelistSelf.filesRepo?.[database])
+					{
+						filelistSelf.filesRepo[database] = {};
+					}
+					// Query both trailing-slash combinations safely
+					const result = await filelistSelf.queryIndex?.(filelistSelf.DB_STORE_NAME ?? '', 'parent', baseDir, null, null, database);
+					for(const r of result ?? [])
+					{
+						filelistSelf.filesRepo[database][r.path] = filelistSelf.FS.virtual[r.path] = r;
+					}
+					const result2 = await filelistSelf.queryIndex?.(filelistSelf.DB_STORE_NAME ?? '', 'parent', `${baseDir}/`, null, null, database);
+					for(const r of result2 ?? [])
+					{
+						filelistSelf.filesRepo[database][r.path] = filelistSelf.FS.virtual[r.path] = r;
+					}
+					const result3 = await filelistSelf.queryIndex?.(filelistSelf.DB_STORE_NAME ?? '', 'parent', `/${baseDir}`, null, null, database);
+					for(const r of result3 ?? [])
+					{
+						filelistSelf.filesRepo[database][r.path] = filelistSelf.FS.virtual[r.path] = r;
+					}
 				}
-				// Query both trailing-slash combinations safely
-				const result = await window.queryIndex(window.DB_STORE_NAME, 'parent', baseDir, null, null, database);
-				for(const r of result)
-				{
-					window.filesRepo[database][r.path] = window.FS.virtual[r.path] = r;
-				}
-				const result2 = await window.queryIndex(window.DB_STORE_NAME, 'parent', `${baseDir}/`, null, null, database);
-				for(const r of result2)
-				{
-					window.filesRepo[database][r.path] = window.FS.virtual[r.path] = r;
-				}
-				const result3 = await window.queryIndex(window.DB_STORE_NAME, 'parent', `/${baseDir}`, null, null, database);
-				for(const r of result3)
-				{
-					window.filesRepo[database][r.path] = window.FS.virtual[r.path] = r;
-				}
-
-				resultSet = Object.values(window.filesRepo[database]).reduce((acc: any, r: any) =>
+				resultSet = Object.values(filelistSelf.filesRepo?.[database] ?? {}).reduce((acc: any, r: any) =>
 				{
 					acc[r.path] = r;
 					return acc;
@@ -96,7 +101,7 @@ export class DatabaseListWidget extends FileListWidget
 			const newChildren = childrenKeys.map(path =>
 			{
 				const node = resultSet[path];
-				const isDir = (node.mode >> 12) & window.ST_DIR; // FS_DIR mock or standard directory mode mask
+				const isDir = (node.mode >> 12) & (filelistSelf.ST_DIR ?? 4); // FS_DIR mock or standard directory mode mask
 				const name = path.split('/').pop() || path;
 
 				const newNode: NestedTreeNode = {
@@ -135,7 +140,7 @@ export class DatabaseListWidget extends FileListWidget
 				});
 			}
 
-			window.sortNodes(newChildren);
+			filelistSelf.sortNodes?.(newChildren);
 			this.loadedDatabases[folderId].children = activeTree.nodesById[folderId].children = newChildren;
 
 		} catch(err: any)
@@ -171,10 +176,10 @@ export class DatabaseListWidget extends FileListWidget
 	 */
 	private async showDatabases(folderId?: string): Promise<void>
 	{
-		const databases = await window.getDatabaseMetadata();
+		const databases = await filelistSelf.getDatabaseMetadata?.();
 		const topDatabases: NestedTreeNode[] = [];
 
-		for(const d of databases)
+		for(const d of databases ?? [])
 		{
 			if(!this.loadedDatabases[d.key])
 			{
@@ -215,10 +220,10 @@ export class DatabaseListWidget extends FileListWidget
 		}
 		topDatabases.push(this.loadedDatabases['Virtual Memory']);
 
-		const activeTree = window.trees[this.selector];
-		if(!activeTree)
+		const activeTree = filelistSelf.trees?.[this.selector];
+		if(!activeTree && filelistSelf.trees)
 		{
-			window.trees[this.selector] = new Tree(this.selector, {
+			filelistSelf.trees[this.selector] = new Tree(this.selector, {
 				data: topDatabases,
 				autoOpen: false,
 				closeDepth: null

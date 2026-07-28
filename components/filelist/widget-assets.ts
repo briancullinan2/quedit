@@ -66,7 +66,7 @@ export class AssetListWidget extends FileListWidget
 				if(menuSelf.filesRepo?.[database] && menuSelf.FS)
 				{
 					menuSelf.filesRepo[database][r.path] = menuSelf.FS.virtual[r.path] = Object.assign(r, {
-						mode: r.mode ?? menuSelf.FS_FILE,
+						mode: r.mode ?? menuSelf.FS_FILE ?? (0o100000 | 0o666),
 					});
 				}
 			}
@@ -192,7 +192,7 @@ export class AssetListWidget extends FileListWidget
 				const isDir = n.mode ? (n.mode >> 12) & (menuSelf.ST_DIR ?? 4) : false;
 				n.children = isDir ? [{ text: 'Loading...', id: `${n.path}/loading`, path: `${n.path}/loading`, status: 0, state: { open: false, expanded: false } } as NestedTreeNode] : null;
 				menuSelf.filesRepo[database][n.path] = menuSelf.FS.virtual[n.path] = this.loadedDatabases[n.id] = Object.assign(n, {
-					mode: n.mode ?? menuSelf.FS_FILE,
+					mode: n.mode ?? menuSelf.FS_FILE ?? (0o100000 | 0o666),
 				});;
 			}
 			this.loadedDatabases[database] = {

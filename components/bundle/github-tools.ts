@@ -48,7 +48,7 @@ export async function getGitShaBrowser(content: string | Uint8Array | ArrayBuffe
 githubSelf.getGitShaBrowser = getGitShaBrowser;
 
 
-export async function cacheFile(storeName?: string, repoOwner?: string, repoName?: string, filePath?: string, sha?: string | null, forceReload = false): Promise<any>
+export async function cacheFile(storeName: string, repoOwner: string, repoName: string, filePath: string, sha?: string | null, forceReload = false): Promise<any>
 {
 	return await debounceRecords(storeName ?? DB_STORE_NAME, 'path', filePath, sha, forceReload, `${repoOwner}/${repoName}`, 'cache');
 }

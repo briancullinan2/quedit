@@ -531,9 +531,10 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 	const ownerName = parts?.length == 2 ? parts[0] : makeSelf.RepositoryToolbar?.owner?.value;
 	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || makeSelf.RepositoryToolbar?.repository?.value;
 
+	if(!ownerName || !repoName) return;
+
 	if(makeSelf.needsHeaders && makeSelf.q3eCommonHeaders)
 	{
-
 		await downloadHeaders(makeSelf.q3eCommonHeaders, 10, database);
 	}
 
@@ -546,7 +547,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 	const virtualStr = makeSelf.path.join(database, stringify);
 	const obj = CONFIGURATION + '/stringify.o';
 	const virtualObj = makeSelf.path.join(database, obj);
-	const content = await makeSelf.cacheFile?.(ownerName, repoName, stringify);
+	const content = await makeSelf.cacheFile?.(makeSelf.DB_STORE_NAME ?? '', ownerName, repoName, stringify);
 
 	if(makeSelf.FS && !makeSelf.FS.virtual[virtualObj] && !forceChanged)
 		makeSelf.FS.virtual[virtualObj] = await makeSelf.getRecord?.(makeSelf.DB_STORE_NAME ?? '', obj, database);
@@ -763,6 +764,8 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 	const ownerName = parts.length == 2 ? parts[0] : makeSelf.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || makeSelf.RepositoryToolbar?.repository?.value;
 
+	if(!ownerName || !repoName) return;
+
 	const virtualFile = makeSelf.path.join(database, file);
 	const virtualObj = makeSelf.path.join(database, obj);
 	const buildDir = file.substring(0, file.lastIndexOf('/'));
@@ -852,7 +855,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 			|| makeSelf.FS.virtual[virtualFile].contents.length === 0) && makeDirs /* only load github if its a controlled file */)
 		{
 			console.log(`Loading IDB/Github (${makeSelf.api?.worker ? 'frontend' : 'worker'}): ${file}`);
-			await makeSelf.cacheFile?.(makeSelf.DB_STORE_NAME, ownerName, repoName, file, void 0, makeDirs);
+			await makeSelf.cacheFile?.(makeSelf.DB_STORE_NAME ?? '', ownerName, repoName, file, void 0, makeDirs);
 		}
 
 		if(makeSelf.FS?.virtual[virtualFile] && (makeSelf.FS.virtual[virtualFile].mode >> 12) === makeSelf.ST_FILE)
@@ -1328,7 +1331,7 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 					{
 						await makeSelf.loadGitHubTree?.('briancullinan2', 'quedit', 'main');
 					}
-					await makeSelf.cacheFile?.('briancullinan2', 'quedit', localName);
+					await makeSelf.cacheFile?.(makeSelf.DB_STORE_NAME ?? '', 'briancullinan2', 'quedit', localName);
 					if(!makeSelf.FS?.virtual[virtualSyms])
 					{
 						debugger;
@@ -1368,7 +1371,7 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 					{
 						// cacheFile handles the storage logic
 						let sha = makeSelf.filesRepo[database]?.[header].sha;
-						await makeSelf.cacheFile?.(makeSelf.DB_STORE_NAME, ownerName, repoName, header, sha);
+						await makeSelf.cacheFile?.(makeSelf.DB_STORE_NAME ?? '', ownerName, repoName, header, sha);
 					}
 
 				}

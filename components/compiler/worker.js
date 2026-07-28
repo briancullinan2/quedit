@@ -21,21 +21,21 @@ const workerSelf = /** @type {any} */ self;
  * limitations under the License.
  */
 
-self.importScripts('../core/preambles.js');
-self.importScripts('../compiler/logging.js');
-self.importScripts('../compiler/shared.js');
-self.importScripts('../core/local.js');
-self.importScripts('../engine/sys_fs.js');
-self.importScripts('../engine/sys_std.js');
-self.importScripts('../engine/sys_web.js');
-self.importScripts('../filelist/github.js');
-self.importScripts('../compiler/make.js');
-self.importScripts('../compiler/make-tools.js');
-self.importScripts('../compiler/make-qvm.js');
+workerSelf.importScripts('../core/preambles.js');
+workerSelf.importScripts('../compiler/logging.js');
+workerSelf.importScripts('../compiler/shared.js');
+workerSelf.importScripts('../core/local.js');
+workerSelf.importScripts('../engine/sys_fs.js');
+workerSelf.importScripts('../engine/sys_std.js');
+workerSelf.importScripts('../engine/sys_web.js');
+workerSelf.importScripts('../filelist/github.js');
+workerSelf.importScripts('../compiler/make.js');
+workerSelf.importScripts('../compiler/make-tools.js');
+workerSelf.importScripts('../compiler/make-qvm.js');
 
-if(typeof self.TERMINATE === 'undefined')
+if(typeof workerSelf.TERMINATE === 'undefined')
 {
-	self.TERMINATE = false;
+	workerSelf.TERMINATE = false;
 }
 
 const Module = {
@@ -414,31 +414,31 @@ const onAnyMessage = async event =>
 								let bytes = api.memfs.getFileContents(filePath);
 								if(bytes.length > 0)
 								{
-									self.FS.virtual[filePath] = {
+									workerSelf.FS.virtual[filePath] = {
 										timestamp: new Date(),
-										mode: self.FS_FILE,
+										mode: workerSelf.FS_FILE,
 										contents: bytes.slice(),
 										path: filePath,
-										sha: await self.getGitShaBrowser(bytes),
+										sha: await workerSelf.getGitShaBrowser(bytes),
 										parent: filePath.substring(0, filePath.lastIndexOf('/'))
 									};
 
 								}
 							}
-							else if(api.memfs && self.FS.virtual[filePath] && self.FS.virtual[filePath]?.contents)
+							else if(api.memfs && workerSelf.FS.virtual[filePath] && workerSelf.FS.virtual[filePath]?.contents)
 							{
-								api.memfs.addFile(filePath, self.FS.virtual[filePath]?.contents);
+								api.memfs.addFile(filePath, workerSelf.FS.virtual[filePath]?.contents);
 							}
 
 
-							const record = self.FS.virtual[filePath];
+							const record = workerSelf.FS.virtual[filePath];
 							if(record && record.contents?.length)
 							{
 								console.log('Run succeeded: ' + filePath + '\n\r');
 
 								if(api?.database)
 								{
-									await self.putRecord(self.DB_STORE_NAME, record, api?.database);
+									await workerSelf.putRecord(workerSelf.DB_STORE_NAME, record, api?.database);
 								}
 							}
 						} catch(e)
@@ -487,11 +487,11 @@ const onAnyMessage = async event =>
 		case 'remove':
 			api.extract(event.data.data);
 			const rx = window.globToRegex(filename);
-			for(let path of Object.keys(self.FS.virtual))
+			for(let path of Object.keys(workerSelf.FS.virtual))
 			{
 				if(rx.test(path))
 				{
-					delete self.FS.virtual[filename];
+					delete workerSelf.FS.virtual[filename];
 					terminalWrite(`Removing ${filename} from worker memory\n\r`);
 				}
 			}
@@ -521,5 +521,5 @@ const onAnyMessage = async event =>
 	port.postMessage({ id: 'done', responseId, data: api?.pid || true });
 };
 
-self.addEventListener('message', onAnyMessage);
+workerSelf.addEventListener('message', onAnyMessage);
 

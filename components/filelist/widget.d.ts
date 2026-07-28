@@ -8,6 +8,15 @@ import type { FileListWidget, GameListWidget } from "./widget";
 import type { LuminoWindow } from '../bundle/lumino.d';
 
 
+type PermissionState = 'granted' | 'denied' | 'prompt';
+
+
+interface FileSystemHandle extends FileSystemDirectoryHandle
+{
+	queryPermission(descriptor?: { mode?: 'read' | 'readwrite'; }): Promise<PermissionState>;
+	requestPermission(descriptor?: { mode?: 'read' | 'readwrite'; }): Promise<PermissionState>;
+}
+
 export interface DirectoryPickerOptions
 {
 	/** An optional string identifier to remember the last opened directory */
@@ -26,6 +35,7 @@ export interface FilelistWindow extends EditorUtilities, GlobalToolbars, Setting
 	showDirectoryPicker?: (
 		options?: DirectoryPickerOptions
 	) => Promise<FileSystemDirectoryHandle>;
+	getRegistryIdFromWidget(widget: string | HTMLElement | FileListWidget): string | null | undefined | void;
 	FileListWidget?: typeof FileListWidget;
 	GameListWidget?: typeof GameListWidget;
 }

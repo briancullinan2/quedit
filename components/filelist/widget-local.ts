@@ -2,12 +2,12 @@ import type { SettingConfig } from "../bundle/settings";
 import type { FileListWidget } from "./widget";
 import { AssetInspector, hasSequentialBinaryRegex, hexDump } from '../rosetta/binary.mjs';
 import type { GitHubFileEntry } from "../bundle/github-types";
-import type { RepositoryToolbar } from "../bundle/menu-repos";
-import type { AceEditorWidget } from "../editor/widget";
-import type { PaintWidget } from "../paint/widget";
-import type { FileManager } from "../bundle/lumino-files";
-import { DockPanel } from "@lumino/widgets";
+import type { LuminoLayoutWindow } from "../bundle/lumino.d";
+import type { GlobalToolbarsWindow, LuminoMenuWindow } from "../bundle/menu.d";
+import type { FilelistWindow, FileSystemHandle } from "./widget.d";
 
+
+const filelistSelf: LuminoLayoutWindow & GlobalToolbarsWindow & FilelistWindow & LuminoMenuWindow = self as unknown as any;
 
 interface FileSystemHandlePermissionDescriptor
 {
@@ -20,12 +20,12 @@ export const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 		defaultLocation: {
 			key: 'default_location',
 			default: '',
-			elementId: window.RepositoryToolbar?.locations?.id,
+			elementId: filelistSelf.RepositoryToolbar?.locations?.id,
 			description: 'The fallback or preferred primary repository string formatted as "owner/repo" used when loading the workspace workspace initial state.',
 			get: (storage: string | null, defaultLocation: string): string =>
 			{
-				return window.RepositoryToolbar.locations?.value
-					? window.RepositoryToolbar.locations?.value
+				return filelistSelf.RepositoryToolbar?.locations?.value
+					? filelistSelf.RepositoryToolbar.locations.value
 					: (storage || defaultLocation);
 			},
 		},
@@ -69,7 +69,7 @@ export const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 
 
 export async function verifyPermission(
-	fileHandle: FileSystemDirectoryHandle,
+	fileHandle: FileSystemHandle,
 	readWrite: boolean = true
 ): Promise<boolean>
 {
@@ -119,14 +119,14 @@ export function getRegistryIdFromWidget(widget: string | HTMLElement | FileListW
 	let selectedRespository: string | undefined;
 	if(widget instanceof HTMLElement)
 	{
-		widget = (Array.from(window.mainDock.widgets()).find(w =>
+		widget = (Array.from(filelistSelf.mainDock?.widgets() ?? []).find(w =>
 			w.node === widget || (widget as HTMLElement).closest('.lm-Widget') === w.node
 		) as FileListWidget);
 	}
 
-	if(widget instanceof window.FileListWidget)
+	if(widget instanceof filelistSelf.FileListWidget!)
 	{
-		if(widget instanceof window.GameListWidget)
+		if(widget instanceof filelistSelf.GameListWidget!)
 		{
 			return 'gamelist';
 		}
@@ -149,13 +149,13 @@ export function getRegistryIdFromWidget(widget: string | HTMLElement | FileListW
 	}
 	else if(typeof widget === 'string')
 	{
-		const entry = Object.entries(window.IMPORT_SETTINGS?.github ?? {})
+		const entry = Object.entries(filelistSelf.IMPORT_SETTINGS?.github ?? {})
 			.find(([propName, config]) =>
 			{
 				if(propName === widget)
 				{
 					return true;
-				} else if(window.SettingsManager.get('github', propName) === widget)
+				} else if(filelistSelf.settingsManager?.get('github', propName) === widget)
 				{
 					return true;
 				}
@@ -171,17 +171,17 @@ export function getRegistryIdFromWidget(widget: string | HTMLElement | FileListW
 		return;
 	}
 
-	if(selectedRespository === window.SettingsManager.get('github', 'engineRepository'))
+	if(selectedRespository === filelistSelf.settingsManager?.get('github', 'engineRepository'))
 	{
 		return 'filelist';
 	}
 
-	if(selectedRespository === window.SettingsManager.get('github', 'gameRepository'))
+	if(selectedRespository === filelistSelf.settingsManager?.get('github', 'gameRepository'))
 	{
 		return 'gamelist';
 	}
 
-	if(selectedRespository === window.SettingsManager.get('github', 'assetRepository'))
+	if(selectedRespository === filelistSelf.settingsManager?.get('github', 'assetRepository'))
 	{
 		return 'assetlist';
 	}
@@ -189,7 +189,7 @@ export function getRegistryIdFromWidget(widget: string | HTMLElement | FileListW
 }
 
 
-window.getRegistryIdFromWidget = getRegistryIdFromWidget;
+filelistSelf.getRegistryIdFromWidget = getRegistryIdFromWidget;
 
 
 export async function treeHandler(selector: string, e: Event): Promise<void>
@@ -211,20 +211,23 @@ export async function treeHandler(selector: string, e: Event): Promise<void>
 
 	if(node.classList.contains('treejs-placeholder'))
 	{
-		const tree = window.trees[selector];
+		const tree = filelistSelf.trees?.[selector];
 		if(!tree || !tree.nodesById[fileId]) return;
 
 		const filePath = tree.nodesById[fileId].path;
 
-		const [realFilePath, selectedGithub, dbFile, lineNumber] = await window.FileManager.findFileTestPath(filePath);
+		const [realFilePath, selectedGithub, dbFile, lineNumber] = await filelistSelf.FileManager?.findFileTestPath(filePath) ?? [];
 		console.warn('openFile: ' + filePath + ' length: ' + dbFile?.contents?.length + ' from: ' + selectedGithub);
 		let contents = dbFile?.contents;
 		if(!contents && selectedGithub && (!dbFile?.contents || dbFile.contents?.length === 0))
 		{
 			const parts = selectedGithub.split('/');
-			const newRepo = parts.length === 2 ? parts[1] : parts[0] || window.RepositoryToolbar.repository?.value;
-			const newOwner = parts.length === 2 ? parts[0] : window.RepositoryToolbar.owner?.value;
-			contents = await window.cacheFile(newOwner, newRepo, filePath) as ArrayBuffer;
+			const newRepo = parts.length === 2 ? parts[1] : parts[0] || filelistSelf.RepositoryToolbar?.repository?.value;
+			const newOwner = parts.length === 2 ? parts[0] : filelistSelf.RepositoryToolbar?.owner?.value;
+			if(newOwner && newRepo)
+			{
+				contents = await filelistSelf.cacheFile?.(filelistSelf.DB_STORE_NAME ?? '', newOwner, newRepo, filePath) as ArrayBuffer;
+			}
 		}
 
 		const byteView = new Uint8Array(contents).subarray(0, 8192);
@@ -233,12 +236,12 @@ export async function treeHandler(selector: string, e: Event): Promise<void>
 		const isImageFile = AssetInspector.isActuallyImage(byteView, filePath);
 		if(isImageFile)
 		{
-			if(typeof window.PaintWidget === 'undefined')
+			if(typeof filelistSelf.PaintWidget === 'undefined')
 			{
-				await window.triggerPanelRoute('paint', window.mainDock);
+				await filelistSelf.triggerPanelRoute?.('paint', filelistSelf.mainDock);
 			}
 
-			window.PaintWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
+			filelistSelf.PaintWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
 		} else
 		{
 			if(hasSequentialBinaryRegex.test(sampleText))
@@ -249,12 +252,12 @@ export async function treeHandler(selector: string, e: Event): Promise<void>
 				contents = new TextDecoder().decode(contents);
 			}
 
-			if(typeof window.AceEditorWidget === 'undefined')
+			if(typeof filelistSelf.AceEditorWidget === 'undefined')
 			{
-				await window.triggerPanelRoute('editor', window.mainDock);
+				await filelistSelf.triggerPanelRoute?.('editor', filelistSelf.mainDock);
 			}
 
-			window.AceEditorWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
+			filelistSelf.AceEditorWidget?.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
 		}
 	}
 }
@@ -267,16 +270,16 @@ export function configureFileHandle(newLocation: FileSystemDirectoryHandle, conf
 		return;
 	}
 
-	const handleValue = `${config?.key}/${newLocation.name}-${nextTemp()}`;
+	const handleValue = `${config?.key}/${newLocation.name}-${filelistSelf.nextTemp?.()}`;
 
-	if(newLocation.name.trim().length > 0 && !window.RepositoryToolbar.locations?.querySelector(`option[value="${handleValue}"]`))
+	if(newLocation.name.trim().length > 0 && !filelistSelf.RepositoryToolbar?.locations?.querySelector(`option[value="${handleValue}"]`))
 	{
 		const option = document.createElement('option');
 
 		option.value = handleValue;
 		option.textContent = newLocation.name;
 
-		window.RepositoryToolbar.locations?.appendChild(option);
+		filelistSelf.RepositoryToolbar?.locations?.appendChild(option);
 	}
 
 	return handleValue;
@@ -311,7 +314,7 @@ export async function listDirectory(
 				name: entry.name,
 				path: entry.name,
 				type: 'file',
-				mode: window.FS_FILE,
+				mode: filelistSelf.FS_FILE ?? (0o100000 | 0o666),
 				size: size,
 				timestamp: timestamp,
 				contents: fileHandle,
@@ -325,7 +328,7 @@ export async function listDirectory(
 				name: entry.name,
 				path: entry.name,
 				type: 'dir',
-				mode: window.FS_DIR,
+				mode: filelistSelf.FS_DIR ?? (0o040000 | 0o755),
 				contents: subDirHandle,
 				parent: relPath || null
 			};

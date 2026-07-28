@@ -454,7 +454,10 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
 
 				hasChanged = true;
 
-				await makeToolsSelf.cacheFile?.(ownerName, repoName, dagMd, (FILELIST[dagMd] || {}).sha);
+				if(ownerName && repoName)
+				{
+					await makeToolsSelf.cacheFile?.(makeToolsSelf.DB_STORE_NAME ?? '', ownerName, repoName, dagMd, (FILELIST[dagMd] || {}).sha);
+				}
 				// Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
 
 
@@ -918,6 +921,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 	const ownerName = parts?.length == 2 ? parts[0] : makeToolsSelf.RepositoryToolbar?.owner?.value;
 	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || makeToolsSelf.RepositoryToolbar?.repository?.value;
 
+	if(!ownerName && !repoName) return;
 
 	let CONFIGURATION = makeToolsSelf.api?.configuration === 'release'
 		? makeToolsSelf.dirs.ENGINE_RELEASE
@@ -955,7 +959,9 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 
 			const src = file;
 			const obj = makeToolsSelf.path.join(CONFIGURATION, file.replace('.c', '.o'));
-			const content = await makeToolsSelf.cacheFile?.(ownerName, repoName, src);
+			const content = ownerName && repoName
+				? await makeToolsSelf.cacheFile?.(makeToolsSelf.DB_STORE_NAME ?? '', ownerName, repoName, src)
+				: undefined;
 			const virtualSrc = makeToolsSelf.path.join(database, src);
 			const virtualObj = makeToolsSelf.path.join(database, obj);
 

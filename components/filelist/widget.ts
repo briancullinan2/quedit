@@ -1,32 +1,20 @@
 // components/FileListWidget.ts
 import { Widget } from '@lumino/widgets';
-import type { FlatFileNode, NestedTreeNode } from '../bundle/github-tools';
-import type { GitHubBranch, GitHubFileTree } from '../bundle/github-types';
-import type { RepositoryToolbar } from '../bundle/menu-repos';
-import type { Settings } from '../bundle/settings';
-import type { FileManager } from '../bundle/lumino-files';
+import type { NestedTreeNode } from '../bundle/github-tools';
 import { Message, MessageLoop } from '@lumino/messaging';
 import Tree from './tree.js';
-import type { GitHubBranchLike } from '../bundle/github-settings';
-import type { FileRecord } from '../bundle/local.d';
 import
 {
 	configureFileHandle, getRegistryIdFromWidget, getSettingFromRegistryId,
 	listDirectory, LOCAL_SETTINGS, treeHandler, verifyPermission
 } from './widget-local';
-import type { FilelistWindow } from './widget.d';
+import type { FilelistWindow, FileSystemHandle } from './widget.d';
+import type { FileSystemWindow, LuminoLayoutWindow } from '../bundle/lumino.d';
+import type { GlobalToolbarsWindow } from '../bundle/menu.d';
+import type { BuildWindow } from '../compiler/make.d';
 
 
-const filelistSelf: FilelistWindow = self as unknown as any;
-
-
-type PermissionState = 'granted' | 'denied' | 'prompt';
-
-interface FileSystemHandle
-{
-	queryPermission(descriptor?: { mode?: 'read' | 'readwrite'; }): Promise<PermissionState>;
-	requestPermission(descriptor?: { mode?: 'read' | 'readwrite'; }): Promise<PermissionState>;
-}
+const filelistSelf: FilelistWindow & LuminoLayoutWindow & GlobalToolbarsWindow & FileSystemWindow & BuildWindow = self as unknown as any;
 
 
 if(!filelistSelf.fileListWidgets)
@@ -54,7 +42,7 @@ export class FileListWidget extends Widget
 	constructor(titleStr: string)
 	{
 		super();
-		this.id = `filelist-panel-${nextTemp()}`;
+		this.id = `filelist-panel-${filelistSelf.nextTemp?.()}`;
 		this.title.label = titleStr;
 		if(filelistSelf.fileListWidgets)
 		{
@@ -91,7 +79,7 @@ export class FileListWidget extends Widget
 
 	public get defaultRepository()
 	{
-		return filelistSelf.SettingsManager.get('github', 'engineRepository');
+		return filelistSelf.settingsManager?.get('github', 'engineRepository');
 	}
 
 
@@ -132,24 +120,24 @@ export class FileListWidget extends Widget
 			`;
 		}
 		const parts = this.defaultRepository.split('/');
-		const ownerName = parts.length === 2 ? parts[0] : filelistSelf.RepositoryToolbar.owner?.value;
-		const repoName = parts.length === 2 ? parts[1] : parts[0] || filelistSelf.RepositoryToolbar.repository?.value;
+		const ownerName = parts.length === 2 ? parts[0] : filelistSelf.RepositoryToolbar?.owner?.value;
+		const repoName = parts.length === 2 ? parts[1] : parts[0] || filelistSelf.RepositoryToolbar?.repository?.value;
 
 		const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement);
-		const owners = filelistSelf.SettingsManager.get('github', 'ownersList');
+		const owners = filelistSelf.settingsManager?.get('github', 'ownersList');
 		filelistSelf.addOwnerIfNotExists?.(ownerName);
-		filelistSelf.updateSelectOptions(owner, owners, ownerName);
+		filelistSelf.updateSelectOptions?.(owner, owners, ownerName);
 
 		const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement);
-		const repositories = filelistSelf.SettingsManager.get('github', 'repositoriesList');
+		const repositories = filelistSelf.settingsManager?.get('github', 'repositoriesList');
 		filelistSelf.addRepoIfNotExists?.(repoName);
-		filelistSelf.updateSelectOptions(repo, repositories, repoName);
+		filelistSelf.updateSelectOptions?.(repo, repositories, repoName);
 
 		const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement);
 		const branches = await filelistSelf.getBranches?.(ownerName, repoName);
 		if(branches)
 		{
-			filelistSelf.updateSelectOptions(branch, branches, branches[0].name);
+			filelistSelf.updateSelectOptions?.(branch, branches, branches[0].name);
 		}
 	}
 
@@ -162,9 +150,9 @@ export class FileListWidget extends Widget
 				this.bindDOMEvents();
 				const widgetHandle = getRegistryIdFromWidget(this);
 				const settingKey: string = getSettingFromRegistryId(widgetHandle);
-				const database = filelistSelf.SettingsManager.get('github', 'environmentRepository');
-				const handle: FileSystemDirectoryHandle = (await filelistSelf.getRecord?.(filelistSelf.DB_STORE_NAME, '/' + settingKey, database))?.contents;
-				if(handle && await verifyPermission(handle))
+				const database = filelistSelf.settingsManager?.get('github', 'environmentRepository');
+				const handle: FileSystemDirectoryHandle = (await filelistSelf.getRecord?.(filelistSelf.DB_STORE_NAME ?? '', '/' + settingKey, database))?.contents;
+				if(handle && await verifyPermission(handle as FileSystemHandle))
 				{
 					this.handle = handle;
 					const settingsConfig = Object.values(LOCAL_SETTINGS.filelist).find(s => s.key === settingKey);
@@ -187,7 +175,7 @@ export class FileListWidget extends Widget
 			const owner = (this.node.querySelector('.filelist-owner') as HTMLSelectElement).value;
 			const repo = (this.node.querySelector('.filelist-repository') as HTMLSelectElement).value;
 			const branch = (this.node.querySelector('.filelist-branch') as HTMLSelectElement).value;
-			filelistSelf.open('https://github.com/' + owner + '/' + repo + '/tree/' + branch, '_blank');
+			window.open('https://github.com/' + owner + '/' + repo + '/tree/' + branch, '_blank');
 		});
 		this.node.querySelector('[href="#new-folder"]')?.addEventListener('click', async (event) =>
 		{
@@ -207,11 +195,11 @@ export class FileListWidget extends Widget
 			}
 			const widgetHandle = getRegistryIdFromWidget(this);
 			const settingKey: string = getSettingFromRegistryId(widgetHandle);
-			const database = filelistSelf.SettingsManager.get('github', 'environmentRepository');
-			await filelistSelf.ensureDatabaseContainer(database);
-			await filelistSelf.putRecord?.(filelistSelf.DB_STORE_NAME, {
+			const database = filelistSelf.settingsManager?.get('github', 'environmentRepository');
+			await filelistSelf.ensureDatabaseContainer?.(database);
+			await filelistSelf.putRecord?.(filelistSelf.DB_STORE_NAME ?? '', {
 				timestamp: new Date(),
-				mode: filelistSelf.FS_FILE,
+				mode: filelistSelf.FS_FILE ?? (0o100000 | 0o666),
 				contents: handle,
 				path: '/' + settingKey,
 				parent: '/'
@@ -234,7 +222,7 @@ export class FileListWidget extends Widget
 		}
 
 		const repoSelect = this.node.querySelector('.filelist-repository') as HTMLSelectElement;
-		const pathRepo = filelistSelf.location.pathname?.trim().replace(/\/$|^\//, '');
+		const pathRepo = window.location.pathname?.trim().replace(/\/$|^\//, '');
 
 		if(pathRepo && pathRepo.length > 0)
 		{
@@ -269,7 +257,7 @@ export class FileListWidget extends Widget
 
 		const database = this.handleKey;
 
-		if(!this.loadedDatabases[database])
+		if(!this.loadedDatabases[database] && filelistSelf.filesRepo)
 		{
 			// Scan root level items from local directory handle
 			const localEntries = await listDirectory(this.handle, '');
@@ -280,15 +268,15 @@ export class FileListWidget extends Widget
 				filelistSelf.filesRepo[database] = {};
 			}
 
-			const nodes = filelistSelf.convertFlatToNested(Object.values(filelistSelf.filesRepo[this.selector] ?? {}));
+			const nodes = filelistSelf.convertFlatToNested?.(Object.values(filelistSelf.filesRepo[this.selector] ?? {})) ?? [];
 			for(let n of nodes)
 			{
 				n.id = database + '/' + n.id;
-				const isDir = n.mode ? (n.mode >> 12) & filelistSelf.ST_DIR : false;
+				const isDir = n.mode ? (n.mode >> 12) & (filelistSelf.ST_DIR ?? 4) : false;
 				n.children = isDir ? [{ text: 'Loading...', id: `${n.path}/loading`, path: `${n.path}/loading`, status: 0, state: { open: false, expanded: false } } as NestedTreeNode] : null;
 
 				filelistSelf.filesRepo[database][n.path] = filelistSelf.FS.virtual[n.path] = this.loadedDatabases[n.id] = Object.assign(n, {
-					mode: n.mode ?? filelistSelf.FS_FILE,
+					mode: n.mode ?? filelistSelf.FS_FILE ?? (0o100000 | 0o666),
 				});
 			}
 
@@ -302,8 +290,8 @@ export class FileListWidget extends Widget
 			};
 		}
 
-		const activeTree = filelistSelf.trees[this.selector];
-		if(!activeTree)
+		const activeTree = filelistSelf.trees?.[this.selector];
+		if(!activeTree && filelistSelf.trees)
 		{
 			filelistSelf.trees[this.selector] = filelistSelf.trees[database] = new Tree(this.selector, {
 				data: this.loadedDatabases[database].children,
@@ -326,7 +314,7 @@ export class FileListWidget extends Widget
 		if(this.treeLoading) return;
 		if(folderId.endsWith('[Recursive]') || folderId.endsWith('/loading')) return;
 
-		const activeTree = filelistSelf.trees[this.selector];
+		const activeTree = filelistSelf.trees?.[this.selector];
 		if(!activeTree || !activeTree.nodesById[folderId]) return;
 
 		if(!this.handle || !this.handleKey) return;
@@ -347,25 +335,28 @@ export class FileListWidget extends Widget
 		{
 			this.treeLoading = true;
 
-			if(!filelistSelf.filesRepo[database])
+			if(filelistSelf.filesRepo && !filelistSelf.filesRepo?.[database])
 			{
 				filelistSelf.filesRepo[database] = {};
 			}
 
 			// Resolve sub-directory handle and list its children
-			const targetDirHandle = await filelistSelf.resolveDirectoryHandle(this.handle, relativeSegments);
-			const result = await listDirectory(targetDirHandle, baseDir);
+			const targetDirHandle = await filelistSelf.resolveDirectoryHandle?.(this.handle, relativeSegments);
+			const result = targetDirHandle ? await listDirectory(targetDirHandle, baseDir) : {};
 
-			const nodes = filelistSelf.convertFlatToNested(Object.values(result ?? {}));
-			for(const r of nodes)
+			const nodes = filelistSelf.convertFlatToNested?.(Object.values(result ?? {}));
+			for(const r of nodes ?? [])
 			{
 				r.path = basePath + '/' + r.path;
-				filelistSelf.filesRepo[database][r.path] = filelistSelf.FS.virtual[r.path] = Object.assign(r, {
-					mode: r.mode ?? filelistSelf.FS_FILE,
-				});
+				if(filelistSelf.filesRepo?.[database])
+				{
+					filelistSelf.filesRepo[database][r.path] = filelistSelf.FS.virtual[r.path] = Object.assign(r, {
+						mode: r.mode ?? filelistSelf.FS_FILE ?? (0o100000 | 0o666),
+					});
+				}
 			}
 
-			const resultSet = Object.values(filelistSelf.filesRepo[database]).reduce((acc: Record<string, any>, r: any) =>
+			const resultSet = Object.values(filelistSelf.filesRepo?.[database] ?? {}).reduce((acc: Record<string, any>, r: any) =>
 			{
 				acc[r.path] = r;
 				return acc;
@@ -389,7 +380,7 @@ export class FileListWidget extends Widget
 			const newChildren = childrenKeys.map(path =>
 			{
 				const node = resultSet[path];
-				const isDir = (node.mode >> 12) & filelistSelf.ST_DIR;
+				const isDir = (node.mode >> 12) & (filelistSelf.ST_DIR ?? 4);
 				const name = path.split('/').pop() || path;
 
 				const newNode: NestedTreeNode = {
@@ -428,7 +419,7 @@ export class FileListWidget extends Widget
 				});
 			}
 
-			filelistSelf.sortNodes(newChildren);
+			filelistSelf.sortNodes?.(newChildren);
 			this.loadedDatabases[folderId].children = activeTree.nodesById[folderId].children = newChildren;
 
 		} catch(err: any)
@@ -520,7 +511,7 @@ export class GameListWidget extends FileListWidget
 {
 	public override get defaultRepository()
 	{
-		return filelistSelf.SettingsManager.get('github', 'gameRepository');
+		return filelistSelf.settingsManager?.get('github', 'gameRepository');
 	}
 }
 
@@ -530,15 +521,21 @@ export async function loadFileTree(repoOwner: string, repoName: string, branch: 
 	try
 	{
 		const database = `${repoOwner}/${repoName}`;
-		filelistSelf.filesRepo[selector] = await filelistSelf.loadGitHubTree(repoOwner, repoName, branch);
+		if(filelistSelf.filesRepo)
+		{
+			filelistSelf.filesRepo[selector] = await filelistSelf.loadGitHubTree?.(repoOwner, repoName, branch);
+		}
 
-		if(!filelistSelf.filesRepo[selector]) return;
+		if(!filelistSelf.filesRepo?.[selector]) return;
 
-		filelistSelf.trees[selector] = filelistSelf.trees[database] = new Tree(selector, {
-			data: filelistSelf.convertFlatToNested(Object.values(filelistSelf.filesRepo[selector])),
-			autoOpen: false,
-			closeDepth: 2,
-		});
+		if(filelistSelf.trees)
+		{
+			filelistSelf.trees[selector] = filelistSelf.trees[database] = new Tree(selector, {
+				data: filelistSelf.convertFlatToNested?.(Object.values(filelistSelf.filesRepo[selector])),
+				autoOpen: false,
+				closeDepth: 2,
+			});
+		}
 	} catch(error)
 	{
 		console.error('Failed to load file list tree:', error);

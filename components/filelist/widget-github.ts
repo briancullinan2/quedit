@@ -2,7 +2,12 @@ import { Message } from '@lumino/messaging';
 import { FileListWidget } from './widget';
 import Tree from './tree.js';
 import type { NestedTreeNode } from '../bundle/github-tools';
+import type { LuminoLayoutWindow } from '../bundle/lumino.d';
+import type { GlobalToolbarsWindow } from '../bundle/menu.d';
+import type { FilelistWindow } from './widget.d';
 
+
+const filelistSelf: LuminoLayoutWindow & GlobalToolbarsWindow & FilelistWindow = self as unknown as any;
 
 
 export interface StagingDetails
@@ -28,7 +33,7 @@ export class GithubListWidget extends FileListWidget
 	constructor(titleStr: string = 'GitHub Workspace')
 	{
 		super(titleStr);
-		this.id = `github-list-panel-${nextTemp()}`;
+		this.id = `github-list-panel-${filelistSelf.nextTemp?.()}`;
 		this.addClass('ide-github-tree-widget');
 
 		// Spin up dedicated worker thread for commit/staging tracking
@@ -74,9 +79,9 @@ export class GithubListWidget extends FileListWidget
 	{
 		const repoCollection = new Set(
 			[
-				window.SettingsManager?.get('github', 'engineRepository'),
-				window.SettingsManager?.get('github', 'gameRepository'),
-				window.SettingsManager?.get('github', 'assetRepository')
+				filelistSelf.settingsManager?.get('github', 'engineRepository'),
+				filelistSelf.settingsManager?.get('github', 'gameRepository'),
+				filelistSelf.settingsManager?.get('github', 'assetRepository')
 			].filter(Boolean)
 		);
 
@@ -106,10 +111,10 @@ export class GithubListWidget extends FileListWidget
 			topRepositories.push(this.loadedDatabases[repoKey]);
 		}
 
-		const activeTree = window.trees[this.selector];
-		if(!activeTree)
+		const activeTree = filelistSelf.trees?.[this.selector];
+		if(!activeTree && filelistSelf.trees)
 		{
-			window.trees[this.selector] = new Tree(this.selector, {
+			filelistSelf.trees[this.selector] = new Tree(this.selector, {
 				data: topRepositories,
 				autoOpen: false,
 				closeDepth: null
@@ -168,7 +173,7 @@ export class GithubListWidget extends FileListWidget
 	{
 		if(!target.classList.contains('treejs-node__open')) return;
 
-		const activeTree = window.trees[this.selector];
+		const activeTree = filelistSelf.trees?.[this.selector];
 		if(!activeTree || !activeTree.nodesById[folderId]) return;
 
 		const parts = folderId.split('/');
@@ -180,10 +185,13 @@ export class GithubListWidget extends FileListWidget
 			this.githubTreeLoading = true;
 
 			// Ensure remote baseline structure exists in memory
-			if(!window.filesRepo[database])
+			if(!filelistSelf.filesRepo?.[database])
 			{
-				const branch = await window.getDefaultBranch(parts[0], parts[1]);
-				await window.loadGitHubTree(parts[0], parts[1], branch);
+				const branch = await filelistSelf.getDefaultBranch?.(parts[0], parts[1]);
+				if(branch)
+				{
+					await filelistSelf.loadGitHubTree?.(parts[0], parts[1], branch);
+				}
 			}
 
 			// LAYER A: Repository Root Node Expansion (Inject Modified / Added / Staged roots)
@@ -225,7 +233,7 @@ export class GithubListWidget extends FileListWidget
 			const callbackId = `tree_sync_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 			this.pendingTreeRequests[callbackId] = { target, folderId };
 
-			const branch = await window.getDefaultBranch(parts[0], parts[1]);
+			const branch = await filelistSelf.getDefaultBranch?.(parts[0], parts[1]);
 
 			this.githubWorker.postMessage({
 				type: 'COMMIT_STATUS_CHECK',
@@ -254,7 +262,7 @@ export class GithubListWidget extends FileListWidget
 	 */
 	private buildGithubTreeFromStaging(target: HTMLElement, folderId: string, stagingDetails: StagingDetails): void
 	{
-		const activeTree = window.trees[this.selector];
+		const activeTree = filelistSelf.trees?.[this.selector];
 		if(!activeTree) return;
 
 		const parts = folderId.split('/');
@@ -337,7 +345,7 @@ export class GithubListWidget extends FileListWidget
 	 */
 	private compileStagingLevelChildren(folderId: string, baseDir: string, matchingPaths: string[]): NestedTreeNode[]
 	{
-		const activeTree = window.trees[this.selector];
+		const activeTree = filelistSelf.trees?.[this.selector];
 		const newChildren: NestedTreeNode[] = [];
 		const directoriesFound = new Set<string>();
 		const absoluteFilesFound: string[] = [];
@@ -397,9 +405,9 @@ export class GithubListWidget extends FileListWidget
 			newChildren.push(fileNode);
 		});
 
-		if(newChildren.length > 0 && typeof window.sortNodes === 'function')
+		if(newChildren.length > 0 && typeof filelistSelf.sortNodes === 'function')
 		{
-			window.sortNodes(newChildren);
+			filelistSelf.sortNodes(newChildren);
 		}
 
 		return newChildren;
@@ -411,7 +419,7 @@ export class GithubListWidget extends FileListWidget
 
 		this.refreshGithubTreeTimer = setTimeout(() =>
 		{
-			const activeTree = window.trees[this.selector];
+			const activeTree = filelistSelf.trees?.[this.selector];
 			if(activeTree)
 			{
 				activeTree.values = [];

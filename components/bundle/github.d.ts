@@ -17,10 +17,10 @@ export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, Api
 	getAuthenticatedUser?: () => Promise<any>;
 
 	cacheFile?: (
-		storeName?: string,
-		repoOwner?: string,
-		repoName?: string,
-		filePath?: string,
+		storeName: string,
+		repoOwner: string,
+		repoName: string,
+		filePath: string,
 		sha?: string | null,
 		forceReload?: boolean
 	) => Promise<any>;

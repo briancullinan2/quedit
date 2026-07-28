@@ -1,6 +1,10 @@
 import { Message } from '@lumino/messaging';
 import { FileListWidget } from './widget';
-import type { SearchService, GroupedSearchResult } from '../bundle/lumino-search';
+import type { GroupedSearchResult } from '../bundle/lumino-search';
+import type { LuminoLayoutWindow } from '../bundle/lumino.d';
+import type { GlobalToolbarsWindow } from '../bundle/menu.d';
+
+const filelistSelf: LuminoLayoutWindow & GlobalToolbarsWindow = self as unknown as any;
 
 export interface HistorySnapshot
 {
@@ -23,7 +27,7 @@ export class SearchListWidget extends FileListWidget
 	constructor(titleStr: string = 'Search Workspace')
 	{
 		super(titleStr);
-		this.id = `search-list-panel-${nextTemp()}`;
+		this.id = `search-list-panel-${filelistSelf.nextTemp?.()}`;
 		this.addClass('ide-search-list-widget');
 	}
 
@@ -138,15 +142,15 @@ export class SearchListWidget extends FileListWidget
 	{
 		if(this.currentCallbackId)
 		{
-			window.searchService.cancelSearch(this.currentCallbackId);
+			filelistSelf.searchService?.cancelSearch(this.currentCallbackId);
 			this.currentCallbackId = null;
 		}
 
-		const { callbackId, promise } = window.searchService.search(
+		const { callbackId, promise } = filelistSelf.searchService?.search(
 			{ query, caseSensitive: false },
 			(partialResults) => this.handleSearchWorkerResponse(partialResults, query),
 			`search-widget-${this.id}`
-		);
+		) ?? { callbackId: '', promise: Promise.resolve([]) };
 
 		this.currentCallbackId = callbackId;
 
@@ -378,7 +382,7 @@ export class SearchListWidget extends FileListWidget
 	{
 		if(this.currentCallbackId)
 		{
-			window.searchService.cancelSearch(this.currentCallbackId);
+			filelistSelf.searchService?.cancelSearch(this.currentCallbackId);
 			this.currentCallbackId = null;
 		}
 		if(this.federatedSearchTimer) clearTimeout(this.federatedSearchTimer);
