@@ -1,5 +1,9 @@
-/// <reference path="../bundle/global.d.ts" />
 
+// @ts-check
+
+
+/** @type {import('./make.d').CompilerWindow} */
+const workerSelf = /** @type {any} */ (self);
 
 class LanguageAPI
 {
@@ -7,6 +11,9 @@ class LanguageAPI
 	database = null;
 	github_token = null;
 
+	/**
+	 * @param {import('./worker').WorkerCommandOptions} options
+	 */
 	constructor(options)
 	{
 		this.nextResponseId = 0;
@@ -28,14 +35,19 @@ class LanguageAPI
 
 	/**
 	 * Propagates environment constants over to the parsing pipeline worker context
+	 * @param {import('./worker').WorkerCommandOptions} options
 	 */
 	inject(options)
 	{
-		options.configuration = options.configuration || this.configuration || 'release';
-		options.database = options.database || self.engineRepository || this.database;
-		options.github_token = options.github_token || self.githubToken || this.github_token;
+		options.configuration = options.configuration || workerSelf.SettingsToolbar?.configuration?.value || this.configuration || 'release';
+		options.database = options.database || workerSelf.engineRepository || this.database;
+		options.github_token = options.github_token || workerSelf.githubToken || this.github_token;
 	}
 
+	/**
+	 *
+	 * @param {number} value
+	 */
 	setShowTiming(value)
 	{
 		this.port.postMessage({ id: 'setShowTiming', data: value });
@@ -48,12 +60,14 @@ class LanguageAPI
 
 	/**
 	 * Core Promisified Worker Loop Execution Gateway with 60-second timeouts
+	 * @param {string} id
+	 * @param {import('./worker').WorkerCommandOptions} options
 	 */
 	async runAsync(id, options)
 	{
 		const responseId = ++this.nextResponseId;
 
-		self.runningCommand = true;
+		workerSelf.runningCommand = true;
 
 		const responsePromise = new Promise((resolve, reject) =>
 		{
@@ -116,6 +130,7 @@ class LanguageAPI
 
 	/**
 	 * Event Router Callback
+	 * @param {MessageEvent} event
 	 */
 	onmessage(event)
 	{
@@ -133,8 +148,8 @@ class LanguageAPI
 				break;
 
 			case 'done':
-				self.detachedConsole = false;
-				self.runningWorker = false;
+				workerSelf.detachedConsole = false;
+				workerSelf.runningWorker = false;
 			// Fall-through intended matching base pipeline patterns
 
 			case 'runAsync': {
@@ -164,6 +179,9 @@ class LanguageAPI
 
 class WorkerAPI
 {
+	/**
+	 * @param {import('./worker').WorkerCommandOptions} options
+	 */
 	constructor(options)
 	{
 		this.nextResponseId = 0;
@@ -180,6 +198,10 @@ class WorkerAPI
 			[remotePort]);
 	}
 
+	/**
+	 *
+	 * @param {number} value
+	 */
 	setShowTiming(value)
 	{
 		this.port.postMessage({ id: 'setShowTiming', data: value });
@@ -191,21 +213,28 @@ class WorkerAPI
 	}
 
 
+	/**
+	 * @param {import('./worker').WorkerCommandOptions} options
+	 */
 	inject(options)
 	{
-		let currentConfig = options.configuration || self.SettingsToolbar?.configuration?.value || this.configuration || 'release';
+		let currentConfig = options.configuration || workerSelf.SettingsToolbar?.configuration?.value || this.configuration || 'release';
 		this.configuration = options.configuration = currentConfig === 'debug' ? 'debug' : 'release';
-		this.database = options.database = options.database || self.engineRepository || this.database;
-		this.width = options.width = options.width = self.mostRecentTerminalCols || 120;
+		this.database = options.database = options.database || workerSelf.engineRepository || this.database;
+		this.width = options.width = options.width = workerSelf.mostRecentTerminalCols || 120;
 		this.github_token = options.github_token = options.github_token = this.github_token;
-		this.toolsRepo = options.toolsRepo = options.toolsRepo || self.toolsRepository || this.toolsRepo;
-		this.toolsRepo2 = options.toolsRepo2 = options.toolsRepo2 || self.tools2Repository || this.toolsRepo2;
-		this.engineRepo = options.engineRepo = options.engineRepo || self.engineRepository || this.engineRepo;
-		this.gameRepo = options.gameRepo = options.gameRepo || self.gameRepository || this.gameRepo;
-		this.assetRepo = options.assetRepo = options.assetRepo || self.assetRepository || this.assetRepo;
+		this.toolsRepo = options.toolsRepo = options.toolsRepo || workerSelf.toolsRepository || this.toolsRepo;
+		this.toolsRepo2 = options.toolsRepo2 = options.toolsRepo2 || workerSelf.tools2Repository || this.toolsRepo2;
+		this.engineRepo = options.engineRepo = options.engineRepo || workerSelf.engineRepository || this.engineRepo;
+		this.gameRepo = options.gameRepo = options.gameRepo || workerSelf.gameRepository || this.gameRepo;
+		this.assetRepo = options.assetRepo = options.assetRepo || workerSelf.assetRepository || this.assetRepo;
 	}
 
 
+	/**
+	 * @param {string} id
+	 * @param {import('./worker').WorkerCommandOptions} options
+	 */
 	async runAsync(id, options)
 	{
 		const responseId = ++this.nextResponseId;
@@ -230,32 +259,53 @@ class WorkerAPI
 			});
 		});
 
+		workerSelf.runningWorker = true;
 		this.port.postMessage({ id, responseId, data: options });
 		return await responsePromise;
 	}
 
+	/**
+	 * @param {import('./worker').WorkerCommandOptions} options
+	 */
 	async compileToAssembly(options)
 	{
 		return this.runAsync('compileToAssembly', options);
 	}
 
+	/**
+	 * @param {import('./worker').WorkerCommandOptions} options
+	 */
 	async compileTo6502(options)
 	{
 		return this.runAsync('compileTo6502', options);
 	}
 
+	/**
+	 * @param {import('./worker').WorkerCommandOptions} options
+	 */
 	async upload(options)
 	{
 		this.inject(options);
 		return this.runAsync('upload', options);
 	}
 
+	/**
+	 * @param {import('./worker').WorkerCommandOptions} options
+	 */
 	async download(options)
 	{
 
 		return this.runAsync('download', options);
 	}
 
+	/**
+	 *
+	 * @param {string} owner
+	 * @param {string} repo
+	 * @param {string} header
+	 * @param {string} database
+	 * @returns
+	 */
 	async header(owner, repo, header, database)
 	{
 		let options = { owner, repo, header, database };
@@ -263,45 +313,74 @@ class WorkerAPI
 		return this.runAsync('header', options);
 	}
 
+	/**
+	 * @param {import('./worker').WorkerCommandOptions} options
+	 */
 	async compile(options)
 	{
 		this.inject(options);
 		return this.runAsync('compile', options);
 	}
 
+	/**
+	 *
+	 * @param {string} database
+	 * @param {string} action
+	 * @returns
+	 */
 	async build(database, action = 'all')
 	{
 		let options = {
-			database: database || this.database || (self.RepositoryToolbar?.owner?.value + '/' + self.RepositoryToolbar?.repository?.value),
+			database: database || this.database || (workerSelf.RepositoryToolbar?.owner?.value + '/' + workerSelf.RepositoryToolbar?.repository?.value),
 			action,
 		};
 		this.inject(options);
 		return this.runAsync('build', options);
 	}
 
+	/**
+	 * @param {import('./worker').WorkerCommandOptions} options
+	 */
 	async run(options)
 	{
 		this.inject(options);
 		return this.runAsync('run', options);
 	}
 
+	/**
+	 * @param {import('./worker').WorkerCommandOptions} options
+	 */
 	async link(options)
 	{
 		this.inject(options);
 		return this.runAsync('link', options);
 	}
 
+	/**
+	 *
+	 * @param {ArrayBuffer} contents
+	 * @param {number} width
+	 */
 	compileLinkRun(contents, width = 80)
 	{
 		this.port.postMessage({ id: 'compileLinkRun', data: { contents, width } });
 	}
 
+	/**
+	 *
+	 * @param {OffscreenCanvas} offscreenCanvas
+	 */
 	postCanvas(offscreenCanvas)
 	{
 		this.port.postMessage({ id: 'postCanvas', data: offscreenCanvas },
 			[offscreenCanvas]);
 	}
 
+	/**
+	 *
+	 * @param {string} filename
+	 * @returns
+	 */
 	async remove(filename)
 	{
 		const options = {
@@ -311,6 +390,11 @@ class WorkerAPI
 		return await this.runAsync('remove', options);
 	}
 
+	/**
+	 *
+	 * @param {MessageEvent} event
+	 * @returns
+	 */
 	onmessage(event)
 	{
 		switch(event.data.id)
@@ -323,8 +407,8 @@ class WorkerAPI
 				break;
 
 			case 'done':
-				self.detachedConsole = false;
-				self.runningWorker = false;
+				workerSelf.detachedConsole = false;
+				workerSelf.runningWorker = false;
 			case 'runAsync': {
 				const responseId = event.data.responseId;
 				const promise = this.responseCBs.get(responseId);
@@ -336,7 +420,7 @@ class WorkerAPI
 					{
 						if(event.data.data.message.includes('memory access out of bounds'))
 						{
-							needsHeaders = true;
+							workerSelf.needsHeaders = true;
 						}
 						promise.reject(event.data.data);
 					}
@@ -350,10 +434,10 @@ class WorkerAPI
 }
 
 const language = new LanguageAPI({
-	hostWrite: self.specialWrite
+	hostWrite: workerSelf.specialWrite
 });
 
-self.api = new WorkerAPI({
-	hostWrite: self.specialWrite
+workerSelf.api = new WorkerAPI({
+	hostWrite: workerSelf.specialWrite
 });
-self.api.github_token = self.githubToken;
+workerSelf.api.github_token = workerSelf.githubToken;

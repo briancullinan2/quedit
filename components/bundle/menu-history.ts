@@ -2,6 +2,9 @@ import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
 import type { RepositoryToolbar } from "./menu-repos";
 import type { AceEditorWidget } from "../editor/widget";
+import type { GlobalToolbarsWindow } from "./menu.d";
+import type { LuminoLayoutWindow } from "./lumino.d";
+import type { GithubWindow } from "./github.d";
 
 export type NavPoint = {
 	fileId: string;
@@ -10,8 +13,7 @@ export type NavPoint = {
 };
 
 
-// Global scope bindings for code dependencies referenced inside your metadata extractors
-declare const openFile: (owner: string, repo: string, path: string, sha: string, flag: boolean) => void;
+const menuSelf: GlobalToolbarsWindow & LuminoLayoutWindow & GithubWindow = self as unknown as any;
 
 export class HistoryToolbar extends Widget
 {
@@ -37,7 +39,7 @@ export class HistoryToolbar extends Widget
 		if(!HistoryToolbar._instance)
 		{
 			HistoryToolbar._instance = new HistoryToolbar();
-			window.historyToolbar = HistoryToolbar._instance;
+			menuSelf.historyToolbar = HistoryToolbar._instance;
 		}
 		return HistoryToolbar._instance;
 	}
@@ -112,11 +114,14 @@ export class HistoryToolbar extends Widget
 	public apply(): void
 	{
 		const point = this.stack[this.index];
-		const database = window.RepositoryToolbar.owner?.value + '/' + window.RepositoryToolbar.repository?.value;
-		const filePath = window.trees[database].nodesById[point.fileId].path;
+		const database = menuSelf.RepositoryToolbar?.owner?.value + '/' + menuSelf.RepositoryToolbar?.repository?.value;
+		const filePath = menuSelf.trees?.[database].nodesById[point.fileId].path;
 
-		window.currentOpenFileId = point.fileId;
-		window.trees[database].values = [point.fileId];
+		menuSelf.currentOpenFileId = point.fileId;
+		if(menuSelf.trees && menuSelf.trees[database])
+		{
+			menuSelf.trees[database].values = [point.fileId];
+		}
 
 		//openFile(window.RepositoryToolbar.owner?.value, window.RepositoryToolbar.repository?.value, filePath, window.trees[database].nodesById[point.fileId].sha, false);
 
@@ -132,8 +137,8 @@ export class HistoryToolbar extends Widget
 	// --- History Tracking Frame & Pipeline ---
 	public recordFileHistory(filePath: string, sha: string, lineNumber: number | null = null): void
 	{
-		const aceEditor = window.lastInteractedWidget?.constructor.name === 'AceEditorWidget'
-			? window.lastInteractedWidget as AceEditorWidget
+		const aceEditor = menuSelf.lastInteractedWidget?.constructor.name === 'AceEditorWidget'
+			? menuSelf.lastInteractedWidget as AceEditorWidget
 			: undefined;
 		const fileNameMatch = filePath.match(/[^/\\#]+$/);
 		const fileName = fileNameMatch ? fileNameMatch[0] : filePath;
@@ -483,4 +488,4 @@ export class HistoryToolbar extends Widget
 	}
 }
 
-window.HistoryToolbar = HistoryToolbar;
+menuSelf.HistoryToolbar = HistoryToolbar;

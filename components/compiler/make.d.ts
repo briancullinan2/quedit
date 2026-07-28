@@ -1,15 +1,21 @@
+import type { GithubWindow } from "../bundle/github.d";
 import type { FileRecord } from "../bundle/local.d";
+import type { LoggingWindow } from "../bundle/logging.d";
+import type { GlobalToolbarsWindow, RepositorySettingsWindow } from "../bundle/menu.d";
+import type { TerminalWindow } from "../terminal/widget.d";
+import type { ApiWindow, MockAPI } from "./worker.d";
 
 
 export interface MakeWindow
 {
-	BUILD_SCRIPTS: string[];
-	buildTools: (database?: string | null) => Promise<void>;
-	buildQVM: (database?: string | null) => Promise<void>;
-	buildClient: (database?: string | null) => Promise<void>;
-	downloadHeaders(headers: any, batchSize?: number, database?: string | null): Promise<void>;
+	BUILD_SCRIPTS?: string[];
+	buildTools?: (database?: string | null) => Promise<void>;
+	buildQVM?: (database?: string | null) => Promise<void>;
+	buildClient?: (database?: string | null) => Promise<void>;
+	downloadHeaders?: (headers: any, batchSize?: number, database?: string | null) => Promise<void>;
 
 	updateGlobalBufferAndViews?: () => void;
+	BUILDCFLAGS?: (config?: string | null) => string[];
 
 }
 
@@ -22,6 +28,7 @@ export interface MakeSystemGlobals
 	CFLAGS?: string[];
 	building?: boolean;
 	buildDebounce?: ReturnType<typeof setTimeout> | undefined;
+	runningWorker?: boolean;
 }
 
 export interface BuildWindow
@@ -44,3 +51,36 @@ export interface BuildWindow
 	GAME_PLATFORM?: string;
 	GAME_ARCH?: string;
 }
+
+
+export interface CompilerWindow extends
+	RepositorySettingsWindow,
+	GithubWindow,
+	GlobalToolbarsWindow,
+	LoggingWindow,
+	MakeSystemGlobals,
+	TerminalWindow
+{
+
+}
+
+export interface JavascriptLogger extends
+	LoggingWindow,
+	MakeSystemGlobals,
+	ApiWindow
+{
+
+}
+
+export interface MakeQVMWindow extends
+	BuildWindow,
+	MakeWindow,
+	ApiWindow,
+	MakeSystemGlobals,
+	RepositorySettingsWindow,
+	GlobalToolbarsWindow,
+	GithubWindow
+{
+
+}
+

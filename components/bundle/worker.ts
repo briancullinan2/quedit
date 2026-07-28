@@ -11,8 +11,10 @@ import
 	, putRecord, setupDatabase
 } from "./local";
 import { FileRecord } from './local.d';
+import type { FileSystemWindow } from "./lumino.d";
 import { SettingsManager } from "./settings";
 
+const workerSelf: FileSystemWindow = self as unknown as any;
 
 export class ServiceWorkerManager
 {
@@ -205,4 +207,4 @@ export class ServiceWorkerManager
 	}
 }
 
-window.ensureDatabaseContainer = ServiceWorkerManager.ensureDatabaseContainer;
+workerSelf.ensureDatabaseContainer = ServiceWorkerManager.ensureDatabaseContainer;

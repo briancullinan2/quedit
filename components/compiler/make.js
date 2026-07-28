@@ -1,4 +1,9 @@
-/// <reference path="../bundle/global.d.ts" />
+
+// @ts-check
+
+/** @type {import('./make.d').MakeQVMWindow} */
+const makeSelf = /** @type {any} */ (self);
+
 
 /**
  * Quake3e Build Configuration Script - Browser Version
@@ -63,13 +68,13 @@ const clientObjects = [
 	"cl_cgame.c", "cl_cin.c", "cl_console.c", "cl_input.c",
 	"cl_keys.c", "cl_main.c", "cl_net_chan.c", "cl_parse.c",
 	"cl_scrn.c", "cl_ui.c", "cl_avi.c", "cl_jpeg.c"
-].map(file => path.join(self.dirs.CDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.CDIR, file));
 
 // Collision Manager
 const collisionObjects = [
 	"cm_load.c", "cm_patch.c", "cm_polylib.c",
 	"cm_test.c", "cm_trace.c"
-].map(file => path.join(self.dirs.CMDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.CMDIR, file));
 
 // QCommon / Shared
 const commonObjects = [
@@ -77,25 +82,25 @@ const commonObjects = [
 	"keys.c", "md4.c", "md5.c", "msg.c", "net_chan.c",
 	"net_ip.c", "huffman.c", "huffman_static.c", "splines.c",
 	"q_math.c", "q_shared.c", "unzip.c", "puff.c"
-].map(file => path.join(self.dirs.CMDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.CMDIR, file));
 
 // Sound System
 const soundObjects = [
 	"snd_adpcm.c", "snd_dma.c", "snd_mem.c", "snd_mix.c",
 	"snd_wavelet.c", "snd_main.c", "snd_codec.c", "snd_codec_wav.c"
-].map(file => path.join(self.dirs.CDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.CDIR, file));
 
 // Server
 const serverObjects = [
 	"sv_bot.c", "sv_bsp_mini.c", "sv_ccmds.c", "sv_client.c",
 	"sv_filter.c", "sv_game.c", "sv_init.c", "sv_main.c",
 	"sv_net_chan.c", "sv_snapshot.c", "sv_teleport.c", "sv_world.c"
-].map(file => path.join(self.dirs.SDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.SDIR, file));
 
 // Virtual Machine
 const vmObjects = [
 	"vm.c", "vm_interpreted.c"
-].map(file => path.join(self.dirs.CMDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.CMDIR, file));
 
 // Bot Engine / AI (AAS)
 const botObjects = [
@@ -106,13 +111,13 @@ const botObjects = [
 	"be_ai_char.c", "be_ai_chat.c", "be_ai_gen.c",
 	"be_ai_goal.c", "be_ai_move.c", "be_ai_weap.c",
 	"be_ai_weight.c", "be_ea.c", "be_interface.c"
-].map(file => path.join(self.dirs.BLIBDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.BLIBDIR, file));
 
 // Internal Libraries (L_)
 const libObjects = [
 	"l_crc.c", "l_libvar.c", "l_log.c", "l_memory.c",
 	"l_precomp.c", "l_script.c", "l_struct.c"
-].map(file => path.join(self.dirs.BLIBDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.BLIBDIR, file));
 
 
 const sysObjects = [
@@ -120,7 +125,7 @@ const sysObjects = [
 	"dlmalloc.c",
 	"sbrk.c",
 	//"stack_ops.c",
-].map(file => path.join(self.dirs.WASMDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.WASMDIR, file));
 
 // Combined for the full build
 const allQ3Objects = [
@@ -140,14 +145,14 @@ const shaderShadowObjects = [
 	"pshadow_fp.glsl", "pshadow_vp.glsl",
 	"shadowfill_fp.glsl", "shadowfill_vp.glsl",
 	"shadowmask_fp.glsl", "shadowmask_vp.glsl"
-].map(file => path.join(self.dirs.R2DIR, "glsl", file));
+].map(file => makeSelf.path.join(makeSelf.dirs.R2DIR, "glsl", file));
 
 // Lighting & Fog
 const shaderLightObjects = [
 	"dlight_fp.glsl", "dlight_vp.glsl",
 	"lightall_fp.glsl", "lightall_vp.glsl",
 	"fogpass_fp.glsl", "fogpass_vp.glsl"
-].map(file => path.join(self.dirs.R2DIR, "glsl", file));
+].map(file => makeSelf.path.join(makeSelf.dirs.R2DIR, "glsl", file));
 
 // Post-Processing (Bloom/Bokeh/Tone)
 const shaderPostProcessObjects = [
@@ -155,19 +160,19 @@ const shaderPostProcessObjects = [
 	"tonemap_fp.glsl", "tonemap_vp.glsl",
 	"ssao_fp.glsl", "ssao_vp.glsl",
 	"depthblur_fp.glsl", "depthblur_vp.glsl"
-].map(file => path.join(self.dirs.R2DIR, "glsl", file));
+].map(file => makeSelf.path.join(makeSelf.dirs.R2DIR, "glsl", file));
 
 // Scaling & Downsampling
 const shaderScaleObjects = [
 	"calclevels4x_fp.glsl", "calclevels4x_vp.glsl",
 	"down4x_fp.glsl", "down4x_vp.glsl"
-].map(file => path.join(self.dirs.R2DIR, "glsl", file));
+].map(file => makeSelf.path.join(makeSelf.dirs.R2DIR, "glsl", file));
 
 // Generic & Utilities
 const shaderUtilityObjects = [
 	"generic_fp.glsl", "generic_vp.glsl",
 	"texturecolor_fp.glsl", "texturecolor_vp.glsl"
-].map(file => path.join(self.dirs.R2DIR, "glsl", file));
+].map(file => makeSelf.path.join(makeSelf.dirs.R2DIR, "glsl", file));
 
 // Combined Renderer Shaders
 const allRend2ShaderObjects = [
@@ -194,38 +199,38 @@ const rendererGeometryObjects = [
 	"tr_image.c", "tr_animation.c", "tr_curve.c", "tr_mesh.c",
 	"tr_model.c", "tr_model_iqm.c", "tr_surface.c",
 	"tr_world.c", "tr_bsp.c"
-].map(file => path.join(self.dirs.R2DIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.R2DIR, file));
 
 // Core Pipeline & Backend
 const rendererCoreObjects = [
 	"tr_backend.c", "tr_cmds.c", "tr_main.c",
 	"tr_init.c", "tr_scene.c", "tr_shade.c",
 	"tr_shade_calc.c", "tr_shader.c"
-].map(file => path.join(self.dirs.R2DIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.R2DIR, file));
 
 // Buffers & Extensions (GL specific)
 const rendererGLObjects = [
 	"tr_dsa.c", "tr_extensions.c", "tr_fbo.c",
 	"tr_glsl.c", "tr_vbo.c"
-].map(file => path.join(self.dirs.R2DIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.R2DIR, file));
 
 // Effects & Lighting
 const rendererEffectObjects = [
 	"tr_extramath.c", "tr_flares.c",
 	"tr_light.c", "tr_marks.c",
 	"tr_postprocess.c", "tr_shadows.c", "tr_sky.c"
-].map(file => path.join(self.dirs.R2DIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.R2DIR, file));
 
 // Shared Render Files
 const rendererCommon = [
 	"tr_font.c", "tr_noise.c", "tr_manipulation.c",
 	"tr_image_tga.c"
-].map(file => path.join(self.dirs.RCDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.RCDIR, file));
 
 // Shared dependencies (used if USE_RENDERER_DLOPEN is true)
 const rendererSharedObjects = [
 	"q_shared.c", "puff.c", "q_math.c"
-].map(file => path.join(self.dirs.CMDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.CMDIR, file));
 
 // Combined Renderer Array
 const allRend2Objects = [
@@ -248,7 +253,7 @@ const allCompileObjects = [
 const botlibCoreHeaders = [
 	"botlib.h", "be_aas.h", "aasfile.h", "be_aas_bsp.h",
 	"be_aas_def.h", "be_aas_funcs.h"
-].map(file => path.join(self.dirs.BLIBDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.BLIBDIR, file));
 
 // AAS (Area Awareness System) Internal Headers
 const aasInternalHeaders = [
@@ -256,20 +261,20 @@ const aasInternalHeaders = [
 	"be_aas_file.h", "be_aas_main.h", "be_aas_move.h",
 	"be_aas_optimize.h", "be_aas_reach.h", "be_aas_route.h",
 	"be_aas_routealt.h", "be_aas_sample.h"
-].map(file => path.join(self.dirs.BLIBDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.BLIBDIR, file));
 
 // AI / Behavior Engine Headers
 const botAIHeaders = [
 	"be_ai_char.h", "be_ai_chat.h", "be_ai_gen.h",
 	"be_ai_goal.h", "be_ai_move.h", "be_ai_weap.h",
 	"be_ai_weight.h", "be_ea.h", "be_interface.h"
-].map(file => path.join(self.dirs.BLIBDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.BLIBDIR, file));
 
 // Botlib Library Utilities (L_)
 const botLibUtilsHeaders = [
 	"l_crc.h", "l_libvar.h", "l_log.h", "l_memory.h",
 	"l_precomp.h", "l_script.h", "l_struct.h", "l_utils.h"
-].map(file => path.join(self.dirs.BLIBDIR, file));
+].map(file => makeSelf.path.join(makeSelf.dirs.BLIBDIR, file));
 
 // Combined for easy reference
 const allBotlibHeaders = [
@@ -342,7 +347,7 @@ const q3eCommonHeaders = [
 	"wasm/wasm.syms",
 	//"sys/sys_local.h",      // System-specific (Win/Linux) low-level stuff
 	//"sys/sys_loadlib.h"     // Dynamic library loading
-].map(file => path.join(self.config.MOUNT_DIR, file))
+].map(file => makeSelf.path.join(makeSelf.config.MOUNT_DIR, file))
 	// --- BotLib ---
 	.concat(allBotlibHeaders);
 
@@ -350,8 +355,8 @@ function getBaseFlags()
 {
 	let flags = ["-Wall", "-Wimplicit", "-Wstrict-prototypes"];
 
-	if(self.config.USE_SYSTEM_JPEG) flags.push("-DUSE_SYSTEM_JPEG");
-	if(self.config.USE_CURL) flags.push("-DUSE_CURL");
+	if(makeSelf.config.USE_SYSTEM_JPEG) flags.push("-DUSE_SYSTEM_JPEG");
+	if(makeSelf.config.USE_CURL) flags.push("-DUSE_CURL");
 
 	// Web-specific requirements
 	//if(COMPILE_PLATFORM === 'emscripten')
@@ -375,7 +380,7 @@ const ENGINE_LDFLAGS = [
 	'-z', `stack-size=${1024 * 1024}`,
 	'-Llib/wasm32-wasi',
 	"-mllvm", "-mattr=+mutable-globals",
-	"--global-base=" + self.ENGINE_MEMORY_BASE,
+	"--global-base=" + makeSelf.ENGINE_MEMORY_BASE,
 	//"--growable-table",
 	// Link against the builtins and libc.a
 	//path.join(vars.WASI_BUILTINS, "lib/wasi/libclang_rt.builtins-wasm32.a"),
@@ -400,14 +405,14 @@ const emscriptenJsFlags = [
 	"-s", "ALLOW_MEMORY_GROWTH=1",
 	"-s", "INITIAL_MEMORY=256MB",
 	// JS Libraries
-	"--js-library", path.join(self.config.MOUNT_DIR, "wasm/sys_in.js"),
-	"--js-library", path.join(self.config.MOUNT_DIR, "wasm/sys_wasm.js"),
-	"--js-library", path.join(self.config.MOUNT_DIR, "wasm/sys_snd.js"),
-	"--js-library", path.join(self.config.MOUNT_DIR, "wasm/sys_net.js"),
-	"--js-library", path.join(self.config.MOUNT_DIR, "wasm/sys_web.js"),
-	"--js-library", path.join(self.config.MOUNT_DIR, "wasm/sys_fs.js"),
-	"--js-library", path.join(self.config.MOUNT_DIR, "wasm/sys_std.js"),
-	"--js-library", path.join(self.config.MOUNT_DIR, "wasm/sys_emjs.js")
+	"--js-library", makeSelf.path.join(makeSelf.config.MOUNT_DIR, "wasm/sys_in.js"),
+	"--js-library", makeSelf.path.join(makeSelf.config.MOUNT_DIR, "wasm/sys_wasm.js"),
+	"--js-library", makeSelf.path.join(makeSelf.config.MOUNT_DIR, "wasm/sys_snd.js"),
+	"--js-library", makeSelf.path.join(makeSelf.config.MOUNT_DIR, "wasm/sys_net.js"),
+	"--js-library", makeSelf.path.join(makeSelf.config.MOUNT_DIR, "wasm/sys_web.js"),
+	"--js-library", makeSelf.path.join(makeSelf.config.MOUNT_DIR, "wasm/sys_fs.js"),
+	"--js-library", makeSelf.path.join(makeSelf.config.MOUNT_DIR, "wasm/sys_std.js"),
+	"--js-library", makeSelf.path.join(makeSelf.config.MOUNT_DIR, "wasm/sys_emjs.js")
 ];
 
 // Symbols to export to the JS environment
@@ -444,6 +449,12 @@ const LDFLAGS = [
 ];
 
 
+/**
+ *
+ * @param {string} fileName
+ * @param {ArrayBuffer} content
+ * @returns
+ */
 function generateFallbackC(fileName, content)
 {
 
@@ -451,7 +462,7 @@ function generateFallbackC(fileName, content)
 	const str = decoder.decode(content);
 
 	// Strip path and extension (basename equivalent)
-	const base = fileName.split('/').pop().split('.').shift();
+	const base = fileName.split('/').pop()?.split('.').shift();
 
 	let output = `const char *fallbackShader_${base} =\n`;
 
@@ -469,33 +480,39 @@ function generateFallbackC(fileName, content)
 }
 
 
-
-function BUILDCFLAGS(CONFIGURATION)
+/**
+ *
+ * @param {string | null | undefined} CONFIGURATION
+ * @returns
+ */
+function BUILDCFLAGS(CONFIGURATION = null)
 {
 	if(!CONFIGURATION)
-		CONFIGURATION = api?.configuration === 'release'
-			? self.dirs.ENGINE_RELEASE
-			: self.dirs.ENGINE_DEBUG;
+		CONFIGURATION = makeSelf.api?.configuration === 'release'
+			? makeSelf.dirs.ENGINE_RELEASE
+			: makeSelf.dirs.ENGINE_DEBUG;
 
-	let DEBUG_CFLAGS = api?.configuration != 'debug'
+	let DEBUG_CFLAGS = makeSelf.api?.configuration != 'debug'
 		? ['-DNDEBUG', '-O3', '-ffast-math']
 		: ['-DDEBUG', '-D_DEBUG', /* '-g',*/ '-O0'];
 
-	let PRE = api?.configuration === 'pre'
+	let PRE = makeSelf.api?.configuration === 'pre'
 		? ['-E', '-P']
-		: api?.configuration === 'analyze'
+		: makeSelf.api?.configuration === 'analyze'
 			? ['--analyze']
-			: api?.configuration === 'sanitize'
+			: makeSelf.api?.configuration === 'sanitize'
 				? ['-fsanitize=address']
 				: [];
 
 	PRE = PRE.concat([
-		'-fmessage-length', '' + (api?.width || '80')
+		'-fmessage-length', '' + (makeSelf.api?.width || '80')
 	]);
 
 	return [...DEBUG_CFLAGS, ...PRE];
 }
 
+
+makeSelf.BUILDCFLAGS = BUILDCFLAGS;
 
 
 /**
@@ -507,40 +524,40 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 
 	let DEBUG_CFLAGS = BUILDCFLAGS();
 
-	if(!database) database = self.toolsRepository || api?.database;
+	if(!database) database = makeSelf.toolsRepository || makeSelf.api?.database;
 	if(!database) return;
 
 	const parts = database?.split('/');
-	const ownerName = parts?.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
-	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || self.RepositoryToolbar?.repository?.value;
+	const ownerName = parts?.length == 2 ? parts[0] : makeSelf.RepositoryToolbar?.owner?.value;
+	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || makeSelf.RepositoryToolbar?.repository?.value;
 
-	if(needsHeaders)
+	if(makeSelf.needsHeaders)
 	{
 
 		await downloadHeaders(q3eCommonHeaders, 10, database);
 	}
 
-	let CONFIGURATION = api?.configuration === 'release'
-		? self.dirs.ENGINE_RELEASE
-		: self.dirs.ENGINE_DEBUG;
+	let CONFIGURATION = makeSelf.api?.configuration === 'release'
+		? makeSelf.dirs.ENGINE_RELEASE
+		: makeSelf.dirs.ENGINE_DEBUG;
 	//await api.upload(database)
 
 	const stringify = 'code/renderer2/stringify.c';
-	const virtualStr = path.join(database, stringify);
+	const virtualStr = makeSelf.path.join(database, stringify);
 	const obj = CONFIGURATION + '/stringify.o';
-	const virtualObj = path.join(database, obj);
-	const content = await self.cacheFile(ownerName, repoName, stringify);
+	const virtualObj = makeSelf.path.join(database, obj);
+	const content = await makeSelf.cacheFile?.(ownerName, repoName, stringify);
 
-	if(!self.FS.virtual[virtualObj] && !forceChanged)
-		self.FS.virtual[virtualObj] = await self.getRecord(self.DB_STORE_NAME, obj, database);
+	if(makeSelf.FS && !makeSelf.FS.virtual[virtualObj] && !forceChanged)
+		makeSelf.FS.virtual[virtualObj] = await makeSelf.getRecord?.(makeSelf.DB_STORE_NAME ?? '', obj, database);
 
 	let hasChanged = false;
 
-	if(self.FS.virtual[virtualObj]
+	if(makeSelf.FS && makeSelf.FS.virtual[virtualObj]
 		// compare input and output mtime
-		&& self.FS.virtual[virtualStr]?.timestamp
-		&& self.FS.virtual[virtualObj]?.timestamp
-		&& self.FS.virtual[virtualStr]?.timestamp < self.FS.virtual[virtualObj]?.timestamp
+		&& makeSelf.FS.virtual[virtualStr]?.timestamp
+		&& makeSelf.FS.virtual[virtualObj]?.timestamp
+		&& makeSelf.FS.virtual[virtualStr]?.timestamp < makeSelf.FS.virtual[virtualObj]?.timestamp
 		&& !forceChanged
 	)
 	{
@@ -553,7 +570,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 
 	try
 	{
-		await api?.compile({
+		await makeSelf.api?.compile({
 			CFLAGS: [
 				'-cc1', '-triple', 'wasm32-wasi',
 				'-emit-obj',
@@ -563,7 +580,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 				'-internal-isystem', '/lib/clang/8.0.1/include',
 				"-std=gnu11",
 				...DEBUG_CFLAGS,
-				...(api?.configuration === 'pre' ? [
+				...(makeSelf.api?.configuration === 'pre' ? [
 					'-o', obj.replace('.o', '.a'),
 				] : ['-o', obj]),
 				stringify
@@ -595,12 +612,12 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 async function linkStringify(database = null, forceChanged = false, noBuild = false)
 {
 
-	if(!database) database = api?.database;
+	if(!database) database = makeSelf.api?.database;
 	if(!database) return;
 
-	let CONFIGURATION = api?.configuration == 'release'
-		? self.dirs.ENGINE_RELEASE
-		: self.dirs.ENGINE_DEBUG;
+	let CONFIGURATION = makeSelf.api?.configuration == 'release'
+		? makeSelf.dirs.ENGINE_RELEASE
+		: makeSelf.dirs.ENGINE_DEBUG;
 
 
 
@@ -611,13 +628,16 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 		await buildStringify(database, false, true);
 	}
 
-	const stringifyExe = CONFIGURATION + '/stringify' + self.config.BINEXT;
-	const virtualStrExe = path.join(database, stringifyExe);
+	const stringifyExe = CONFIGURATION + '/stringify' + makeSelf.config.BINEXT;
+	const virtualStrExe = makeSelf.path.join(database, stringifyExe);
 
-	self.FS.virtual[virtualStrExe] = await self.getRecord(self.DB_STORE_NAME, stringifyExe, database);
+	if(makeSelf.FS)
+	{
+		makeSelf.FS.virtual[virtualStrExe] = await makeSelf.getRecord?.(makeSelf.DB_STORE_NAME ?? '', stringifyExe, database);
+	}
 
 
-	if(self.FS.virtual[virtualStrExe] && !forceChanged)
+	if(makeSelf.FS?.virtual[virtualStrExe] && !forceChanged)
 	{
 		console.log(stringifyExe + " already up to date...");
 		return;
@@ -627,7 +647,7 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 
 	try
 	{
-		await api?.link({
+		await makeSelf.api?.link({
 			LDFLAGS: [
 				...toolLdFlags,
 				CONFIGURATION + '/stringify.o',
@@ -650,6 +670,11 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 
 }
 
+/**
+ *
+ * @param {string} path
+ * @param {string} database
+ */
 function mkdirp(path, database)
 {
 
@@ -665,28 +690,32 @@ function mkdirp(path, database)
 	for(const part of parts)
 	{
 		accumulated = accumulated === "" ? part : `${accumulated}/${part}`;
-		const virtualAccu = path.join(database, accumulated);
+		const virtualAccu = makeSelf.path.join(database, accumulated);
 
 		try
 		{
-			let hadnt = !self.FS.virtual[virtualAccu]; // || self.FS.virtual[virtualAccu].default === true;
-			if(hadnt)
-				self.FS.virtual[virtualAccu] = {
+			let hadnt = !makeSelf.FS?.virtual[virtualAccu]; // || makeSelf.FS.virtual[virtualAccu].default === true;
+			if(hadnt && makeSelf.FS)
+				makeSelf.FS.virtual[virtualAccu] = {
 					timestamp: new Date(),
-					mode: self.FS_DIR,
+					mode: makeSelf.FS_DIR ?? (0o040000 | 0o755),
 					path: accumulated,
 					parent: accumulated.substring(0, accumulated.lastIndexOf('/'))
 				};
-			self.FS.virtual[virtualAccu + '/.'] = self.FS.virtual[virtualAccu];
-			if(previousPath)
-				self.FS.virtual[virtualAccu + '/..'] = self.FS.virtual[database + '/' + previousPath];
-			if(database && hadnt && self.FS.virtual[virtualAccu])
-			{ // TODO: good for checking build times?
-				self.putRecord(self.DB_STORE_NAME, self.FS.virtual[virtualAccu], database);
+			if(makeSelf.FS)
+			{
+				makeSelf.FS.virtual[virtualAccu + '/.'] = makeSelf.FS?.virtual[virtualAccu];
 			}
-			//if(self.FS.virtual[virtualAccu].default)
+			if(previousPath && makeSelf.FS)
+				makeSelf.FS.virtual[virtualAccu + '/..'] = makeSelf.FS.virtual[database + '/' + previousPath];
+			if(database && hadnt && makeSelf.FS
+				&& makeSelf.FS.virtual[virtualAccu])
+			{ // TODO: good for checking build times?
+				makeSelf.putRecord?.(makeSelf.DB_STORE_NAME ?? '', makeSelf.FS.virtual[virtualAccu], database);
+			}
+			//if(makeSelf.FS.virtual[virtualAccu].default)
 			//{
-			//	self.FS.virtual[virtualAccu].default = false;
+			//	makeSelf.FS.virtual[virtualAccu].default = false;
 			//}
 		} catch(e)
 		{
@@ -699,10 +728,10 @@ function mkdirp(path, database)
 
 		try
 		{
-			if(api?.memfs)
+			if(makeSelf.api?.memfs)
 			{
-				api.memfs.mem.check();
-				api.memfs.mkdirp(accumulated);
+				makeSelf.api.memfs.mem.check();
+				makeSelf.api.memfs.mkdirp(accumulated);
 			}
 		} catch(e)
 		{
@@ -715,34 +744,45 @@ function mkdirp(path, database)
 }
 
 
+/**
+ * @type {string[]}
+ */
 const loadedDirectories = [];
 
+/**
+ *
+ * @param {string} file
+ * @param {string} obj
+ * @param {string} database
+ * @param {boolean} makeDirs
+ * @returns
+ */
 async function prepInputOutput(file, obj, database, makeDirs = false)
 {
 	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
+	const ownerName = parts.length == 2 ? parts[0] : makeSelf.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || makeSelf.RepositoryToolbar?.repository?.value;
 
-	const virtualFile = path.join(database, file);
-	const virtualObj = path.join(database, obj);
+	const virtualFile = makeSelf.path.join(database, file);
+	const virtualObj = makeSelf.path.join(database, obj);
 	const buildDir = file.substring(0, file.lastIndexOf('/'));
 	const outDir = obj?.substring(0, obj?.lastIndexOf('/'));
 
 
-	if(makeDirs && !self.FS.virtual[self.config.TEMPDIR])
-		mkdirp(self.config.TEMPDIR, database);
-	if(makeDirs && !self.FS.virtual[self.config.HOMEDIR])
-		mkdirp(self.config.HOMEDIR, database);
-	if(makeDirs && !self.FS.virtual[database])
+	if(makeDirs && !makeSelf.FS?.virtual[makeSelf.config.TEMPDIR])
+		mkdirp(makeSelf.config.TEMPDIR, database);
+	if(makeDirs && !makeSelf.FS?.virtual[makeSelf.config.HOMEDIR])
+		mkdirp(makeSelf.config.HOMEDIR, database);
+	if(makeDirs && !makeSelf.FS?.virtual[database])
 		mkdirp(database, database);
 
-	if(api?.memfs)
+	if(makeSelf.api?.memfs)
 	{
-		await api?.ready;
-		api?.memfs.mem.check();
+		await makeSelf.api?.ready;
+		makeSelf.api?.memfs.mem.check();
 		try
 		{
-			api.memfs.mkdirp(self.config.TEMPDIR);
+			makeSelf.api.memfs.mkdirp(makeSelf.config.TEMPDIR);
 		} catch(e)
 		{
 			if(e instanceof Error)
@@ -752,7 +792,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 		}
 		try
 		{
-			api.memfs.mkdirp(self.config.HOMEDIR);
+			makeSelf.api.memfs.mkdirp(makeSelf.config.HOMEDIR);
 		} catch(e)
 		{
 			if(e instanceof Error)
@@ -763,7 +803,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 		try
 		{
 			if(makeDirs)
-				api.memfs.mkdirp(buildDir);
+				makeSelf.api.memfs.mkdirp(buildDir);
 		} catch(e)
 		{
 			if(e instanceof Error)
@@ -774,7 +814,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 		try
 		{
 			if(makeDirs && outDir)
-				api.memfs.mkdirp(outDir);
+				makeSelf.api.memfs.mkdirp(outDir);
 		} catch(e)
 		{
 			if(e instanceof Error)
@@ -784,42 +824,47 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 		}
 	}
 
-	if(!self.FS.virtual[virtualFile]
-		|| (self.FS.virtual[virtualFile].mode >> 12) !== self.ST_DIR
-		&& (!self.FS.virtual[virtualFile].contents
-			|| self.FS.virtual[virtualFile].contents.length === 0)
+	if(makeSelf.FS && !makeSelf.FS.virtual[virtualFile]
+		|| (makeSelf.FS && makeSelf.FS.virtual[virtualFile] && makeSelf.FS.virtual[virtualFile].mode >> 12) !== makeSelf.ST_DIR
+		&& (!makeSelf.FS?.virtual[virtualFile]?.contents
+			|| makeSelf.FS.virtual[virtualFile].contents.length === 0)
 	)
 	{
 		if(!loadedDirectories.includes(buildDir) && makeDirs)
 		{
-			console.log(`Loading index (${api?.worker ? 'frontend' : 'worker'}): ${buildDir}`);
+			console.log(`Loading index (${makeSelf.api?.worker ? 'frontend' : 'worker'}): ${buildDir}`);
 			loadedDirectories.push(buildDir);
 			if(makeDirs)
 				mkdirp(buildDir, database);
-			let currentDir = await self.queryIndex(self.DB_STORE_NAME, 'parent', buildDir, null, null, database);
-			for(let r of currentDir)
-				self.FS.virtual[database + '/' + r.path] = r;
+			let currentDir = await makeSelf.queryIndex?.(makeSelf.DB_STORE_NAME ?? '', 'parent', buildDir, null, null, database);
+			for(let r of currentDir ?? [])
+			{
+				if(makeSelf.FS)
+				{
+					makeSelf.FS.virtual[database + '/' + r.path] = r;
+				}
+			}
 		}
 
 		// TODO!!!!! check if commit has changed or file has changed on disk
-		if((!self.FS.virtual[virtualFile]
-			|| !self.FS.virtual[virtualFile].contents
-			|| self.FS.virtual[virtualFile].contents.length === 0) && makeDirs /* only load github if its a controlled file */)
+		if((makeSelf.FS && !makeSelf.FS.virtual[virtualFile]
+			|| !makeSelf.FS?.virtual[virtualFile]?.contents
+			|| makeSelf.FS.virtual[virtualFile].contents.length === 0) && makeDirs /* only load github if its a controlled file */)
 		{
-			console.log(`Loading IDB/Github (${api?.worker ? 'frontend' : 'worker'}): ${file}`);
-			await self.cacheFile(self.DB_STORE_NAME, ownerName, repoName, file, void 0, makeDirs);
+			console.log(`Loading IDB/Github (${makeSelf.api?.worker ? 'frontend' : 'worker'}): ${file}`);
+			await makeSelf.cacheFile?.(makeSelf.DB_STORE_NAME, ownerName, repoName, file, void 0, makeDirs);
 		}
 
-		if(self.FS.virtual[virtualFile] && (self.FS.virtual[virtualFile].mode >> 12) === self.ST_FILE)
+		if(makeSelf.FS?.virtual[virtualFile] && (makeSelf.FS.virtual[virtualFile].mode >> 12) === makeSelf.ST_FILE)
 		{
-			if(api?.memfs)
+			if(makeSelf.api?.memfs)
 			{
-				if(!api.memfs.exists(file))
+				if(!makeSelf.api.memfs.exists(file))
 				{
-					api.memfs.mem.check;
-					api.memfs.addFile(file, self.FS.virtual[virtualFile].contents);
+					makeSelf.api.memfs.mem.check;
+					makeSelf.api.memfs.addFile(file, makeSelf.FS.virtual[virtualFile].contents);
 				} else
-					console.log(`Already have from query (${api.worker ? 'frontend' : 'worker'}): ${file}`);
+					console.log(`Already have from query (${makeSelf.api.worker ? 'frontend' : 'worker'}): ${file}`);
 			}
 		}
 		// else if (makeDirs) {
@@ -828,16 +873,16 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 
 	} else
 	{
-		if(api?.memfs)
+		if(makeSelf.api?.memfs)
 		{
-			if((self.FS.virtual[virtualFile].mode >> 12) === self.ST_DIR)
+			if(makeSelf.FS && makeSelf.FS.virtual[virtualFile] && (makeSelf.FS.virtual[virtualFile].mode >> 12) === makeSelf.ST_DIR)
 			{
-				api.memfs.addDirectory(virtualFile);
+				makeSelf.api.memfs.addDirectory(virtualFile);
 			}
 			else
 			{
 				//api.memfs.mem.check
-				api.memfs.addFile(file, self.FS.virtual[virtualFile].contents);
+				makeSelf.api.memfs.addFile(file, makeSelf.FS?.virtual[virtualFile]?.contents);
 			}
 		}
 		console.log(`Already have contents (${api?.worker ? 'frontend' : 'worker'}): ${file}`);
@@ -845,51 +890,59 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 
 	try
 	{
-		if(api?.memfs && makeDirs && self.FS.virtual[virtualFile] && self.FS.virtual[virtualFile].contents)
+		if(makeSelf.api?.memfs && makeDirs && makeSelf.FS?.virtual[virtualFile] && makeSelf.FS.virtual[virtualFile].contents)
 		{
-			if((self.FS.virtual[virtualFile].mode >> 12) === self.ST_DIR)
+			if((makeSelf.FS.virtual[virtualFile].mode >> 12) === makeSelf.ST_DIR)
 			{
-				api.memfs.addDirectory(file);
+				makeSelf.api.memfs.addDirectory(file);
 			}
 			else
 			{
-				api.memfs.mem.check;
-				api.memfs.addFile(file, self.FS.virtual[virtualFile].contents);
+				makeSelf.api.memfs.mem.check;
+				makeSelf.api.memfs.addFile(file, makeSelf.FS.virtual[virtualFile].contents);
 			}
 		}
 	} catch(e)
 	{
 		if(e instanceof Error)
 		{
-			console.log(`(${api?.worker ? 'frontend' : 'worker'}) ${e.message}\n\r${e.stack}`);
+			console.log(`(${makeSelf.api?.worker ? 'frontend' : 'worker'}) ${e.message}\n\r${e.stack}`);
 		}
 	}
 
 	if(!obj) return;
 
-	if(!self.FS.virtual[virtualObj])
+	if(!makeSelf.FS?.virtual[virtualObj])
 	{
 		if(!loadedDirectories.includes(outDir) && makeDirs)
 		{
-			console.log(`Loading index output (${api?.worker ? 'frontend' : 'worker'}): ${outDir}`);
+			console.log(`Loading index output (${makeSelf.api?.worker ? 'frontend' : 'worker'}): ${outDir}`);
 			if(makeDirs)
 			{
 				mkdirp(outDir, database);
 			}
-			let currentDir = await self.queryIndex(self.DB_STORE_NAME, 'parent', outDir, null, null, database);
-			for(let r of currentDir)
-				self.FS.virtual[database + '/' + r.path] = r;
+			let currentDir = await makeSelf.queryIndex?.(makeSelf.DB_STORE_NAME ?? '', 'parent', outDir, null, null, database);
+			for(let r of currentDir ?? [])
+			{
+				if(makeSelf.FS)
+				{
+					makeSelf.FS.virtual[database + '/' + r.path] = r;
+				}
+			}
 			loadedDirectories.push(outDir);
 		}
 
 		// don't load object files from github
-		if(!self.FS.virtual[virtualObj])
+		if(!makeSelf.FS?.virtual[virtualObj])
 		{
-			console.log(`Loading IDB output (${api?.worker ? 'frontend' : 'worker'}): ${obj}`);
-			self.FS.virtual[virtualObj] = await self.getRecord(self.DB_STORE_NAME, obj, database);
+			console.log(`Loading IDB output (${makeSelf.api?.worker ? 'frontend' : 'worker'}): ${obj}`);
+			if(makeSelf.FS)
+			{
+				makeSelf.FS.virtual[virtualObj] = await makeSelf.getRecord?.(makeSelf.DB_STORE_NAME ?? '', obj, database);
+			}
 		} else
 		{
-			console.log(`Already have object (${api?.worker ? 'frontend' : 'worker'}): ${file}`);
+			console.log(`Already have object (${makeSelf.api?.worker ? 'frontend' : 'worker'}): ${file}`);
 		}
 		//if (api.memfs && !api.memfs.exists(obj) && FS.virtual[file])
 		//    api.memfs.addFile(obj, FS.virtual[obj].contents)
@@ -906,19 +959,19 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 async function buildClient(database = null, forceChanged = false, noLinking = false, noBounce = false)
 {
 
-	if(self.buildDebounce)
+	if(makeSelf.buildDebounce)
 	{
-		clearTimeout(self.buildDebounce);
+		clearTimeout(makeSelf.buildDebounce);
 	}
 
 	if(!noBounce)
 	{
-		self.buildDebounce = setTimeout(() => buildClient(database, forceChanged, noLinking, true), 500);
+		makeSelf.buildDebounce = setTimeout(() => buildClient(database, forceChanged, noLinking, true), 500);
 		return;
 	}
 
-	if(self.building) return;
-	self.building = true;
+	if(makeSelf.building) return;
+	makeSelf.building = true;
 
 
 	try
@@ -932,7 +985,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 
 		const output = [
-			`Building ${self.config.CNAME} for ${self.COMPILE_PLATFORM} (${self.COMPILE_ARCH})`,
+			`Building ${makeSelf.config.CNAME} for ${makeSelf.COMPILE_PLATFORM} (${makeSelf.COMPILE_ARCH})`,
 			`Flags: ${getBaseFlags().join(' ')}`,
 			`Total source files mapped: ${[...allCompileObjects].length}`
 		];
@@ -946,23 +999,23 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 		let DEBUG_CFLAGS = BUILDCFLAGS();
 
-		if(!database) database = self.engineRepository || api?.database;
+		if(!database) database = makeSelf.engineRepository || makeSelf.api?.database;
 		if(!database) return;
 
-		let CONFIGURATION = api?.configuration === 'release'
-			? self.dirs.ENGINE_RELEASE
-			: self.dirs.ENGINE_DEBUG;
+		let CONFIGURATION = makeSelf.api?.configuration === 'release'
+			? makeSelf.dirs.ENGINE_RELEASE
+			: makeSelf.dirs.ENGINE_DEBUG;
 
 
-		if(TERMINATE) return;
+		if(makeSelf.TERMINATE) return;
 
-		if(needsHeaders)
+		if(makeSelf.needsHeaders)
 		{
 
 			await downloadHeaders(q3eCommonHeaders, 10, database);
 		}
 
-		if(TERMINATE) return;
+		if(makeSelf.TERMINATE) return;
 
 
 
@@ -975,22 +1028,22 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 		for(let file of [...allCompileObjects])
 		{
 
-			if(TERMINATE) return;
+			if(makeSelf.TERMINATE) return;
 
 
 			try
 			{
 				const obj = CONFIGURATION + '/' + file.replace('.c', '.o');
-				const virtualFile = path.join(database, file);
-				const virtualObj = path.join(database, obj);
+				const virtualFile = makeSelf.path.join(database, file);
+				const virtualObj = makeSelf.path.join(database, obj);
 
 				if(!forceChanged)
 					await prepInputOutput(file, obj, database, true /* controlled directory */);
 
-				if(self.FS.virtual[virtualObj]?.timestamp
-					&& self.FS.virtual[virtualFile]?.timestamp
+				if(makeSelf.FS?.virtual[virtualObj]?.timestamp
+					&& makeSelf.FS.virtual[virtualFile]?.timestamp
 					// compare input and output mtime
-					&& self.FS.virtual[virtualFile]?.timestamp < self.FS.virtual[virtualObj]?.timestamp
+					&& makeSelf.FS.virtual[virtualFile]?.timestamp < makeSelf.FS.virtual[virtualObj]?.timestamp
 					&& !forceChanged
 				)
 				{
@@ -1006,7 +1059,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 				let CCFLAGS = [
 					...CFLAGS,
 					...DEBUG_CFLAGS,
-					...(api?.configuration === 'pre' ? [
+					...(makeSelf.api?.configuration === 'pre' ? [
 						'-o', obj.replace('.o', '.a')
 					] : ['-o', obj]),
 					file
@@ -1016,9 +1069,9 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 
 
-				await api.compile({
+				await makeSelf.api?.compile({
 					CFLAGS: CCFLAGS,
-					contents: self.FS.virtual[virtualFile]?.contents,
+					contents: makeSelf.FS?.virtual[virtualFile]?.contents,
 					input: file,
 					database,
 					obj
@@ -1049,7 +1102,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 	} finally
 	{
-		building = false;
+		makeSelf.building = false;
 
 		//await api.download(database)
 
@@ -1065,13 +1118,13 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
  **/
 async function linkEngine(database = null, forceChanged = true, noBuild = false)
 {
-	if(!database) database = api?.database;
+	if(!database) database = makeSelf.api?.database;
 	if(!database) return;
 
 
-	let CONFIGURATION = api?.configuration === 'release'
-		? self.dirs.ENGINE_RELEASE
-		: self.dirs.ENGINE_DEBUG;
+	let CONFIGURATION = makeSelf.api?.configuration === 'release'
+		? makeSelf.dirs.ENGINE_RELEASE
+		: makeSelf.dirs.ENGINE_DEBUG;
 
 
 
@@ -1085,13 +1138,16 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 	}
 
 
-	const engineExe = CONFIGURATION + '/' + self.config.CNAME + self.config.BINEXT;
-	const virtualExe = path.join(database, engineExe);
+	const engineExe = CONFIGURATION + '/' + makeSelf.config.CNAME + makeSelf.config.BINEXT;
+	const virtualExe = makeSelf.path.join(database, engineExe);
 
-	self.FS.virtual[virtualExe] = await self.getRecord(self.DB_STORE_NAME, engineExe, database);
+	if(makeSelf.FS)
+	{
+		makeSelf.FS.virtual[virtualExe] = await makeSelf.getRecord?.(makeSelf.DB_STORE_NAME ?? '', engineExe, database);
+	}
 
 
-	if(self.FS.virtual[virtualExe]
+	if(makeSelf.FS?.virtual[virtualExe]
 		// TODO: compare LATEST input and output mtime
 		&& !forceChanged
 	)
@@ -1105,7 +1161,7 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 
 	try
 	{
-		await api?.link({
+		await makeSelf.api?.link({
 			LDFLAGS: [
 				...LDFLAGS,
 				...clientObjs,
@@ -1139,18 +1195,18 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 async function buildShaders(database = null, forceChanged = false)
 {
 
-	if(!database) database = self.engineRepository || api?.database;
+	if(!database) database = makeSelf.engineRepository || makeSelf.api?.database;
 	if(!database) return;
 
-	if(needsHeaders)
+	if(makeSelf.needsHeaders)
 	{
 
 		await downloadHeaders(q3eCommonHeaders, 10, database);
 	}
 
-	let CONFIGURATION = api?.configuration === 'release'
-		? self.dirs.ENGINE_RELEASE
-		: self.dirs.ENGINE_DEBUG;
+	let CONFIGURATION = makeSelf.api?.configuration === 'release'
+		? makeSelf.dirs.ENGINE_RELEASE
+		: makeSelf.dirs.ENGINE_DEBUG;
 
 
 
@@ -1164,21 +1220,21 @@ async function buildShaders(database = null, forceChanged = false)
 
 
 
-		if(TERMINATE) return;
+		if(makeSelf.TERMINATE) return;
 
 		try
 		{
 			// TODO: run stringify?
 			const obj = CONFIGURATION + '/' + shader.replace('.glsl', '.o');
-			const virtualShader = path.join(database, shader);
-			const virtualObj = path.join(database, obj);
+			const virtualShader = makeSelf.path.join(database, shader);
+			const virtualObj = makeSelf.path.join(database, obj);
 
 			if(!forceChanged) // because we'll create it anyways so don't load it here
 				await prepInputOutput(shader, obj, database, true /* controlled paths */);
 
-			if(self.FS.virtual[virtualObj]?.timestamp
-				&& self.FS.virtual[virtualShader]?.timestamp
-				&& self.FS.virtual[virtualShader]?.timestamp < self.FS.virtual[virtualObj]?.timestamp
+			if(makeSelf.FS?.virtual[virtualObj]?.timestamp
+				&& makeSelf.FS.virtual[virtualShader]?.timestamp
+				&& makeSelf.FS.virtual[virtualShader]?.timestamp < makeSelf.FS.virtual[virtualObj]?.timestamp
 				&& !forceChanged
 			)
 			{
@@ -1189,7 +1245,7 @@ async function buildShaders(database = null, forceChanged = false)
 
 			console.log(`GLSL: ${obj}`);
 
-			const cCode = generateFallbackC(shader, self.FS.virtual[virtualShader]?.contents);
+			const cCode = generateFallbackC(shader, makeSelf.FS?.virtual[virtualShader]?.contents);
 
 			let hasChanged = true;
 
@@ -1224,21 +1280,22 @@ async function buildShaders(database = null, forceChanged = false)
 
 
 /**
+ * @param {string[]} headers
  * @param {string | null | undefined} database
  **/
 async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = null)
 {
 	if(!database)
 	{
-		database = self.engineRepository || api?.database;
+		database = makeSelf.engineRepository || makeSelf.api?.database;
 	}
 	if(!database)
 	{
 		return;
 	}
 	const parts = database?.split('/');
-	const ownerName = parts?.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
-	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || self.RepositoryToolbar?.repository?.value;
+	const ownerName = parts?.length == 2 ? parts[0] : makeSelf.RepositoryToolbar?.owner?.value;
+	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || makeSelf.RepositoryToolbar?.repository?.value;
 	if(!ownerName || !repoName)
 	{
 		return;
@@ -1249,12 +1306,12 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 	{
 		const batch = headers.slice(i, i + batchSize);
 
-		if(TERMINATE) return;
+		if(makeSelf.TERMINATE) return;
 
 		for(let j = 0; j < batch.length; j++)
 		{
 
-			if(TERMINATE) return;
+			if(makeSelf.TERMINATE) return;
 
 			let header = batch[j];
 			//await Promise.all(batch.map(async (header) => {
@@ -1263,53 +1320,62 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 				if(header.includes('wasm.syms'))
 				{
 					const localName = 'components/compiler/wasm.syms';
-					const virtualSyms = path.join(database, localName);
-					const virtualHeader = path.join(database, header);
+					const virtualSyms = makeSelf.path.join(database, localName);
+					const virtualHeader = makeSelf.path.join(database, header);
 					//let response = await fetch('wasm.syms');
 					//let contents = await response.arrayBuffer()
-					if(!self.filesRepo['briancullinan2/quedit'])
+					if(!makeSelf.filesRepo?.['briancullinan2/quedit'])
 					{
-						await self.loadGitHubTree('briancullinan2', 'quedit', 'main');
+						await makeSelf.loadGitHubTree?.('briancullinan2', 'quedit', 'main');
 					}
-					await self.cacheFile('briancullinan2', 'quedit', localName);
-					if(!self.FS.virtual[virtualSyms])
+					await makeSelf.cacheFile?.('briancullinan2', 'quedit', localName);
+					if(!makeSelf.FS?.virtual[virtualSyms])
 					{
 						debugger;
 						console.error('Goddamnit you suck at programming.');
 					}
-					self.FS.virtual[virtualHeader] =
+					if(makeSelf.FS)
 					{
-						timestamp: new Date(),
-						mode: self.FS_FILE,
-						contents: self.FS.virtual[virtualSyms]?.contents,
-						path: header,
-						sha: self.FS.virtual[virtualSyms]?.sha,
-						parent: header.substring(0, header.lastIndexOf('/'))
+						makeSelf.FS.virtual[virtualHeader] =
+						{
+							timestamp: new Date(),
+							mode: makeSelf.FS_FILE,
+							contents: makeSelf.FS.virtual[virtualSyms]?.contents,
+							path: header,
+							sha: makeSelf.FS.virtual[virtualSyms]?.sha,
+							parent: header.substring(0, header.lastIndexOf('/'))
 
-					};
+						};
+					}
 
-					await self.putRecord(self.DB_STORE_NAME, self.FS.virtual[virtualHeader], database);
+					if(makeSelf.FS?.virtual[virtualHeader])
+					{
+						await makeSelf.putRecord?.(makeSelf.DB_STORE_NAME ?? '', makeSelf.FS.virtual[virtualHeader], database);
+					}
 				}
 				else
 				{
-					if(!self.filesRepo[database])
+					if(!makeSelf.filesRepo?.[database])
 					{
-						let branch = await self.getDefaultBranch(ownerName, repoName);
-						await self.loadGitHubTree(ownerName, repoName, branch);
+						let branch = await makeSelf.getDefaultBranch?.(ownerName, repoName);
+						if(branch)
+						{
+							await makeSelf.loadGitHubTree?.(ownerName, repoName, branch);
+						}
 					}
 
-					if(self.filesRepo[database]?.[header])
+					if(makeSelf.filesRepo?.[database]?.[header])
 					{
 						// cacheFile handles the storage logic
-						let sha = self.filesRepo[database]?.[header].sha;
-						await self.cacheFile(self.DB_STORE_NAME, ownerName, repoName, header, sha);
+						let sha = makeSelf.filesRepo[database]?.[header].sha;
+						await makeSelf.cacheFile?.(makeSelf.DB_STORE_NAME, ownerName, repoName, header, sha);
 					}
 
 				}
 
 
 
-				await api?.header(ownerName, repoName, header, database);
+				await makeSelf.api?.header(ownerName, repoName, header, database);
 			} catch(e)
 			{
 				if(e instanceof Error)
@@ -1327,6 +1393,6 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 	}
 
 
-	needsHeaders = false;
+	makeSelf.needsHeaders = false;
 }
 

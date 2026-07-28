@@ -5,7 +5,16 @@ export interface MockAPI
 	github_token?: string | null;
 	worker?: Worker;
 	memfs?: any;
+	configuration?: string | null;
+	database?: string | null;
+	width?: number | null;
+	ready?: boolean;
+	build?: (database?: string, action?: string) => Promise<any>;
+	run?: (options?: WorkerCommandOptions) => Promise<any>;
+	link?: (options?: WorkerCommandOptions) => Promise<any>;
+	header?: (owner: string, repo: string, header: any, database?: string) => Promise<any>;
 	hostWrite?: (text: any, source?: any) => void;
+	compile?: (options?: WorkerCommandOptions) => Promise<any>;
 }
 
 /** Callback registry internal state */
@@ -39,14 +48,14 @@ interface WorkerCommandOptions
 	[key: string]: any;
 }
 
-declare class WorkerAPI extends MockAPI
+declare interface WorkerAPI extends MockAPI
 {
 	nextResponseId?: number;
 	responseCBs?: Map<number, ResponseCallback>;
 	worker?: Worker;
 	port?: MessagePort;
-	configuration: string;
-	hostWrite?: (text: any, source?: any) => void;
+	configuration?: string;
+	width?: number;
 	database?: string;
 	width?: number;
 	toolsRepo?: string;
@@ -56,26 +65,28 @@ declare class WorkerAPI extends MockAPI
 	assetRepo?: string;
 	memfs?: any;
 	ready?: boolean;
+	ready?: Promise<any>;
 	github_token?: string | null;
 
-	constructor(options: WorkerAPIOptions);
+	hostWrite?: (text: any, source?: any) => void;
+	constructor?: (options: WorkerAPIOptions) => WorkerAPI;
 
 	setShowTiming?: (value: boolean | any) => void;
 	terminate?: () => void;
 	inject?: (options: WorkerCommandOptions) => void;
 
 	runAsync?: (id: string, options?: any) => Promise<any>;
-	compileToAssembly(options?: WorkerCommandOptions): Promise<any>;
-	compileTo6502(options?: WorkerCommandOptions): Promise<any>;
-	upload(options?: WorkerCommandOptions | string): Promise<any>;
+	compileToAssembly?: (options?: WorkerCommandOptions) => Promise<any>;
+	compileTo6502?: (options?: WorkerCommandOptions) => Promise<any>;
+	upload?: (options?: WorkerCommandOptions | string) => Promise<any>;
 	download?: (options?: WorkerCommandOptions) => Promise<any>;
-	header(owner: string, repo: string, header: any, database?: string): Promise<any>;
-	compile(options?: WorkerCommandOptions): Promise<any>;
-	build(database?: string, action?: string): Promise<any>;
-	run(options?: WorkerCommandOptions): Promise<any>;
-	link(options?: WorkerCommandOptions): Promise<any>;
+	header?: (owner: string, repo: string, header: any, database?: string) => Promise<any>;
+	compile?: (options?: WorkerCommandOptions) => Promise<any>;
+	build?: (database?: string, action?: string) => Promise<any>;
+	run?: (options?: WorkerCommandOptions) => Promise<any>;
+	link?: (options?: WorkerCommandOptions) => Promise<any>;
 
-	compileLinkRun(contents: string, width?: number): void;
+	compileLinkRun?: (contents: string, width?: number) => void;
 	postCanvas?: (offscreenCanvas: OffscreenCanvas) => void;
 	remove?: (filename: string) => Promise<any>;
 	onmessage?: (event: MessageEvent) => void;

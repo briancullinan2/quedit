@@ -1,6 +1,10 @@
 import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
 import { SettingsManager } from "./settings";
+import type { GlobalToolbarsWindow, RepositorySettingsWindow } from "./menu.d";
+
+
+const menuSelf: RepositorySettingsWindow & GlobalToolbarsWindow = self as unknown as any;
 
 export type SelectOption = { value: string; label: string; selected?: boolean; isDark?: boolean; };
 export type OptGroup = { label: string; options: SelectOption[]; };
@@ -184,7 +188,7 @@ export const SETTINGS_CONTROLS: ControlConfig[] = [
 	}
 ];
 
-window.SETTINGS_CONTROLS = SETTINGS_CONTROLS;
+menuSelf.SETTINGS_CONTROLS = SETTINGS_CONTROLS;
 
 
 export class SettingsToolbar extends Widget
@@ -204,7 +208,7 @@ export class SettingsToolbar extends Widget
 		if(!SettingsToolbar._instance)
 		{
 			SettingsToolbar._instance = new SettingsToolbar();
-			window.settingsToolbar = SettingsToolbar._instance;
+			menuSelf.settingsToolbar = SettingsToolbar._instance;
 		}
 		return SettingsToolbar._instance;
 	}
@@ -328,4 +332,4 @@ export class SettingsToolbar extends Widget
 	}
 }
 
-window.SettingsToolbar = SettingsToolbar;
+menuSelf.SettingsToolbar = SettingsToolbar;

@@ -37,6 +37,7 @@ export interface LuminoLayoutWindow
 
 	statusBar?: StatusBarWidget;
 	envStatusNode?: HTMLDivElement;
+	currentOpenFileId?: string | null | undefined;
 
 	layoutState?: LayoutState;
 	resizeHandler?: () => void;

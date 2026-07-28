@@ -9,12 +9,16 @@ import { SettingsToolbar } from './menu-settings';
 import { EngineToolbar } from './menu-engine';
 import { HistoryToolbar } from './menu-history';
 import { LayoutAdjuster } from './lumino-widget';
-import type { FileListWidget } from '../filelist/widget';
-import { MenuConfig } from './menu-manager';
 import { loadAndInstantiate } from './babel-compile';
 import { OUTLINE_WIDGET_TYPES, updateModifierPressed } from './lumino-resize';
-import type { TerminalWidget } from '../terminal/widget';
 import { FileManager } from './lumino-files';
+import type { GlobalToolbarsWindow, LuminoMenuWindow, RepositorySettingsWindow } from './menu.d';
+import type { LuminoLayoutWindow } from './lumino.d';
+import type { EditorWindow } from '../editor/widget.d';
+
+
+const menuSelf: RepositorySettingsWindow & LuminoMenuWindow & LuminoLayoutWindow & GlobalToolbarsWindow & EditorWindow = self as unknown as any;
+
 
 export interface TopBarComponents
 {
@@ -57,7 +61,7 @@ export const MODULE_REGISTRY: Record<string, ComponentRoute> = {
 	'terminal-container': { label: 'Show Console', url: './components/terminal/widget.ts', className: 'TerminalWidget', iconClass: 'bx bx-terminal' },
 };
 
-window.MODULE_REGISTRY = MODULE_REGISTRY;
+menuSelf.MODULE_REGISTRY = MODULE_REGISTRY;
 
 
 export const TERMINAL_REGISTRY: TerminalFilter[] = [
@@ -78,7 +82,7 @@ export const TERMINAL_REGISTRY: TerminalFilter[] = [
 ];
 
 
-window.TERMINAL_REGISTRY = TERMINAL_REGISTRY;
+menuSelf.TERMINAL_REGISTRY = TERMINAL_REGISTRY;
 
 
 export async function triggerPanelRoute(panelId: string, mainDock: DockPanel, noHide: boolean = false): Promise<void>
@@ -204,7 +208,7 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel, no
 }
 
 
-window.triggerPanelRoute = triggerPanelRoute;
+menuSelf.triggerPanelRoute = triggerPanelRoute;
 
 
 function initializeTabsMenu(commands: CommandRegistry, mainDock: DockPanel, viewMenu: Menu)
@@ -247,20 +251,20 @@ function initializeTabsMenu(commands: CommandRegistry, mainDock: DockPanel, view
 		},
 		execute: () =>
 		{
-			if(!window.lastInteractedWidget)
+			if(!menuSelf.lastInteractedWidget)
 			{
 				return;
 			}
 			const widgets = Array.from(mainDock.widgets());
-			const currentWidgetIndex = widgets.indexOf(window.lastInteractedWidget);
+			const currentWidgetIndex = widgets.indexOf(menuSelf.lastInteractedWidget);
 			if(currentWidgetIndex === widgets.length - 1)
 			{
-				window.lastInteractedWidget = widgets[0];
+				menuSelf.lastInteractedWidget = widgets[0];
 				mainDock.activateWidget(widgets[0]);
 				widgets[0].activate();
 			} else
 			{
-				window.lastInteractedWidget = widgets[currentWidgetIndex + 1];
+				menuSelf.lastInteractedWidget = widgets[currentWidgetIndex + 1];
 				mainDock.activateWidget(widgets[currentWidgetIndex + 1]);
 				widgets[currentWidgetIndex + 1].activate();
 			}
@@ -279,20 +283,20 @@ function initializeTabsMenu(commands: CommandRegistry, mainDock: DockPanel, view
 		},
 		execute: () =>
 		{
-			if(!window.lastInteractedWidget)
+			if(!menuSelf.lastInteractedWidget)
 			{
 				return;
 			}
 			const widgets = Array.from(mainDock.widgets());
-			const currentWidgetIndex = widgets.indexOf(window.lastInteractedWidget);
+			const currentWidgetIndex = widgets.indexOf(menuSelf.lastInteractedWidget);
 			if(currentWidgetIndex === 0)
 			{
-				window.lastInteractedWidget = widgets[widgets.length - 1];
+				menuSelf.lastInteractedWidget = widgets[widgets.length - 1];
 				mainDock.activateWidget(widgets[widgets.length - 1]);
 				widgets[widgets.length - 1].activate();
 			} else
 			{
-				window.lastInteractedWidget = widgets[currentWidgetIndex - 1];
+				menuSelf.lastInteractedWidget = widgets[currentWidgetIndex - 1];
 				mainDock.activateWidget(widgets[currentWidgetIndex - 1]);
 				widgets[currentWidgetIndex - 1].activate();
 			}
@@ -313,7 +317,7 @@ function initializeTabsMenu(commands: CommandRegistry, mainDock: DockPanel, view
 	const tabsMenu = new Menu({ commands });
 	tabsMenu.title.label = 'Open Tabs';
 	tabsMenu.title.iconClass = 'bx bx-tabs';
-	window.tabsMenu = tabsMenu;
+	menuSelf.tabsMenu = tabsMenu;
 	viewMenu.addItem({ type: 'submenu', submenu: tabsMenu });
 	viewMenu.addItem({ type: 'separator' });
 	tabsMenu.addItem({ type: 'separator' });
@@ -407,8 +411,8 @@ function mainModuleHandler(mainDock: DockPanel, toolbarNode: HTMLElement, event:
 			anchor.classList.add('active');
 		} else
 		{
-			const shouldCollapse = (window.fileListWidgets && window.fileListWidgets.length > 0)
-				|| (window.terminalWidgets && window.terminalWidgets.length > 0);
+			const shouldCollapse = (menuSelf.fileListWidgets && menuSelf.fileListWidgets.length > 0)
+				|| (menuSelf.terminalWidgets && menuSelf.terminalWidgets.length > 0);
 			if(!shouldCollapse)
 			{
 				return;
@@ -433,20 +437,20 @@ function mainModuleHandler(mainDock: DockPanel, toolbarNode: HTMLElement, event:
 
 function collapseWidgets(mainDock: DockPanel, collapse: boolean, route?: ComponentRoute)
 {
-	if(window.fileListWidgets && window.fileListWidgets.length > 0
+	if(menuSelf.fileListWidgets && menuSelf.fileListWidgets.length > 0
 		&& (!route || route.className && OUTLINE_WIDGET_TYPES.includes(route.className))
 	)
 	{
 		if(collapse)
 		{
-			for(let widget of window.fileListWidgets)
+			for(let widget of menuSelf.fileListWidgets)
 			{
 				widget.hide();
 				widget.parent = null;
 			}
 		} else
 		{
-			for(let widget of window.fileListWidgets)
+			for(let widget of menuSelf.fileListWidgets)
 			{
 				LayoutAdjuster.addOptimalWidgetLayout(mainDock, widget, {
 					type: 'outline',
@@ -456,20 +460,20 @@ function collapseWidgets(mainDock: DockPanel, collapse: boolean, route?: Compone
 		}
 	}
 
-	if(window.terminalWidgets && window.terminalWidgets.length > 0
+	if(menuSelf.terminalWidgets && menuSelf.terminalWidgets.length > 0
 		&& (!route || route.className && route.className === 'TerminalWidget')
 	)
 	{
 		if(collapse)
 		{
-			for(let widget of window.terminalWidgets)
+			for(let widget of menuSelf.terminalWidgets)
 			{
 				widget.hide();
 				widget.parent = null;
 			}
 		} else
 		{
-			for(let widget of window.terminalWidgets)
+			for(let widget of menuSelf.terminalWidgets)
 			{
 				LayoutAdjuster.addOptimalWidgetLayout(mainDock, widget, {
 					type: 'terminal',
@@ -481,10 +485,10 @@ function collapseWidgets(mainDock: DockPanel, collapse: boolean, route?: Compone
 
 	window.requestAnimationFrame(() =>
 	{
-		window.resizeHandler();
+		menuSelf.resizeHandler?.();
 		setTimeout(() =>
 		{
-			window.resizeHandler();
+			menuSelf.resizeHandler?.();
 		}, 200);
 	});
 }
@@ -504,7 +508,7 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 			isVisible: false
 		}
 	});
-	window.globalMenuBar = menuBar;
+	menuSelf.globalMenuBar = menuBar;
 	menuBar.id = 'top-menubar';
 
 	const headerRow = new Panel();
@@ -513,19 +517,19 @@ export function createTopBar(commands: CommandRegistry): TopBarComponents
 
 	// 4. Build the inline toolbar segment
 	const repoToolbar = RepositoryToolbar.getInstance().initialize(commands);
-	window.repoToolbar = repoToolbar;
+	menuSelf.repositoryToolbar = repoToolbar;
 	const scriptToolbar = ScriptToolbar.getInstance().initialize(commands);
-	window.scriptToolbar = scriptToolbar;
+	menuSelf.scriptToolbar = scriptToolbar;
 	const appToolbar = ApplicationToolbar.getInstance().initialize(commands);
-	window.appToolbar = appToolbar;
+	menuSelf.appToolbar = appToolbar;
 	const fileToolbar = FileToolbar.getInstance().initialize(commands);
-	window.fileToolbar = fileToolbar;
+	menuSelf.fileToolbar = fileToolbar;
 	const historyToolbar = HistoryToolbar.getInstance().initialize(commands);
-	window.historyToolbar = historyToolbar;
+	menuSelf.historyToolbar = historyToolbar;
 	const settingsToolbar = SettingsToolbar.getInstance().initialize(commands);
-	window.settingsToolbar = settingsToolbar;
+	menuSelf.settingsToolbar = settingsToolbar;
 	const engineToolbar = EngineToolbar.getInstance().initialize(commands);
-	window.engineToolbar = engineToolbar;
+	menuSelf.engineToolbar = engineToolbar;
 
 	headerRow.addWidget(menuBar);
 	headerRow.addWidget(repoToolbar);
@@ -572,16 +576,22 @@ export async function renderHashCommand(targetHashName: string, noBounce: boolea
 	if(matchedRoute)
 	{
 		// Activate registered panel/widget via your main dock panel router
-		await triggerPanelRoute(rawTarget, window.mainDock, true);
+		if(menuSelf.mainDock)
+		{
+			await triggerPanelRoute(rawTarget, menuSelf.mainDock, true);
+		}
 		return;
 	}
 
 	const matchedTerminal = TERMINAL_REGISTRY[rawTarget];
 	if(matchedTerminal)
 	{
-		await triggerPanelRoute('terminal-container', window.mainDock, true);
+		if(menuSelf.mainDock)
+		{
+			await triggerPanelRoute('terminal-container', menuSelf.mainDock, true);
+		}
 
-		const currentDOMWidgets = Array.from(window.mainDock.widgets());
+		const currentDOMWidgets = Array.from(menuSelf.mainDock?.widgets() ?? []);
 
 		// Locate any active TerminalWidget whose filterId or DOM element ID matches target
 		const existingTerminalWidget = currentDOMWidgets.find((w: any) =>
@@ -592,7 +602,7 @@ export async function renderHashCommand(targetHashName: string, noBounce: boolea
 		if(existingTerminalWidget)
 		{
 			// Activate and bring tab to front immediately
-			window.mainDock.activateWidget(existingTerminalWidget);
+			menuSelf.mainDock?.activateWidget(existingTerminalWidget);
 			existingTerminalWidget.activate();
 			return;
 		}
@@ -603,7 +613,7 @@ export async function renderHashCommand(targetHashName: string, noBounce: boolea
 	{
 		const [filePath, selected, dbFile, lineNumber] = await FileManager.findFileTestPath(rawTarget);
 
-		window.previousHashLineNumber = lineNumber;
+		menuSelf.previousHashLineNumber = lineNumber;
 
 		const targetPath = filePath || selected;
 		if(targetPath && typeof (window as any).navigateFile === 'function')

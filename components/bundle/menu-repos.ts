@@ -1,7 +1,8 @@
 import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
+import type { GlobalToolbarsWindow } from "./menu.d";
 
-
+const menuSelf: GlobalToolbarsWindow = self as unknown as any;
 
 export class RepositoryToolbar extends Widget
 {
@@ -20,7 +21,7 @@ export class RepositoryToolbar extends Widget
 		if(!RepositoryToolbar._instance)
 		{
 			RepositoryToolbar._instance = new RepositoryToolbar();
-			window.repoToolbar = RepositoryToolbar._instance;
+			menuSelf.repositoryToolbar = RepositoryToolbar._instance;
 		}
 		return RepositoryToolbar._instance;
 	}
@@ -125,4 +126,4 @@ export class RepositoryToolbar extends Widget
 	}
 }
 
-window.RepositoryToolbar = RepositoryToolbar;
+menuSelf.RepositoryToolbar = RepositoryToolbar;

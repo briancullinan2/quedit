@@ -1,4 +1,9 @@
-/// <reference path="../bundle/global.d.ts" />
+
+// @ts-check
+
+
+/** @type {import('./make.d').JavascriptLogger} */
+const loggerSelf = /** @type {any} */ (self);
 
 
 /**
@@ -142,7 +147,7 @@ const originalConsole = {
 	info: console.info
 };
 
-self.originalConsole = originalConsole;
+loggerSelf.originalConsole = originalConsole;
 
 self.console.log = (...args) =>
 {
@@ -151,7 +156,7 @@ self.console.log = (...args) =>
 	const source = [category, 'log', ...trailingFiles, func,
 		rawFile.split('/').pop().replace('.js', ''), rawFile
 	];
-	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
+	if(typeof loggerSelf.api !== 'undefined' && typeof loggerSelf.api.hostWrite != 'undefined' && !loggerSelf.api.worker) loggerSelf.api.hostWrite(formatted, source);
 	if(typeof originalConsole != 'undefined') originalConsole.log(...args);
 };
 
@@ -162,7 +167,7 @@ self.console.warn = (...args) =>
 	const source = [category, 'warn', ...trailingFiles, func,
 		rawFile.split('/').pop().replace('.js', ''), rawFile
 	];
-	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
+	if(typeof loggerSelf.api !== 'undefined' && typeof loggerSelf.api.hostWrite != 'undefined' && !loggerSelf.api.worker) loggerSelf.api.hostWrite(formatted, source);
 	if(typeof originalConsole != 'undefined') originalConsole.warn(...args);
 };
 
@@ -173,7 +178,7 @@ self.console.error = (...args) =>
 	const source = [category, 'error', ...trailingFiles, func,
 		rawFile.split('/').pop().replace('.js', ''), rawFile
 	];
-	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
+	if(typeof loggerSelf.api !== 'undefined' && typeof loggerSelf.api.hostWrite != 'undefined' && !loggerSelf.api.worker) loggerSelf.api.hostWrite(formatted, source);
 	if(typeof originalConsole != 'undefined') originalConsole.error(...args);
 };
 
@@ -184,7 +189,7 @@ self.console.info = (...args) =>
 	const source = [category, 'info', ...trailingFiles, func,
 		rawFile.split('/').pop().replace('.js', ''), rawFile
 	];
-	if(typeof api !== 'undefined' && typeof api.hostWrite != 'undefined' && !api.worker) api.hostWrite(formatted, source);
+	if(typeof loggerSelf.api !== 'undefined' && typeof loggerSelf.api.hostWrite != 'undefined' && !loggerSelf.api.worker) loggerSelf.api.hostWrite(formatted, source);
 	if(typeof originalConsole != 'undefined') originalConsole.info(...args);
 };
 
@@ -251,22 +256,22 @@ function specialWrite(msg, source)
 	if(msg.includes('Array "[Circular]"'))
 		debugger;
 	// 1. Core Fix: Clear old marks instantly via the native module API
-	if(msg.includes('q3lcc -v') && window.compilerDiagnostics)
+	if(msg.includes('q3lcc -v') && loggerSelf.compilerDiagnostics)
 	{
-		window.compilerDiagnostics.clear();
+		loggerSelf.compilerDiagnostics?.clear();
 	}
 
 	if(msg.includes('memory access out of bounds'))
 	{
-		needsHeaders = true;
+		loggerSelf.needsHeaders = true;
 	}
 
-	if(!window.runningCommand)
+	if(!loggerSelf.runningCommand)
 	{
-		window.runningCommand = true;
-		if(!window.detachedConsole && !window.alreadyWroteDetached)
+		loggerSelf.runningCommand = true;
+		if(!loggerSelf.detachedConsole && !loggerSelf.alreadyWroteDetached)
 		{
-			window.detachedConsole = true;
+			loggerSelf.detachedConsole = true;
 			debugger;
 			console.warn('\n\rDetached console, awaiting terminate...');
 		}

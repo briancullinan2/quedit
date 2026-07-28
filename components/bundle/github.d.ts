@@ -38,4 +38,5 @@ export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, Api
 	trees?: Record<string, any>;
 	filesRepo?: Record<string, GitHubFileTree | undefined>;
 	mapFiles?: Record<string, string>;
+	githubToken?: string;
 }

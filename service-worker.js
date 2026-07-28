@@ -1,8 +1,5 @@
 ﻿'use strict';
 
-const api = {
-	github_token: null
-};
 
 let localVersion = null;
 let SHUTUP = true;

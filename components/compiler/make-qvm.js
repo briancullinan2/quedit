@@ -1,4 +1,10 @@
-/// <reference path="../bundle/global.d.ts" />
+
+// @ts-check
+
+/** @type {import('./make.d').MakeQVMWindow} */
+const makeQVMSelf = /** @type {any} */ (self);
+
+
 
 /**
  * Quake3e Build Configuration Script - QVM Version
@@ -135,7 +141,7 @@ const qvmHeaders = [
 	"game/g_syscalls.h",
 	"cgame/cg_syscalls.h",
 	"ui/ui_syscalls.h"
-].map(file => path.join(self.config.MOUNT_DIR, file));
+].map(file => makeQVMSelf.path.join(makeQVMSelf.config.MOUNT_DIR, file));
 
 
 const QVMLIB_CFLAGS = [
@@ -217,70 +223,73 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 {
 
 
-	QVM_MODE = typeof api !== 'undefined' ? api.configuration === 'qvms' : false;
+	QVM_MODE = typeof makeQVMSelf.api !== 'undefined' ? makeQVMSelf.api.configuration === 'qvms' : false;
 
-	if(buildDebounce)
+	if(makeQVMSelf.buildDebounce)
 	{
-		clearTimeout(buildDebounce);
+		clearTimeout(makeQVMSelf.buildDebounce);
 	}
 
 	if(!noBounce)
 	{
-		buildDebounce = setTimeout(() => buildModule(name, sourceDir, filesList, database, extraDefines, forceChanged, noLinking, true), 500);
+		makeQVMSelf.buildDebounce = setTimeout(() => buildModule(name, sourceDir, filesList, database, extraDefines, forceChanged, noLinking, true), 500);
 		return;
 	}
 
-	if(building) return;
-	building = true;
+	if(makeQVMSelf.building) return;
+	makeQVMSelf.building = true;
 
 	try
 	{
 		console.log(`Compiling ${name} module...`);
 
 
-		if(!database) database = self.gameRepository || api?.database;
+		if(!database) database = makeQVMSelf.gameRepository || makeQVMSelf.api?.database;
 		const parts = database.split('/');
-		const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
-		const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
+		const ownerName = parts.length == 2 ? parts[0] : makeQVMSelf.RepositoryToolbar?.owner?.value;
+		const repoName = parts.length == 2 ? parts[1] : parts[0] || makeQVMSelf.RepositoryToolbar?.repository?.value;
 
 
-		if(needsHeaders)
+		if(makeQVMSelf.needsHeaders)
 		{
 			console.log("Syncing QVM Headers...");
-			await downloadHeaders(qvmHeaders, 10, database);
+			await makeQVMSelf.downloadHeaders?.(qvmHeaders, 10, database);
 		}
 
 
 
-		let CONFIGURATION = api?.configuration === 'release'
-			? self.dirs.ENGINE_RELEASE
-			: self.dirs.ENGINE_DEBUG;
+		let CONFIGURATION = makeQVMSelf.api?.configuration === 'release'
+			? makeQVMSelf.dirs.ENGINE_RELEASE
+			: makeQVMSelf.dirs.ENGINE_DEBUG;
 
 		console.log(`Building ${name}.qvm...`);
 
-		if(!self.filesRepo[database])
+		if(!makeQVMSelf.filesRepo?.[database])
 		{
-			let branch = await self.getDefaultBranch(ownerName, repoName);
-			await self.loadGitHubTree(ownerName, repoName, branch);
+			let branch = await makeQVMSelf.getDefaultBranch?.(ownerName, repoName);
+			if(branch)
+			{
+				await makeQVMSelf.loadGitHubTree?.(ownerName, repoName, branch);
+			}
 		}
 
 
-		let DEBUG_CFLAGS = BUILDCFLAGS(CONFIGURATION);
+		let DEBUG_CFLAGS = makeQVMSelf.BUILDCFLAGS?.(CONFIGURATION);
 
 		let hasChanged = false;
 
 		for(const file of filesList)
 		{
-			if(TERMINATE) return;
+			if(makeQVMSelf.TERMINATE) return;
 
 			let src;
 			// Q3 Makefile logic: shared files are in the game/ directory
 			if(file.startsWith('bg_') || file.startsWith('q_'))
 			{
-				src = path.join(self.dirs.QADIR, file.replace('.o', '.c'));
+				src = makeQVMSelf.path.join(makeQVMSelf.dirs.QADIR, file.replace('.o', '.c'));
 			} else
 			{
-				src = path.join(sourceDir, file.replace('.o', '.c'));
+				src = makeQVMSelf.path.join(sourceDir, file.replace('.o', '.c'));
 			}
 
 			try
@@ -289,7 +298,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
 				// TODO: if using q3lcc
-				let obj = path.join(CONFIGURATION, sourceDir, file);
+				let obj = makeQVMSelf.path.join(CONFIGURATION, sourceDir, file);
 				if(QVM_MODE)
 					obj = obj.replace('.o', '.asm');
 
@@ -303,36 +312,41 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 				const virtualSrc = database + '/' + src;
 				const virtualObj = database + '/' + obj;
-				const tempPath = path.join(CONFIGURATION, sourceDir, file.replace('.o', '.i'));
+				const tempPath = makeQVMSelf.path.join(CONFIGURATION, sourceDir, file.replace('.o', '.i'));
 
 
 				let content;
-				if(self.FS.virtual[virtualSrc])
-					content = self.FS.virtual[virtualSrc].contents;
-				else if(!src.includes(self.config.BUILD_DIR + '/'))
-					content = await self.cacheFile(ownerName, repoName, src);
+				if(makeQVMSelf.FS?.virtual[virtualSrc])
+					content = makeQVMSelf.FS?.virtual[virtualSrc].contents;
+				else if(!src.includes(makeQVMSelf.config.BUILD_DIR + '/'))
+					content = await makeQVMSelf.cacheFile?.(ownerName, repoName, src);
 				else
 				{
-					self.FS.virtual[virtualSrc] = await self.getRecord(self.DB_STORE_NAME, src, database);
-					if(!self.FS.virtual[virtualSrc])
-						throw new Error('Output file not found: ' + src);
+					if(makeQVMSelf.FS)
+					{
+						makeQVMSelf.FS.virtual[virtualSrc] = await makeQVMSelf.getRecord?.(makeQVMSelf.DB_STORE_NAME ?? '', src, database);
+						if(!makeQVMSelf.FS.virtual[virtualSrc])
+							throw new Error('Output file not found: ' + src);
+					}
 				}
 
 
 
-				let objRecord = await self.getRecord(self.DB_STORE_NAME, obj, database);
-				self.FS.virtual[virtualObj] = objRecord;
-
-				if(self.FS.virtual[virtualObj]?.timestamp
-					&& self.FS.virtual[virtualSrc]?.timestamp
-					&& self.FS.virtual[virtualSrc].timestamp < self.FS.virtual[virtualObj].timestamp
-					&& !forceChanged
-				)
+				let objRecord = await makeQVMSelf.getRecord?.(makeQVMSelf.DB_STORE_NAME ?? '', obj, database);
+				if(makeQVMSelf.FS)
 				{
-					console.log(`${obj} already up to date...`);
-					continue;
-				}
+					makeQVMSelf.FS.virtual[virtualObj] = objRecord;
 
+					if(makeQVMSelf.FS.virtual[virtualObj]?.timestamp
+						&& makeQVMSelf.FS.virtual[virtualSrc]?.timestamp
+						&& makeQVMSelf.FS.virtual[virtualSrc].timestamp < makeQVMSelf.FS.virtual[virtualObj].timestamp
+						&& !forceChanged
+					)
+					{
+						console.log(`${obj} already up to date...`);
+						continue;
+					}
+				}
 
 				hasChanged = true;
 
@@ -403,7 +417,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 					*/
 
 
-					await api?.run({
+					await makeQVMSelf.api?.run?.({
 						tool: 'q3lcc.js.wasm',
 						args: [
 							'q3lcc', '-S', '-Wf-g',
@@ -420,7 +434,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 				}
 				else
 				{
-					await api?.compile({
+					await makeQVMSelf.api?.compile?.({
 						CFLAGS: [
 							...CCFLAGS,
 							...(src.includes('bg_lib.c') ? ['-DQ3_VM=1'] : []),
@@ -444,13 +458,13 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 			}
 		}
 
-		if(TERMINATE) return;
+		if(makeQVMSelf.TERMINATE) return;
 
 		if(!noLinking)
 		{
 
 
-			building = false;
+			makeQVMSelf.building = false;
 
 			await linkModule(database, name, sourceDir, filesList,
 				hasChanged /* always link after build something */,
@@ -463,7 +477,7 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 	}
 	finally
 	{
-		building = false;
+		makeQVMSelf.building = false;
 	}
 }
 
@@ -472,20 +486,20 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 async function linkModule(database, name, sourceDir, filesList, forceChanged = false, noModule = false /* from buildModule */, noBounce = false)
 {
-	if(!database) database = self.gameRepository || api?.database;
+	if(!database) database = makeQVMSelf.gameRepository || makeQVMSelf.api?.database;
 	const parts = database.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
+	const ownerName = parts.length == 2 ? parts[0] : makeQVMSelf.RepositoryToolbar?.owner?.value;
+	const repoName = parts.length == 2 ? parts[1] : parts[0] || makeQVMSelf.RepositoryToolbar?.repository?.value;
 
 
-	if(buildDebounce)
+	if(makeQVMSelf.buildDebounce)
 	{
-		clearTimeout(buildDebounce);
+		clearTimeout(makeQVMSelf.buildDebounce);
 	}
 
 	if(!noBounce)
 	{
-		buildDebounce = setTimeout(() => linkModule(database, name, sourceDir, filesList, forceChanged, noModule /* from buildModule */, true), 500);
+		makeQVMSelf.buildDebounce = setTimeout(() => linkModule(database, name, sourceDir, filesList, forceChanged, noModule /* from buildModule */, true), 500);
 		return;
 	}
 
@@ -493,25 +507,25 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 	try
 	{
 
-		let CONFIGURATION = api?.configuration === 'release'
-			? self.dirs.ENGINE_RELEASE
-			: self.dirs.ENGINE_DEBUG;
+		let CONFIGURATION = makeQVMSelf.api?.configuration === 'release'
+			? makeQVMSelf.dirs.ENGINE_RELEASE
+			: makeQVMSelf.dirs.ENGINE_DEBUG;
 
 
 
 		// Link phase (q3asm)
-		const qvmOutput = path.join(CONFIGURATION, repoName || self.config.MOD, `${name === 'game' ? 'qagame' : name}.${QVM_MODE ? 'qvm' : 'wasm'}`);
-		const virtualQVM = path.join(database, qvmOutput);
+		const qvmOutput = makeQVMSelf.path.join(CONFIGURATION, repoName || makeQVMSelf.config.MOD, `${name === 'game' ? 'qagame' : name}.${QVM_MODE ? 'qvm' : 'wasm'}`);
+		const virtualQVM = makeQVMSelf.path.join(database, qvmOutput);
 
-		let qvmObjs = filesList.map(file => path.join(CONFIGURATION, sourceDir, file));
+		let qvmObjs = filesList.map(file => makeQVMSelf.path.join(CONFIGURATION, sourceDir, file));
 		if(QVM_MODE)
 			qvmObjs = filesList.map(file =>
 			{
 				if(file.includes('syscalls.o'))
 				{
-					return path.join(sourceDir, file.replace('.o', '.asm'));
+					return makeQVMSelf.path.join(sourceDir, file.replace('.o', '.asm'));
 				}
-				return path.join(CONFIGURATION, sourceDir, file.replace('.o', '.asm'));
+				return makeQVMSelf.path.join(CONFIGURATION, sourceDir, file.replace('.o', '.asm'));
 			});
 
 
@@ -522,39 +536,39 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 			// called from command or UI
 
 			if(name === 'game')
-				await buildModule(name, self.dirs.QADIR, filesList, database, ['GAME'], false, true /* prevent recursion */, true);
+				await buildModule(name, makeQVMSelf.dirs.QADIR, filesList, database, ['GAME'], false, true /* prevent recursion */, true);
 
 			if(name === 'cgame')
-				await buildModule(name, self.dirs.CGDIR, filesList, database, ['CGAME'], false, true /* prevent recursion */, true);
+				await buildModule(name, makeQVMSelf.dirs.CGDIR, filesList, database, ['CGAME'], false, true /* prevent recursion */, true);
 
 			if(name === 'ui')
-				await buildModule(name, self.dirs.UIDIR, filesList, database, ['UI'], false, true /* prevent recursion */, true);
+				await buildModule(name, makeQVMSelf.dirs.UIDIR, filesList, database, ['UI'], false, true /* prevent recursion */, true);
 
 			if(name === 'q3_ui')
-				await buildModule(name, self.dirs.Q3UIDIR, filesList, database, ['UI', 'Q3UI'], false, true /* prevent recursion */, true);
+				await buildModule(name, makeQVMSelf.dirs.Q3UIDIR, filesList, database, ['UI', 'Q3UI'], false, true /* prevent recursion */, true);
 
 		}
 
 
-		if(TERMINATE) return;
+		if(makeQVMSelf.TERMINATE) return;
 
 
-		if(building) return;
-		building = true;
+		if(makeQVMSelf.building) return;
+		makeQVMSelf.building = true;
 
-		let syscalls = path.join(sourceDir, 'g_syscalls.asm');
+		let syscalls = makeQVMSelf.path.join(sourceDir, 'g_syscalls.asm');
 		if(name === 'cgame')
-			syscalls = path.join(sourceDir, 'cg_syscalls.asm');
+			syscalls = makeQVMSelf.path.join(sourceDir, 'cg_syscalls.asm');
 		if(name === 'ui' || name === 'q3_ui')
-			syscalls = path.join(sourceDir, 'ui_syscalls.asm');
+			syscalls = makeQVMSelf.path.join(sourceDir, 'ui_syscalls.asm');
 		const virtualSyscalls = database + '/' + syscalls;
 
 
-		let q3asm = path.join(self.config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
+		let q3asm = makeQVMSelf.path.join(makeQVMSelf.config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
 		if(name === 'cgame')
-			q3asm = path.join(self.config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
+			q3asm = makeQVMSelf.path.join(makeQVMSelf.config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
 		if(name === 'ui' || name === 'q3_ui')
-			q3asm = path.join(self.config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
+			q3asm = makeQVMSelf.path.join(makeQVMSelf.config.BUILD_DIR, 'win32-qvm', name + '.q3asm');
 		const virtualAsm = database + '/' + q3asm;
 
 
@@ -565,27 +579,27 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
 
 			let content;
-			if(self.FS.virtual[virtualSyscalls])
-				content = self.FS.virtual[virtualSyscalls].contents;
+			if(makeQVMSelf.FS?.virtual[virtualSyscalls])
+				content = makeQVMSelf.FS.virtual[virtualSyscalls].contents;
 
-			content = await self.cacheFile(ownerName, repoName, syscalls);
-			if(!self.FS.virtual[virtualSyscalls])
+			content = await makeQVMSelf.cacheFile?.(ownerName, repoName, syscalls);
+			if(makeQVMSelf.FS && !makeQVMSelf.FS.virtual[virtualSyscalls])
 			{
-				self.FS.virtual[virtualSyscalls] = await self.getRecord(self.DB_STORE_NAME, syscalls, database);
-				if(!self.FS.virtual[virtualSyscalls])
+				makeQVMSelf.FS.virtual[virtualSyscalls] = await makeQVMSelf.getRecord?.(makeQVMSelf.DB_STORE_NAME ?? '', syscalls, database);
+				if(!makeQVMSelf.FS.virtual[virtualSyscalls])
 					throw new Error('Syscalls file not found: ' + syscalls);
 			}
 
 
 			let content2;
-			if(self.FS.virtual[virtualAsm])
-				content2 = self.FS.virtual[virtualAsm].contents;
+			if(makeQVMSelf.FS?.virtual[virtualAsm])
+				content2 = makeQVMSelf.FS.virtual[virtualAsm].contents;
 
-			content2 = await self.cacheFile(ownerName, repoName, q3asm);
-			if(!self.FS.virtual[virtualAsm])
+			content2 = await makeQVMSelf.cacheFile?.(ownerName, repoName, q3asm);
+			if(makeQVMSelf.FS && !makeQVMSelf.FS.virtual[virtualAsm])
 			{
-				self.FS.virtual[virtualAsm] = await self.getRecord(self.DB_STORE_NAME, q3asm, database);
-				if(!self.FS.virtual[virtualAsm])
+				makeQVMSelf.FS.virtual[virtualAsm] = await makeQVMSelf.getRecord?.(makeQVMSelf.DB_STORE_NAME ?? '', q3asm, database);
+				if(!makeQVMSelf.FS.virtual[virtualAsm])
 					throw new Error('Syscalls file not found: ' + q3asm);
 			}
 
@@ -593,12 +607,15 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 		}
 
 
-		let exeRecord = await self.getRecord(self.DB_STORE_NAME, qvmOutput, database);
-		self.FS.virtual[virtualQVM] = exeRecord;
+		let exeRecord = await makeQVMSelf.getRecord?.(makeQVMSelf.DB_STORE_NAME ?? '', qvmOutput, database);
+		if(makeQVMSelf.FS)
+		{
+			makeQVMSelf.FS.virtual[virtualQVM] = exeRecord;
+		}
 
 		console.log(`Assembling ${qvmOutput}...`);
 
-		if(self.FS.virtual[virtualQVM] && !forceChanged)
+		if(makeQVMSelf.FS?.virtual[virtualQVM] && !forceChanged)
 		{
 			console.log(qvmOutput + " already up to date...");
 			return;
@@ -606,14 +623,14 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
 		console.log(`LD: ${qvmOutput}`);
 
-		let memoryBase = "--global-base=" + self.UI_MEMORY_BASE;
+		let memoryBase = "--global-base=" + makeQVMSelf.UI_MEMORY_BASE;
 		if(name === 'cgame')
 		{
-			memoryBase = "--global-base=" + self.CGAME_MEMORY_BASE;
+			memoryBase = "--global-base=" + makeQVMSelf.CGAME_MEMORY_BASE;
 		}
 		if(name === 'game')
 		{
-			memoryBase = "--global-base=" + self.GAME_MEMORY_BASE;
+			memoryBase = "--global-base=" + makeQVMSelf.GAME_MEMORY_BASE;
 		}
 		let LDFLAGS = [
 			...(QVM_MODE ? ['-vq3', '-r', '-m', '-v'] : SHLIB_LDFLAGS),
@@ -623,7 +640,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 
 		if(QVM_MODE)
 		{
-			await api?.run({
+			await makeQVMSelf.api?.run?.({
 				tool: 'q3asm.js.wasm',
 				args: [
 					'q3asm.js.wasm',
@@ -637,7 +654,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 		else
 		{
 
-			await api?.link({
+			await makeQVMSelf.api?.link?.({
 				LDFLAGS: [
 					...LDFLAGS,
 					memoryBase,
@@ -665,7 +682,7 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 	}
 	finally
 	{
-		building = false;
+		makeQVMSelf.building = false;
 	}
 }
 
@@ -675,9 +692,9 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
  **/
 async function buildGame(database = null, forceChanged = true)
 {
-	if(!database) database = self.gameRepository || api?.database;
+	if(!database) database = makeQVMSelf.gameRepository || makeQVMSelf.api?.database;
 
-	await buildModule('game', self.dirs.QADIR, gameFiles, database, ['GAME'], forceChanged);
+	await buildModule('game', makeQVMSelf.dirs.QADIR, gameFiles, database, ['GAME'], forceChanged);
 
 
 }
@@ -687,9 +704,9 @@ async function buildGame(database = null, forceChanged = true)
  **/
 async function buildCGame(database = null, forceChanged = true)
 {
-	if(!database) database = self.gameRepository || api?.database;
+	if(!database) database = makeQVMSelf.gameRepository || makeQVMSelf.api?.database;
 
-	await buildModule('cgame', self.dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged);
+	await buildModule('cgame', makeQVMSelf.dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged);
 
 
 }
@@ -700,9 +717,9 @@ async function buildCGame(database = null, forceChanged = true)
  **/
 async function buildUI(database = null, forceChanged = true)
 {
-	if(!database) database = self.gameRepository || api?.database;
+	if(!database) database = makeQVMSelf.gameRepository || makeQVMSelf.api?.database;
 
-	await buildModule('ui', self.dirs.UIDIR, uiFiles, database, ['UI'], forceChanged);
+	await buildModule('ui', makeQVMSelf.dirs.UIDIR, uiFiles, database, ['UI'], forceChanged);
 
 
 }
@@ -714,11 +731,11 @@ async function buildUI(database = null, forceChanged = true)
  **/
 async function buildQ3UI(database = null, forceChanged = true)
 {
-	if(!database) database = self.gameRepository || api?.database;
+	if(!database) database = makeQVMSelf.gameRepository || makeQVMSelf.api?.database;
 
 
 
-	await buildModule('q3_ui', self.dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged);
+	await buildModule('q3_ui', makeQVMSelf.dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged);
 
 
 }
@@ -733,21 +750,21 @@ async function buildQ3UI(database = null, forceChanged = true)
  **/
 async function buildQVM(database = null, forceChanged = false, noBounce = false)
 {
-	if(!database) database = self.gameRepository || api?.database;
+	if(!database) database = makeQVMSelf.gameRepository || makeQVMSelf.api?.database;
 
-	if(buildDebounce)
+	if(makeQVMSelf.buildDebounce)
 	{
-		clearTimeout(buildDebounce);
+		clearTimeout(makeQVMSelf.buildDebounce);
 	}
 
 	if(!noBounce)
 	{
-		buildDebounce = setTimeout(() => buildQVM(database, forceChanged, true), 500);
+		makeQVMSelf.buildDebounce = setTimeout(() => buildQVM(database, forceChanged, true), 500);
 		return;
 	}
 
-	if(building) return;
-	building = true;
+	if(makeQVMSelf.building) return;
+	makeQVMSelf.building = true;
 
 	try
 	{
@@ -756,29 +773,29 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
 
 
 		// CGAME
-		await buildModule('cgame', self.dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged, false, true);
+		await buildModule('cgame', makeQVMSelf.dirs.CGDIR, cgameFiles, database, ['CGAME'], forceChanged, false, true);
 
 
-		if(TERMINATE) return;
+		if(makeQVMSelf.TERMINATE) return;
 
 
 		// 2. Build GAME (qagame)
-		await buildModule('game', self.dirs.QADIR, gameFiles, database, ['QAGAME'], forceChanged, false, true);
+		await buildModule('game', makeQVMSelf.dirs.QADIR, gameFiles, database, ['QAGAME'], forceChanged, false, true);
 
-		if(TERMINATE) return;
-
-
-		// 3. Build UI
-		await buildModule('ui', self.dirs.UIDIR, uiFiles, database, ['UI'], forceChanged, false, true);
-
-		if(TERMINATE) return;
-
+		if(makeQVMSelf.TERMINATE) return;
 
 
 		// 3. Build UI
-		await buildModule('q3_ui', self.dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged, false, true);
+		await buildModule('ui', makeQVMSelf.dirs.UIDIR, uiFiles, database, ['UI'], forceChanged, false, true);
 
-		if(TERMINATE) return;
+		if(makeQVMSelf.TERMINATE) return;
+
+
+
+		// 3. Build UI
+		await buildModule('q3_ui', makeQVMSelf.dirs.Q3UIDIR, q3uiFiles, database, ['UI'], forceChanged, false, true);
+
+		if(makeQVMSelf.TERMINATE) return;
 
 
 
@@ -786,6 +803,6 @@ async function buildQVM(database = null, forceChanged = false, noBounce = false)
 	}
 	finally
 	{
-		building = false;
+		makeQVMSelf.building = false;
 	}
 }

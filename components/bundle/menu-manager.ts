@@ -1,6 +1,9 @@
 import { Menu, MenuBar } from '@lumino/widgets';
 import { CommandRegistry } from '@lumino/commands';
+import type { LuminoMenuWindow } from './menu.d';
+import type { FileSystemWindow, LuminoLayoutWindow } from './lumino.d';
 
+const menuSelf: LuminoMenuWindow & LuminoLayoutWindow & FileSystemWindow = self as unknown as any;
 
 export interface MenuConfig
 {
@@ -51,15 +54,15 @@ export class MenuManager
 
 			// 1. Find or create the matching top-level Menu on the main MenuBar
 			let targetMenu = this._findMenuBarMenuByLabel(topLevel.name);
-			if(!targetMenu)
+			if(!targetMenu && menuSelf.commandRegistry)
 			{
-				targetMenu = new Menu({ commands: window.commandRegistry });
+				targetMenu = new Menu({ commands: menuSelf.commandRegistry });
 				targetMenu.title.label = topLevel.name;
-				window.globalMenuBar.addMenu(targetMenu);
+				menuSelf.globalMenuBar?.addMenu(targetMenu);
 			}
 
 			// 2. Merge child items recursively into this top-level menu container
-			if(topLevel.children && topLevel.children.length > 0)
+			if(topLevel.children && topLevel.children.length > 0 && targetMenu)
 			{
 				this._mergeMenuItems(ownerId, targetMenu, topLevel.children);
 			}
@@ -73,7 +76,7 @@ export class MenuManager
 	public static removeMenus(ownerId: string): void
 	{
 		// Iterate backward through top-level menus to allow safe removal
-		const menus = window.globalMenuBar.menus;
+		const menus = menuSelf.globalMenuBar?.menus ?? [];
 		for(let i = menus.length - 1; i >= 0; i--)
 		{
 			const menu = menus[i];
@@ -82,7 +85,7 @@ export class MenuManager
 			// If the top level menu has been completely hollowed out, remove it from the bar
 			if(menu.items.length === 0)
 			{
-				window.globalMenuBar.removeMenu(menu);
+				menuSelf.globalMenuBar?.removeMenu(menu);
 			}
 		}
 	}
@@ -111,16 +114,19 @@ export class MenuManager
 			{
 				// Branch Node: Look for an existing submenu with the same name
 				let subMenu = this._findSubMenuByLabel(targetMenu, item.name || '');
-				if(!subMenu)
+				if(!subMenu && menuSelf.commandRegistry)
 				{
-					subMenu = new Menu({ commands: window.commandRegistry });
+					subMenu = new Menu({ commands: menuSelf.commandRegistry });
 					subMenu.title.label = item.name || '';
 					subMenu.title.iconClass = item.iconClass || '';
 					const addedItem = targetMenu.addItem({ type: 'submenu', submenu: subMenu }) as TrackedMenuItem;
 					addedItem.ownerId = ownerId;
 				}
 				// Continue structural merge down the branch
-				this._mergeMenuItems(ownerId, subMenu, item.children);
+				if(subMenu)
+				{
+					this._mergeMenuItems(ownerId, subMenu, item.children);
+				}
 			} else
 			{
 				const fallback = item.name?.toLowerCase().replace(/[^a-z0-9\/\.-_]/gi, '');
@@ -203,7 +209,7 @@ export class MenuManager
 
 	private static _findMenuBarMenuByLabel(label: string): Menu | null
 	{
-		return window.globalMenuBar.menus.find((m) => m.title.label === label) || null;
+		return menuSelf.globalMenuBar?.menus.find((m) => m.title.label === label) || null;
 	}
 
 	public static _findSubMenuByLabel(parentMenu: Menu, label: string): Menu | null
@@ -222,7 +228,7 @@ export class MenuManager
 	 */
 	public static registerAllCommands(menuItems: MenuConfig[] | MenuConfig, commands?: CommandRegistry, parentMenu?: string | null): void
 	{
-		commands ??= window.commandRegistry;
+		commands ??= menuSelf.commandRegistry;
 		if(!(menuItems instanceof Array))
 		{
 			menuItems = [menuItems];
@@ -245,13 +251,13 @@ export class MenuManager
 			const commandId = item.target ?? `${parentMenu ? parentMenu + '/' : ''}${fallback}.${fallback}`;
 
 			// Prevent double-registration artifacts
-			if(window.commandRegistry.hasCommand(commandId)) return;
+			if(menuSelf.commandRegistry?.hasCommand(commandId)) return;
 
 			// Map standard text label decorators
 			const labelStr = item.name + (item.ellipsis ? '...' : '');
 			const mnemonicChar = item.shortcut ? item.shortcut.trim().split(/[\s+]+/).pop()!.toUpperCase() : '';
 
-			window.commandRegistry.addCommand(commandId, {
+			menuSelf.commandRegistry?.addCommand(commandId, {
 				label: labelStr,
 				iconClass: item.iconClass,
 				mnemonic: item.shortcut ? labelStr.indexOf(mnemonicChar) : -1,
@@ -272,7 +278,7 @@ export class MenuManager
 				const keybindingSequence = [item.shortcut.replace(/Ctrl/gi, 'Accel').replace(/Shift\s*\+\s*/gi, 'Shift ').replace(/\s*\+\s*/g, ' ')];
 				if(keybindingSequence.length > 0)
 				{
-					window.commandRegistry.addKeyBinding({
+					menuSelf.commandRegistry?.addKeyBinding({
 						command: commandId,
 						keys: keybindingSequence,
 						selector: '*'
@@ -289,17 +295,17 @@ export class MenuManager
 		const module = parts[0];
 		const function_name = parts[1];
 		const param = object.parameter ??= undefined;
-		let modules = (window.lastInteractedWidget as MenuModules)?.modules;
-		if(window.globalModules && window.globalModules[module]
-			&& window.globalModules[module][function_name]
+		let modules = (menuSelf.lastInteractedWidget as MenuModules)?.modules;
+		if(menuSelf.globalModules && menuSelf.globalModules[module]
+			&& menuSelf.globalModules?.[module][function_name]
 		)
 		{
-			modules = window.globalModules;
+			modules = menuSelf.globalModules;
 		}
 
 		if(!modules)
 		{
-			console.warn(`Cannot execute command ${object.name} - ${object.target} - current component has no modules: ${window.lastInteractedWidget?.constructor.name}`);
+			console.warn(`Cannot execute command ${object.name} - ${object.target} - current component has no modules: ${menuSelf.lastInteractedWidget?.constructor.name}`);
 			return;
 		}
 
@@ -313,14 +319,14 @@ export class MenuManager
 			console.warn(`Cannot execute command ${object.name} - ${object.target} - module function not found: ${module}.${function_name}`);
 			return;
 		}
-		return modules[module][function_name].apply(modules[module], [param, window.lastInteractedWidget]);
+		return modules[module][function_name].apply(modules[module], [param, menuSelf.lastInteractedWidget]);
 	}
 
 
 }
 
 
-window.injectMenus = MenuManager.injectMenus.bind(MenuManager);
-window.removeMenus = MenuManager.removeMenus.bind(MenuManager);
-window.registerAllCommands = MenuManager.registerAllCommands.bind(MenuManager);
+menuSelf.injectMenus = MenuManager.injectMenus.bind(MenuManager);
+menuSelf.removeMenus = MenuManager.removeMenus.bind(MenuManager);
+menuSelf.registerAllCommands = MenuManager.registerAllCommands.bind(MenuManager);
 

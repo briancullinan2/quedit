@@ -2,7 +2,11 @@ import { CommandRegistry } from "@lumino/commands";
 import { Widget } from "@lumino/widgets";
 import { RepositoryToolbar } from "./menu-repos";
 import { triggerPanelRoute } from "./menu";
+import type { MakeSystemGlobals, MakeWindow } from "../compiler/make.d";
+import type { GlobalToolbarsWindow, RepositorySettingsWindow } from "./menu.d";
+import type { LuminoLayoutWindow } from "./lumino.d";
 
+const menuSelf: MakeWindow & GlobalToolbarsWindow & LuminoLayoutWindow & RepositorySettingsWindow & MakeSystemGlobals = self as unknown as any;
 
 const BUILD_SCRIPTS = [
 	'/components/compiler/compiler.js',
@@ -13,7 +17,7 @@ const BUILD_SCRIPTS = [
 	'/components/compiler/make-qvm.js',
 ];
 
-window.BUILD_SCRIPTS = BUILD_SCRIPTS;
+menuSelf.BUILD_SCRIPTS = BUILD_SCRIPTS;
 
 export class ScriptToolbar extends Widget
 {
@@ -32,7 +36,7 @@ export class ScriptToolbar extends Widget
 		if(!ScriptToolbar._instance)
 		{
 			ScriptToolbar._instance = new ScriptToolbar();
-			window.scriptToolbar = ScriptToolbar._instance;
+			menuSelf.scriptToolbar = ScriptToolbar._instance;
 		}
 		return ScriptToolbar._instance;
 	}
@@ -59,15 +63,15 @@ export class ScriptToolbar extends Widget
 				iconClass: 'bx bx-code',
 				execute: async () =>
 				{
-					for(let src of window.BUILD_SCRIPTS)
+					for(let src of menuSelf.BUILD_SCRIPTS ?? [])
 					{
-						await window.loadScript(src);
+						await menuSelf.loadScript?.(src);
 					}
-					window.TERMINATE = false;
+					menuSelf.TERMINATE = false;
 					const configuration = document.getElementById('configuration') as HTMLSelectElement;
-					if(configuration.value === 'tools') await window.buildTools(window.toolsRepository);
-					else if(configuration.value === 'qvms') await window.buildQVM(window.gameRepository);
-					else await window.buildClient(window.engineRepository);
+					if(configuration.value === 'tools') await menuSelf.buildTools?.(menuSelf.toolsRepository);
+					else if(configuration.value === 'qvms') await menuSelf.buildQVM?.(menuSelf.gameRepository);
+					else await menuSelf.buildClient?.(menuSelf.engineRepository);
 
 				}
 			});
@@ -83,7 +87,10 @@ export class ScriptToolbar extends Widget
 					//const ownerSelect = RepositoryToolbar.owner;
 					//const repoSelect = RepositoryToolbar.repository;
 					//console.log(`Starting script execution for targets: ${ownerSelect?.value}/${repoSelect?.value}`);
-					await triggerPanelRoute('viewport-frame', window.mainDock);
+					if(menuSelf.mainDock)
+					{
+						await triggerPanelRoute('viewport-frame', menuSelf.mainDock);
+					}
 				}
 			});
 		}
@@ -137,4 +144,4 @@ export class ScriptToolbar extends Widget
 	}
 }
 
-window.ScriptToolbar = ScriptToolbar;
+menuSelf.ScriptToolbar = ScriptToolbar;

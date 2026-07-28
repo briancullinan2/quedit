@@ -653,9 +653,9 @@ self.cacheFileInternal = cacheFileInternal;
 
 /**
  *
- * @param {*} owner
- * @param {*} repo
- * @param {*} branch
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} branch
  * @param {string | null} database
  */
 async function downloadRepoZip(owner, repo, branch = 'master', database = null)

@@ -122,8 +122,8 @@ self.API = (function ()
 
 	/**
 	 *
-	 * @param {*} obj
-	 * @param {*} names
+	 * @param {MemFS} obj
+	 * @param {string[]} names
 	 * @returns {any}
 	 */
 	function getImportObject(obj, names)
