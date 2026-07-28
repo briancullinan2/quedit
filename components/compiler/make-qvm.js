@@ -32,6 +32,8 @@ const cgameFiles = [
 	...commonFiles
 ];
 
+makeQVMSelf.cgameFiles = cgameFiles;
+
 // Server Game (qagame) module file sequence
 const gameFiles = [
 	'g_main.o', 'g_syscalls.o', // CRITICAL: Entry point and system trap must occupy index 0 and 1
@@ -44,6 +46,8 @@ const gameFiles = [
 	'g_weapon.o',
 	...commonFiles
 ];
+
+makeQVMSelf.gameFiles = gameFiles;
 
 // User Interface (ui / q3_ui) consolidated working target directory list
 const q3uiFiles = [
@@ -62,6 +66,7 @@ const q3uiFiles = [
 	'q_math.o', 'q_shared.o'
 ];
 
+makeQVMSelf.q3uiFiles = q3uiFiles;
 
 const uiFiles = [
 	'ui_main.o',
@@ -73,6 +78,8 @@ const uiFiles = [
 	'bg_misc.o', 'bg_lib.o',
 	'q_math.o', 'q_shared.o'
 ];
+
+makeQVMSelf.uiFiles = uiFiles;
 
 
 const qvmHeaders = [
@@ -142,6 +149,7 @@ const qvmHeaders = [
 	"ui/ui_syscalls.h"
 ].map(file => makeQVMSelf.path?.join(makeQVMSelf.config?.MOUNT_DIR ?? 'code', file));
 
+makeQVMSelf.qvmHeaders = qvmHeaders;
 
 const QVMLIB_CFLAGS = [
 	"-cc1",
@@ -176,6 +184,7 @@ const QVMLIB_CFLAGS = [
 	"-ferror-limit", "100",
 ];
 
+makeQVMSelf.QVMLIB_CFLAGS = QVMLIB_CFLAGS;
 
 const QVM_CFLAGS = [
 	//'-D__STDC__=1',
@@ -217,7 +226,18 @@ const SHLIB_LDFLAGS = [
 let QVM_MODE = false;
 
 
-
+/**
+ *
+ * @param {string | undefined} name
+ * @param {string} sourceDir
+ * @param {string[]} filesList
+ * @param {string | null | undefined} database
+ * @param {string[]} extraDefines
+ * @param {boolean} forceChanged
+ * @param {boolean} noLinking
+ * @param {boolean} noBounce
+ * @returns
+ */
 async function buildModule(name, sourceDir, filesList, database, extraDefines = [], forceChanged = false, noLinking = false /* called from linkModule */, noBounce = false)
 {
 
@@ -244,10 +264,12 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 
 
 		if(!database) database = makeQVMSelf.gameRepository || makeQVMSelf.api?.database;
+		if(!database) return;
+
 		const parts = database.split('/');
 		const ownerName = parts.length == 2 ? parts[0] : makeQVMSelf.RepositoryToolbar?.owner?.value;
 		const repoName = parts.length == 2 ? parts[1] : parts[0] || makeQVMSelf.RepositoryToolbar?.repository?.value;
-
+		if(!ownerName || !repoName) return;
 
 		if(makeQVMSelf.needsHeaders)
 		{
@@ -480,15 +502,29 @@ async function buildModule(name, sourceDir, filesList, database, extraDefines = 
 	}
 }
 
+makeQVMSelf.buildModule = buildModule;
 
 
 
+/**
+ *
+ * @param {string | null | undefined} database
+ * @param {string | undefined} name
+ * @param {string | undefined} sourceDir
+ * @param {string[] | undefined} filesList
+ * @param {boolean} forceChanged
+ * @param {boolean} noModule
+ * @param {boolean} noBounce
+ * @returns
+ */
 async function linkModule(database, name, sourceDir, filesList, forceChanged = false, noModule = false /* from buildModule */, noBounce = false)
 {
 	if(!database) database = makeQVMSelf.gameRepository || makeQVMSelf.api?.database;
+	if(!database || !filesList || !sourceDir) return;
 	const parts = database.split('/');
 	const ownerName = parts.length == 2 ? parts[0] : makeQVMSelf.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || makeQVMSelf.RepositoryToolbar?.repository?.value;
+	if(!ownerName || !repoName) return;
 
 
 	if(makeQVMSelf.buildDebounce)
@@ -684,6 +720,8 @@ async function linkModule(database, name, sourceDir, filesList, forceChanged = f
 		makeQVMSelf.building = false;
 	}
 }
+
+makeQVMSelf.linkModule = linkModule;
 
 
 /**

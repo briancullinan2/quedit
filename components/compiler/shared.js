@@ -21,11 +21,23 @@ const sharedSelf = /** @type {any} */ (self);
  * limitations under the License.
  */
 
+/**
+ *
+ * @param {number} ms
+ * @returns
+ */
 function sleep(ms)
 {
 	return new Promise((resolve, _) => setTimeout(resolve, ms));
 }
 
+/**
+ *
+ * @param {Uint8Array} u8
+ * @param {number} o
+ * @param {number} len
+ * @returns
+ */
 function readStr(u8, o, len = -1)
 {
 	let str = '';
@@ -37,6 +49,12 @@ function readStr(u8, o, len = -1)
 	return str;
 }
 
+/**
+ *
+ * @param {Function} f
+ * @param {number} ms
+ * @returns
+ */
 function debounceLazy(f, ms)
 {
 	let waiting = 0;
@@ -49,6 +67,10 @@ function debounceLazy(f, ms)
 		return --waiting === 0;
 	};
 
+	/**
+	 *
+	 * @param  {...any} args
+	 */
 	const wrapped = async (...args) =>
 	{
 		if(await wait())
@@ -80,6 +102,10 @@ sharedSelf.API = (function ()
 	class ProcExit extends Error
 	{
 		code = 0;
+		/**
+		 *
+		 * @param {number} code
+		 */
 		constructor(code)
 		{
 			super(`process exited with code ${code}.`);
@@ -89,6 +115,11 @@ sharedSelf.API = (function ()
 
 	class NotImplemented extends Error
 	{
+		/**
+		 *
+		 * @param {string} modname
+		 * @param {string} fieldname
+		 */
 		constructor(modname, fieldname)
 		{
 			super(`${modname}.${fieldname} not implemented.`);
@@ -102,9 +133,17 @@ sharedSelf.API = (function ()
 
 	class AssertError extends Error
 	{
+		/**
+		 *
+		 * @param {string} msg
+		 */
 		constructor(msg) { super(msg); }
 	}
 
+	/**
+	 *
+	 * @param {boolean} cond
+	 */
 	function assert(cond)
 	{
 		if(!cond)
@@ -113,12 +152,24 @@ sharedSelf.API = (function ()
 		}
 	}
 
+	/**
+	 *
+	 * @param {WebAssembly.Module} module
+	 * @param {WebAssembly.Imports} imports
+	 * @returns
+	 */
 	function getInstanceSync(module, imports)
 	{
 		// This is synchronous and returns the instance immediately
 		return new WebAssembly.Instance(module, imports);
 	}
 
+	/**
+	 *
+	 * @param {WebAssembly.Module} module
+	 * @param {WebAssembly.Imports} imports
+	 * @returns
+	 */
 	function getInstance(module, imports)
 	{
 		return WebAssembly.instantiate(module, imports);
@@ -1070,11 +1121,20 @@ sharedSelf.API = (function ()
 		*/
 
 
+		/**
+		 *
+		 * @param {number} code
+		 */
 		proc_exit(code)
 		{
 			throw new ProcExit(code);
 		}
 
+		/**
+		 *
+		 * @param {any[]} argv
+		 * @returns
+		 */
 		getStringsFromArgv(argv)
 		{
 			if(!this.mem) return;
@@ -1865,23 +1925,23 @@ sharedSelf.API = (function ()
 
 					// TODO: try compiling ourselves if its a known module + result
 					if(name.includes('q3lcc'))
-						await sharedSelf.buildLCC(selected, false);
+						await sharedSelf.buildLCC?.(selected, false);
 					if(name.includes('q3rcc'))
-						await sharedSelf.buildRCC(selected, false, false);
+						await sharedSelf.buildRCC?.(selected, false, false);
 					if(name.includes('lburg'))
-						await sharedSelf.buildLBurg(selected, false);
+						await sharedSelf.buildLBurg?.(selected, false);
 					if(name.includes('q3cpp'))
-						await sharedSelf.buildCPP(selected, false);
+						await sharedSelf.buildCPP?.(selected, false);
 					if(name.includes('q3asm'))
 					{
-						await sharedSelf.buildAsmTool(this.toolsRepo2 || selected, false);
+						await sharedSelf.buildAsmTool?.(this.toolsRepo2 || selected, false);
 					}
 					if(name.includes('quake3e'))
 						await sharedSelf.buildClient?.(selected, false, false, true /* no bounce */);
 					//if(name.includes('quake3e.ded'))
 					//	await buildDedicated(selected, false);
 					if(name.includes('stringify'))
-						await sharedSelf.buildStringify(selected, false);
+						await sharedSelf.buildStringify?.(selected, false);
 
 					try
 					{
@@ -1962,7 +2022,7 @@ sharedSelf.API = (function ()
 				{
 					//debugger
 				}
-				await sharedSelf.prepInputOutput(filePath, null, this.database, alwaysMkdir);
+				await sharedSelf.prepInputOutput?.(filePath, null, this.database, alwaysMkdir);
 
 				return true;
 			} catch(e)
@@ -1990,10 +2050,10 @@ sharedSelf.API = (function ()
 			await this.ready;
 			this.extract(options);
 			const input = options.input;
-			const virtualInput = path.join(this.database, input);
+			const virtualInput = sharedSelf.path.join(this.database, input);
 			const contents = options.contents;
 			const obj = options.obj;
-			const virtualObj = path.join(this.database, obj);
+			const virtualObj = sharedSelf.path.join(this.database, obj);
 			const opt = options.opt || '2';
 
 
@@ -2006,7 +2066,7 @@ sharedSelf.API = (function ()
 					parent: input.substring(0, input.lastIndexOf('/'))
 				};
 
-			await sharedSelf.prepInputOutput(input, obj, this.database, true);
+			await sharedSelf.prepInputOutput?.(input, obj, this.database, true);
 
 			if(!sharedSelf.FS.virtual[virtualInput] || !sharedSelf.FS.virtual[virtualInput].contents)
 			{
@@ -2250,36 +2310,36 @@ sharedSelf.API = (function ()
 
 			if(mode === 'stringify' || mode === 'engine'
 				|| mode === 'release' || mode === 'debug' || mode === 'all')
-				await sharedSelf.buildStringify(selected, mode === 'stringify');
+				await sharedSelf.buildStringify?.(selected, mode === 'stringify');
 			if(mode === 'shaders' || mode === 'engine'
 				|| mode === 'release' || mode === 'debug' || mode === 'all')
-				await sharedSelf.buildShaders(selected, mode === 'shaders');
+				await sharedSelf.buildShaders?.(selected, mode === 'shaders');
 			if(mode === 'client' || mode === 'engine'
 				|| mode === 'release' || mode === 'debug' || mode === 'all')
-				await sharedSelf.buildClient(selected, mode === 'client' || mode === 'engine', false, true);
+				await sharedSelf.buildClient?.(selected, mode === 'client' || mode === 'engine', false, true);
 
 
 			if(!selected)
 				selected = this.database;
 			if(mode === 'lburg' || mode === 'tools' || mode === 'all')
-				await sharedSelf.buildTools(selected, 'lburg', mode === 'lburg', true); // shared debouncer
+				await sharedSelf.buildTools?.(selected, 'lburg', mode === 'lburg', true); // shared debouncer
 			if(mode === 'q3rcc' || mode === 'tools' || mode === 'all')
-				await sharedSelf.buildTools(selected, 'q3rcc', mode === 'q3rcc', true); // implicit forceChanged = true
+				await sharedSelf.buildTools?.(selected, 'q3rcc', mode === 'q3rcc', true); // implicit forceChanged = true
 			if(mode === 'q3cpp' || mode === 'tools' || mode === 'all')
-				await sharedSelf.buildTools(selected, 'q3cpp', mode === 'q3cpp', true);
+				await sharedSelf.buildTools?.(selected, 'q3cpp', mode === 'q3cpp', true);
 			if(mode === 'q3lcc' || mode === 'tools' || mode === 'all')
-				await sharedSelf.buildTools(selected, 'q3lcc', mode === 'q3lcc', true);
+				await sharedSelf.buildTools?.(selected, 'q3lcc', mode === 'q3lcc', true);
 			if(mode == 'q3asm' || mode === 'tools' || mode === 'all')
-				await sharedSelf.buildTools(selected, 'q3asm', mode === 'q3asm', true);
+				await sharedSelf.buildTools?.(selected, 'q3asm', mode === 'q3asm', true);
 
 			if(mode == 'game' || mode === 'qvms' || mode === 'all')
-				await sharedSelf.buildModule('game', sharedSelf.dirs.QADIR, gameFiles, selected, ['QAGAME'], mode === 'game', false, true);
+				await sharedSelf.buildModule?.('game', sharedSelf.dirs.QADIR, sharedSelf.gameFiles ?? [], selected, ['QAGAME'], mode === 'game', false, true);
 			if(mode == 'cgame' || mode === 'qvms' || mode === 'all')
-				await sharedSelf.buildModule('cgame', sharedSelf.dirs.CGDIR, cgameFiles, selected, ['CGAME'], mode === 'cgame', false, true);
+				await sharedSelf.buildModule?.('cgame', sharedSelf.dirs.CGDIR, sharedSelf.cgameFiles ?? [], selected, ['CGAME'], mode === 'cgame', false, true);
 			if(mode == 'ui' || mode === 'qvms' || mode === 'all')
-				await sharedSelf.buildModule('ui', sharedSelf.dirs.UIDIR, uiFiles, selected, ['UI'], mode === 'ui', false, true);
+				await sharedSelf.buildModule?.('ui', sharedSelf.dirs.UIDIR, sharedSelf.uiFiles ?? [], selected, ['UI'], mode === 'ui', false, true);
 			if(mode == 'q3_ui' || mode === 'qvms' || mode === 'all')
-				await sharedSelf.buildModule('q3_ui', sharedSelf.dirs.Q3UIDIR, q3uiFiles, selected, ['UI'], mode === 'q3_ui', false, true);
+				await sharedSelf.buildModule?.('q3_ui', sharedSelf.dirs.Q3UIDIR, sharedSelf.q3uiFiles ?? [], selected, ['UI'], mode === 'q3_ui', false, true);
 
 
 		}
@@ -2296,7 +2356,7 @@ sharedSelf.API = (function ()
 			if(typeof module == 'string' || !module)
 				throw new Error('Cannot load module: ' + name);
 
-			sharedSelf.mkdirp(sharedSelf.config.TEMPDIR, this.database);
+			sharedSelf.mkdirp?.(sharedSelf.config.TEMPDIR, this.database);
 
 			/*
 			if (args) {
@@ -2354,7 +2414,7 @@ sharedSelf.API = (function ()
 				throw new Error('Cannot load module: ' + name);
 
 
-			sharedSelf.mkdirp(sharedSelf.config.TEMPDIR, this.database);
+			sharedSelf.mkdirp?.(sharedSelf.config.TEMPDIR, this.database);
 
 			/*
 			if (args) {

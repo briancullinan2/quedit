@@ -14,6 +14,7 @@ import type { GithubWindow } from "../bundle/github.d";
 
 export interface TerminalCommands
 {
+	loadCommand?: (argv: string[], database: string, commandName: string) => Promise<void>;
 	handleCommand?: (input: string, term: Terminal) => Promise<void>;
 	statusCommand?: (args: string[], flags: string[]) => Promise<void>;
 	push?: (args: string[]) => Promise<void>;
@@ -80,7 +81,8 @@ export interface TerminalCommandGitWindow extends
 	TerminalCommands,
 	TerminalWindow,
 	GithubWindow,
-	GlobalToolbarsWindow
+	GlobalToolbarsWindow,
+	LoggingWindow
 {
 }
 

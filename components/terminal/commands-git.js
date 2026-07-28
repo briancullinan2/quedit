@@ -26,7 +26,7 @@ async function clone(argv)
 		await commandGitSelf.loadGitHubTree?.(ownerName, repoName, branch);
 	}
 
-	commandSelf.terminalWrite?.('Checked out: ' + branch + ' from ' + ownerName + '/' + repoName + '\n\r');
+	commandGitSelf.terminalWrite?.('Checked out: ' + branch + ' from ' + ownerName + '/' + repoName + '\n\r');
 
 	//TODO: await readAll(selected)
 }

@@ -605,6 +605,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 	}
 }
 
+makeSelf.buildStringify = buildStringify;
 
 
 /**
@@ -619,9 +620,6 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 	let CONFIGURATION = makeSelf.api?.configuration == 'release'
 		? makeSelf.dirs.ENGINE_RELEASE
 		: makeSelf.dirs.ENGINE_DEBUG;
-
-
-
 
 
 	if(!noBuild)
@@ -666,10 +664,9 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 			console.error(`Link error in stringify\n\r${e.message}\n\r${e.stack}`);
 		}
 	}
-
-
-
 }
+
+
 
 /**
  *
@@ -753,13 +750,15 @@ const loadedDirectories = [];
 /**
  *
  * @param {string} file
- * @param {string} obj
- * @param {string} database
+ * @param {string | null | undefined} obj
+ * @param {string | null | undefined} database
  * @param {boolean} makeDirs
  * @returns
  */
 async function prepInputOutput(file, obj, database, makeDirs = false)
 {
+	if(!database) return;
+
 	const parts = database.split('/');
 	const ownerName = parts.length == 2 ? parts[0] : makeSelf.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || makeSelf.RepositoryToolbar?.repository?.value;
@@ -767,9 +766,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 	if(!ownerName || !repoName) return;
 
 	const virtualFile = makeSelf.path.join(database, file);
-	const virtualObj = makeSelf.path.join(database, obj);
 	const buildDir = file.substring(0, file.lastIndexOf('/'));
-	const outDir = obj?.substring(0, obj?.lastIndexOf('/'));
 
 
 	if(makeDirs && !makeSelf.FS?.virtual[makeSelf.config.TEMPDIR])
@@ -807,17 +804,6 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 		{
 			if(makeDirs)
 				makeSelf.api.memfs.mkdirp(buildDir);
-		} catch(e)
-		{
-			if(e instanceof Error)
-			{
-				console.error(`${e.message}\n\r${e.stack}`);
-			}
-		}
-		try
-		{
-			if(makeDirs && outDir)
-				makeSelf.api.memfs.mkdirp(outDir);
 		} catch(e)
 		{
 			if(e instanceof Error)
@@ -915,6 +901,20 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 
 	if(!obj) return;
 
+	const outDir = obj?.substring(0, obj?.lastIndexOf('/'));
+	const virtualObj = makeSelf.path.join(database, obj);
+
+	try
+	{
+		if(makeDirs && outDir)
+			makeSelf.api?.memfs.mkdirp(outDir);
+	} catch(e)
+	{
+		if(e instanceof Error)
+		{
+			console.error(`${e.message}\n\r${e.stack}`);
+		}
+	}
 	if(!makeSelf.FS?.virtual[virtualObj])
 	{
 		if(!loadedDirectories.includes(outDir) && makeDirs)
@@ -953,7 +953,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 
 }
 
-
+makeSelf.prepInputOutput = prepInputOutput;
 
 
 /**
@@ -1112,7 +1112,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 	}
 }
 
-
+makeSelf.buildClient = buildClient;
 
 
 
@@ -1186,14 +1186,16 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 			console.error(`Link error in client\n\r${e.message}\n\r${e.stack}`);
 		}
 	}
-
-
 }
 
+
+makeSelf.linkEngine = linkEngine;
 
 
 /**
  * @param {string | null | undefined} database
+ * @param {boolean} forceChanged
+ * @returns {Promise<boolean | void>}
  **/
 async function buildShaders(database = null, forceChanged = false)
 {
@@ -1279,6 +1281,8 @@ async function buildShaders(database = null, forceChanged = false)
 
 	return hasChanged;
 }
+
+makeSelf.buildShaders = buildShaders;
 
 
 

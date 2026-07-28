@@ -408,7 +408,13 @@ function writeCommandHelp(targetCommand, argv)
 
 }
 
-
+/**
+ *
+ * @param {string[]} argv
+ * @param {string} database
+ * @param {string} commandName
+ * @returns
+ */
 async function loadCommand(argv, database, commandName)
 {
 

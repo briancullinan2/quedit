@@ -99,6 +99,8 @@ const LCC_CFLAGS = [
 	//...(COMPILE_PLATFORM === 'darwin' ? ["-DMACOS_X"] : [])
 ];
 
+makeToolsSelf.LCC_CFLAGS = LCC_CFLAGS;
+
 
 const lccToolHeaders = [
 	// src
@@ -118,6 +120,8 @@ const lccToolHeaders = [
 	//"etc/lcc.h"
 ];
 
+makeToolsSelf.lccToolHeaders = lccToolHeaders;
+
 
 const asmToolHeaders = [
 	'cmdlib.h',
@@ -125,6 +129,8 @@ const asmToolHeaders = [
 	'qvm.h',
 	makeToolsSelf.config.MOUNT_DIR + "/wasm/wasm.syms"
 ];
+
+makeToolsSelf.asmToolHeaders = asmToolHeaders;
 
 const toolLdFlags = [
 	//"-D__WASM__=1",
@@ -220,10 +226,19 @@ async function buildLBurg(database = null, forceChanged = false, noLinking = fal
 	}
 }
 
+makeToolsSelf.buildLBurg = buildLBurg;
 
+/**
+ *
+ * @param {string | null | undefined} database
+ * @param {boolean} forceChanged
+ * @param {boolean} noBuild
+ * @returns
+ */
 async function linkLburg(database, forceChanged = false, noBuild = false)
 {
 	if(!database) database = makeToolsSelf.toolsRepository || makeToolsSelf.api?.database;
+	if(!database) return;
 
 	let CONFIGURATION = makeToolsSelf.api?.configuration === 'release'
 		? makeToolsSelf.dirs.ENGINE_RELEASE
@@ -275,21 +290,37 @@ async function linkLburg(database, forceChanged = false, noBuild = false)
 		wasm: lburgExe,
 	});
 
-
 }
 
+makeToolsSelf.linkLburg = linkLburg;
 
+
+/** @type {string | undefined} */
 let BRANCH;
+/** @type {undefined | Record<string, import('../bundle/local.d').FileRecord | null | undefined>} */
 let FILELIST;
 
+/**
+ *
+ * @param {string} src
+ * @param {string} obj
+ * @param {string} includeDir
+ * @param {string | null | undefined} database
+ * @param {string[]} extraFlags
+ * @param {boolean} forceChanged
+ * @returns
+ */
 async function compileToolFile(src, obj, includeDir, database, extraFlags = [], forceChanged = false)
 {
 	try
 	{
 		if(!database) database = makeToolsSelf.toolsRepository || makeToolsSelf.api?.database;
+		if(!database) return;
+
 		const parts = database.split('/');
 		const ownerName = parts.length == 2 ? parts[0] : makeToolsSelf.RepositoryToolbar?.owner?.value;
 		const repoName = parts.length == 2 ? parts[1] : parts[0] || makeToolsSelf.RepositoryToolbar?.repository?.value;
+		if(!ownerName || !repoName) return;
 
 		const virtualSrc = makeToolsSelf.path.join(database, src);
 		const virtualObj = makeToolsSelf.path.join(database, obj);
@@ -456,7 +487,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
 
 				if(ownerName && repoName)
 				{
-					await makeToolsSelf.cacheFile?.(makeToolsSelf.DB_STORE_NAME ?? '', ownerName, repoName, dagMd, (FILELIST[dagMd] || {}).sha);
+					await makeToolsSelf.cacheFile?.(makeToolsSelf.DB_STORE_NAME ?? '', ownerName, repoName, dagMd, (FILELIST?.[dagMd] || {}).sha);
 				}
 				// Logic to run lburg on dagcheck.md (This assumes your API can execute the tool)
 
@@ -513,6 +544,7 @@ async function buildRCC(database = null, skipTool = false, forceChanged = false,
 
 }
 
+makeToolsSelf.buildRCC = buildRCC;
 
 
 /**
@@ -563,6 +595,7 @@ async function linkRCC(database = null, forceChanged = false, noBuild = false)
 
 }
 
+makeToolsSelf.linkRCC = linkRCC;
 
 
 /**
@@ -627,6 +660,7 @@ async function buildCPP(database = null, forceChanged = false, noLinking = false
 	}
 }
 
+makeToolsSelf.buildCPP = buildCPP;
 
 
 /**
@@ -680,6 +714,8 @@ async function linkCPP(database = null, forceChanged = false, noBuild = false)
 		wasm: cppExe,
 	});
 }
+
+makeToolsSelf.linkCPP = linkCPP;
 
 
 /**
@@ -748,9 +784,9 @@ async function buildLCC(database = null, forceChanged = false, noLinking = false
 		await linkLCC(database, true, true);
 	}
 
-
 }
 
+makeToolsSelf.buildLCC = buildLCC;
 
 
 /**
@@ -804,6 +840,8 @@ async function linkLCC(database = null, forceChanged = false, noBuild = false)
 	});
 
 }
+
+makeToolsSelf.linkLCC = linkLCC;
 
 
 /**
@@ -896,6 +934,8 @@ const q3asmFiles = [
 	'cmdlib.c'
 ];
 
+makeToolsSelf.q3asmFiles = q3asmFiles;
+
 const Q3ASM_CFLAGS = [
 	"-O2",
 	"-Wall",
@@ -926,10 +966,6 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 	let CONFIGURATION = makeToolsSelf.api?.configuration === 'release'
 		? makeToolsSelf.dirs.ENGINE_RELEASE
 		: makeToolsSelf.dirs.ENGINE_DEBUG;
-
-
-
-
 
 
 	console.log("Building q3asm...");
@@ -1008,6 +1044,7 @@ async function buildAsmTool(database = null, forceChanged = false, noLinking = f
 
 }
 
+makeToolsSelf.buildAsmTool = buildAsmTool;
 
 /**
  * @param {string | null | undefined} database
@@ -1070,4 +1107,6 @@ async function linkAsm(database = null, forceChanged = false, noBuild = false)
 		throw e;
 	}
 }
+
+makeToolsSelf.linkAsm = linkAsm;
 

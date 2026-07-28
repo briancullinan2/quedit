@@ -132,52 +132,52 @@ async function buildCommand(argv, database)
 	if(commandBuildSelf.TERMINATE) return;
 
 	if(mode === 'stringify' || mode === 'all')
-		await buildStringify(mode === 'all' ? commandBuildSelf.engineRepository : selected, false, true);
+		await commandBuildSelf.buildStringify?.(mode === 'all' ? commandBuildSelf.engineRepository : selected, false, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'shaders')
-		await buildShaders(mode === 'all' ? commandBuildSelf.engineRepository : selected, false, true);
+		await commandBuildSelf.buildShaders?.(selected ?? commandBuildSelf.engineRepository, false);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'client' || mode === 'engine'
 		|| mode === 'release' || mode === 'debug'
 		|| mode === 'all'
 	)
-		await buildClient(mode === 'all' ? commandBuildSelf.engineRepository : selected, mode === 'client' || mode === 'engine', false, true); // also builds shaders
+		await commandBuildSelf.buildClient?.(mode === 'all' ? commandBuildSelf.engineRepository : selected, mode === 'client' || mode === 'engine', false, true); // also builds shaders
 
 	if(commandBuildSelf.TERMINATE) return;
 
 	if(selected === commandBuildSelf.toolsRepository)
 	{
-		await downloadHeaders(lccToolHeaders, 10, mode === 'all' ? commandBuildSelf.toolsRepository : selected);
+		await commandBuildSelf.downloadHeaders?.(commandBuildSelf.lccToolHeaders, 10, mode === 'all' ? commandBuildSelf.toolsRepository : selected);
 	}
 
 	if(commandBuildSelf.TERMINATE) return;
 
 	if(mode === 'lburg' || mode === 'all' || mode === 'tools')
-		await buildTools(mode === 'all' ? commandBuildSelf.toolsRepository : selected, 'lburg', mode === 'lburg', true); // shared debouncer
+		await commandBuildSelf.buildTools?.(mode === 'all' ? commandBuildSelf.toolsRepository : selected, 'lburg', mode === 'lburg', true); // shared debouncer
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'q3rcc' || mode === 'all' || mode === 'tools')
-		await buildTools(mode === 'all' ? commandBuildSelf.toolsRepository : selected, 'q3rcc', mode === 'q3rcc', true); // implicit forceChanged = true
+		await commandBuildSelf.buildTools?.(mode === 'all' ? commandBuildSelf.toolsRepository : selected, 'q3rcc', mode === 'q3rcc', true); // implicit forceChanged = true
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'q3cpp' || mode === 'all' || mode === 'tools')
-		await buildTools(mode === 'all' ? commandBuildSelf.toolsRepository : selected, 'q3cpp', mode === 'q3cpp', true);
+		await commandBuildSelf.buildTools?.(mode === 'all' ? commandBuildSelf.toolsRepository : selected, 'q3cpp', mode === 'q3cpp', true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'q3lcc' || mode === 'all' || mode === 'tools')
-		await buildTools(mode === 'all' ? commandBuildSelf.toolsRepository : selected, 'q3lcc', mode === 'q3lcc', true);
+		await commandBuildSelf.buildTools?.(mode === 'all' ? commandBuildSelf.toolsRepository : selected, 'q3lcc', mode === 'q3lcc', true);
 
 	if(commandBuildSelf.TERMINATE) return;
 
 	if(selected === commandBuildSelf.tools2Repository)
 	{
-		await downloadHeaders(asmToolHeaders, 10, mode === 'all' || mode === 'tools' ? commandBuildSelf.tools2Repository : selected);
+		await commandBuildSelf.downloadHeaders?.(commandBuildSelf.asmToolHeaders, 10, mode === 'all' || mode === 'tools' ? commandBuildSelf.tools2Repository : selected);
 	}
 
 	if(mode === 'q3asm' || mode === 'all' || mode === 'tools')
-		await buildTools(mode === 'q3asm' || mode === 'tools' ? selected : commandBuildSelf.tools2Repository, 'q3asm', mode === 'q3asm', true);
+		await commandBuildSelf.buildTools?.(mode === 'q3asm' || mode === 'tools' ? selected : commandBuildSelf.tools2Repository, 'q3asm', mode === 'q3asm', true);
 
 
 
@@ -186,25 +186,25 @@ async function buildCommand(argv, database)
 
 	if(selected === commandBuildSelf.gameRepository) // TODO: || file.includes('code/') && !file.includes('code/'))
 	{
-		await downloadHeaders(qvmHeaders, 10, mode === 'all' ? commandBuildSelf.gameRepository : selected);
+		await commandBuildSelf.downloadHeaders?.(commandBuildSelf.qvmHeaders, 10, mode === 'all' ? commandBuildSelf.gameRepository : selected);
 	}
 
 	if(commandBuildSelf.TERMINATE) return;
 
 	if(mode === 'game' || mode === 'all' || mode === 'qvms')
-		await buildModule('game', commandBuildSelf.dirs.QADIR, gameFiles, mode === 'all' ? commandBuildSelf.gameRepository : selected, ['QAGAME'], mode === 'game', false, true);
+		await commandBuildSelf.buildModule?.('game', commandBuildSelf.dirs.QADIR, commandBuildSelf.gameFiles ?? [], mode === 'all' ? commandBuildSelf.gameRepository : selected, ['QAGAME'], mode === 'game', false, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'cgame' || mode === 'all' || mode === 'qvms')
-		await buildModule('cgame', commandBuildSelf.dirs.CGDIR, cgameFiles, mode === 'all' ? commandBuildSelf.gameRepository : selected, ['CGAME'], mode === 'cgame', false, true);
+		await commandBuildSelf.buildModule?.('cgame', commandBuildSelf.dirs.CGDIR, commandBuildSelf.cgameFiles ?? [], mode === 'all' ? commandBuildSelf.gameRepository : selected, ['CGAME'], mode === 'cgame', false, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'ui' || mode === 'all' || mode === 'qvms')
-		await buildModule('ui', commandBuildSelf.dirs.UIDIR, uiFiles, mode === 'all' ? commandBuildSelf.gameRepository : selected, ['UI'], mode === 'ui', false, true);
+		await commandBuildSelf.buildModule?.('ui', commandBuildSelf.dirs.UIDIR, commandBuildSelf.uiFiles ?? [], mode === 'all' ? commandBuildSelf.gameRepository : selected, ['UI'], mode === 'ui', false, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'q3_ui' || mode === 'all' || mode === 'qvms')
-		await buildModule('q3_ui', commandBuildSelf.dirs.Q3UIDIR, q3uiFiles, mode === 'all' ? commandBuildSelf.gameRepository : selected, ['UI'], mode === 'q3_ui', false, true);
+		await commandBuildSelf.buildModule?.('q3_ui', commandBuildSelf.dirs.Q3UIDIR, commandBuildSelf.q3uiFiles ?? [], mode === 'all' ? commandBuildSelf.gameRepository : selected, ['UI'], mode === 'q3_ui', false, true);
 
 
 }
@@ -282,82 +282,82 @@ async function link(argv, database)
 		&& commandBuildSelf.q3eCommonHeaders
 	) // TODO: || file.includes('code/') && !file.includes('code/'))
 	{
-		await downloadHeaders(commandBuildSelf.q3eCommonHeaders, 10, mode === 'all' ? commandBuildSelf.engineRepository : selected);
+		await commandBuildSelf.downloadHeaders?.(commandBuildSelf.q3eCommonHeaders, 10, mode === 'all' ? commandBuildSelf.engineRepository : selected);
 	}
 
 	if(commandBuildSelf.TERMINATE) return;
 
 
 	if(mode === 'stringify' || mode === 'all')
-		await linkStringify(mode === 'all' ? commandBuildSelf.engineRepository : selected, true);
+		await commandBuildSelf.linkStringify?.(mode === 'all' ? commandBuildSelf.engineRepository : selected, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'client' || mode === 'engine'
 		|| mode === 'shaders' || mode === 'release'
 		|| mode === 'debug' || mode === 'all'
 	)
-		await linkEngine(mode === 'all' ? commandBuildSelf.engineRepository : selected, true);
+		await commandBuildSelf.linkEngine?.(mode === 'all' ? commandBuildSelf.engineRepository : selected, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 
 
 	if(selected === commandBuildSelf.toolsRepository)
 	{
-		await downloadHeaders(lccToolHeaders, 10, mode === 'all' ? commandBuildSelf.toolsRepository : selected);
+		await commandBuildSelf.downloadHeaders?.(commandBuildSelf.lccToolHeaders, 10, mode === 'all' ? commandBuildSelf.toolsRepository : selected);
 	}
 
 
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'lburg' || mode === 'tools' || mode === 'all')
-		await linkLburg(mode === 'all' ? commandBuildSelf.toolsRepository : selected, true);
+		await commandBuildSelf.linkLburg?.(mode === 'all' ? commandBuildSelf.toolsRepository : selected, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'q3rcc' || mode === 'tools' || mode === 'all')
-		await linkRCC(mode === 'all' ? commandBuildSelf.toolsRepository : selected, true);
+		await commandBuildSelf.linkRCC?.(mode === 'all' ? commandBuildSelf.toolsRepository : selected, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'q3cpp' || mode === 'tools' || mode === 'all')
-		await linkCPP(mode === 'all' ? commandBuildSelf.toolsRepository : selected, true);
+		await commandBuildSelf.linkCPP?.(mode === 'all' ? commandBuildSelf.toolsRepository : selected, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'q3lcc' || mode === 'tools' || mode === 'all')
-		await linkLCC(mode === 'all' ? commandBuildSelf.toolsRepository : selected, true);
+		await commandBuildSelf.linkLCC?.(mode === 'all' ? commandBuildSelf.toolsRepository : selected, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 
 	if(selected === commandBuildSelf.tools2Repository)
 	{
-		await downloadHeaders(asmToolHeaders, 10, mode === 'all' || mode === 'tools' ? commandBuildSelf.tools2Repository : selected);
+		await commandBuildSelf.downloadHeaders?.(commandBuildSelf.asmToolHeaders, 10, mode === 'all' || mode === 'tools' ? commandBuildSelf.tools2Repository : selected);
 	}
 
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'q3asm' || mode === 'tools' || mode === 'all')
-		await linkAsm(mode === 'all' || mode === 'tools' ? commandBuildSelf.tools2Repository : selected, true);
+		await commandBuildSelf.linkAsm?.(mode === 'all' || mode === 'tools' ? commandBuildSelf.tools2Repository : selected, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(selected === commandBuildSelf.gameRepository) // TODO: || file.includes('code/') && !file.includes('code/'))
 	{
-		await downloadHeaders(qvmHeaders, 10, mode === 'all' ? commandBuildSelf.gameRepository : selected);
+		await commandBuildSelf.downloadHeaders?.(commandBuildSelf.qvmHeaders, 10, mode === 'all' ? commandBuildSelf.gameRepository : selected);
 	}
 	if(commandBuildSelf.TERMINATE) return;
 
 
 	if(mode === 'game' || mode === 'qvms' || mode === 'all')
-		await linkModule(mode === 'all' ? commandBuildSelf.gameRepository : selected, 'game', commandBuildSelf.dirs.QADIR, gameFiles, true, false, true);
+		await commandBuildSelf.linkModule?.(mode === 'all' ? commandBuildSelf.gameRepository : selected, 'game', commandBuildSelf.dirs.QADIR, commandBuildSelf.gameFiles, true, false, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'cgame' || mode === 'qvms' || mode === 'all')
-		await linkModule(mode === 'all' ? commandBuildSelf.gameRepository : selected, 'cgame', commandBuildSelf.dirs.CGDIR, cgameFiles, true, false, true);
+		await commandBuildSelf.linkModule?.(mode === 'all' ? commandBuildSelf.gameRepository : selected, 'cgame', commandBuildSelf.dirs.CGDIR, commandBuildSelf.cgameFiles, true, false, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'ui' || mode === 'qvms' || mode === 'all')
-		await linkModule(mode === 'all' ? commandBuildSelf.gameRepository : selected, 'ui', commandBuildSelf.dirs.UIDIR, uiFiles, true, false, true);
+		await commandBuildSelf.linkModule?.(mode === 'all' ? commandBuildSelf.gameRepository : selected, 'ui', commandBuildSelf.dirs.UIDIR, commandBuildSelf.uiFiles, true, false, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 	if(mode === 'q3_ui' || mode === 'qvms' || mode === 'all')
-		await linkModule(mode === 'all' ? commandBuildSelf.gameRepository : selected, 'q3_ui', commandBuildSelf.dirs.Q3UIDIR, q3uiFiles, true, false, true);
+		await commandBuildSelf.linkModule?.(mode === 'all' ? commandBuildSelf.gameRepository : selected, 'q3_ui', commandBuildSelf.dirs.Q3UIDIR, commandBuildSelf.q3uiFiles, true, false, true);
 
 	if(commandBuildSelf.TERMINATE) return;
 
@@ -368,18 +368,20 @@ async function link(argv, database)
 /**
  *
  * @param {string[]} argv
- * @param {string} database
+ * @param {string | null} database
  */
 async function header(argv, database)
 {
 	let selected = commandBuildSelf.toolsRepository || argv[1] || database;
-	const parts = selected.split('/');
-	const ownerName = parts.length == 2 ? parts[0] : commandBuildSelf.RepositoryToolbar?.owner?.value;
-	const repoName = parts.length == 2 ? parts[1] : parts[0] || commandBuildSelf.RepositoryToolbar?.repository?.value;
+	const parts = selected?.split('/');
+	const ownerName = parts?.length == 2 ? parts[0] : commandBuildSelf.RepositoryToolbar?.owner?.value;
+	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || commandBuildSelf.RepositoryToolbar?.repository?.value;
+	if(!selected || !ownerName || !repoName) return;
+
 	let headers = [argv[0]];
 
 	if(!argv[0])
-		headers = [...lccToolHeaders];
+		headers = [...commandBuildSelf.lccToolHeaders ?? []];
 
 	if(!commandBuildSelf.filesRepo?.[selected] && ownerName && repoName)
 	{
@@ -394,7 +396,7 @@ async function header(argv, database)
 	{
 		let sha = commandBuildSelf.filesRepo?.[selected]?.[header].sha;
 
-		await commandBuildSelf.cacheFile?.(commandBuildSelf.DB_STORE_NAME, ownerName, repoName, header, sha);
+		await commandBuildSelf.cacheFile?.(commandBuildSelf.DB_STORE_NAME ?? '', ownerName, repoName, header, sha);
 		if(ownerName && repoName)
 		{
 			await commandBuildSelf.api?.header?.(ownerName, repoName, header, selected);
@@ -417,6 +419,7 @@ async function compileWorker(argv, database, commandName, term)
 
 	/** @type {string | undefined | null} */
 	let selected = argv[1] || commandBuildSelf.engineRepository || database;
+	if(!selected) return;
 
 	if(file.includes('src')
 		|| file.includes('cpp')
@@ -427,7 +430,7 @@ async function compileWorker(argv, database, commandName, term)
 		selected = commandBuildSelf.toolsRepository;
 	}
 
-	if(q3asmFiles.indexOf(file) > -1)
+	if((commandBuildSelf.q3asmFiles ?? []).indexOf(file) > -1)
 	{
 		selected = commandBuildSelf.tools2Repository;
 	}
@@ -458,6 +461,7 @@ async function compileWorker(argv, database, commandName, term)
 	const parts = selected?.split('/');
 	const ownerName = parts?.length == 2 ? parts[0] : commandBuildSelf.RepositoryToolbar?.owner?.value;
 	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || commandBuildSelf.RepositoryToolbar?.repository?.value;
+	if(!ownerName || !repoName) return;
 
 	if(selected && !commandBuildSelf.filesRepo?.[selected] && ownerName && repoName)
 	{
@@ -479,7 +483,7 @@ async function compileWorker(argv, database, commandName, term)
 		|| file.includes('code/wasm')
 		|| file.includes('code/renderercommon')) // TODO: || file.includes('code/') && !file.includes('code/'))
 	{
-		await downloadHeaders(q3eCommonHeaders, 10, selected);
+		await commandBuildSelf.downloadHeaders?.(commandBuildSelf.q3eCommonHeaders, 10, selected);
 	}
 
 	if(commandBuildSelf.TERMINATE) return;
@@ -488,7 +492,7 @@ async function compileWorker(argv, database, commandName, term)
 		|| file.includes('code/cgame') || file.includes('code/ui')
 		|| file.includes('code/q3_ui')) // TODO: || file.includes('code/') && !file.includes('code/'))
 	{
-		await downloadHeaders(qvmHeaders, 10, selected);
+		await commandBuildSelf.downloadHeaders?.(commandBuildSelf.qvmHeaders, 10, selected);
 	}
 
 	if(commandBuildSelf.TERMINATE) return;
@@ -497,20 +501,20 @@ async function compileWorker(argv, database, commandName, term)
 		|| file.includes('cpp/') || file.includes('etc/')
 		|| file.includes('lburg/'))
 	{
-		await downloadHeaders(lccToolHeaders, 10, selected);
+		await commandBuildSelf.downloadHeaders?.(commandBuildSelf.lccToolHeaders, 10, selected);
 	}
 
 	if(commandBuildSelf.TERMINATE) return;
 
-	if(selected === commandBuildSelf.tools2Repository || q3asmFiles.indexOf(file) > -1)
+	if(selected === commandBuildSelf.tools2Repository || (commandBuildSelf.q3asmFiles ?? []).indexOf(file) > -1)
 	{
-		await downloadHeaders(asmToolHeaders, 10, selected);
+		await commandBuildSelf.downloadHeaders?.(commandBuildSelf.asmToolHeaders, 10, selected);
 	}
 
 	if(commandBuildSelf.TERMINATE) return;
 
 	//let sha = filesRepo[selected][file].sha
-	let contents = await commandBuildSelf.cacheFile?.(commandBuildSelf.DB_STORE_NAME, ownerName, repoName, file);
+	let contents = await commandBuildSelf.cacheFile?.(commandBuildSelf.DB_STORE_NAME ?? '', ownerName, repoName, file);
 
 	if(commandBuildSelf.api)
 	{
@@ -634,7 +638,7 @@ rm /tmp/lcc420.i
 				tool: 'clang.wasm',
 				args: [
 					'clang',
-					...commandBuildSelf.QVMLIB_CFLAGS,
+					...commandBuildSelf.QVMLIB_CFLAGS ?? [],
 					"-Icode/game",
 					...DEFINE,
 					...(srcPath.includes('bg_lib.c') ? ['-DQ3_VM=1'] : []),
@@ -656,8 +660,8 @@ rm /tmp/lcc420.i
 
 
 	const INCLUDES = selected === commandBuildSelf.engineRepository
-		? [...CFLAGS, "-Icode/wasm", "-Icode/qcommon", "-Icode/client", "-Icode/game"]
-		: [...commandBuildSelf.LCC_CFLAGS, "-Isrc"];
+		? [...commandBuildSelf.CFLAGS ?? [], "-Icode/wasm", "-Icode/qcommon", "-Icode/client", "-Icode/game"]
+		: [...commandBuildSelf.LCC_CFLAGS ?? [], "-Isrc"];
 
 	return await commandBuildSelf.api?.compile?.({
 		CFLAGS: [
@@ -677,15 +681,23 @@ rm /tmp/lcc420.i
 }
 
 
+/**
+ *
+ * @param {string[]} argv
+ * @param {string} database
+ * @param {string} commandName
+ * @param {import('@xterm/xterm').Terminal} term
+ * @returns
+ */
 async function clang(argv, database, commandName, term)
 {
 
-	let CONFIGURATION = api?.configuration === 'release'
+	let CONFIGURATION = commandBuildSelf.api?.configuration === 'release'
 		? commandBuildSelf.dirs.ENGINE_RELEASE
 		: commandBuildSelf.dirs.ENGINE_DEBUG;
 
 	let file = argv[0] || currentSession();
-	return await api?.compile({
+	return await commandBuildSelf.api?.compile?.({
 		CFLAGS: argv,
 		contents: aceEditor.getValue(),
 		width: term.cols,
@@ -700,9 +712,10 @@ async function clang(argv, database, commandName, term)
  *
  * @param {string[]} argv
  * @param {string} database
+ * @param {string} commandName
  * @returns
  */
-async function runWorker(argv, database)
+async function runWorker(argv, database, commandName)
 {
 	if(!argv[0] || argv[0].trim().length === 0
 		|| argv[0].includes('quake3e')
@@ -712,7 +725,7 @@ async function runWorker(argv, database)
 		|| argv[0].includes('q3')
 	)
 	{
-		return commandBuildSelf.loadCommand(argv[0]);
+		return commandBuildSelf.loadCommand?.([argv[0]], database, commandName);
 	}
 
 	/** @type {string | undefined | null} */
@@ -747,9 +760,12 @@ async function runWorker(argv, database)
 async function lburg(argv, database)
 {
 	let selected = commandBuildSelf.toolsRepository || argv[1] || database;
+	if(!selected) return;
+
 	const parts = selected.split('/');
 	const ownerName = parts.length == 2 ? parts[0] : commandBuildSelf.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || commandBuildSelf.RepositoryToolbar?.repository?.value;
+	if(!ownerName || !repoName) return;
 
 	if(!commandBuildSelf.filesRepo?.[selected] && ownerName && repoName)
 	{
@@ -775,7 +791,7 @@ async function lburg(argv, database)
 		argv[1] || commandBuildSelf.path.join(CONFIGURATION, argv[0] ? argv[0].replace('.md', '.c') : 'src/dagcheck.c'),
 	];
 
-	await commandBuildSelf.cacheFile?.(commandBuildSelf.DB_STORE_NAME, ownerName, repoName, paths[0], (commandBuildSelf.filesRepo?.[selected]?.[paths[0]] || {}).sha);
+	await commandBuildSelf.cacheFile?.(commandBuildSelf.DB_STORE_NAME ?? '', ownerName, repoName, paths[0], (commandBuildSelf.filesRepo?.[selected]?.[paths[0]] || {}).sha);
 
 
 	let args = [
