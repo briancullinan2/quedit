@@ -285,7 +285,7 @@ const allBotlibHeaders = [
 ];
 
 
-const q3eCommonHeaders = [
+makeSelf.q3eCommonHeaders = [
 
 	// --- QCommon (The Engine Core) ---
 	"qcommon/q_shared.h",
@@ -531,10 +531,10 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 	const ownerName = parts?.length == 2 ? parts[0] : makeSelf.RepositoryToolbar?.owner?.value;
 	const repoName = parts?.length == 2 ? parts[1] : parts?.[0] || makeSelf.RepositoryToolbar?.repository?.value;
 
-	if(makeSelf.needsHeaders)
+	if(makeSelf.needsHeaders && makeSelf.q3eCommonHeaders)
 	{
 
-		await downloadHeaders(q3eCommonHeaders, 10, database);
+		await downloadHeaders(makeSelf.q3eCommonHeaders, 10, database);
 	}
 
 	let CONFIGURATION = makeSelf.api?.configuration === 'release'
@@ -1009,10 +1009,10 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 		if(makeSelf.TERMINATE) return;
 
-		if(makeSelf.needsHeaders)
+		if(makeSelf.needsHeaders && makeSelf.q3eCommonHeaders)
 		{
 
-			await downloadHeaders(q3eCommonHeaders, 10, database);
+			await downloadHeaders(makeSelf.q3eCommonHeaders, 10, database);
 		}
 
 		if(makeSelf.TERMINATE) return;
@@ -1198,10 +1198,10 @@ async function buildShaders(database = null, forceChanged = false)
 	if(!database) database = makeSelf.engineRepository || makeSelf.api?.database;
 	if(!database) return;
 
-	if(makeSelf.needsHeaders)
+	if(makeSelf.needsHeaders && makeSelf.q3eCommonHeaders)
 	{
 
-		await downloadHeaders(q3eCommonHeaders, 10, database);
+		await downloadHeaders(makeSelf.q3eCommonHeaders, 10, database);
 	}
 
 	let CONFIGURATION = makeSelf.api?.configuration === 'release'

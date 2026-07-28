@@ -24,6 +24,7 @@ export interface MakeSystemGlobals
 	BUILD_SCRIPTS?: string[];
 	TERMINATE?: boolean;
 	needsHeaders?: boolean;
+	q3eCommonHeaders?: string[];
 	undefinedFlags?: string[];
 	includeFlags?: string[];
 	toolLdFlags?: string[];

@@ -15,6 +15,7 @@ async function clone(argv)
 	const ownerName = parts.length == 2 ? parts[0] : commandGitSelf.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || commandGitSelf.RepositoryToolbar?.repository?.value;
 
+	/** @type {string | undefined} */
 	let branch = argv[1];
 	if(!branch && ownerName && repoName)
 	{

@@ -64,7 +64,7 @@ export interface GlobalToolbarsWindow
 
 	PaintWidget: typeof PaintWidget;
 
-
+	spawnPoints: Record<string, string>;
 	searchWorker?: Worker;
 
 	searchService?: SearchService;

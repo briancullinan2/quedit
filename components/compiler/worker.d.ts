@@ -20,6 +20,8 @@ export interface MockAPI
 	header?: (owner: string, repo: string, header: any, database?: string) => Promise<any>;
 	hostWrite?: (text: any, source?: any) => void;
 	compile?: (options?: WorkerCommandOptions) => Promise<any>;
+	remove?: (filename: string) => Promise<any>;
+	terminate?: () => void;
 }
 
 /** Callback registry internal state */

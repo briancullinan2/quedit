@@ -23,6 +23,7 @@ const ENGINE_CONTROLS: EngineControl[] = [
 export const spawnPoints: Record<string, string> = {
 	"": "Spawn point"
 };
+menuSelf.spawnPoints = spawnPoints;
 
 
 export class EngineToolbar extends Widget

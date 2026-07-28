@@ -1,13 +1,15 @@
-import { Widget, Menu, MenuBar } from '@lumino/widgets';
-import { CommandRegistry } from '@lumino/commands';
+import { Widget } from '@lumino/widgets';
 import type { MenuConfig, MenuModules } from '../bundle/menu-manager';
 const Paint = require('./bundle.js');
-import type { HistoryToolbar } from '../bundle/menu-history';
 import { Message } from '@lumino/messaging';
 import { arrayBufferToDataUri } from '../rosetta/binary.mjs';
 import { EFFECTS_MENU, IMAGE_MENU, LAYER_MENU, TOOLS_MENU } from './widget-menu';
 import './widget-settings';
+import type { GlobalToolbarsWindow, LuminoMenuWindow } from '../bundle/menu.d';
+import type { LuminoLayoutWindow } from '../bundle/lumino.d';
+import type { PaintWindow } from './widget.d';
 
+const paintSelf: LuminoMenuWindow & LuminoLayoutWindow & PaintWindow & GlobalToolbarsWindow = self as unknown as any;
 
 export interface MiniPaintApp
 {
@@ -162,15 +164,15 @@ export class PaintWidget extends Widget implements MenuModules
 
 		this.node.addEventListener('focusin', () =>
 		{
-			window.injectMenus(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
-			window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
+			paintSelf.injectMenus?.(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
+			paintSelf.injectMenus?.(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
 		});
 		this.node.addEventListener('focusout', (e) =>
 		{
 			// Only remove if focus didn't move somewhere else inside this same panel
 			if(!this.node.contains(e.relatedTarget as Node))
 			{
-				window.removeMenus(PaintWidget.name);
+				paintSelf.removeMenus?.(PaintWidget.name);
 			}
 		});
 	}
@@ -184,7 +186,7 @@ export class PaintWidget extends Widget implements MenuModules
 
 	public static getNextTempName(): string
 	{
-		return 'temp' + (nextTemp()) + '.bmp';
+		return 'temp-' + (paintSelf.nextTemp?.()) + '.bmp';
 	}
 
 
@@ -258,9 +260,9 @@ export class PaintWidget extends Widget implements MenuModules
 	protected onAfterAttach(msg: any): void
 	{
 		super.onAfterAttach(msg);
-		if(typeof window.initializeMiniPaint === 'function')
+		if(typeof paintSelf.initializeMiniPaint === 'function')
 		{
-			this._instance = window.initializeMiniPaint();
+			this._instance = paintSelf.initializeMiniPaint();
 			this.modules = this._instance?.GUI.modules;
 
 			this._onLoadPaint();
@@ -283,16 +285,16 @@ export class PaintWidget extends Widget implements MenuModules
 	protected onActivateRequest(msg: any): void
 	{
 		super.onActivateRequest(msg);
-		window.injectMenus(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
-		window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
-		window.resizeHandler();
+		paintSelf.injectMenus?.(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
+		paintSelf.injectMenus?.(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
+		paintSelf.resizeHandler?.();
 		this.node.focus();
 	}
 
 
 	protected onBeforeHide(msg: Message): void
 	{
-		window.removeMenus(PaintWidget.name);
+		paintSelf.removeMenus?.(PaintWidget.name);
 		super.onBeforeHide(msg);
 	}
 
@@ -311,7 +313,7 @@ export class PaintWidget extends Widget implements MenuModules
 	 */
 	protected onBeforeDetach(msg: any): void
 	{
-		window.removeMenus(PaintWidget.name);
+		paintSelf.removeMenus?.(PaintWidget.name);
 		this._instance?.Events.destroy();
 		super.onBeforeDetach(msg);
 	}
@@ -332,11 +334,11 @@ export class PaintWidget extends Widget implements MenuModules
 		}
 		this._updatePainterDimensions();
 
-		this.attachHistoryListener(this._instance?.State, window.historyToolbar.appendHistoryItem.bind(window.historyToolbar));
-		window.registerAllCommands([IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
-		window.registerAllCommands(this._instance?.GUI.GUI_menu.menuDefinition ?? []);
-		window.injectMenus(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
-		window.injectMenus(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
+		this.attachHistoryListener(this._instance?.State, paintSelf.historyToolbar?.appendHistoryItem.bind(paintSelf.historyToolbar));
+		paintSelf.registerAllCommands?.([IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
+		paintSelf.registerAllCommands?.(this._instance?.GUI.GUI_menu.menuDefinition ?? []);
+		paintSelf.injectMenus?.(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
+		paintSelf.injectMenus?.(PaintWidget.name, this._instance?.GUI.GUI_menu.menuDefinition ?? []);
 
 	}
 
@@ -431,13 +433,13 @@ export class PaintWidget extends Widget implements MenuModules
 
 	static async openFileInNewTab(fileId: string, fileName: string, fileContent?: string | ArrayBuffer | HTMLImageElement | Uint8Array | null | undefined)
 	{
-		const tabs = Array.from(window.mainDock.widgets());
+		const tabs = Array.from(paintSelf.mainDock?.widgets() ?? []);
 		const existingTab = tabs.find(t => (t as PaintWidget).fileId === fileId);
 
 		if(existingTab)
 		{
 			// If it's already open, just activate it and bring it to focus
-			window.mainDock.activateWidget(existingTab);
+			paintSelf.mainDock?.activateWidget(existingTab);
 			return;
 		}
 
@@ -465,7 +467,7 @@ export class PaintWidget extends Widget implements MenuModules
 			{
 				this.setInitialContent(fileName, img, existingDefault._instance);
 			}
-			window.mainDock.activateWidget(existingDefault);
+			paintSelf.mainDock?.activateWidget(existingDefault);
 			return;
 		}
 
@@ -476,10 +478,13 @@ export class PaintWidget extends Widget implements MenuModules
 		newTab.title.label = fileName.split('/').pop() ?? fileName;
 		newTab.title.closable = true;
 
-		window.LayoutAdjuster.addOptimalWidgetLayout(window.mainDock, newTab, {
-			type: 'editor',
-			projectId: newTab.constructor.name
-		});
+		if(paintSelf.mainDock)
+		{
+			paintSelf.LayoutAdjuster?.addOptimalWidgetLayout(paintSelf.mainDock, newTab, {
+				type: 'editor',
+				projectId: newTab.constructor.name
+			});
+		}
 	}
 
 
@@ -571,5 +576,5 @@ export class PaintWidget extends Widget implements MenuModules
 }
 
 
-window.PaintWidget = PaintWidget;
+paintSelf.PaintWidget = PaintWidget;
 

@@ -48,6 +48,7 @@ export interface LoggingWindow extends ApiWindow
 
 	terminalLog?: TerminalLogEntry[];
 	terminalWrite?: typeof terminalWrite;
+	CWD?: string;
 	runningCommand?: boolean;
 	detachedConsole?: boolean;
 	alreadyWroteDetached?: boolean;

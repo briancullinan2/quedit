@@ -1,7 +1,13 @@
 import type { SettingConfig, Settings } from '../bundle/settings';
 import { Widget } from '@lumino/widgets';
 import { FrameRater } from '../bundle/frame-rater';
-import type { EngineToolbar } from '../bundle/menu-engine';
+import type { GlobalToolbarsWindow, RepositorySettingsWindow } from '../bundle/menu.d';
+import type { LuminoLayoutWindow } from '../bundle/lumino.d';
+import type { TojiWindow } from './widget.d';
+
+
+const tojiSelf: GlobalToolbarsWindow & LuminoLayoutWindow & TojiWindow & RepositorySettingsWindow = self as unknown as any;
+
 
 // --- External Prototype Global Declarations ---
 // These match the standard JS imports you will be referencing at the top of your module.
@@ -150,7 +156,7 @@ export class TojiWidget extends Widget
 	];
 
 	startupPromise: Promise<void>;
-	tryLoadingMapsPromise: Promise<void>;
+	tryLoadingMapsPromise: Promise<void> | undefined;
 	enginePromise: Promise<unknown>;
 	engineResolve?: (value?: unknown) => void;
 	preferredRenderer?: string;
@@ -201,9 +207,9 @@ export class TojiWidget extends Widget
 			});
 		}
 
-		this.tryLoadingMapsPromise = window.engineToolbar.tryGithubs();
+		this.tryLoadingMapsPromise = tojiSelf.engineToolbar?.tryGithubs();
 
-		this.preferredRenderer = window.SettingsManager.get('toji', 'preferredRenderer');
+		this.preferredRenderer = tojiSelf.settingsManager?.get('toji', 'preferredRenderer');
 
 		this.startupPromise = (async () =>
 		{
@@ -211,13 +217,13 @@ export class TojiWidget extends Widget
 			{
 				for(let src of this.QUAKE3E_SCRIPTS_TO_LOAD)
 				{
-					await window.loadScript(src);
+					await tojiSelf.loadScript?.(src);
 				}
 				return;
 			}
 			for(let src of this.TOJI_SCRIPTS_TO_LOAD)
 			{
-				await window.loadScript(src);
+				await tojiSelf.loadScript?.(src);
 			}
 			this.polyfill = new WebXRPolyfill();
 			// Instantiate scratch matrices early
@@ -237,9 +243,9 @@ export class TojiWidget extends Widget
 	{
 		super.onAfterAttach(msg);
 		await this.startupPromise;
-		if(this.preferredRenderer === 'quake3e' && typeof window.runEngine === 'function')
+		if(this.preferredRenderer === 'quake3e' && typeof tojiSelf.runEngine === 'function')
 		{
-			window.runEngine();
+			tojiSelf.runEngine();
 		} else
 		{
 			this.runTojiEngine();
@@ -393,12 +399,12 @@ export class TojiWidget extends Widget
 			}
 
 			// 3. Store as value: title mapping
-			window.spawnPoints[rawOrigin] = title;
+			tojiSelf.spawnPoints[rawOrigin] = title;
 		}
 
-		if(Object.keys(window.spawnPoints).length > 1)
+		if(Object.keys(tojiSelf.spawnPoints).length > 1)
 		{
-			window.updateSelectOptions('spawn', window.spawnPoints, '');
+			tojiSelf.updateSelectOptions?.('spawn', tojiSelf.spawnPoints, '');
 		}
 
 		this.respawnPlayer(0);
@@ -876,9 +882,9 @@ export class TojiWidget extends Widget
 		});
 		stats.end();
 
-		if(window.tojiFrameLimiter)
+		if(tojiSelf.tojiFrameLimiter)
 		{
-			window.tojiFrameLimiter.requestFrameUpdate();
+			tojiSelf.tojiFrameLimiter.requestFrameUpdate();
 		}
 	}
 
@@ -913,7 +919,7 @@ export class TojiWidget extends Widget
 			if(!this.tojiRendererRunning)
 			{
 				this.notRunningFrameCount = 0;
-				if(window.tojiFrameLimiter) window.tojiFrameLimiter.requestFrameUpdate();
+				if(tojiSelf.tojiFrameLimiter) tojiSelf.tojiFrameLimiter.requestFrameUpdate();
 			}
 			return;
 		}
@@ -938,7 +944,7 @@ export class TojiWidget extends Widget
 			this.lastTimestamp = this.startTime;
 			this.lastFps = this.startTime;
 
-			window.tojiFrameLimiter = new FrameRater(25, (e: any, t: number, frame: any) =>
+			tojiSelf.tojiFrameLimiter = new FrameRater(25, (e: any, t: number, frame: any) =>
 			{
 				/*
 				if(!this.viewportFrameElement.classList.contains('not-hidden')
@@ -959,7 +965,7 @@ export class TojiWidget extends Widget
 				this.onRequestedFrame(gl, this.statsInstance, t, frame);
 			});
 
-			window.tojiFrameLimiter.requestFrameUpdate();
+			tojiSelf.tojiFrameLimiter.requestFrameUpdate();
 			// TODO: make this lazy with a separate function
 			this.rafCallback = this.onRequestedFrame.bind(this, gl, this.statsInstance);
 		}
@@ -1029,7 +1035,7 @@ export class TojiWidget extends Widget
 }
 
 
-window.TojiWidget = TojiWidget;
+tojiSelf.TojiWidget = TojiWidget;
 
 
 /**
@@ -1232,18 +1238,18 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 };
 
 
-if(!window.IMPORT_SETTINGS)
+if(!tojiSelf.IMPORT_SETTINGS)
 {
-	window.IMPORT_SETTINGS = {};
+	tojiSelf.IMPORT_SETTINGS = {};
 }
 
 for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
 {
-	window.IMPORT_SETTINGS[moduleKey] = {
-		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+	tojiSelf.IMPORT_SETTINGS[moduleKey] = {
+		...(tojiSelf.IMPORT_SETTINGS[moduleKey] || {}),
 		...configs
 	};
 }
 
-export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
+export const IMPORT_SETTINGS = tojiSelf.IMPORT_SETTINGS;
 

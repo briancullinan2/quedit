@@ -8,7 +8,7 @@ import type { LuminoLayoutWindow } from '../bundle/lumino.d';
 import type { TerminalCommands, TerminalWindow } from './widget.d';
 import type { TojiWindow } from '../map-loader/widget.d';
 import type { LoggingWindow } from '../bundle/logging.d';
-import type { MakeSystemGlobals } from '../compiler/make.d';
+import type { BuildWindow, MakeSystemGlobals, MakeWindow } from '../compiler/make.d';
 import type { GlobalToolbarsWindow, LuminoMenuWindow, RepositorySettingsWindow } from "../bundle/menu.d";
 import type { GithubWindow } from "../bundle/github.d";
 
@@ -17,8 +17,16 @@ export interface TerminalCommands
 	handleCommand?: (input: string, term: Terminal) => Promise<void>;
 	statusCommand?: (args: string[], flags: string[]) => Promise<void>;
 	push?: (args: string[]) => Promise<void>;
-	find?: (argv) => Promise<void>;
-	clone?: (argv) => Promise<void>;
+	find?: (argv: string[]) => Promise<void>;
+	clone?: (argv: string[]) => Promise<void>;
+	ls?: (argv: string[], database: string) => Promise<void>;
+	buildCommand?: (argv: string[], database: string) => Promise<void>;
+	remove?: (argv: string[], database: string) => Promise<void>;
+	openCommand?: (argv: string[], database: string) => Promise<void>;
+	compileWorker?: (argv: string[], database: string, commandName: string, term: Terminal) => Promise<void>;
+	runWorker?: (argv: string[], database: string) => Promise<void>;
+	lburg?: (argv: string[], database: string) => Promise<void>;
+	kill?: () => Promise<void>;
 }
 
 
@@ -79,6 +87,31 @@ export interface TerminalCommandGitWindow extends
 export interface TerminalCommandFileWindow extends
 	TerminalCommands,
 	TerminalWindow,
-	RepositorySettingsWindow
+	RepositorySettingsWindow,
+	GithubWindow,
+	GlobalToolbarsWindow,
+	BuildWindow,
+	LoggingWindow
+{
+}
+
+export interface TerminalCommandBuildWindow extends
+	TerminalCommands,
+	TerminalWindow,
+	RepositorySettingsWindow,
+	GlobalToolbarsWindow,
+	GithubWindow,
+	BuildWindow,
+	MakeWindow,
+	LoggingWindow,
+	MakeSystemGlobals
+{
+}
+
+export interface TerminalCompleteWindow extends
+	TerminalCommands,
+	TerminalWindow,
+	GlobalToolbarsWindow,
+	LoggingWindow
 {
 }

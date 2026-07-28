@@ -22,8 +22,8 @@ const formatBytes = (bytes) =>
 
 /**
  *
- * @param {*} argv
- * @param {*} database
+ * @param {string[]} argv
+ * @param {string} database
  */
 async function ls(argv, database)
 {
@@ -32,10 +32,15 @@ async function ls(argv, database)
 	const ownerName = parts.length == 2 ? parts[0] : commandFileSelf.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || commandFileSelf.RepositoryToolbar?.repository?.value;
 
-	if(!commandFileSelf.filesRepo[selected])
+	if(!commandFileSelf.filesRepo?.[selected]
+		&& ownerName && repoName
+	)
 	{
-		let branch = await commandFileSelf.getDefaultBranch(ownerName, repoName);
-		await commandFileSelf.loadGitHubTree(ownerName, repoName, branch);
+		let branch = await commandFileSelf.getDefaultBranch?.(ownerName, repoName);
+		if(branch)
+		{
+			await commandFileSelf.loadGitHubTree?.(ownerName, repoName, branch);
+		}
 	}
 
 	const flags = {
@@ -46,7 +51,7 @@ async function ls(argv, database)
 
 	// Assuming FS.virtual.readdir returns objects with {name, size, type}
 	const entries = Object.values(commandFileSelf.FS.virtual)
-		.concat(Object.values(commandFileSelf.filesRepo[selected] || {}) || [])
+		.concat(Object.values(commandFileSelf.filesRepo?.[selected] || {}) || [])
 		.filter(p =>
 		{
 			if(!p)
@@ -57,7 +62,7 @@ async function ls(argv, database)
 			{
 				debugger;
 			}
-			let compare = CWD;
+			let compare = commandFileSelf.CWD ?? '';
 			let startMatch = false;
 			let subMatch = false;
 			if(compare.trim().length == 0)
@@ -81,7 +86,7 @@ async function ls(argv, database)
 		entries.forEach(e =>
 		{
 			if(!e) return;
-			terminalWrite(e.path + '\n\r');
+			commandFileSelf.terminalWrite?.(e.path + '\n\r');
 		});
 	} else
 	{
@@ -92,8 +97,8 @@ async function ls(argv, database)
 			return e.path.length;
 		}), 10);
 
-		terminalWrite(`${'NAME'.padEnd(maxName + 2)}${'SIZE'.padEnd(10)}TYPE\n\r`);
-		terminalWrite('-'.repeat(maxName + 20) + '\n\r');
+		commandFileSelf.terminalWrite?.(`${'NAME'.padEnd(maxName + 2)}${'SIZE'.padEnd(10)}TYPE\n\r`);
+		commandFileSelf.terminalWrite?.('-'.repeat(maxName + 20) + '\n\r');
 
 		entries.forEach(e =>
 		{
@@ -103,17 +108,26 @@ async function ls(argv, database)
 			const sizeStr = size.padEnd(10);
 			const color = e.mode === commandFileSelf.FS_DIR ? '\x1b[1;34m' : '\x1b[0m'; // Blue for dirs
 
-			terminalWrite(`${color}${nameStr}\x1b[0m${sizeStr}${e.mode}\n\r`);
+			commandFileSelf.terminalWrite?.(`${color}${nameStr}\x1b[0m${sizeStr}${e.mode}\n\r`);
 		});
 	}
 }
 
 
+commandFileSelf.ls = ls;
+
+
+/**
+ *
+ * @param {string[]} argv
+ * @param {string} database
+ * @returns
+ */
 async function remove(argv, database)
 {
 	if(!argv.length || !argv[0])
 	{
-		terminalWrite(`\x1b[1;38;5;196mError:\x1b[0m Target filename or glob pattern required.\n\r`);
+		commandFileSelf.terminalWrite?.(`\x1b[1;38;5;196mError:\x1b[0m Target filename or glob pattern required.\n\r`);
 		return;
 	}
 
@@ -124,7 +138,7 @@ async function remove(argv, database)
 
 	if(!cleanQuery || cleanQuery.length < 2)
 	{
-		terminalWrite(`\x1b[1;38;5;196mError:\x1b[0m Search target must span at least 2 characters.\n\r`);
+		commandFileSelf.terminalWrite?.(`\x1b[1;38;5;196mError:\x1b[0m Search target must span at least 2 characters.\n\r`);
 		return;
 	}
 
@@ -132,12 +146,12 @@ async function remove(argv, database)
 	const metas = await commandFileSelf.getDatabaseMetadata?.() || [];
 	const targetDatabases = [database, ...metas.map((m) => m.key)].filter(Boolean);
 
-	terminalWrite(`\x1b[38;5;242m[Worker Thread] Locating candidate files for removal matching: "${cleanQuery}"...\x1b[0m\n\r`);
+	commandFileSelf.terminalWrite?.(`\x1b[38;5;242m[Worker Thread] Locating candidate files for removal matching: "${cleanQuery}"...\x1b[0m\n\r`);
 
 	let timerId = null;
 
 	// Dispatch query through shared service
-	const { callbackId, promise } = commandFileSelf.searchService.search(
+	const { callbackId, promise } = commandFileSelf.searchService?.search(
 		{
 			query: cleanQuery,
 			caseSensitive: caseSensitiveActive,
@@ -145,32 +159,33 @@ async function remove(argv, database)
 		},
 		undefined,
 		'cli-remove'
-	);
+	) ?? { callbackId: '', promise: Promise.resolve([]) };
 
 	// Watchdog safety timeout
 	const watchdogPromise = new Promise((resolve) =>
 	{
 		timerId = setTimeout(() =>
 		{
-			commandFileSelf.searchService.cancelSearch(callbackId);
+			commandFileSelf.searchService?.cancelSearch(callbackId);
 			resolve([]);
 		}, 8000);
 	});
 
+	/** @type {import('../bundle/lumino-search').GroupedSearchResult[]} */
 	const groupedMatches = await Promise.race([promise, watchdogPromise]);
 
 	if(timerId) clearTimeout(timerId);
 
-	const rx = commandFileSelf.globToRegex(filename);
+	const rx = commandFileSelf.globToRegex?.(filename);
 
 	// 1. Purge matching records across repositories
 	await Promise.all(
 		groupedMatches.map(async (group) =>
 		{
-			if(rx.test(group.path))
+			if(rx?.test(group.path))
 			{
-				terminalWrite(`Removing ${group.path} on ${group.repo}\n\r`);
-				await commandFileSelf.deleteRecord(commandFileSelf.DB_STORE_NAME, group.path, group.repo);
+				commandFileSelf.terminalWrite?.(`Removing ${group.path} on ${group.repo}\n\r`);
+				await commandFileSelf.deleteRecord?.(commandFileSelf.DB_STORE_NAME ?? '', group.path, group.repo);
 			}
 		})
 	);
@@ -181,10 +196,10 @@ async function remove(argv, database)
 	{
 		for(const path of Object.keys(virtualFS))
 		{
-			if(rx.test(path))
+			if(rx?.test(path))
 			{
 				delete virtualFS[path];
-				terminalWrite(`Removing ${path} from memory\n\r`);
+				commandFileSelf.terminalWrite?.(`Removing ${path} from memory\n\r`);
 			}
 		}
 	}
@@ -198,11 +213,15 @@ async function remove(argv, database)
 		// Silently swallow backend removal errors if unhandled
 	}
 
-	terminalWrite(`\x1b[38;5;118mRemove operation finished.\x1b[0m\n\r`);
+	commandFileSelf.terminalWrite?.(`\x1b[38;5;118mRemove operation finished.\x1b[0m\n\r`);
 }
 
 
-
+/**
+ *
+ * @param {string[]} argv
+ * @param {string} database
+ */
 function openCommand(argv, database)
 {
 	let selected = commandFileSelf.toolsRepository || argv[1] || database;
@@ -215,9 +234,15 @@ function openCommand(argv, database)
 
 }
 
-function edit(argv)
+/**
+ *
+ * @param {string[]} argv
+ * @param {string} database
+ * @returns
+ */
+function edit(argv, database)
 {
-	return open(argv);
+	return openCommand(argv, database);
 }
 
 
@@ -225,6 +250,7 @@ function edit(argv)
 /**
  * Asynchronous terminal worker searching interface gateway.
  * Stream-renders results as they arrive while keeping the promise alive until complete.
+ * @param {string[]} argv
  */
 async function find(argv)
 {
@@ -234,15 +260,20 @@ async function find(argv)
 
 	if(!cleanQuery || cleanQuery.length < 2)
 	{
-		terminalWrite(`\x1b[1;38;5;196mError:\x1b[0m Search query parameter context must span at least 2 characters.\n\r`);
+		commandFileSelf.terminalWrite?.(`\x1b[1;38;5;196mError:\x1b[0m Search query parameter context must span at least 2 characters.\n\r`);
 		return;
 	}
 
-	terminalWrite(`\x1b[38;5;242m[Worker Thread] Querying repositories for matching traces: "${cleanQuery}"...\x1b[0m\n\r`);
+	commandFileSelf.terminalWrite?.(`\x1b[38;5;242m[Worker Thread] Querying repositories for matching traces: "${cleanQuery}"...\x1b[0m\n\r`);
 
 	let knownPathsCount = 0;
 	let timerId = null;
 
+	/**
+	 *
+	 * @param {import('../bundle/lumino-search').GroupedSearchResult[]} groupedMatches
+	 * @returns
+	 */
 	const renderIncrementalResults = (groupedMatches) =>
 	{
 		if(groupedMatches.length === 0 || groupedMatches.length <= knownPathsCount)
@@ -255,25 +286,25 @@ async function find(argv)
 
 		newGroups.forEach(group =>
 		{
-			terminalWrite(`\x1b[1;38;5;45m📁 repo: [${group.repo}] -> ${group.path}\x1b[0m\n\r`);
+			commandFileSelf.terminalWrite?.(`\x1b[1;38;5;45m📁 repo: [${group.repo}] -> ${group.path}\x1b[0m\n\r`);
 
 			if(group.localMatches.length > 0)
 			{
 				group.localMatches.forEach(match =>
 				{
 					const lineLabel = `   Line ${match.line}: `.padEnd(14);
-					terminalWrite(`\x1b[38;5;246m${lineLabel}\x1b[0m \x1b[38;5;253m${match.matchText}\x1b[0m\n\r`);
+					commandFileSelf.terminalWrite?.(`\x1b[38;5;246m${lineLabel}\x1b[0m \x1b[38;5;253m${match.matchText}\x1b[0m\n\r`);
 				});
 			} else
 			{
-				terminalWrite(`   \x1b[38;5;242m=> structural path pattern footprint match verified\x1b[0m\n\r`);
+				commandFileSelf.terminalWrite?.(`   \x1b[38;5;242m=> structural path pattern footprint match verified\x1b[0m\n\r`);
 			}
 
-			terminalWrite(`\x1b[38;5;236m${'-'.repeat(80)}\x1b[0m\n\r`);
+			commandFileSelf.terminalWrite?.(`\x1b[38;5;236m${'-'.repeat(80)}\x1b[0m\n\r`);
 		});
 	};
 
-	const { callbackId, promise } = commandFileSelf.searchService.search(
+	const { callbackId, promise } = commandFileSelf.searchService?.search(
 		{
 			query: cleanQuery,
 			caseSensitive: caseSensitiveActive
@@ -283,18 +314,18 @@ async function find(argv)
 			renderIncrementalResults(partialResults);
 		},
 		'cli-find'
-	);
+	) ?? { callbackId: '', promise: Promise.resolve([]) };
 
 	const watchdogPromise = new Promise((resolve) =>
 	{
 		timerId = setTimeout(() =>
 		{
-			commandFileSelf.searchService.cancelSearch(callbackId);
+			commandFileSelf.searchService?.cancelSearch(callbackId);
 			resolve([]);
 		}, 8000);
 	});
 
-	terminalWrite(`\n\r\x1b[1;38;5;118m=== WORKSPACE SEARCH RESULTS STREAM ===\x1b[0m\n\r`);
+	commandFileSelf.terminalWrite?.(`\n\r\x1b[1;38;5;118m=== WORKSPACE SEARCH RESULTS STREAM ===\x1b[0m\n\r`);
 
 	const finalResults = await Promise.race([promise, watchdogPromise]);
 
@@ -302,9 +333,9 @@ async function find(argv)
 
 	if(knownPathsCount === 0)
 	{
-		terminalWrite(`\n\r\x1b[1;38;5;208m[!] 0 results returned matching parameter targets.\x1b[0m\n\r`);
+		commandFileSelf.terminalWrite?.(`\n\r\x1b[1;38;5;208m[!] 0 results returned matching parameter targets.\x1b[0m\n\r`);
 	} else
 	{
-		terminalWrite(`\n\rSearch operations completed successfully (${knownPathsCount} total files matched).\n\r`);
+		commandFileSelf.terminalWrite?.(`\n\rSearch operations completed successfully (${knownPathsCount} total files matched).\n\r`);
 	}
 }

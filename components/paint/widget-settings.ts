@@ -1,5 +1,8 @@
+
+import type { RepositorySettingsWindow } from '../bundle/menu.d';
 import type { SettingConfig } from '../bundle/settings';
 
+const paintSelf: RepositorySettingsWindow = self as unknown as any;
 
 const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 
@@ -87,18 +90,18 @@ const LOCAL_SETTINGS: Record<string, Record<string, SettingConfig>> = {
 };
 
 
-if(!window.IMPORT_SETTINGS)
+if(!paintSelf.IMPORT_SETTINGS)
 {
-	window.IMPORT_SETTINGS = {};
+	paintSelf.IMPORT_SETTINGS = {};
 }
 
 for(const [moduleKey, configs] of Object.entries(LOCAL_SETTINGS))
 {
-	window.IMPORT_SETTINGS[moduleKey] = {
-		...(window.IMPORT_SETTINGS[moduleKey] || {}),
+	paintSelf.IMPORT_SETTINGS[moduleKey] = {
+		...(paintSelf.IMPORT_SETTINGS[moduleKey] || {}),
 		...configs
 	};
 }
 
-export const IMPORT_SETTINGS = window.IMPORT_SETTINGS;
+export const IMPORT_SETTINGS = paintSelf.IMPORT_SETTINGS;
 

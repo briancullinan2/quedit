@@ -8,4 +8,5 @@ export interface TojiWindow
 	playerMover?: { jump: () => void; };
 	tojiFrameLimiter?: FrameRater;
 	TojiWidget?: typeof TojiWidget;
+	runEngine?: () => Promise<void>;
 }

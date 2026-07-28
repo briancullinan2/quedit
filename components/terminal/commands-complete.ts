@@ -1,6 +1,11 @@
 
-import type { FileManager } from "../bundle/lumino-files";
+
+import type { TerminalCompleteWindow } from "./widget.d";
 import type { CompletionState, IPooledTerminal } from "./widget-types";
+import type { LevenshteinWindow } from "../bundle/lumino.d";
+
+
+const completeSelf: TerminalCompleteWindow & LevenshteinWindow = self as unknown as any;
 
 /**
  * Tokenizes the input command string into structured arguments with start/end offsets.
@@ -111,12 +116,12 @@ export function handleTabAutocomplete(
 	}
 
 	const commandName = tokens[0]?.value || "";
-	let schemaEntry = window.COMMAND_SCHEMA ? window.COMMAND_SCHEMA[commandName] : undefined;
+	let schemaEntry = completeSelf.COMMAND_SCHEMA ? completeSelf.COMMAND_SCHEMA[commandName] : undefined;
 
 	// Resolve Command Aliases
 	if(schemaEntry && schemaEntry.alias)
 	{
-		schemaEntry = window.COMMAND_SCHEMA[schemaEntry.alias];
+		schemaEntry = completeSelf.COMMAND_SCHEMA[schemaEntry.alias];
 	}
 
 	let candidates: string[] = [];
@@ -148,12 +153,12 @@ export function handleTabAutocomplete(
 			candidates = argDef.complete(currentTokenValue, tokens, argnum);
 		}
 		// C. File Argument Types
-		else if(argDef.type === window.ARG_TYPES?.FILE)
+		else if(argDef.type === completeSelf.ARG_TYPES?.FILE)
 		{
 			candidates = completeFilenameArg(currentTokenValue, tokens, argnum, pooledCtx);
 		}
 		// D. Database Argument Types
-		else if(argDef.type === window.ARG_TYPES?.DATABASE)
+		else if(argDef.type === completeSelf.ARG_TYPES?.DATABASE)
 		{
 			candidates = completeDatabaseArg(currentTokenValue, tokens, argnum, pooledCtx);
 		}
@@ -170,8 +175,8 @@ export function handleTabAutocomplete(
 
 function completeCommandName(partialCommand: string, pooledCtx: IPooledTerminal): string[]
 {
-	const allCommands = Object.keys(window.COMMAND_SCHEMA || {});
-	return window.findMatchesWithFuzzy(partialCommand, allCommands);
+	const allCommands = Object.keys(completeSelf.COMMAND_SCHEMA || {});
+	return completeSelf.findMatchesWithFuzzy(partialCommand, allCommands);
 }
 
 function completeEnumArg(
@@ -182,7 +187,7 @@ function completeEnumArg(
 	pooledCtx: IPooledTerminal
 ): string[]
 {
-	return window.findMatchesWithFuzzy(currentValue, candidates);
+	return completeSelf.findMatchesWithFuzzy(currentValue, candidates);
 }
 
 function completeFilenameArg(
@@ -199,7 +204,7 @@ function completeFilenameArg(
 		"src/dagcheck.md",
 		"quake3e.wasm"
 	];
-	return window.findMatchesWithFuzzy(currentValue, knownFiles);
+	return completeSelf.findMatchesWithFuzzy(currentValue, knownFiles);
 }
 
 function completeDatabaseArg(
@@ -208,8 +213,8 @@ function completeDatabaseArg(
 	argnum: number,
 	pooledCtx: IPooledTerminal): string[]
 {
-	const knownDatabases = window.FileManager.getActiveRepositories();
-	return window.findMatchesWithFuzzy(currentValue, knownDatabases);
+	const knownDatabases = completeSelf.FileManager?.getActiveRepositories() ?? [];
+	return completeSelf.findMatchesWithFuzzy(currentValue, knownDatabases);
 }
 
 

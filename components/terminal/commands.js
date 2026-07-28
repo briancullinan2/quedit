@@ -520,12 +520,10 @@ function tokenize(input)
 
 
 
-const CWD = '';
-const HISTORY = [];
-
-
+commandSelf.CWD = '';
 commandSelf.runningCommand = false;
-let detachedConsole = false;
+commandSelf.detachedConsole = false;
+
 async function handleCommand(input, term)
 {
 	const database = commandSelf.RepositoryToolbar?.owner?.value + '/' + commandSelf.RepositoryToolbar?.repository?.value;
