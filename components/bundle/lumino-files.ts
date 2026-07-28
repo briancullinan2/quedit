@@ -343,12 +343,10 @@ export class FileManager
 					}
 
 					// Standard bitmask mode for regular file (0100644)
-					const MODE_FILE = 0o100000 | 0o666;
-
 					const fileNode: GitHubFileEntry = {
 						name: targetFileName,
 						path: cleanPath,
-						mode: MODE_FILE,
+						mode: luminoSelf?.FS_FILE ?? (0o100000 | 0o666),
 						size: size,
 						timestamp: timestamp,
 						contents: await (await fileHandle.getFile()).arrayBuffer(),

@@ -1,5 +1,9 @@
 
-/// <reference path="../bundle/global.d.ts" />
+
+// @ts-check
+
+/** @type {import('./make.d').SharedWindow} */
+const sharedSelf = /** @type {any} */ (self);
 
 /*
  * Copyright 2020 WebAssembly Community Group participants
@@ -65,12 +69,12 @@ function debounceLazy(f, ms)
 
 
 
-if(typeof needsHeaders === 'undefined')
+if(typeof sharedSelf.needsHeaders === 'undefined')
 {
-	needsHeaders = true;
+	sharedSelf.needsHeaders = true;
 }
 
-self.API = (function ()
+sharedSelf.API = (function ()
 {
 
 	class ProcExit extends Error
@@ -122,7 +126,7 @@ self.API = (function ()
 
 	/**
 	 *
-	 * @param {MemFS} obj
+	 * @param {MemFS | App} obj
 	 * @param {string[]} names
 	 * @returns {any}
 	 */
@@ -598,9 +602,9 @@ self.API = (function ()
 		{
 			this.mem.check();
 			let message = this.mem.readStr(buf, len);
-			if(typeof self.originalConsole !== 'undefined')
-				self.originalConsole.warn(message);
-			api?.hostWrite?.(message);
+			if(typeof sharedSelf.originalConsole !== 'undefined')
+				sharedSelf.originalConsole.warn(message);
+			sharedSelf.api?.hostWrite?.(message);
 		}
 
 		/*
@@ -793,7 +797,7 @@ self.API = (function ()
 			}
 			let needMemfs = module.name.includes('lld') || module.name.includes('clang');
 
-			if(!self.FS.pointers[0] || !self.FS.pointers[0][2])
+			if(!sharedSelf.FS.pointers?.[0] || !sharedSelf.FS.pointers[0][2])
 			{
 				debugger;
 			}
@@ -938,8 +942,8 @@ self.API = (function ()
 						//this.api.memfs.hostMem = this.previousHostMem;
 					}
 					this.api.pid = this.previousPid;
-					//self.FS.pointers[0][2].rewrite = this.previousFd;
-					//self.FS.pointers[0][2].contents = this.previousContents;
+					//sharedSelf.FS.pointers[0][2].rewrite = this.previousFd;
+					//sharedSelf.FS.pointers[0][2].contents = this.previousContents;
 					updateGlobalBufferAndViews();
 				}
 			}
@@ -1443,11 +1447,11 @@ self.API = (function ()
 				const modeOctal = parseInt(readStr(this.u8, headerOffset + 100, 8), 8);
 
 				// 3. Register in Virtual FS (Placeholder only)
-				if(!self.FS.virtual[filename])
+				if(!sharedSelf.FS.virtual[filename])
 				{
 					const isDir = typeStr === '5' || filename.endsWith('/');
 
-					self.FS.virtual[filename] = {
+					sharedSelf.FS.virtual[filename] = {
 						timestamp: new Date(),
 						mode: isDir ? FS_DIR : FS_FILE,
 						path: filename,
@@ -1558,7 +1562,7 @@ self.API = (function ()
 				switch(entry.type)
 				{
 					case '0': // Regular file.
-						self.FS.virtual[entry.filename] = {
+						sharedSelf.FS.virtual[entry.filename] = {
 							timestamp: new Date(),
 							mode: FS_FILE,
 							contents: entry.contents,
@@ -1578,7 +1582,7 @@ self.API = (function ()
 					case '5':
 						if(entry.filename.endsWith('/'))
 							entry.filename = entry.filename.substring(0, entry.filename.length - 1);
-						self.FS.virtual[entry.filename] = {
+						sharedSelf.FS.virtual[entry.filename] = {
 							timestamp: new Date(),
 							mode: FS_DIR,
 							path: entry.filename,
@@ -1687,31 +1691,31 @@ self.API = (function ()
 		{
 			let result = [
 				name,
-				self.dirs.ENGINE_RELEASE + '/' + name,
-				self.dirs.ENGINE_DEBUG + '/' + name,
+				sharedSelf.dirs.ENGINE_RELEASE + '/' + name,
+				sharedSelf.dirs.ENGINE_DEBUG + '/' + name,
 				'components/compiler/' + name,
 			];
 			if(!name.endsWith('.js.wasm'))
 			{
 				result = result.concat(name + '.js.wasm',
-					self.dirs.ENGINE_RELEASE + '/' + name + '.js.wasm',
-					self.dirs.ENGINE_DEBUG + '/' + name + '.js.wasm',
+					sharedSelf.dirs.ENGINE_RELEASE + '/' + name + '.js.wasm',
+					sharedSelf.dirs.ENGINE_DEBUG + '/' + name + '.js.wasm',
 					'components/compiler/' + name + '.js.wasm',
 				);
 			}
 			if(!name.endsWith('.wasm'))
 			{
 				result = result.concat(name + '.wasm',
-					self.dirs.ENGINE_RELEASE + '/' + name + '.wasm',
-					self.dirs.ENGINE_DEBUG + '/' + name + '.wasm',
+					sharedSelf.dirs.ENGINE_RELEASE + '/' + name + '.wasm',
+					sharedSelf.dirs.ENGINE_DEBUG + '/' + name + '.wasm',
 					'components/compiler/' + name + '.wasm',
 				);
 			}
 			if(name.endsWith('.js.wasm'))
 			{
 				result = result.concat(name.replace('.js.wasm', '.wasm'),
-					self.dirs.ENGINE_RELEASE + '/' + name.replace('.js.wasm', '.wasm'),
-					self.dirs.ENGINE_DEBUG + '/' + name.replace('.js.wasm', '.wasm'),
+					sharedSelf.dirs.ENGINE_RELEASE + '/' + name.replace('.js.wasm', '.wasm'),
+					sharedSelf.dirs.ENGINE_DEBUG + '/' + name.replace('.js.wasm', '.wasm'),
 					'components/compiler/' + name.replace('.js.wasm', '.wasm'),
 				);
 			}
@@ -1741,16 +1745,19 @@ self.API = (function ()
 						try
 						{
 							const parts = selected.split('/');
-							const ownerName = parts.length == 2 ? parts[0] : self.RepositoryToolbar?.owner?.value;
-							const repoName = parts.length == 2 ? parts[1] : parts[0] || self.RepositoryToolbar?.repository?.value;
+							const ownerName = parts.length == 2 ? parts[0] : sharedSelf.RepositoryToolbar?.owner?.value;
+							const repoName = parts.length == 2 ? parts[1] : parts[0] || sharedSelf.RepositoryToolbar?.repository?.value;
 							// because this also creates the database with setupDatabase
-							if(!self.filesRepo[selected])
+							if(!sharedSelf.filesRepo?.[selected])
 							{
-								let branch = await self.getDefaultBranch(ownerName, repoName);
-								await self.loadGitHubTree(ownerName, repoName, branch);
+								let branch = await sharedSelf.getDefaultBranch?.(ownerName, repoName);
+								if(branch)
+								{
+									await sharedSelf.loadGitHubTree?.(ownerName, repoName, branch);
+								}
 							}
 
-							let record = await self.getRecord(self.DB_STORE_NAME, filePath, selected);
+							let record = await sharedSelf.getRecord?.(sharedSelf.DB_STORE_NAME ?? '', filePath, selected);
 							checkedPaths.push(filePath + ' on ' + selected);
 							if(record)
 							{
@@ -1767,20 +1774,20 @@ self.API = (function ()
 					}
 
 					if(this.memfs && this.memfs.exists(filePath)
-						&& self.FS.virtual[filePath]
+						&& sharedSelf.FS.virtual[filePath]
 					)
 					{
 						contents = this.memfs.getFileContents(filePath);
-						if(!self.FS.virtual[filePath] || contents.length === 0)
+						if(!sharedSelf.FS.virtual[filePath] || contents.length === 0)
 						{
 							console.error('Assetion virtual fs not empty for wasm: ' + name);
 							debugger;
 						}
-						self.FS.virtual[filePath].contents = contents;
+						sharedSelf.FS.virtual[filePath].contents = contents;
 					}
-					else if(self.FS.virtual[filePath])
+					else if(sharedSelf.FS.virtual[filePath])
 					{
-						contents = self.FS.virtual[filePath].contents;
+						contents = sharedSelf.FS.virtual[filePath].contents;
 					}
 
 					if(contents)
@@ -1854,27 +1861,27 @@ self.API = (function ()
 				)
 				{
 					const selected = this.toolsRepo || database || this.database;
-					needsHeaders = true;
+					sharedSelf.needsHeaders = true;
 
 					// TODO: try compiling ourselves if its a known module + result
 					if(name.includes('q3lcc'))
-						await self.buildLCC(selected, false);
+						await sharedSelf.buildLCC(selected, false);
 					if(name.includes('q3rcc'))
-						await self.buildRCC(selected, false, false);
+						await sharedSelf.buildRCC(selected, false, false);
 					if(name.includes('lburg'))
-						await self.buildLBurg(selected, false);
+						await sharedSelf.buildLBurg(selected, false);
 					if(name.includes('q3cpp'))
-						await self.buildCPP(selected, false);
+						await sharedSelf.buildCPP(selected, false);
 					if(name.includes('q3asm'))
 					{
-						await self.buildAsmTool(this.toolsRepo2 || selected, false);
+						await sharedSelf.buildAsmTool(this.toolsRepo2 || selected, false);
 					}
 					if(name.includes('quake3e'))
-						await self.buildClient(selected, false, false, true /* no bounce */);
+						await sharedSelf.buildClient?.(selected, false, false, true /* no bounce */);
 					//if(name.includes('quake3e.ded'))
 					//	await buildDedicated(selected, false);
 					if(name.includes('stringify'))
-						await self.buildStringify(selected, false);
+						await sharedSelf.buildStringify(selected, false);
 
 					try
 					{
@@ -1951,11 +1958,11 @@ self.API = (function ()
 				if(alwaysMkdir)
 					console.log('Header loading (worker): ' + filePath);
 
-				if(filePath.includes(self.dirs.ENGINE_RELEASE) || filePath.includes(self.dirs.ENGINE_DEBUG))
+				if(filePath.includes(sharedSelf.dirs.ENGINE_RELEASE) || filePath.includes(sharedSelf.dirs.ENGINE_DEBUG))
 				{
 					//debugger
 				}
-				await self.prepInputOutput(filePath, null, this.database, alwaysMkdir);
+				await sharedSelf.prepInputOutput(filePath, null, this.database, alwaysMkdir);
 
 				return true;
 			} catch(e)
@@ -1991,7 +1998,7 @@ self.API = (function ()
 
 
 			if(input && contents)
-				self.FS.virtual[virtualInput] = {
+				sharedSelf.FS.virtual[virtualInput] = {
 					timestamp: new Date(),
 					mode: FS_FILE,
 					contents: contents,
@@ -1999,21 +2006,21 @@ self.API = (function ()
 					parent: input.substring(0, input.lastIndexOf('/'))
 				};
 
-			await self.prepInputOutput(input, obj, this.database, true);
+			await sharedSelf.prepInputOutput(input, obj, this.database, true);
 
-			if(!self.FS.virtual[virtualInput] || !self.FS.virtual[virtualInput].contents)
+			if(!sharedSelf.FS.virtual[virtualInput] || !sharedSelf.FS.virtual[virtualInput].contents)
 			{
 				debugger;
 				console.error('Input file empty: ' + input);
 			}
 
-			self.mkdirp(self.config.TEMPDIR, this.database);
+			sharedSelf.mkdirp(sharedSelf.config.TEMPDIR, this.database);
 
-			if(input && this.memfs && self.FS.virtual[virtualInput])
+			if(input && this.memfs && sharedSelf.FS.virtual[virtualInput])
 			{
 				this.memfs.mkdirp(input.substring(0, input.lastIndexOf('/')));
 				this.memfs.mkdirp(obj.substring(0, obj.lastIndexOf('/')));
-				this.memfs.addFile(input, self.FS.virtual[virtualInput].contents);
+				this.memfs.addFile(input, sharedSelf.FS.virtual[virtualInput].contents);
 			}
 
 
@@ -2034,7 +2041,7 @@ self.API = (function ()
 			if(this.memfs && this.memfs.exists(obj))
 			{
 				let bytes = this.memfs.getFileContents(obj);
-				self.FS.virtual[virtualObj] = {
+				sharedSelf.FS.virtual[virtualObj] = {
 					timestamp: new Date(),
 					mode: FS_FILE,
 					contents: bytes.slice(),
@@ -2045,7 +2052,7 @@ self.API = (function ()
 				try
 				{
 					if(this.database)
-						await self.putRecord(self.DB_STORE_NAME, self.FS.virtual[virtualObj], this.database);
+						await sharedSelf.putRecord?.(sharedSelf.DB_STORE_NAME ?? '', sharedSelf.FS.virtual[virtualObj], this.database);
 
 					console.log('Compile succeeded: ' + obj + '\n\r');
 				} catch(e)
@@ -2057,11 +2064,11 @@ self.API = (function ()
 					}
 				}
 			}
-			else if(this.database && self.FS.virtual[virtualObj])
+			else if(this.database && sharedSelf.FS.virtual[virtualObj])
 			{
 				try
 				{
-					await self.putRecord(self.DB_STORE_NAME, self.FS.virtual[virtualObj], this.database);
+					await sharedSelf.putRecord?.(sharedSelf.DB_STORE_NAME ?? '', sharedSelf.FS.virtual[virtualObj], this.database);
 				} catch(e)
 				{
 					debugger;
@@ -2097,12 +2104,12 @@ self.API = (function ()
 				if(this.memfs)
 					this.memfs.addFile(input, contents);
 
-				self.FS.virtual[input] = {
+				sharedSelf.FS.virtual[input] = {
 					timestamp: new Date(),
 					mode: FS_FILE,
 					contents: contents,
 					path: input,
-					sha: await self.getGitShaBrowser(contents),
+					sha: await sharedSelf.getGitShaBrowser?.(contents),
 					parent: input.substring(0, input.lastIndexOf('/'))
 				};
 
@@ -2113,7 +2120,7 @@ self.API = (function ()
 				`-triple=${triple}`, '-mllvm',
 				'--x86-asm-syntax=intel', `-O${opt}`,
 				'-o', output, '-x', 'c++', input);
-			return self.FS.virtual[output];
+			return sharedSelf.FS.virtual[output];
 		}
 
 		async compileTo6502(options)
@@ -2126,7 +2133,7 @@ self.API = (function ()
 
 			await this.ready;
 
-			self.FS.virtual[input] = {
+			sharedSelf.FS.virtual[input] = {
 				timestamp: new Date(),
 				mode: FS_FILE,
 				contents: contents,
@@ -2137,7 +2144,7 @@ self.API = (function ()
 
 			const vasm = await this.getModule('vasm6502_oldstyle');
 			await this.run(vasm, 'vasm6502_oldstyle', ...flags, '-o', output, input);
-			return self.FS.virtual[output];
+			return sharedSelf.FS.virtual[output];
 		}
 
 		async link(options)
@@ -2148,17 +2155,17 @@ self.API = (function ()
 
 			const obj = options.obj;
 			const wasm = options.wasm;
-			const virtualWasm = path.join(this.database, wasm);
+			const virtualWasm = sharedSelf.path.join(this.database, wasm);
 
 
 			if(wasm)
 			{
 				const dirPath = wasm.substring(0, wasm.lastIndexOf('/'));
 				if(dirPath.trim().length > 0)
-					self.mkdirp(dirPath);
+					sharedSelf.mkdirp(dirPath);
 			}
 
-			self.mkdirp(self.config.TEMPDIR, this.database);
+			sharedSelf.mkdirp(sharedSelf.config.TEMPDIR, this.database);
 
 
 			const loadedObjs = [];
@@ -2203,7 +2210,7 @@ self.API = (function ()
 					let bytes = this.memfs.getFileContents(wasm);
 					if(bytes.length > 0)
 					{
-						self.FS.virtual[virtualWasm] = {
+						sharedSelf.FS.virtual[virtualWasm] = {
 							timestamp: new Date(),
 							mode: FS_FILE,
 							contents: bytes,
@@ -2212,12 +2219,12 @@ self.API = (function ()
 						};
 
 						if(this.database)
-							await self.putRecord(self.DB_STORE_NAME, self.FS.virtual[virtualWasm], this.database);
+							await sharedSelf.putRecord?.(sharedSelf.DB_STORE_NAME ?? '', sharedSelf.FS.virtual[virtualWasm], this.database);
 
 					}
-				} else if(this.database && self.FS.virtual[virtualWasm] && self.FS.virtual[virtualWasm].contents)
+				} else if(this.database && sharedSelf.FS.virtual[virtualWasm] && sharedSelf.FS.virtual[virtualWasm].contents)
 				{
-					await self.putRecord(self.DB_STORE_NAME, self.FS.virtual[virtualWasm], this.database);
+					await sharedSelf.putRecord?.(sharedSelf.DB_STORE_NAME ?? '', sharedSelf.FS.virtual[virtualWasm], this.database);
 				}
 
 			} catch(e)
@@ -2228,10 +2235,10 @@ self.API = (function ()
 				}
 			}
 
-			if(self.FS.virtual[virtualWasm] && self.FS.virtual[virtualWasm].contents.length > 1024)
+			if(sharedSelf.FS.virtual[virtualWasm] && sharedSelf.FS.virtual[virtualWasm].contents.length > 1024)
 				console.log('Link succeeded: ' + wasm + '\n\r');
 
-			return self.FS.virtual[virtualWasm];
+			return sharedSelf.FS.virtual[virtualWasm];
 		}
 
 
@@ -2239,40 +2246,40 @@ self.API = (function ()
 		{
 
 
-			needsHeaders = true;
+			sharedSelf.needsHeaders = true;
 
 			if(mode === 'stringify' || mode === 'engine'
 				|| mode === 'release' || mode === 'debug' || mode === 'all')
-				await self.buildStringify(selected, mode === 'stringify');
+				await sharedSelf.buildStringify(selected, mode === 'stringify');
 			if(mode === 'shaders' || mode === 'engine'
 				|| mode === 'release' || mode === 'debug' || mode === 'all')
-				await self.buildShaders(selected, mode === 'shaders');
+				await sharedSelf.buildShaders(selected, mode === 'shaders');
 			if(mode === 'client' || mode === 'engine'
 				|| mode === 'release' || mode === 'debug' || mode === 'all')
-				await self.buildClient(selected, mode === 'client' || mode === 'engine', false, true);
+				await sharedSelf.buildClient(selected, mode === 'client' || mode === 'engine', false, true);
 
 
 			if(!selected)
 				selected = this.database;
 			if(mode === 'lburg' || mode === 'tools' || mode === 'all')
-				await self.buildTools(selected, 'lburg', mode === 'lburg', true); // shared debouncer
+				await sharedSelf.buildTools(selected, 'lburg', mode === 'lburg', true); // shared debouncer
 			if(mode === 'q3rcc' || mode === 'tools' || mode === 'all')
-				await self.buildTools(selected, 'q3rcc', mode === 'q3rcc', true); // implicit forceChanged = true
+				await sharedSelf.buildTools(selected, 'q3rcc', mode === 'q3rcc', true); // implicit forceChanged = true
 			if(mode === 'q3cpp' || mode === 'tools' || mode === 'all')
-				await self.buildTools(selected, 'q3cpp', mode === 'q3cpp', true);
+				await sharedSelf.buildTools(selected, 'q3cpp', mode === 'q3cpp', true);
 			if(mode === 'q3lcc' || mode === 'tools' || mode === 'all')
-				await self.buildTools(selected, 'q3lcc', mode === 'q3lcc', true);
+				await sharedSelf.buildTools(selected, 'q3lcc', mode === 'q3lcc', true);
 			if(mode == 'q3asm' || mode === 'tools' || mode === 'all')
-				await self.buildTools(selected, 'q3asm', mode === 'q3asm', true);
+				await sharedSelf.buildTools(selected, 'q3asm', mode === 'q3asm', true);
 
 			if(mode == 'game' || mode === 'qvms' || mode === 'all')
-				await self.buildModule('game', self.dirs.QADIR, gameFiles, selected, ['QAGAME'], mode === 'game', false, true);
+				await sharedSelf.buildModule('game', sharedSelf.dirs.QADIR, gameFiles, selected, ['QAGAME'], mode === 'game', false, true);
 			if(mode == 'cgame' || mode === 'qvms' || mode === 'all')
-				await self.buildModule('cgame', self.dirs.CGDIR, cgameFiles, selected, ['CGAME'], mode === 'cgame', false, true);
+				await sharedSelf.buildModule('cgame', sharedSelf.dirs.CGDIR, cgameFiles, selected, ['CGAME'], mode === 'cgame', false, true);
 			if(mode == 'ui' || mode === 'qvms' || mode === 'all')
-				await self.buildModule('ui', self.dirs.UIDIR, uiFiles, selected, ['UI'], mode === 'ui', false, true);
+				await sharedSelf.buildModule('ui', sharedSelf.dirs.UIDIR, uiFiles, selected, ['UI'], mode === 'ui', false, true);
 			if(mode == 'q3_ui' || mode === 'qvms' || mode === 'all')
-				await self.buildModule('q3_ui', self.dirs.Q3UIDIR, q3uiFiles, selected, ['UI'], mode === 'q3_ui', false, true);
+				await sharedSelf.buildModule('q3_ui', sharedSelf.dirs.Q3UIDIR, q3uiFiles, selected, ['UI'], mode === 'q3_ui', false, true);
 
 
 		}
@@ -2289,7 +2296,7 @@ self.API = (function ()
 			if(typeof module == 'string' || !module)
 				throw new Error('Cannot load module: ' + name);
 
-			self.mkdirp(self.config.TEMPDIR, this.database);
+			sharedSelf.mkdirp(sharedSelf.config.TEMPDIR, this.database);
 
 			/*
 			if (args) {
@@ -2347,7 +2354,7 @@ self.API = (function ()
 				throw new Error('Cannot load module: ' + name);
 
 
-			self.mkdirp(self.config.TEMPDIR, this.database);
+			sharedSelf.mkdirp(sharedSelf.config.TEMPDIR, this.database);
 
 			/*
 			if (args) {
@@ -2396,12 +2403,12 @@ self.API = (function ()
 			const input = `test.cc`;
 			const obj = `test.o`;
 			const wasm = `test.wasm`;
-			const virtualWasm = path.join(this.database, wasm);
+			const virtualWasm = sharedSelf.path.join(this.database, wasm);
 			await this.compile({ input, contents: options.contents, obj });
 			await this.link({ obj, wasm });
 
 			const testMod = await this.hostLogAsync(`Compiling ${wasm}`,
-				WebAssembly.compile(self.FS.virtual[virtualWasm]?.contents));
+				WebAssembly.compile(sharedSelf.FS.virtual[virtualWasm]?.contents));
 			return await this.run(testMod, wasm);
 		}
 	}

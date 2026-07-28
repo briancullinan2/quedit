@@ -431,21 +431,21 @@ const exportFlags = [
 ].map(sym => `--export=${sym}`);
 
 // Undefined symbols handling
-const undefinedFlags = [
+makeSelf.undefinedFlags = [
 	`--allow-undefined-file=${'code/wasm/wasm.syms'}`
 ];
 
-const includeFlags = [
+makeSelf.includeFlags = [
 	'-lc', '-lc++', '-lc++abi'
 ];
 
 // Final Assembly based on platform
-const LDFLAGS = [
+makeSelf.LDFLAGS = [
 	...ENGINE_LDFLAGS,
 	'lib/wasm32-wasi/crt1.o',
 	...wasmPlatformFlags,
 	...exportFlags,
-	...undefinedFlags
+	...makeSelf.undefinedFlags
 ];
 
 
@@ -570,7 +570,7 @@ async function buildStringify(database = null, forceChanged = false, noLinking =
 
 	try
 	{
-		await makeSelf.api?.compile({
+		await makeSelf.api?.compile?.({
 			CFLAGS: [
 				'-cc1', '-triple', 'wasm32-wasi',
 				'-emit-obj',
@@ -647,12 +647,12 @@ async function linkStringify(database = null, forceChanged = false, noBuild = fa
 
 	try
 	{
-		await makeSelf.api?.link({
+		await makeSelf.api?.link?.({
 			LDFLAGS: [
-				...toolLdFlags,
+				...(makeSelf.toolLdFlags ?? []),
 				CONFIGURATION + '/stringify.o',
 				'-o', stringifyExe,
-				...includeFlags
+				...(makeSelf.includeFlags ?? [])
 			],
 			obj: [CONFIGURATION + '/stringify.o'],
 			database,
@@ -885,7 +885,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 				makeSelf.api.memfs.addFile(file, makeSelf.FS?.virtual[virtualFile]?.contents);
 			}
 		}
-		console.log(`Already have contents (${api?.worker ? 'frontend' : 'worker'}): ${file}`);
+		console.log(`Already have contents (${makeSelf.api?.worker ? 'frontend' : 'worker'}): ${file}`);
 	}
 
 	try
@@ -980,7 +980,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 		// TODO: publish binaryen zero-filled, zip, download uri
 
 
-		if(!api?.github_token)
+		if(!makeSelf.api?.github_token)
 			return alert("Must enter Github token first by clicking the doorway on the left.");
 
 
@@ -1069,7 +1069,7 @@ async function buildClient(database = null, forceChanged = false, noLinking = fa
 
 
 
-				await makeSelf.api?.compile({
+				await makeSelf.api?.compile?.({
 					CFLAGS: CCFLAGS,
 					contents: makeSelf.FS?.virtual[virtualFile]?.contents,
 					input: file,
@@ -1161,13 +1161,13 @@ async function linkEngine(database = null, forceChanged = true, noBuild = false)
 
 	try
 	{
-		await makeSelf.api?.link({
+		await makeSelf.api?.link?.({
 			LDFLAGS: [
-				...LDFLAGS,
+				...(makeSelf.LDFLAGS ?? []),
 				...clientObjs,
 				...renderObjs,
 				'-o', engineExe,
-				...includeFlags
+				...(makeSelf.includeFlags ?? [])
 			],
 			obj: [
 				...clientObjs,
@@ -1251,7 +1251,7 @@ async function buildShaders(database = null, forceChanged = false)
 
 			console.log(`CC: ${shader}`);
 
-			await api?.compile({
+			await makeSelf.api?.compile?.({
 				CFLAGS: [
 					...CFLAGS,
 					...DEBUG_CFLAGS,
@@ -1339,7 +1339,7 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 						makeSelf.FS.virtual[virtualHeader] =
 						{
 							timestamp: new Date(),
-							mode: makeSelf.FS_FILE,
+							mode: makeSelf.FS_FILE ?? (0o100000 | 0o666),
 							contents: makeSelf.FS.virtual[virtualSyms]?.contents,
 							path: header,
 							sha: makeSelf.FS.virtual[virtualSyms]?.sha,
@@ -1375,7 +1375,7 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 
 
 
-				await makeSelf.api?.header(ownerName, repoName, header, database);
+				await makeSelf.api?.header?.(ownerName, repoName, header, database);
 			} catch(e)
 			{
 				if(e instanceof Error)

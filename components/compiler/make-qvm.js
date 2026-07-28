@@ -141,7 +141,7 @@ const qvmHeaders = [
 	"game/g_syscalls.h",
 	"cgame/cg_syscalls.h",
 	"ui/ui_syscalls.h"
-].map(file => makeQVMSelf.path.join(makeQVMSelf.config.MOUNT_DIR, file));
+].map(file => makeQVMSelf.path?.join(makeQVMSelf.config?.MOUNT_DIR ?? 'code', file));
 
 
 const QVMLIB_CFLAGS = [

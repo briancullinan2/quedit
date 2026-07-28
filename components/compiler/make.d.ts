@@ -1,9 +1,10 @@
 import type { GithubWindow } from "../bundle/github.d";
+import { config, dirs, path } from "../bundle/global";
 import type { FileRecord } from "../bundle/local.d";
 import type { LoggingWindow } from "../bundle/logging.d";
 import type { GlobalToolbarsWindow, RepositorySettingsWindow } from "../bundle/menu.d";
 import type { TerminalWindow } from "../terminal/widget.d";
-import type { ApiWindow, MockAPI } from "./worker.d";
+import type { ApiWindow, MockAPI, WorkerWindow } from "./worker.d";
 
 
 export interface MakeWindow
@@ -25,7 +26,9 @@ export interface MakeSystemGlobals
 	needsHeaders?: boolean;
 	undefinedFlags?: string[];
 	includeFlags?: string[];
+	toolLdFlags?: string[];
 	CFLAGS?: string[];
+	LDFLAGS?: string[];
 	building?: boolean;
 	buildDebounce?: ReturnType<typeof setTimeout> | undefined;
 	runningWorker?: boolean;
@@ -35,13 +38,13 @@ export interface BuildWindow
 {
 	SYS?: any;
 	FILED?: any;
-	FS?: {
+	FS: {
 		virtual: Record<string, FileRecord | null | undefined>;
 		pointers?: ([number, string, FileRecord, string, number, number])[];
 	};
-	path?: typeof path;
-	config?: typeof config;
-	dirs?: typeof dirs;
+	path: typeof path;
+	config: typeof config;
+	dirs: typeof dirs;
 	ENGINE_MEMORY_BASE?: number;
 	UI_MEMORY_BASE?: number;
 	CGAME_MEMORY_BASE?: number;
@@ -80,6 +83,15 @@ export interface MakeQVMWindow extends
 	RepositorySettingsWindow,
 	GlobalToolbarsWindow,
 	GithubWindow
+{
+
+}
+
+
+export interface SharedWindow extends
+	MakeQVMWindow,
+	WorkerWindow,
+	LoggingWindow
 {
 
 }

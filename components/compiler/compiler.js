@@ -214,10 +214,14 @@ class WorkerAPI
 
 
 	/**
-	 * @param {import('./worker').WorkerCommandOptions} options
+	 * @param {import('./worker').WorkerCommandOptions | undefined} options
 	 */
 	inject(options)
 	{
+		if(!options)
+		{
+			return;
+		}
 		let currentConfig = options.configuration || workerSelf.SettingsToolbar?.configuration?.value || this.configuration || 'release';
 		this.configuration = options.configuration = currentConfig === 'debug' ? 'debug' : 'release';
 		this.database = options.database = options.database || workerSelf.engineRepository || this.database;
@@ -233,7 +237,7 @@ class WorkerAPI
 
 	/**
 	 * @param {string} id
-	 * @param {import('./worker').WorkerCommandOptions} options
+	 * @param {import('./worker').WorkerCommandOptions | undefined | string} options
 	 */
 	async runAsync(id, options)
 	{
@@ -265,7 +269,7 @@ class WorkerAPI
 	}
 
 	/**
-	 * @param {import('./worker').WorkerCommandOptions} options
+	 * @param {import('./worker').WorkerCommandOptions | undefined} options
 	 */
 	async compileToAssembly(options)
 	{
@@ -273,7 +277,7 @@ class WorkerAPI
 	}
 
 	/**
-	 * @param {import('./worker').WorkerCommandOptions} options
+	 * @param {import('./worker').WorkerCommandOptions | undefined} options
 	 */
 	async compileTo6502(options)
 	{
@@ -281,16 +285,19 @@ class WorkerAPI
 	}
 
 	/**
-	 * @param {import('./worker').WorkerCommandOptions} options
+	 * @param {string | import('./worker').WorkerCommandOptions | undefined} options
 	 */
 	async upload(options)
 	{
-		this.inject(options);
+		if(typeof options !== 'string')
+		{
+			this.inject(options);
+		}
 		return this.runAsync('upload', options);
 	}
 
 	/**
-	 * @param {import('./worker').WorkerCommandOptions} options
+	 * @param {import('./worker').WorkerCommandOptions | undefined} options
 	 */
 	async download(options)
 	{
@@ -303,7 +310,7 @@ class WorkerAPI
 	 * @param {string} owner
 	 * @param {string} repo
 	 * @param {string} header
-	 * @param {string} database
+	 * @param {string | undefined} database
 	 * @returns
 	 */
 	async header(owner, repo, header, database)
@@ -314,7 +321,7 @@ class WorkerAPI
 	}
 
 	/**
-	 * @param {import('./worker').WorkerCommandOptions} options
+	 * @param {import('./worker').WorkerCommandOptions | undefined} options
 	 */
 	async compile(options)
 	{
@@ -324,8 +331,8 @@ class WorkerAPI
 
 	/**
 	 *
-	 * @param {string} database
-	 * @param {string} action
+	 * @param {string | undefined} database
+	 * @param {string | undefined} action
 	 * @returns
 	 */
 	async build(database, action = 'all')
@@ -339,7 +346,7 @@ class WorkerAPI
 	}
 
 	/**
-	 * @param {import('./worker').WorkerCommandOptions} options
+	 * @param {import('./worker').WorkerCommandOptions | undefined} options
 	 */
 	async run(options)
 	{
@@ -348,7 +355,7 @@ class WorkerAPI
 	}
 
 	/**
-	 * @param {import('./worker').WorkerCommandOptions} options
+	 * @param {import('./worker').WorkerCommandOptions | undefined} options
 	 */
 	async link(options)
 	{

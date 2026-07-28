@@ -1,8 +1,8 @@
-/// <reference path="../bundle/global.d.ts" />
-/// <reference path="./worker.d.ts" />
+
+// @ts-check
 
 /** @type {import('./worker.d').WorkerWindow} */
-const workerSelf = self as unknown as any;
+const workerSelf = /** @type {any} */ self;
 
 
 /*
@@ -51,6 +51,12 @@ let canvas;
 let ctx2d;
 
 const apiOptions = {
+
+	/**
+	 *
+	 * @param {string} filename
+	 * @returns
+	 */
 	async readBuffer(filename)
 	{
 		const response = await fetch(filename, {

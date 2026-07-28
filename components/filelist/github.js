@@ -1,5 +1,6 @@
-/// <reference path="../bundle/global.d.ts" />
 
+
+const githubSelf =
 
 if(!self.trees)
 {

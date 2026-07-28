@@ -8,6 +8,11 @@ export interface MockAPI
 	configuration?: string | null;
 	database?: string | null;
 	width?: number | null;
+	toolsRepo?: string;
+	toolsRepo2?: string;
+	engineRepo?: string;
+	gameRepo?: string;
+	assetRepo?: string;
 	ready?: boolean;
 	build?: (database?: string, action?: string) => Promise<any>;
 	run?: (options?: WorkerCommandOptions) => Promise<any>;
@@ -69,7 +74,6 @@ declare interface WorkerAPI extends MockAPI
 	github_token?: string | null;
 
 	hostWrite?: (text: any, source?: any) => void;
-	constructor?: (options: WorkerAPIOptions) => WorkerAPI;
 
 	setShowTiming?: (value: boolean | any) => void;
 	terminate?: () => void;
@@ -80,7 +84,7 @@ declare interface WorkerAPI extends MockAPI
 	compileTo6502?: (options?: WorkerCommandOptions) => Promise<any>;
 	upload?: (options?: WorkerCommandOptions | string) => Promise<any>;
 	download?: (options?: WorkerCommandOptions) => Promise<any>;
-	header?: (owner: string, repo: string, header: any, database?: string) => Promise<any>;
+	header?: (owner: string, repo: string, header: any, database?: string | undefined) => Promise<any>;
 	compile?: (options?: WorkerCommandOptions) => Promise<any>;
 	build?: (database?: string, action?: string) => Promise<any>;
 	run?: (options?: WorkerCommandOptions) => Promise<any>;
@@ -101,7 +105,7 @@ export interface ApiWindow
 
 export interface WorkerWindow extends ApiWindow
 {
-	API: typeof WorkerAPI;
+	API?: typeof WorkerAPI;
 	importScripts(...urls: (string | URL)[]): void;
 }
 
