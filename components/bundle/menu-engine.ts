@@ -114,7 +114,7 @@ export class EngineToolbar extends Widget
 	// --- Dynamic Public API Setters ---
 	public updateSpawns(spawns: { value: string; label: string; selected?: boolean; }[]): void
 	{
-		menuSelf.updateSelectOptions?.('spawn', spawns.reduce((obj, cur) =>
+		menuSelf.updateSelectOptions?.('spawn', spawns.reduce((obj: Record<string, string>, cur) =>
 		{
 			obj[cur.value] = cur.label;
 			return obj;
@@ -123,7 +123,7 @@ export class EngineToolbar extends Widget
 
 	public updateMaps(maps: { value: string; label: string; selected?: boolean; }[]): void
 	{
-		menuSelf.updateSelectOptions?.('map', maps.reduce((obj, cur) =>
+		menuSelf.updateSelectOptions?.('map', maps.reduce((obj: Record<string, string>, cur) =>
 		{
 			obj[cur.value] = cur.label;
 			return obj;

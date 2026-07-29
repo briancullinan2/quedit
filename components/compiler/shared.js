@@ -177,12 +177,13 @@ sharedSelf.API = (function ()
 
 	/**
 	 *
-	 * @param {MemFS | App} obj
+	 * @param {Record<string, Function>} obj
 	 * @param {string[]} names
 	 * @returns {any}
 	 */
 	function getImportObject(obj, names)
 	{
+		/** @type {Record<string, any>} */
 		const result = {};
 		for(let name of names)
 		{
@@ -191,6 +192,12 @@ sharedSelf.API = (function ()
 		return result;
 	}
 
+	/**
+	 *
+	 * @param {number} start
+	 * @param {number} end
+	 * @returns
+	 */
 	function msToSec(start, end)
 	{
 		return ((end - start) / 1000).toFixed(2);
@@ -200,6 +207,10 @@ sharedSelf.API = (function ()
 
 	class Memory
 	{
+		/**
+		 *
+		 * @param {WebAssembly.Memory} memory
+		 */
 		constructor(memory)
 		{
 			this.memory = memory;
@@ -218,25 +229,65 @@ sharedSelf.API = (function ()
 			}
 		}
 
+		/**
+		 *
+		 * @param {number} o
+		 * @returns
+		 */
 		read8(o) { return this.u8[o]; }
+		/**
+		 *
+		 * @param {number} o
+		 * @returns
+		 */
 		read32(o) { return this.u32[o >> 2]; }
+		/**
+		 *
+		 * @param {number} o
+		 * @param {number} v
+		 */
 		write8(o, v) { this.u8[o] = v; }
+		/**
+		 *
+		 * @param {number} o
+		 * @param {number} v
+		 */
 		write32(o, v) { this.u32[o >> 2] = v; }
+		/**
+		 *
+		 * @param {number} o
+		 * @param {number} vlo
+		 * @param {number} vhi
+		 */
 		write64(o, vlo, vhi = 0) { this.write32(o, vlo); this.write32(o + 4, vhi); }
-
+		/**
+		 *
+		 * @param {number} o
+		 * @param {number} len
+		 * @returns
+		 */
 		readStr(o, len)
 		{
 			return readStr(this.u8, o, len);
 		}
-
-		// Null-terminated string.
+		/**
+		 * Null-terminated string.
+		 * @param {number} o
+		 * @param {string} str
+		 * @returns {number}
+		 */
 		writeStr(o, str)
 		{
 			o += this.write(o, str);
 			this.write8(o, 0);
 			return str.length + 1;
 		}
-
+		/**
+		 *
+		 * @param {number} o
+		 * @param {ArrayBuffer | Uint8Array | number[] | string} buf
+		 * @returns {number}
+		 */
 		write(o, buf)
 		{
 			if(buf instanceof ArrayBuffer)
@@ -281,17 +332,29 @@ sharedSelf.API = (function ()
 				});
 		}
 
+		/**
+		 *
+		 * @param {WebAssembly.Memory} mem
+		 */
 		set hostMem(mem)
 		{
 			this.hostMem_ = mem;
 		}
 
+		/**
+		 *
+		 * @param {string} str
+		 */
 		setStdinStr(str)
 		{
 			this.stdinStr = str;
 			this.stdinStrPos = 0;
 		}
 
+		/**
+		 *
+		 * @param {string} path
+		 */
 		addDirectory(path)
 		{
 			this.mem.check();
@@ -299,6 +362,11 @@ sharedSelf.API = (function ()
 			this.exports.AddDirectoryNode(path.length);
 		}
 
+		/**
+		 *
+		 * @param {string} path
+		 * @returns
+		 */
 		exists(path)
 		{
 			try
@@ -355,6 +423,10 @@ sharedSelf.API = (function ()
 		}
 		*/
 
+		/**
+		 *
+		 * @param {string} path
+		 */
 		mkdirp(path)
 		{
 			// Normalize: remove leading/trailing slashes for segmenting
@@ -392,6 +464,12 @@ sharedSelf.API = (function ()
 			}
 		}
 
+		/**
+		 *
+		 * @param {string} path
+		 * @param {ArrayBuffer} contents
+		 * @returns
+		 */
 		addFile(path, contents)
 		{
 			try

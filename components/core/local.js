@@ -27,8 +27,8 @@ localSelf.DB_SCHEME = DB_SCHEME;
 
 /**
  *
- * @param {*} dbName
- * @param {*} dbVersion
+ * @param {string | null} dbName
+ * @param {number | null} dbVersion
  * @returns
  */
 async function getDB(dbName = null, dbVersion = null)
@@ -84,7 +84,12 @@ async function getDatabaseMetadata()
 
 localSelf.getDatabaseMetadata = getDatabaseMetadata;
 
-
+/**
+ *
+ * @param {string | null} dbName
+ * @param {import('../bundle/local.d').SchemaStoreConfig[]} expectedStores
+ * @returns
+ */
 async function needsInstall(dbName, expectedStores)
 {
 	return new Promise((resolve) =>
@@ -119,12 +124,18 @@ async function needsInstall(dbName, expectedStores)
 
 localSelf.needsInstall = needsInstall;
 
-
+/**
+ *
+ * @param {string | null} dbName
+ * @param {import('../bundle/local.d').SchemaStoreConfig[]} stores
+ * @returns
+ */
 async function setupDatabase(dbName, stores)
 {
 	let created = false;
+	/** @type {string | null} */
 	let error = null;
-	if(dbName.length < 4 || dbName.startsWith('/'))
+	if(!dbName || dbName.length < 4 || dbName.startsWith('/'))
 	{
 		debugger;
 		console.error('how the fuck does this even happen?');

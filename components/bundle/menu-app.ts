@@ -500,13 +500,13 @@ function findOutermostWidget(
 			parentSplit = currentNode; // Track parent split node
 
 			const isFirst = edge === 'left' || edge === 'top';
-			const targetIndex = isFirst ? 0 : currentNode.children.length - 1;
+			const targetIndex: number = isFirst ? 0 : currentNode.children.length - 1;
 
 			currentNode = currentNode.children[targetIndex];
 		} else if(currentNode.children && currentNode.children.length > 0)
 		{
 			const isFirst = edge === 'left' || edge === 'top';
-			const targetIndex = isFirst ? 0 : currentNode.children.length - 1;
+			const targetIndex: number = isFirst ? 0 : currentNode.children.length - 1;
 
 			currentNode = currentNode.children[targetIndex];
 		} else
@@ -518,7 +518,8 @@ function findOutermostWidget(
 	return null;
 }
 
-const ALL_LAYOUTS = Object.values(LAYOUT_AXES).reduce((combinations, currentAxisVariants) =>
+
+const ALL_LAYOUTS = Object.values(LAYOUT_AXES).reduce((combinations: string[], currentAxisVariants) =>
 {
 	// If it's the first axis (panels), initialize the array with its base variants
 	if(combinations.length === 0) return currentAxisVariants;
@@ -529,17 +530,43 @@ const ALL_LAYOUTS = Object.values(LAYOUT_AXES).reduce((combinations, currentAxis
 	);
 }, []).map(combinedString => `layout-${combinedString}`);
 
+/**
+ * Type-safe property setter helper that correlates key K with value LayoutState[K].
+ * Solves the TypeScript indexed assignment 'never' bug without needing `any`.
+ */
+function setLayoutValue<K extends AXES>(
+	state: LayoutState,
+	key: K,
+	value: LayoutState[K]
+): void
+{
+	state[key] = value;
+}
+
+/**
+ * Type guard that checks if a string is a valid variant for a specific axis K.
+ */
+function isValidAxisVariant<K extends AXES>(
+	axis: K,
+	variant: string
+): variant is LayoutState[K]
+{
+	const validVariants: string[] = LAYOUT_AXES[axis];
+	return validVariants.includes(variant);
+}
 
 /**
  * Normalizes, validates, and orders layout inputs into body class names.
  * Accepts strings (e.g. "layout-focus-mode reverse-order"), arrays, or objects.
- *
- * @param {string|string[]|Object} rawInput - The unvalidated input to resolve.
- * @returns {string[]} Formatted class names ordered matching LAYOUT_AXES.
  */
-function getValidatedLayoutClassNames(rawInput)
+function getValidatedLayoutClassNames(
+	rawInput: string | string[] | Record<string, unknown> | null | undefined
+): string[]
 {
-	const resolvedState = { ...menuSelf.layoutState };
+	// Clone current layoutState or fall back to default
+	const resolvedState: LayoutState = {
+		...(menuSelf.layoutState ?? { "panels": "left-hand-files", "order": "normal-order", "terminal": "terminal", "mode": "full-mode" })
+	};
 
 	if(typeof rawInput === 'string')
 	{
@@ -556,56 +583,77 @@ function getValidatedLayoutClassNames(rawInput)
 		});
 	} else if(rawInput && typeof rawInput === 'object')
 	{
-		Object.keys(LAYOUT_AXES).forEach(axis =>
+		const inputObj = rawInput as Record<string, unknown>;
+		(Object.keys(LAYOUT_AXES) as AXES[]).forEach(axis =>
 		{
-			if(typeof rawInput[axis] === 'string')
+			const rawVal = inputObj[axis];
+			if(typeof rawVal === 'string')
 			{
-				const cleanValue = rawInput[axis].replace(/^layout-/, '');
-				if(LAYOUT_AXES[axis].includes(cleanValue))
+				const cleanValue = rawVal.replace(/^layout-/, '');
+				if(isValidAxisVariant(axis, cleanValue))
 				{
-					resolvedState[axis] = cleanValue;
+					setLayoutValue(resolvedState, axis, cleanValue);
 				}
 			}
 		});
 	}
 
 	// Return mapped array preserving strict order: panels -> order -> terminal -> mode
-	return Object.keys(LAYOUT_AXES).map(axis => `layout-${resolvedState[axis]}`);
+	return (Object.keys(LAYOUT_AXES) as AXES[]).map(
+		axis => `layout-${resolvedState[axis]}`
+	);
 }
 
 /**
  * Helper to match a single string token against valid LAYOUT_AXES options.
  */
-function processToken(token, targetState)
+function processToken(token: string, targetState: LayoutState): void
 {
 	const cleanToken = token.replace(/^layout-/, '');
 
-	Object.keys(LAYOUT_AXES).forEach(axis =>
+	(Object.keys(LAYOUT_AXES) as AXES[]).forEach(axis =>
 	{
-		if(LAYOUT_AXES[axis].includes(cleanToken))
+		if(isValidAxisVariant(axis, cleanToken))
 		{
-			targetState[axis] = cleanToken;
+			setLayoutValue(targetState, axis, cleanToken);
 		}
 	});
 }
 
-export function applyInitialLayout(storedInput)
+export function applyInitialLayout(
+	storedInput: string | string[] | Record<string, unknown> | null | undefined
+): string[]
 {
 	// 1. Get validated class list in the exact required order
 	const validatedClasses = getValidatedLayoutClassNames(storedInput);
 
 	// 2. Update menuSelf.layoutState from validated output
-	Object.keys(LAYOUT_AXES).forEach((axis, index) =>
+	if(menuSelf.layoutState)
 	{
-		if(menuSelf.layoutState)
+		const targetState = menuSelf.layoutState;
+		(Object.keys(LAYOUT_AXES) as AXES[]).forEach(axis =>
 		{
-			menuSelf.layoutState[axis] = validatedClasses[index].replace('layout-', '');
-		}
-	});
+			const rawClass = validatedClasses.find(cls =>
+			{
+				const clean = cls.replace(/^layout-/, '');
+				return isValidAxisVariant(axis, clean);
+			});
+
+			if(rawClass)
+			{
+				const cleanValue = rawClass.replace(/^layout-/, '');
+				if(isValidAxisVariant(axis, cleanValue))
+				{
+					setLayoutValue(targetState, axis, cleanValue);
+				}
+			}
+		});
+	}
 
 	// 3. Remove any existing layout-* classes from body to avoid collisions
-	const existingLayoutClasses = Array.from(document.body.classList)
-		.filter(className => className.startsWith('layout-'));
+	const existingLayoutClasses = Array.from(document.body.classList).filter(
+		className => className.startsWith('layout-')
+	);
 
 	if(existingLayoutClasses.length > 0)
 	{
@@ -617,3 +665,4 @@ export function applyInitialLayout(storedInput)
 
 	return validatedClasses;
 }
+

@@ -8,7 +8,7 @@ import type { EditorWindow } from "../editor/widget.d";
 import type { GlobalToolbarsWindow, RepositorySettingsWindow } from "./menu.d";
 
 
-const luminoSelf: LuminoLayoutWindow & EditorWindow & RepositorySettingsWindow & GlobalToolbarsWindow & RepositorySettingsWindow = self as unknown as any;
+const luminoSelf: LuminoLayoutWindow & EditorWindow & RepositorySettingsWindow & GlobalToolbarsWindow & RepositorySettingsWindow & { [key: string]: any; } = self as unknown as any;
 
 
 export interface SettingConfig
@@ -226,7 +226,7 @@ export class Settings
 
 		if(targetConfig.windowName)
 		{
-			window[targetConfig.windowName] = finalValue;
+			luminoSelf[targetConfig.windowName] = finalValue;
 		}
 
 		if(typeof targetConfig.set === 'function')

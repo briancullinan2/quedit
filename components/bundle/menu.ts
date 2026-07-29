@@ -583,7 +583,7 @@ export async function renderHashCommand(targetHashName: string, noBounce: boolea
 		return;
 	}
 
-	const matchedTerminal = TERMINAL_REGISTRY[rawTarget];
+	const matchedTerminal = TERMINAL_REGISTRY.find(t => t.id === rawTarget);
 	if(matchedTerminal)
 	{
 		if(menuSelf.mainDock)
