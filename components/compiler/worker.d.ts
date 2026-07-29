@@ -116,6 +116,7 @@ export interface ApiWindow
 
 export interface WorkerWindow extends
 	ApiWindow,
+	LocalWindow,
 	BuildWindow,
 	MakeSystemGlobals
 {

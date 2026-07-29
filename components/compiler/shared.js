@@ -5,6 +5,11 @@
 /** @type {import('./make.d').SharedWindow} */
 const sharedSelf = /** @type {any} */ (self);
 
+if(typeof window === 'undefined')
+{
+	window = /** @type {any} */ (sharedSelf);
+}
+
 /*
  * Copyright 2020 WebAssembly Community Group participants
  *
@@ -958,7 +963,7 @@ sharedSelf.API = (function ()
 			this.previousExports = Module.exports;
 			this.previousErrno = Module.errno.value;
 			this.previousMemory = ENV.memory || Module.memory;
-			this.previousHeap = window.STD.sharedMemory || Module.__heap_base;
+			this.previousHeap = self.STD.sharedMemory || Module.__heap_base;
 			this.previousPid = this.api.pid;
 			//if (this.api.memfs) {
 			//  this.previousHostMem = this.api.memfs.hostMem_
@@ -1069,7 +1074,7 @@ sharedSelf.API = (function ()
 				Module.errno.value = (this.exports['___errno_location'])
 					? this.exports['___errno_location']()
 					: 0 || this.exports['errno'];
-				window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value;
+				self.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value;
 				if(this.exports.memory)
 					ENV.memory = Module.memory = this.exports.memory;
 				if(this.api.memfs)
@@ -1085,7 +1090,7 @@ sharedSelf.API = (function ()
 				if(this.previousExports)
 				{
 					Module.exports = this.previousExports;
-					window.STD.sharedMemory = Module.__heap_base = this.previousHeap;
+					self.STD.sharedMemory = Module.__heap_base = this.previousHeap;
 					ENV.memory = Module.memory = this.previousMemory;
 					Module.errno.value = this.previousErrno;
 					if(this.api.memfs)
@@ -1185,7 +1190,7 @@ sharedSelf.API = (function ()
 			Module.errno.value = (this.exports['___errno_location'])
 				? this.exports['___errno_location']()
 				: 0 || this.exports['errno'];
-			window.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value;
+			self.STD.sharedMemory = Module.__heap_base = this.exports.__heap_base.value;
 			if(this.exports.memory)
 				ENV.memory = Module.memory = this.exports.memory;
 			if(this.api.memfs)
@@ -1881,7 +1886,7 @@ sharedSelf.API = (function ()
 			{
 
 				this.hostWrite(name + ' not found at: \n\r' + checkedPaths.join('\n\r')
-					+ '\n\r' + window.location + '/' + name + '\n\r');
+					+ '\n\r' + self.location + '/' + name + '\n\r');
 				console.error(up);
 				if(up instanceof Error
 					&& (up.message.includes('Response code: 404')

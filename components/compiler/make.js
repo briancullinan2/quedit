@@ -1327,7 +1327,7 @@ async function downloadHeaders(headers, batchSize = HEADER_BATCH, database = nul
 				if(header.includes('wasm.syms'))
 				{
 					const localName = 'components/compiler/wasm.syms';
-					const virtualSyms = makeSelf.path.join(database, localName);
+					const virtualSyms = makeSelf.path.join('briancullinan2/quedit', localName);
 					const virtualHeader = makeSelf.path.join(database, header);
 					//let response = await fetch('wasm.syms');
 					//let contents = await response.arrayBuffer()

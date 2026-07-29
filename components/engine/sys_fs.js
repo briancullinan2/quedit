@@ -341,9 +341,9 @@ const virtual = {
 	}
 };
 
-if((self || window).FS && (self || window).FS.virtual)
+if((self || window).FS && typeof (self || window).FS.virtual !== 'undefined')
 {
-	Object.assign((self || window).FS.virtual, virtual, (self || window).FS.virtual);
+	Object.assign(virtual, (self || window).FS.virtual);
 }
 
 const FS = {
@@ -364,11 +364,12 @@ const FS = {
 };
 
 
-if((self || window).FS)
-{
-	Object.assign((self || window).FS, FS, (self || window).FS);
-}
+Object.assign(FS, (self || window).FS);
 
+if(typeof (self || window).FS === 'undefined')
+{
+	(self || window).FS = FS;
+}
 
 
 

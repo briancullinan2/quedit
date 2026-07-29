@@ -46,6 +46,7 @@ const ENV = {
 };
 ENV.ENV = ENV;
 
+/** @type {MessagePort} */
 let port;
 let canvas;
 let ctx2d;
@@ -430,7 +431,7 @@ const onAnyMessage = async event =>
 								{
 									workerSelf.FS.virtual[filePath] = {
 										timestamp: new Date(),
-										mode: workerSelf.FS_FILE,
+										mode: workerSelf.FS_FILE ?? (0o100000 | 0o666),
 										contents: bytes.slice(),
 										path: filePath,
 										sha: await workerSelf.getGitShaBrowser(bytes),
@@ -452,7 +453,7 @@ const onAnyMessage = async event =>
 
 								if(workerSelf.api?.database)
 								{
-									await workerSelf.putRecord(workerSelf.DB_STORE_NAME, record, workerSelf.api.database);
+									await workerSelf.putRecord?.(workerSelf.DB_STORE_NAME ?? '', record, workerSelf.api.database);
 								}
 							}
 						} catch(e)
@@ -499,8 +500,9 @@ const onAnyMessage = async event =>
 			break;
 		//
 		case 'remove':
+			const filename = event.data.filename;
 			workerSelf.api?.extract(event.data.data);
-			const rx = workerSelf.globToRegex(filename);
+			const rx = workerSelf.globToRegex?.(filename);
 			for(let path of Object.keys(workerSelf.FS.virtual))
 			{
 				if(rx.test(path))
@@ -521,7 +523,7 @@ const onAnyMessage = async event =>
 					{
 						workerSelf.api.memfs.mem.check();
 						const buf = workerSelf.api.memfs.exports.GetPathBuf();
-						workerSelf.api.memfs.mem.write(buf, path);
+						workerSelf.api.memfs.mem.write(buf, filename);
 						workerSelf.api.memfs.exports.path_unlink_file(buf);
 					}
 				}

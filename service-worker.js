@@ -815,6 +815,9 @@ serviceSelf.addEventListener('message', async (event) =>
 
 		console.log('✉️ [SW-MESSAGE] Queueing secondary checkStatus validation task routine...');
 		checkStatus();
+	} else if(event.data && event.data.type === 'CLAIM_CLIENTS')
+	{
+		serviceSelf.clients.claim();
 	}
 });
 

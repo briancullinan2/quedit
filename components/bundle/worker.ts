@@ -33,20 +33,35 @@ export class ServiceWorkerManager
 		const serverVersion = await this.fetchServerVersion();
 		await this.syncWorkerSettings();
 
-		const registration = await navigator.serviceWorker.getRegistration();
+		const registration = await this.registerNewWorker();
+
+		if(registration?.active && !navigator.serviceWorker.controller)
+		{
+			const controlledPromise = new Promise<void>((resolve) =>
+			{
+				const onChange = () =>
+				{
+					if(navigator.serviceWorker.controller)
+					{
+						navigator.serviceWorker.removeEventListener('controllerchange', onChange);
+						resolve();
+					}
+				};
+				navigator.serviceWorker.addEventListener('controllerchange', onChange);
+			});
+
+			// Ask the active SW to take control via postMessage
+			registration.active.postMessage({ type: 'CLAIM_CLIENTS' });
+
+			await controlledPromise;
+		}
+
+
 		if(registration?.active)
 		{
 			await this.verifyAndReconcileVersion(registration, serverVersion);
 		}
 
-		if(!registration || !registration.active)
-		{
-			await this.registerNewWorker();
-		}
-		else
-		{
-			console.warn('Skipping Service-Worker because: ' + serverVersion + ' reg: ' + registration + ' active: ' + registration?.active);
-		}
 	}
 
 	/**
@@ -143,6 +158,9 @@ export class ServiceWorkerManager
 		{
 			console.warn(`Version Mismatch! Server: ${serverVersion}, SW: ${swVersion}. Unregistering...`);
 			await this.queryWorkerValue(registration.active, 'DEREGISTER', 'DEREGISTERED');
+		} else
+		{
+			console.warn('Skipping Service-Worker because: ' + serverVersion + ' reg: ' + registration + ' active: ' + registration?.active);
 		}
 	}
 
@@ -193,7 +211,7 @@ export class ServiceWorkerManager
 	/**
 	 * Step 4: Registers a fresh Service Worker script file stream
 	 */
-	private async registerNewWorker(): Promise<void>
+	private async registerNewWorker(): Promise<ServiceWorkerRegistration | undefined>
 	{
 		const swUrl = `/service-worker.js?t=${Date.now()}`;
 		try
@@ -204,6 +222,14 @@ export class ServiceWorkerManager
 		{
 			console.error('Service Worker registration failed:', err);
 		}
+		const registration = await navigator.serviceWorker.getRegistration();
+
+		if(registration)
+		{
+			await navigator.serviceWorker.ready;
+		}
+
+		return registration;
 	}
 }
 

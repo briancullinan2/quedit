@@ -36,7 +36,7 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
 		/** @type {Record<string, string>} */
 		const headers = {
 			'Accept': 'application/vnd.github+json',
-			'X-GitHub-Api-Version': '2022-11-28'
+			//'X-GitHub-Api-Version': '2022-11-28'
 		};
 
 		let token = typeof githubSelf.api !== 'undefined'

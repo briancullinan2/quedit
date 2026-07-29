@@ -190,63 +190,64 @@ function main(): void
 
 	SettingsManager.hydrateAll();
 
-	startServiceWorker();
-
-	const userWorkspaceChoice = SettingsManager.get('core', 'workspaceDefault');
-
 	isDevToolsOpen();
 
-	// TODO: load default editor specified in localStorage
-	if(MODULE_REGISTRY[userWorkspaceChoice])
+	startServiceWorker().then(() =>
 	{
-		triggerPanelRoute(userWorkspaceChoice, mainDock, true);
-	}
+		// because scripts depend on service worker injections and TODO: eventually compiling from SW
+		const userWorkspaceChoice = SettingsManager.get('core', 'workspaceDefault');
+
+		// TODO: load default editor specified in localStorage
+		if(MODULE_REGISTRY[userWorkspaceChoice])
+		{
+			triggerPanelRoute(userWorkspaceChoice, mainDock, true);
+		}
+	});
+
 }
 
-function startServiceWorker()
+async function startServiceWorker()
 {
 	const swManager = new ServiceWorkerManager();
 
 	let workerState = luminoSelf.statusBar?.addStatusItem('sw-state', '[SW] Loading', 'bx bx-radio-circle', 'right');
 
-	swManager.initialize()
-		.then(() =>
+	try
+	{
+		await swManager.initialize();
+		// Update status to 'Worker Ready' and swap spin icon to a solid verified check shield
+		luminoSelf.statusBar?.updateStatusItem('env-state', 'Worker Ready');
+		luminoSelf.statusBar?.updateStatusItem('sw-state', '[SW] Active');
+		const iconNode = luminoSelf.envStatusNode?.querySelector('i');
+		if(iconNode)
 		{
-			// Update status to 'Worker Ready' and swap spin icon to a solid verified check shield
-			luminoSelf.statusBar?.updateStatusItem('env-state', 'Worker Ready');
-			luminoSelf.statusBar?.updateStatusItem('sw-state', '[SW] Active');
-			const iconNode = luminoSelf.envStatusNode?.querySelector('i');
-			if(iconNode)
-			{
-				iconNode.className = 'bx bx-check-shield';
-			}
-			const stateNode = workerState?.querySelector('i')
-			if(stateNode)
-			{
-				stateNode.className = 'bx bx-circle-marked';
-			}
+			iconNode.className = 'bx bx-check-shield';
+		}
+		const stateNode = workerState?.querySelector('i');
+		if(stateNode)
+		{
+			stateNode.className = 'bx bx-circle-marked';
+		}
 
-			// 3. Clear the status notification text after exactly 5 seconds (5000ms)
-			setTimeout(() =>
-			{
-				luminoSelf.statusBar?.updateStatusItem('env-state', '');
-				if(iconNode)
-				{
-					iconNode.className = ''; // Remove the icon asset footprint too
-				}
-			}, 5000);
-		})
-		.catch((err) =>
+		setTimeout(() =>
 		{
-			console.error("Critical worker boot fault:", err);
-			luminoSelf.statusBar?.updateStatusItem('env-state', 'Sync Error');
-			luminoSelf.statusBar?.updateStatusItem('sw-state', '[SW] Error');
-			const iconNode = luminoSelf.envStatusNode?.querySelector('i');
+			luminoSelf.statusBar?.updateStatusItem('env-state', '');
 			if(iconNode)
 			{
-				iconNode.className = 'bx bx-error-circle';
+				iconNode.className = ''; // Remove the icon asset footprint too
 			}
-		});
+		}, 8000);
+	} catch(err)
+	{
+		console.error("Critical worker boot fault:", err);
+		luminoSelf.statusBar?.updateStatusItem('env-state', 'Sync Error');
+		luminoSelf.statusBar?.updateStatusItem('sw-state', '[SW] Error');
+		const iconNode = luminoSelf.envStatusNode?.querySelector('i');
+		if(iconNode)
+		{
+			iconNode.className = 'bx bx-error-circle';
+		}
+	}
 
 
 }
