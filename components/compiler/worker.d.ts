@@ -15,6 +15,7 @@ export interface MockAPI
 	engineRepo?: string;
 	gameRepo?: string;
 	assetRepo?: string;
+	environmentRepository?: string;
 	ready?: boolean;
 	build?: (database?: string, action?: string) => Promise<any>;
 	run?: (options?: WorkerCommandOptions) => Promise<any>;
@@ -54,6 +55,7 @@ interface WorkerCommandOptions
 	engineRepo?: string | null;
 	gameRepo?: string | null;
 	assetRepo?: string | null;
+	environmentRepository?: string;
 	[key: string]: any;
 }
 
@@ -72,6 +74,7 @@ declare interface WorkerAPI extends MockAPI
 	engineRepo?: string;
 	gameRepo?: string;
 	assetRepo?: string;
+	environmentRepository?: string;
 	memfs?: any;
 	ready?: boolean;
 	ready?: Promise<any>;

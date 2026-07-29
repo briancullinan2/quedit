@@ -10,8 +10,10 @@
 		"lib": [
 			"DOM",
 			"DOM.Iterable",
-			"ES2017",
-			"ESNext"
+			"ES2022",
+			"ESNext",
+			"WebWorker",
+			"ScriptHost"
 		],
 		"types": [
 			"node"
@@ -26,7 +28,7 @@
 		"skipLibCheck": true,
 		/* Checking Rules */
 		"strict": true,
-		"noImplicitAny": false, // Good for plain JS so it won't yell at un-annotated params
+		"noImplicitAny": true, // Good for plain JS so it won't yell at un-annotated params
 		"ignoreDeprecations": "6.0"
 	},
 	"include": [

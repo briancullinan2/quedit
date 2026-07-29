@@ -9,8 +9,10 @@
 		"lib": [
 			"DOM",
 			"DOM.Iterable",
-			"ES2017",
-			"ESNext"
+			"ES2022",
+			"ESNext",
+			"WebWorker",
+			"ScriptHost"
 		],
 		"rootDir": "./",
 		"noEmit": false,
@@ -21,7 +23,7 @@
 		"skipLibCheck": true,
 		"allowSyntheticDefaultImports": true,
 		"forceConsistentCasingInFileNames": true,
-		"noImplicitAny": false,
+		"noImplicitAny": true,
 		"ignoreDeprecations": "6.0",
 		"sourceMap": true
 	},

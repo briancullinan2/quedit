@@ -33,6 +33,7 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
 		+ (url.startsWith('/') || url.trim().length == 0 ? '' : '/') + url + (url.includes('?') ? '&' : '?') + `t=${Date.now()}`;
 	try
 	{
+		/** @type {Record<string, string>} */
 		const headers = {
 			'Accept': 'application/vnd.github+json',
 			'X-GitHub-Api-Version': '2022-11-28'
@@ -92,6 +93,7 @@ async function githubRequest(ownerName, repoName, url, authorize = true, buffer 
 }
 
 
+/** @type {Record<string, string>} */
 let defaultBranches = {};
 /**
  *
@@ -155,7 +157,7 @@ async function getBranches(repoOwner, repoName)
 		});
 
 
-		return branches;
+		return sortedBranches;
 	} catch(error)
 	{
 		console.error("Failed to fetch branches:", error);
@@ -463,6 +465,11 @@ async function hydrateFileMTimes(owner, repo, branch, filePaths, targetCache)
 }
 
 
+/**
+ *
+ * @param {Uint8Array | ArrayBuffer | string} content
+ * @returns {Promise<string>}
+ */
 async function getGitSha256Browser(content)
 {
 	const encoder = new TextEncoder();
@@ -498,6 +505,13 @@ async function getGitSha256Browser(content)
 		.join('');
 }
 
+githubSelf.getGitSha256Browser = getGitSha256Browser;
+
+/**
+ *
+ * @param {Uint8Array | ArrayBuffer | string} content
+ * @returns {Promise<string>}
+ */
 async function getGitShaBrowser(content)
 {
 	const encoder = new TextEncoder();
@@ -532,6 +546,8 @@ async function getGitShaBrowser(content)
 		.map(b => b.toString(16).padStart(2, '0'))
 		.join('');
 }
+
+githubSelf.getGitShaBrowser = getGitShaBrowser;
 
 async function cacheFile(storeName, repoOwner, repoName, filePath, sha, forceReload = false)
 {

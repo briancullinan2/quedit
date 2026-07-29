@@ -1310,160 +1310,6 @@ sharedSelf.API = (function ()
 
 			return 0; // errno.SUCCESS
 		}
-
-		canvas_destroyHandle(handle)
-		{
-			this.handles.delete(handle);
-		}
-
-		// Canvas API
-		canvas_setWidth(width) { if(canvas) canvas.width = width; }
-		canvas_setHeight(height) { if(canvas) canvas.height = height; }
-		canvas_requestAnimationFrame()
-		{
-			if(this.allowRequestAnimationFrame)
-			{
-				requestAnimationFrame(ms =>
-				{
-					if(this.allowRequestAnimationFrame)
-					{
-						this.exports?.canvas_loop(ms);
-					}
-				});
-			}
-		}
-
-		// ImageData stuff
-		canvas_createImageData(w, h)
-		{
-			if(ctx2d)
-			{
-				const imageData = ctx2d.createImageData(w, h);
-				const handle = this.nextHandle++;
-				this.handles.set(handle, imageData);
-				return handle;
-			}
-			return -1;
-		}
-		canvas_putImageData(handle, x, y)
-		{
-			if(ctx2d)
-			{
-				const imageData = this.handles.get(handle);
-				if(imageData)
-				{
-					ctx2d.putImageData(imageData, x, y);
-				}
-			}
-		}
-		canvas_imageDataSetData(handle, buffer, offset, size)
-		{
-			if(!this.mem) return;
-			const imageData = this.handles.get(handle);
-			if(imageData)
-			{
-				this.mem.check();
-				const src = new Uint8Array(this.mem.buffer, buffer, size);
-				imageData.data.set(src, offset);
-			}
-		}
-
-		// Other Canvas methods.
-		canvas_arc(...args) { if(ctx2d) ctx2d.arc(...args); }
-		canvas_arcTo(...args) { if(ctx2d) ctx2d.arcTo(...args); }
-		canvas_beginPath(...args) { if(ctx2d) ctx2d.beginPath(...args); }
-		canvas_bezierCurveTo(...args) { if(ctx2d) ctx2d.bezierCurveTo(...args); }
-		canvas_clearRect(...args) { if(ctx2d) ctx2d.clearRect(...args); }
-		canvas_clip(value) { if(ctx2d) ctx2d.clip(['nonzero', 'evenodd'][value]); }
-		canvas_closePath(...args) { if(ctx2d) ctx2d.closePath(...args); }
-		canvas_ellipse(...args) { if(ctx2d) ctx2d.ellipse(...args); }
-		canvas_fill(value) { if(ctx2d) ctx2d.fill(['nonzero', 'evenodd'][value]); }
-		canvas_fillRect(...args) { if(ctx2d) ctx2d.fillRect(...args); }
-		canvas_fillText(text, text_len, x, y)
-		{  // TODO: maxwidth
-			if(!this.mem) return;
-			this.mem.check();
-			if(ctx2d) ctx2d.fillText(this.mem.readStr(text, text_len), x, y);
-		}
-		canvas_lineTo(...args) { if(ctx2d) ctx2d.lineTo(...args); }
-		canvas_measureText(text, text_len)
-		{
-			if(!this.mem) return;
-			this.mem.check();
-			if(ctx2d) return ctx2d.measureText(this.mem.readStr(text, text_len)).width;
-			return 0;
-		}
-		canvas_moveTo(...args) { if(ctx2d) ctx2d.moveTo(...args); }
-		canvas_quadraticCurveTo(...args) { if(ctx2d) ctx2d.quadraticCurveTo(...args); }
-		canvas_rect(...args) { if(ctx2d) ctx2d.rect(...args); }
-		canvas_restore(...args) { if(ctx2d) ctx2d.restore(...args); }
-		canvas_rotate(...args) { if(ctx2d) ctx2d.rotate(...args); }
-		canvas_save(...args) { if(ctx2d) ctx2d.save(...args); }
-		canvas_scale(...args) { if(ctx2d) ctx2d.scale(...args); }
-		canvas_setTransform(...args) { if(ctx2d) ctx2d.setTransform(...args); }
-		canvas_stroke(...args) { if(ctx2d) ctx2d.stroke(...args); }
-		canvas_strokeRect(...args) { if(ctx2d) ctx2d.strokeRect(...args); }
-		canvas_strokeText(text, text_len, x, y)
-		{  // TODO: maxwidth
-			if(!this.mem) return;
-			this.mem.check();
-			if(ctx2d) ctx2d.strokeText(this.mem.readStr(text, text_len), x, y);
-		}
-		canvas_transform(...args) { if(ctx2d) ctx2d.transform(...args); }
-		canvas_translate(...args) { if(ctx2d) ctx2d.translate(...args); }
-
-		// Canvas properties.
-		canvas_setFillStyle(buf, len)
-		{
-			if(!this.mem) return;
-			this.mem.check();
-			if(ctx2d) ctx2d.fillStyle = this.mem.readStr(buf, len);
-		}
-		canvas_setFont(buf, len)
-		{
-			if(!this.mem) return;
-			this.mem.check();
-			if(ctx2d) ctx2d.font = this.mem.readStr(buf, len);
-		}
-		canvas_setGlobalAlpha(value) { if(ctx2d) ctx2d.globalAlpha = value; }
-		canvas_setLineCap(value)
-		{
-			if(ctx2d) ctx2d.lineCap = ['butt', 'round', 'square'][value];
-		}
-		canvas_setLineDashOffset(value) { if(ctx2d) ctx2d.lineDashOffset = value; }
-		canvas_setLineJoin(value)
-		{
-			if(ctx2d) ctx2d.lineJoin = ['bevel', 'round', 'miter'][value];
-		}
-		canvas_setLineWidth(value) { if(ctx2d) ctx2d.lineWidth = value; }
-		canvas_setMiterLimit(value) { if(ctx2d) ctx2d.miterLimit = value; }
-		canvas_setShadowBlur(value) { if(ctx2d) ctx2d.shadowBlur = value; }
-		canvas_setShadowColor(buf, len)
-		{
-			if(!this.mem) return;
-			this.mem.check();
-			if(ctx2d) ctx2d.shadowColor = this.mem.readStr(buf, len);
-		}
-		canvas_setShadowOffsetX(value) { if(ctx2d) ctx2d.setShadowOffsetX = value; }
-		canvas_setShadowOffsetY(value) { if(ctx2d) ctx2d.setShadowOffsetY = value; }
-		canvas_setStrokeStyle(buf, len)
-		{
-			if(!this.mem) return;
-			this.mem.check();
-			if(ctx2d) ctx2d.strokeStyle = this.mem.readStr(buf, len);
-		}
-		canvas_setTextAlign(value)
-		{
-			if(ctx2d)
-				ctx2d.textAlign = ['left', 'right', 'center', 'start', 'end'][value];
-		}
-		canvas_setTextBaseline(value)
-		{
-			if(ctx2d)
-				ctx2d.textBaseline = [
-					'top', 'hanging', 'middle', 'alphabetic', 'ideographic', 'bottom'
-				][value];
-		}
 	}
 
 	class Tar
@@ -2074,7 +1920,7 @@ sharedSelf.API = (function ()
 				console.error('Input file empty: ' + input);
 			}
 
-			sharedSelf.mkdirp(sharedSelf.config.TEMPDIR, this.database);
+			sharedSelf.mkdirp?.(sharedSelf.config.TEMPDIR, this.database);
 
 			if(input && this.memfs && sharedSelf.FS.virtual[virtualInput])
 			{
@@ -2222,10 +2068,10 @@ sharedSelf.API = (function ()
 			{
 				const dirPath = wasm.substring(0, wasm.lastIndexOf('/'));
 				if(dirPath.trim().length > 0)
-					sharedSelf.mkdirp(dirPath);
+					sharedSelf.mkdirp?.(dirPath, this.database);
 			}
 
-			sharedSelf.mkdirp(sharedSelf.config.TEMPDIR, this.database);
+			sharedSelf.mkdirp?.(sharedSelf.config.TEMPDIR, this.database);
 
 
 			const loadedObjs = [];

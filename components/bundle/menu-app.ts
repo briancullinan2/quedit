@@ -184,13 +184,20 @@ menuSelf.ApplicationToolbar = ApplicationToolbar;
 //   switching split-left and split-right
 
 export type LayoutState = {
-	panels: 'left-hand-files' | 'right-hand-files',
-	order: 'normal-order' | 'reverse-order',
-	terminal: 'terminal' | 'no-terminal',
+	panels: 'left-hand-files' | 'right-hand-files';
+	order: 'normal-order' | 'reverse-order';
+	terminal: 'terminal' | 'no-terminal';
 	mode: 'full-mode' | 'focus-mode';
 };
 
-const LAYOUT_AXES = {
+export type AXES = keyof LayoutState; // Automatically stays in sync!
+
+// Each key MUST be an array containing ONLY its valid LayoutState values
+export type LayoutAxesMap = {
+	[K in keyof LayoutState]: LayoutState[K][];
+};
+
+export const LAYOUT_AXES: LayoutAxesMap = {
 	panels: ['left-hand-files', 'right-hand-files'],
 	order: ['normal-order', 'reverse-order'],
 	terminal: ['terminal', 'no-terminal'],
@@ -206,22 +213,20 @@ function rotateLayout()
 		return;
 	}
 
-	Object.keys(LAYOUT_AXES).forEach(axis =>
+	(Object.keys(LAYOUT_AXES) as AXES[]).forEach((axis) =>
 	{
 		if(!menuSelf.layoutState)
 		{
 			return;
 		}
 
-		// Find which variant inside this specific axis array is currently on the element
-		const matchedClass = LAYOUT_AXES[axis].find(variant => document.body.classList.contains(`layout-${variant}`));
+		// Now 'axis' is typed as AXES ('panels' | 'order' | 'terminal' | 'mode')
+		const variants = LAYOUT_AXES[axis];
+		const matchedClass = variants.find(variant => document.body.classList.contains(`layout-${variant}`));
 
-		if(matchedClass)
+		if(matchedClass && menuSelf.layoutState)
 		{
-			// Update the state with the discovered active class
-			menuSelf.layoutState[axis] = matchedClass;
-
-			// Strip the old atomic layout class from the DOM token list
+			(menuSelf.layoutState as Record<AXES, any>)[axis] = matchedClass;
 			document.body.classList.remove(`layout-${matchedClass}`);
 		}
 	});
@@ -240,7 +245,7 @@ function rotateLayout()
 	// 5. Inject it back onto the target DOM node element
 	document.body.classList.add(...newLayoutClass);
 	console.log(`🔄 Layout rotated from [${currentLayoutClass || 'None'}] ➡️ [${newLayoutClass}] (Index: ${nextIndex})`);
-	Object.keys(LAYOUT_AXES).forEach(axis =>
+	(Object.keys(LAYOUT_AXES) as AXES[]).forEach((axis) =>
 	{
 		if(!menuSelf.layoutState)
 		{
@@ -251,7 +256,7 @@ function rotateLayout()
 
 		if(matchedClass)
 		{
-			menuSelf.layoutState[axis] = matchedClass;
+			(menuSelf.layoutState as Record<AXES, any>)[axis] = matchedClass;
 		}
 	});
 

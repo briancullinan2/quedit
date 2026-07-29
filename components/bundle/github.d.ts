@@ -14,6 +14,7 @@ export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, Api
 	sortNodes?: (nodes: NestedTreeNode[]) => NestedTreeNode[];
 	convertFlatToNested?: (data: FlatFileNode[]) => NestedTreeNode[];
 	getGitShaBrowser?: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
+	getGitSha256Browser?: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
 	getAuthenticatedUser?: () => Promise<any>;
 
 	cacheFile?: (

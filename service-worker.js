@@ -1,6 +1,11 @@
-﻿'use strict';
+﻿
+// @ts-check
 
 
+/** @type {import('./components/bundle/local.d').LocalWindow & import('./components/bundle/github.d').GithubWindow & {__assetsManifest: {path: string, size: number}[];} } */
+const serviceSelf = /** @type {any} */ (self);
+
+/** @type {Date | null} */
 let localVersion = null;
 let SHUTUP = true;
 
@@ -12,21 +17,37 @@ const originalConsole = {
 };
 
 
+/**
+ *
+ * @param  {...any} args
+ */
 self.console.log = (...args) =>
 {
 	if(!SHUTUP && typeof originalConsole != 'undefined') originalConsole.log(...args);
 };
 
+/**
+ *
+ * @param  {...any} args
+ */
 self.console.warn = (...args) =>
 {
 	if(!SHUTUP && typeof originalConsole != 'undefined') originalConsole.warn(...args);
 };
 
+/**
+ *
+ * @param  {...any} args
+ */
 self.console.error = (...args) =>
 {
 	if(typeof originalConsole != 'undefined') originalConsole.error(...args);
 };
 
+/**
+ *
+ * @param  {...any} args
+ */
 self.console.info = (...args) =>
 {
 	if(!SHUTUP && typeof originalConsole != 'undefined') originalConsole.info(...args);
@@ -34,7 +55,10 @@ self.console.info = (...args) =>
 
 console.log('🔴 [SW-TRACE] Initial script execution block started.');
 
-// Helper to load a script from IDB VFS and evaluate it in the worker context
+/**
+ * Helper to load a script from IDB VFS and evaluate it in the worker context
+ * @param {string} assetUrl
+ */
 async function importScriptFromVFS(assetUrl)
 {
 	assetUrl = assetUrl.replace(/^\/?assets\/|^\//ig, '');
@@ -42,7 +66,7 @@ async function importScriptFromVFS(assetUrl)
 
 	console.log(`💾 [SW-INIT] Attempting VFS database extraction for script: "${localName}"`);
 
-	const fileRecord = await getRecord(DB_STORE_NAME, localName, api.environmentRepository);
+	const fileRecord = await serviceSelf.getRecord?.(serviceSelf.DB_STORE_NAME ?? '', localName, serviceSelf.api?.environmentRepository);
 
 	if(!fileRecord || !fileRecord.contents)
 	{
@@ -109,6 +133,11 @@ const FS_DIR = (ST_DIR << 12) + FS_DEFAULT;
 // Global in-memory cache to prevent concurrent mkdirp race conditions
 const createdDirectories = new Set();
 
+/**
+ *
+ * @param {string} path
+ * @param {string | undefined} selected
+ */
 async function mkdirp(path, selected)
 {
 	let segments = path.split(/\/|\\/gi).filter(Boolean);
@@ -129,19 +158,19 @@ async function mkdirp(path, selected)
 
 		console.log(`📂 [SW-FS] Safely writing isolated directory block: "${dir}"`);
 
-		if(!(selected || api.environmentRepository) || !(selected || api.environmentRepository).split)
+		if(!(selected || serviceSelf.api?.environmentRepository) || !(selected ?? serviceSelf.api?.environmentRepository)?.split)
 		{
 			debugger;
 			console.log('What the fuck is wrong with you brain?');
 		}
 		try
 		{
-			await putRecord(DB_STORE_NAME, {
+			await serviceSelf.putRecord?.(serviceSelf.DB_STORE_NAME ?? '', {
 				path: dir,
 				timestamp: new Date(),
 				mode: FS_DIR,
 				parent: parentDir
-			}, selected || api.environmentRepository);
+			}, selected || serviceSelf.api?.environmentRepository);
 
 			// Mark it as safely committed to avoid parallel thrashing
 			createdDirectories.add(dir);
@@ -153,9 +182,15 @@ async function mkdirp(path, selected)
 	}
 }
 
-async function getHeaders(response, localCSP)
+/**
+ *
+ * @param {Request | Response} response
+ * @param {string | Uint8Array | ArrayBuffer | undefined} localCSP
+ * @returns
+ */
+async function getHeaders(response, localCSP = void 0)
 {
-	const sha = localCSP ? await getGitSha256Browser(localCSP) : undefined;
+	const sha = localCSP ? await serviceSelf.getGitSha256Browser?.(localCSP) : undefined;
 	const newHeaders = new Headers(response?.headers);
 	newHeaders.set('X-Service-Worker-Handled', 'true');
 	if(sha)
@@ -170,9 +205,16 @@ async function getHeaders(response, localCSP)
 	return newHeaders;
 }
 
+/**
+ *
+ * @param {string | Request} urlInput
+ * @param {string} key
+ * @param {string | undefined} selected
+ * @returns
+ */
 async function fetchAsset(urlInput, key, selected)
 {
-	selected ||= api.environmentRepository;
+	selected ||= serviceSelf.api?.environmentRepository;
 
 	if(!urlInput)
 	{
@@ -223,7 +265,7 @@ async function fetchAsset(urlInput, key, selected)
 			return new Response(null, {
 				status: 302,
 				statusText: response.statusText,
-				url: response.url,
+				//url: response.url,
 				headers: newHeaders
 			});
 		}
@@ -246,7 +288,7 @@ async function fetchAsset(urlInput, key, selected)
 
 		await mkdirp(dirPath, selected);
 
-		console.log(`💾 [SW-DATABASE] Writing payload binary content into IndexedDB Store: "${DB_STORE_NAME}" -> Target Key: "${localKey}"`);
+		console.log(`💾 [SW-DATABASE] Writing payload binary content into IndexedDB Store: "${serviceSelf.DB_STORE_NAME}" -> Target Key: "${localKey}"`);
 
 
 		const isGithubContents = urlString.includes('api.github.com') && urlString.match(/contents\/|\/contents($|[\?])$/ig);
@@ -278,11 +320,14 @@ async function fetchAsset(urlInput, key, selected)
 					} else if(jsonResponse instanceof Array)
 					{
 						isDirectory = true;
-						fileContent = new TextEncoder().encode(jsonResponse);
+						fileContent = new TextEncoder().encode(JSON.stringify(jsonResponse));
 					}
 				} catch(e)
 				{
-					console.warn('Could not extract file contents: ' + e.message + '\n' + (e.stack || e.stacktrace));
+					if(e instanceof Error)
+					{
+						console.warn('Could not extract file contents: ' + e.message + '\n' + (e.stack));
+					}
 				}
 
 				if(markerIndex !== -1 && fileContent)
@@ -295,7 +340,7 @@ async function fetchAsset(urlInput, key, selected)
 					repoRelativePath = '/' + repoRelativePath.replace(/^\//, '');
 
 					// 3. Write it into your target database matching the exact repository architecture
-					await putRecord(DB_STORE_NAME, {
+					await serviceSelf.putRecord?.(serviceSelf.DB_STORE_NAME ?? '', {
 						path: repoRelativePath,
 						timestamp: new Date(),
 						mode: isDirectory ? FS_DIR : FS_FILE,
@@ -325,7 +370,7 @@ async function fetchAsset(urlInput, key, selected)
 
 
 			// Standard baseline VFS handling for local framework queries
-			await putRecord(DB_STORE_NAME, {
+			await serviceSelf.putRecord?.(serviceSelf.DB_STORE_NAME ?? '', {
 				path: localKey,
 				timestamp: new Date(),
 				mode: FS_FILE,
@@ -353,7 +398,7 @@ async function fetchAsset(urlInput, key, selected)
 			isOffline = true;
 		}
 
-		if(err.name === 'TimeoutError' || err.name === 'AbortError')
+		if(err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError'))
 		{
 			console.error(`⏱️ [SW-TIMEOUT] Asset fetching operation timed out (>10000ms threshold) for: "${key}"`);
 		}
@@ -370,7 +415,7 @@ async function installAssets()
 {
 	console.log('⚙️ [SW-INSTALL] Executing asset installer verification.');
 
-	if(!api.environmentRepository)
+	if(!serviceSelf.api?.environmentRepository)
 	{
 		debugger;
 		throw new Error('Learn how to code fucking dumbass.');
@@ -378,15 +423,15 @@ async function installAssets()
 
 	try
 	{
-		const databases = await getDatabaseMetadata();
+		const databases = await serviceSelf.getDatabaseMetadata?.() ?? [];
 		console.log('⚙️ [SW-INSTALL] Extracted internal IndexedDB metadata dictionaries:', databases);
-		const shouldInstall = (await needsInstall(api.environmentRepository, DB_SCHEME)).item3;
-		if(databases.filter(d => d.key == api.environmentRepository).length == 0
+		const shouldInstall = (await serviceSelf.needsInstall?.(serviceSelf.api.environmentRepository, serviceSelf.DB_SCHEME ?? []))?.item3;
+		if(databases.filter(d => d.key == serviceSelf.api?.environmentRepository).length == 0
 			|| shouldInstall)
 		{
-			console.warn(`⚠️ [SW-DATABASE] Target database "${api.environmentRepository}" missing. Initializing core database maps now.`);
-			await deleteOldDatabase(api.environmentRepository);
-			await setupDatabase(api.environmentRepository, DB_SCHEME);
+			console.warn(`⚠️ [SW-DATABASE] Target database "${serviceSelf.api.environmentRepository}" missing. Initializing core database maps now.`);
+			await serviceSelf.deleteOldDatabase?.(serviceSelf.api.environmentRepository);
+			await serviceSelf.setupDatabase?.(serviceSelf.api.environmentRepository, serviceSelf.DB_SCHEME ?? []);
 			console.log(`✅ [SW-DATABASE] Target database infrastructure initialized cleanly.`);
 		}
 	} catch(dbSetupErr)
@@ -419,13 +464,13 @@ async function installAssets()
 		if(!localName.includes('.'))
 		{
 			debugger;
-			console.error("WHAT THE FUCK IS WRONG WITH YOU? " + key);
+			console.error("WHAT THE FUCK IS WRONG WITH YOU? " + localName);
 		}
 		console.log(`🔍 [SW-CACHE-CHECK] Checking if asset exists inside IndexedDB cache: "${localName}"`);
 
 		try
 		{
-			const files = await getRecord(DB_STORE_NAME, localName, api.environmentRepository);
+			const files = await serviceSelf.getRecord?.(serviceSelf.DB_STORE_NAME ?? '', localName, serviceSelf.api?.environmentRepository);
 			if(files && files.contents)
 			{
 				console.log(`✨ [SW-CACHE-HIT] Asset already mapped locally inside DB. Skipping download for: "${localName}"`);
@@ -439,7 +484,7 @@ async function installAssets()
 		try
 		{
 			console.log(`📥 [SW-INSTALL] Cache miss or empty binary payload. Triggering download request routing for: "${asset}"`);
-			return await fetchAsset(asset, localName, api.environmentRepository).catch(e =>
+			return await fetchAsset(asset, localName, serviceSelf.api?.environmentRepository).catch(e =>
 			{
 				console.error(`❌ [SW-INSTALL] Target download execution block failed for asset "${asset}":`, e);
 				console.warn("Offline asset failed: " + asset);
@@ -455,14 +500,14 @@ async function installAssets()
 
 
 
-self.addEventListener('install', event =>
+self.addEventListener('install', /** @type {Event & { waitUntil: (promise: Promise<any>) => void }} */ event =>
 {
 	console.info('🚀 [SW-LIFECYCLE] --- INSTALL EVENT TRIGGERED ---');
 
 	event.waitUntil((async () =>
 	{
 
-		if(!localVersion || !api.environmentRepository)
+		if(!localVersion || !serviceSelf.api?.environmentRepository)
 		{
 			await lookupLocalVersion();
 		}
@@ -818,7 +863,7 @@ async function manufactureRefreshResponse()
 
 
 console.log('⚙️ [SW-INSTALL] Compiling module path strings from global IMPORT arrays...');
-const uniqueAssets = __assetsManifest.map(ass => ass.path.replace(/^\/?assets\/|^\//ig, '')); // Normalize paths to omit leading slashes\
+const uniqueAssets = serviceSelf.__assetsManifest?.map(ass => ass.path.replace(/^\/?assets\/|^\//ig, '')) ?? []; // Normalize paths to omit leading slashes\
 
 
 
