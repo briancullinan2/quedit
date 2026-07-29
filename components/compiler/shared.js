@@ -307,6 +307,11 @@ sharedSelf.API = (function ()
 
 	class MemFS
 	{
+		/**
+		 *
+		 * @param {any} options
+		 * @param {API} api
+		 */
 		constructor(options, api)
 		{
 			const compileStreaming = options.compileStreaming;
@@ -1591,6 +1596,10 @@ sharedSelf.API = (function ()
 
 	class API
 	{
+		/**
+		 *
+		 * @param {any} options
+		 */
 		constructor(options)
 		{
 			this.pid = 0;
@@ -1706,6 +1715,13 @@ sharedSelf.API = (function ()
 			return result;
 		}
 
+		/**
+		 *
+		 * @param {string} name
+		 * @param {string | null} database
+		 * @param {boolean} alreadyTried
+		 * @returns {Promise<WebAssembly.Module>}
+		 */
 		async getModule(name, database = null, alreadyTried = false)
 		{
 

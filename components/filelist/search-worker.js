@@ -1,7 +1,6 @@
-/// <reference path="../bundle/global.d.ts" />
 
-/** @type {WorkerGlobalScope & { api?: { github_token?: string | null | undefined } }} */
-const workerSelf = self;
+/** @type {Worker & WorkerGlobalScope & { api?: { github_token?: string | null | undefined } }} */
+const workerSelf = /** @type {any} */ (self);
 
 if(!workerSelf.api)
 {
@@ -30,7 +29,7 @@ async function getAllLocalFiles(activeRepositories)
 		try
 		{
 			const db = await getDB(dbName);
-			if(!db.objectStoreNames.contains(self.DB_STORE_NAME))
+			if(!db.objectStoreNames.contains(workerSelf.DB_STORE_NAME))
 			{
 				db.close();
 				debugger;
@@ -58,7 +57,7 @@ async function getAllLocalFiles(activeRepositories)
 // =========================================================================
 // MAIN WORKER SWITCHBOARD INTERCEPTOR
 // =========================================================================
-self.onmessage = async function (e)
+workerSelf.onmessage = async function (e)
 {
 	const { query, activeRepositories, gitHubToken, caseSensitive, callbackId } = e.data;
 	if(workerSelf.api)
@@ -68,7 +67,7 @@ self.onmessage = async function (e)
 
 	if(!query || query.length < 2)
 	{
-		return self.postMessage({ type: 'clear', results: [], callbackId, query });
+		return workerSelf.postMessage({ type: 'clear', results: [], callbackId, query });
 	}
 
 	// Determine if the query is intended to be processed as a path glob
@@ -77,7 +76,7 @@ self.onmessage = async function (e)
 	let regex;
 	if(isGlobPattern)
 	{
-		regex = self.globToRegex(query, caseSensitive);
+		regex = workerSelf.globToRegex(query, caseSensitive);
 	} else
 	{
 		const flags = caseSensitive ? 'g' : 'gi';
@@ -108,12 +107,12 @@ self.onmessage = async function (e)
 				line: 1,
 				matchText: `[Filename Match] ${file.path}`,
 				filename: true,
-				isDirty: !!self.FS?.virtual?.[file.path] // Check against tracking state
+				isDirty: !!workerSelf.FS?.virtual?.[file.path] // Check against tracking state
 			});
 		}
 	}
 	// Stream early match frames up to the UI thread layout immediately
-	self.postMessage({ type: 'paths', results: pathResults, callbackId, query });
+	workerSelf.postMessage({ type: 'paths', results: pathResults, callbackId, query });
 
 	// -----------------------------------------------------------------
 	// PASS 2: Deep File Content String Parsing Loop
@@ -121,7 +120,7 @@ self.onmessage = async function (e)
 	// Bypassed if the user is explicitly executing a structural file-path glob query
 	if(isGlobPattern)
 	{
-		return self.postMessage({ type: 'contents', results: [], callbackId, query });
+		return workerSelf.postMessage({ type: 'contents', results: [], callbackId, query });
 	}
 
 	const contentResults = [];
@@ -159,14 +158,14 @@ self.onmessage = async function (e)
 			if(contentResults.length > 500) break;
 		}
 	}
-	self.postMessage({ type: 'contents', results: contentResults, callbackId, query });
+	workerSelf.postMessage({ type: 'contents', results: contentResults, callbackId, query });
 
 	// -----------------------------------------------------------------
 	// PASS 3: Remote Network Gateway Interceptor Sync
 	// -----------------------------------------------------------------
 	if(gitHubToken)
 	{
-		const remoteResults = await self.searchGitHubCode(query, activeRepositories || [], gitHubToken);
-		self.postMessage({ type: 'github', results: remoteResults, callbackId, query });
+		const remoteResults = await workerSelf.searchGitHubCode(query, activeRepositories || [], gitHubToken);
+		workerSelf.postMessage({ type: 'github', results: remoteResults, callbackId, query });
 	}
 };

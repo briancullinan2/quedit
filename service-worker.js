@@ -2,7 +2,7 @@
 // @ts-check
 
 
-/** @type {import('./components/bundle/local.d').LocalWindow & import('./components/bundle/github.d').GithubWindow & {__assetsManifest: {path: string, size: number}[];} } */
+/** @type {ServiceWorker & import('./components/bundle/local.d').LocalWindow & import('./components/bundle/github.d').GithubWindow & {__assetsManifest: {path: string, size: number}[];} } */
 const serviceSelf = /** @type {any} */ (self);
 
 /** @type {Date | null} */
@@ -184,7 +184,7 @@ async function mkdirp(path, selected)
 
 /**
  *
- * @param {Request | Response} response
+ * @param {Request | Response | void} response
  * @param {string | Uint8Array | ArrayBuffer | undefined} localCSP
  * @returns
  */
@@ -500,7 +500,7 @@ async function installAssets()
 
 
 
-self.addEventListener('install', /** @type {Event & { waitUntil: (promise: Promise<any>) => void }} */ event =>
+serviceSelf.addEventListener('install', /** @type {Event & { waitUntil: (promise: Promise<any>) => void }} */ (event) =>
 {
 	console.info('🚀 [SW-LIFECYCLE] --- INSTALL EVENT TRIGGERED ---');
 
@@ -522,8 +522,8 @@ self.addEventListener('install', /** @type {Event & { waitUntil: (promise: Promi
 			console.error('❌ [SW-CRITICAL] Asset pre-installation chain failed to complete:', installErr);
 		}
 
-		console.log('🚀 [SW-LIFECYCLE] Executing self.skipWaiting() to destroy active zombie worker layers.');
-		self.skipWaiting();
+		console.log('🚀 [SW-LIFECYCLE] Executing serviceSelf.skipWaiting() to destroy active zombie worker layers.');
+		serviceSelf.skipWaiting();
 	})());
 });
 
@@ -543,7 +543,7 @@ function ensureInitialized()
 	return swInitializationPromise;
 }
 
-self.addEventListener('activate', event =>
+serviceSelf.addEventListener('activate', event =>
 {
 	console.info('🚀 [SW-LIFECYCLE] --- ACTIVATE EVENT TRIGGERED ---');
 	event.waitUntil((async () =>
@@ -560,7 +560,7 @@ self.addEventListener('activate', event =>
 		{
 			console.error('❌ [SW-CRITICAL] Failure encountered during core activation block:', err);
 		}
-		return self.clients.claim();
+		return serviceSelf.clients.claim();
 	})());
 });
 
@@ -577,10 +577,10 @@ let connectivityLog = [];
 	// Small delay to ensure registration mapping bindings are fully parsed by the runtime
 	await new Promise(r => setTimeout(r, 0));
 
-	if(self.registration && self.registration.active != null)
+	if(serviceSelf.registration && serviceSelf.registration.active != null)
 	{
-		const scriptUrl = self.registration.active.scriptURL;
-		console.log('🔍 [SW-BOOT-CHECK] Active Worker Registration detected. Metadata details payload:', self.registration.active);
+		const scriptUrl = serviceSelf.registration.active.scriptURL;
+		console.log('🔍 [SW-BOOT-CHECK] Active Worker Registration detected. Metadata details payload:', serviceSelf.registration.active);
 		console.log(`🔍 [SW-BOOT-CHECK] Script target parsing URL mapping string: "${scriptUrl}"`);
 
 		try
@@ -601,11 +601,12 @@ let connectivityLog = [];
 		}
 	} else
 	{
-		console.log('🔍 [SW-BOOT-CHECK] self.registration.active is currently NULL or evaluating as empty.');
+		console.log('🔍 [SW-BOOT-CHECK] serviceSelf.registration.active is currently NULL or evaluating as empty.');
 	}
 })();
 
 let needsRefresh = false;
+/** @type {Promise<void> | null} */
 let swInitializationPromise = null;
 
 async function checkStatus()
@@ -616,7 +617,7 @@ async function checkStatus()
 	{
 		swInitializationPromise = (async () =>
 		{
-			if(!localVersion || !api.environmentRepository)
+			if(!localVersion || !serviceSelf.api?.environmentRepository)
 			{
 				await lookupLocalVersion();
 			}
@@ -649,7 +650,7 @@ async function checkStatus()
 	// 4. Remote Repository Comparison Check Sequence
 	try
 	{
-		const parts = api.environmentRepository.split('/');
+		const parts = serviceSelf.api?.environmentRepository?.split('/');
 		const ownerName = parts[0];
 		const repoName = parts[1];
 		console.log(`🌐 [SW-HEARTBEAT] Routing target parsing parameters -> Owner: "${ownerName}" | Repo: "${repoName}"`);
@@ -668,8 +669,8 @@ async function checkStatus()
 			await deleteOldDatabase(api.environmentRepository);
 			console.log(`🗑️ [SW-PURGE] Database wipe finished.`);
 
-			console.warn('🚀 [SW-LIFECYCLE] Executing self.registration.unregister() to purge active browser cache handlers...');
-			await self.registration.unregister();
+			console.warn('🚀 [SW-LIFECYCLE] Executing serviceSelf.registration.unregister() to purge active browser cache handlers...');
+			await serviceSelf.registration.unregister();
 			console.log('🚀 [SW-LIFECYCLE] Service Worker deregistration completed successfully.');
 
 			needsRefresh = true;
@@ -694,20 +695,21 @@ async function checkStatus()
 
 async function lookupLocalVersion()
 {
-	const databases = await getDatabaseMetadata();
+	const databases = await serviceSelf.getDatabaseMetadata?.();
 
 	console.log(`🔍 [SW-MESSAGE] Variable placeholder empty. Fetching mapping timestamp fallback data from history.css tracking nodes...`);
 
+	/** @type {import('./components/bundle/local.d').FileRecord | null} */
 	let newestVersionFile = null;
-	let chosenRepo = api.environmentRepository;
+	let chosenRepo = serviceSelf.api?.environmentRepository;
 
 	// 1. Concurrently query all databases for the settings file
-	const lookups = databases.map(async (db) =>
+	const lookups = databases?.map(async (db) =>
 	{
 		try
 		{
 			// Assuming getRecord takes a database identifier or repository reference as the 3rd argument
-			const versionFile = await getRecord(DB_STORE_NAME, '/base/settings.json', db.key || db);
+			const versionFile = await serviceSelf.getRecord?.(serviceSelf.DB_STORE_NAME ?? '', '/base/settings.json', db.key);
 			return { versionFile, repo: db.key || db };
 		} catch(e)
 		{
@@ -716,7 +718,7 @@ async function lookupLocalVersion()
 		}
 	});
 
-	const results = await Promise.all(lookups);
+	const results = await Promise.all(lookups ?? []);
 
 	// 2. Loop through the results to find the most recent copy based on timestamp
 	for(const result of results)
@@ -726,7 +728,7 @@ async function lookupLocalVersion()
 		if(!newestVersionFile || result.versionFile.timestamp > newestVersionFile.timestamp)
 		{
 			newestVersionFile = result.versionFile;
-			chosenRepo = result.repo || DB_NAME;
+			chosenRepo = result.repo ?? serviceSelf.DB_NAME ?? 'bjcullinan2/quedit';
 		}
 	}
 
@@ -758,7 +760,7 @@ async function lookupLocalVersion()
 }
 
 
-self.addEventListener('message', async (event) =>
+serviceSelf.addEventListener('message', async (event) =>
 {
 	console.log('✉️ [SW-MESSAGE] Incoming communication frame received inside message event listener.', event.data);
 
@@ -766,7 +768,7 @@ self.addEventListener('message', async (event) =>
 	{
 		console.warn('✉️ [SW-MESSAGE] Command route identified: DEREGISTER intercept request processed.');
 
-		await self.registration.unregister();
+		await serviceSelf.registration.unregister();
 		needsRefresh = true;
 
 		if(event.ports && event.ports[0])
@@ -804,7 +806,13 @@ self.addEventListener('message', async (event) =>
 
 let ignoreUrlParametersMatching = [/^utm_|^t=/];
 
-let stripIgnoredUrlParameters = function (originalUrl, ignoreUrlParametersMatching)
+/**
+ *
+ * @param {string} originalUrl
+ * @param {RegExp[]} ignoreUrlParametersMatching
+ * @returns
+ */
+function stripIgnoredUrlParameters(originalUrl, ignoreUrlParametersMatching)
 {
 	let url = new URL(originalUrl);
 	url.hash = '';
@@ -868,7 +876,7 @@ const uniqueAssets = serviceSelf.__assetsManifest?.map(ass => ass.path.replace(/
 
 
 
-self.addEventListener('fetch', event =>
+serviceSelf.addEventListener('fetch', (/** @type {Event & {request: Request}} */ event) =>
 {
 	if(event.request.method !== 'GET') return;
 
@@ -967,7 +975,7 @@ self.addEventListener('fetch', event =>
 		// 3. Fallback: Local VFS DB retrieval
 		try
 		{
-			const files = await getRecord(DB_STORE_NAME, localName, selected);
+			const files = await serviceSelf.getRecord?.(serviceSelf.DB_STORE_NAME ?? '', localName, selected);
 			if(files && files.contents)
 			{
 				const newHeaders = assetUrl === 'index.html'
@@ -991,7 +999,11 @@ self.addEventListener('fetch', event =>
 
 
 
-
+/**
+ *
+ * @param {string} url
+ * @returns
+ */
 function getMimeType(url)
 {
 	if(url.endsWith('.wasm')) return 'application/wasm';

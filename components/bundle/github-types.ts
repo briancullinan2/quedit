@@ -7,10 +7,18 @@ export interface GitHubFileTree extends Record<string, FileRecord | null | undef
 }
 
 
+export interface GitHubWriteEntry
+{
+	path: string;
+	mode: string;
+	type: 'file' | 'dir' | 'tree' | 'blob';
+	sha: string;
+}
+
 export interface GitHubFileEntry extends FileRecord
 {
 	name?: string;
-	type?: 'file' | 'dir' | 'tree';
+	type?: 'file' | 'dir' | 'tree' | 'blob';
 	size?: number | undefined;
 }
 

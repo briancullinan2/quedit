@@ -342,7 +342,7 @@ export class PaintWidget extends Widget implements MenuModules
 
 	}
 
-	attachHistoryListener(actionsInstance, callback)
+	attachHistoryListener(actionsInstance: MiniPaintState, callback)
 	{
 		let _historyArray = actionsInstance.action_history || [];
 		let _historyIndex = actionsInstance.action_history_index || 0;

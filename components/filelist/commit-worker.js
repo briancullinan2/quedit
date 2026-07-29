@@ -42,6 +42,7 @@ async function pushLocalChangesToGitHub(repoOwner, repoName, branch, commitMessa
 	}
 
 	// 3. Process and write actual network Blobs only for items in the staging entries
+	/** @type {import('../bundle/github-types').GitHubWriteEntry[]} */
 	const treeChanges = [];
 	debugger;
 	for(const entry of staging.treeEntries)
@@ -132,6 +133,14 @@ async function createGitHubBlob(owner, repo, contents)
 /**
  * Builds an explicit Git Tree description configuration map array structure.
  */
+/**
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} baseTreeSha
+ * @param {import('../bundle/github-types').GitHubWriteEntry[]} treeChanges
+ * @returns
+ */
 async function createGitHubTree(owner, repo, baseTreeSha, treeChanges)
 {
 	const payload = {
@@ -152,6 +161,15 @@ async function createGitHubTree(owner, repo, baseTreeSha, treeChanges)
 
 /**
  * Writes an immutable Commit signature referencing the state of a compiled structural tree.
+ */
+/**
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} message
+ * @param {string} treeSha
+ * @param {string[]} parentCommitShas
+ * @returns {Promise<string>}
  */
 async function createGitHubCommit(owner, repo, message, treeSha, parentCommitShas)
 {
@@ -245,6 +263,7 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 	};
 
 	const foundLocalPaths = new Set();
+	/** @type {RegExp[]} */
 	const ignoreRules = [];
 
 	try
@@ -295,7 +314,10 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 				{
 					// Adapt your worker's native glob translation rule engine
 					const ruleRegex = workerSelf2.globToRegex?.(trimmed, false);
-					ignoreRules.push(ruleRegex);
+					if(ruleRegex)
+					{
+						ignoreRules.push(ruleRegex);
+					}
 				} catch(err)
 				{
 					console.warn(`Failed compiling ignore pattern [${trimmed}]:`, err);
@@ -306,13 +328,19 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 
 
 		const ruleRegex1 = workerSelf2.globToRegex?.(workerSelf2.dirs.ENGINE_DEBUG + '/**', false);
-		ignoreRules.push(ruleRegex1);
+		if(ruleRegex1)
+		{
+			ignoreRules.push(ruleRegex1);
+		}
 
 		const ruleRegex2 = workerSelf2.globToRegex?.(workerSelf2.dirs.ENGINE_RELEASE + '/**', false);
-		ignoreRules.push(ruleRegex2);
+		if(ruleRegex2)
+		{
+			ignoreRules.push(ruleRegex2);
+		}
 
 		// Inline matcher to evaluate structural patterns
-		const isIgnored = (path) =>
+		const isIgnored = (/** @type {string} */ path) =>
 		{
 			// Hardcoded sanity fallbacks alongside dynamic rules
 			if(path.includes('tmp/') || path.includes('/bin/') || path.includes('/obj/'))

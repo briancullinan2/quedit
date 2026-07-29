@@ -335,7 +335,7 @@ export class AceEditorWidget extends Widget implements MenuModules
 
 		editorSelf.ace?.config.loadModule(['ext', "ace/ext/modelist"], (...args: any[]) =>
 		{
-			const getExtensionsForMode = (targetMode) =>
+			const getExtensionsForMode = (targetMode: string) =>
 				Object.entries(EXTENSION_TO_MODE)
 					.filter(([_, mode]) => mode === targetMode)
 					.map(([ext]) => ext)

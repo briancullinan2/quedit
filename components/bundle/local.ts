@@ -16,7 +16,8 @@ const localSelf: LocalWindow & GlobalToolbarsWindow = self as unknown as any;
 
 
 export const DB_VERSION = 1; // Increment this when you add new C# Entities!
-export const DB_NAME = "briancullinan2/illustrious";
+export const DB_NAME = "briancullinan2/quedit";
+localSelf.DB_NAME = DB_NAME;
 export const DB_STORE_NAME = 'FILE_DATA';
 localSelf.DB_STORE_NAME = DB_STORE_NAME;
 export const DB_DEBOUNCE_INTERVAL = 50;

@@ -87,6 +87,7 @@ export interface LocalWindow extends GlobalToolbars
 	globToRegex?: (pattern: string, caseSensitive?: boolean) => RegExp;
 	deleteRecord?: (storeName: string, key: string, dbName: string | null) => Promise<boolean>;
 
+	DB_NAME?: string;
 	DB_STORE_NAME?: string;
 	DB_SCHEME?: SchemaStoreConfig[];
 

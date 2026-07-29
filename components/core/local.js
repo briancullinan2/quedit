@@ -199,7 +199,13 @@ async function setupDatabase(dbName, stores)
 
 localSelf.setupDatabase = setupDatabase;
 
-
+/**
+ *
+ * @param {string} storeName
+ * @param {import('../bundle/local.d').FileRecord} record
+ * @param {string | null} dbName
+ * @returns
+ */
 async function putRecordInternal(storeName, record, dbName = null)
 {
 	const newRecord = {
@@ -259,7 +265,10 @@ const getBounceRegistry = {
 
 
 /**
+ * @param {string} storeName
+ * @param {import('../bundle/local.d').FileRecord} record
  * @param {string | null} dbName
+ * @param {boolean} noBounce
  **/
 async function putRecord(storeName, record, dbName = null, noBounce = false)
 {
@@ -304,12 +313,24 @@ async function queryIndex(storeName, indexName, exactIndex = null, lower = null,
 
 localSelf.queryIndex = queryIndex;
 
+/**
+ *
+ * @param {string} storeName
+ * @param {string} indexName
+ * @param {any} record
+ * @param {any} lower
+ * @param {any} upper
+ * @param {string | null} dbName
+ * @param {'get' | 'put' | 'query' | 'cache'} MODE
+ * @param {boolean} noBounce
+ * @returns {Promise<any>}
+ */
 function debounceRecords(storeName, indexName, record, lower, upper, dbName, MODE = 'get', noBounce = false)
 {
 	const path = typeof record === 'string' ? record : record?.path || '';
-	const parts = dbName.split('/');
-	const ownerName = parts.length === 2 ? parts[0] : localSelf.RepositoryToolbar?.owner?.value || '';
-	const repoName = parts.length === 2 ? parts[1] : (parts[0] || localSelf.RepositoryToolbar?.repository?.value || '');
+	const parts = dbName?.split('/');
+	const ownerName = parts?.length === 2 ? parts[0] : localSelf.RepositoryToolbar?.owner?.value || '';
+	const repoName = parts?.length === 2 ? parts[1] : (parts?.[0] || localSelf.RepositoryToolbar?.repository?.value || '');
 
 	// 1. Generate a comprehensive unique composite signature key out of all input arguments
 	// This isolates variations in stores, indices, query ranges, and databases entirely.
@@ -433,14 +454,13 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
  */
 async function getRecordInternal(storeName, key, dbName = null, dbVersion = 1)
 {
-
-
 	const db = await getDB(dbName, dbVersion);
 	const tx = db.transaction(storeName, 'readonly');
 	const store = tx.objectStore(storeName);
 
 	return new Promise((rs, rj) =>
 	{
+		/** @type {import('../bundle/local.d').FileRecord | null} */
 		let result = null;
 		const req = store.get(key);
 
@@ -599,7 +619,6 @@ async function readAll(dbName, callback = void 0)
 
 	return new Promise((resolve, reject) =>
 	{
-
 		request.onsuccess = async (event) =>
 		{
 			const allItems = event.target.result;
@@ -633,7 +652,7 @@ function findVirtualFiles(globPattern)
 	const filePaths = Object.keys(localSelf.FS.virtual);
 	const rx = globToRegex(globPattern);
 
-	return filePaths.reduce((accumulator, path) =>
+	return filePaths.reduce((/** @type {Record<string, import('../bundle/local.d').FileRecord | null | undefined>} */ accumulator, /** @type {string} */ path) =>
 	{
 		if(rx.test(path))
 		{
