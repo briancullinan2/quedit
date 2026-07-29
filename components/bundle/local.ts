@@ -488,6 +488,8 @@ export function debounceRecords(
 	return getBounceRegistry[MODE][registryKey].promise!;
 }
 
+localSelf.debounceRecords = debounceRecords;
+
 export async function deleteRecord(storeName: string, key: string, dbName: string | null = null): Promise<boolean>
 {
 	const db = await getDB(dbName);

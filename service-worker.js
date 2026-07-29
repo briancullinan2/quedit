@@ -2,8 +2,15 @@
 // @ts-check
 
 
-/** @type {ServiceWorker & import('./components/bundle/local.d').LocalWindow & import('./components/bundle/github.d').GithubWindow & {__assetsManifest: {path: string, size: number}[];} } */
+/** @type {import('./components/compiler/worker.d').ServiceWorkerWindow & Worker & ServiceWorker} */
 const serviceSelf = /** @type {any} */ (self);
+
+if(!serviceSelf.api)
+{
+	serviceSelf.api = {
+		github_token: null
+	};
+}
 
 /** @type {Date | null} */
 let localVersion = null;
@@ -500,7 +507,7 @@ async function installAssets()
 
 
 
-serviceSelf.addEventListener('install', /** @type {Event & { waitUntil: (promise: Promise<any>) => void }} */ (event) =>
+serviceSelf.addEventListener('install', (event) =>
 {
 	console.info('🚀 [SW-LIFECYCLE] --- INSTALL EVENT TRIGGERED ---');
 
@@ -534,7 +541,7 @@ function ensureInitialized()
 	{
 		swInitializationPromise = (async () =>
 		{
-			if(!localVersion || !api.environmentRepository)
+			if(!localVersion || !serviceSelf.api?.environmentRepository)
 			{
 				await lookupLocalVersion();
 			}
@@ -551,7 +558,7 @@ serviceSelf.addEventListener('activate', event =>
 		// Force the configuration initialization loop immediately
 		await ensureInitialized();
 
-		console.log(`🚀 [SW-LIFECYCLE] Closing database instance "${api.environmentRepository}" for clean boot state reset.`);
+		console.log(`🚀 [SW-LIFECYCLE] Closing database instance "${serviceSelf.api?.environmentRepository}" for clean boot state reset.`);
 		try
 		{
 			console.log('⚙️ [SW-ASYNC] Running scheduled installAssets post-activation validation routine.');
@@ -651,22 +658,23 @@ async function checkStatus()
 	try
 	{
 		const parts = serviceSelf.api?.environmentRepository?.split('/');
-		const ownerName = parts[0];
-		const repoName = parts[1];
+		const ownerName = parts?.[0];
+		const repoName = parts?.[1];
+
 		console.log(`🌐 [SW-HEARTBEAT] Routing target parsing parameters -> Owner: "${ownerName}" | Repo: "${repoName}"`);
 
-		const branch = await getDefaultBranch(ownerName, repoName);
+		const branch = ownerName && repoName ? await serviceSelf.getDefaultBranch?.(ownerName, repoName) : void 0;
 		console.log(`🌐 [SW-HEARTBEAT] Resolved Remote Repo target branch checkpoint identifier: "${branch}"`);
 
-		const latestFileTime = await getBranchVersion(ownerName, repoName, branch);
+		const latestFileTime = ownerName && repoName ? await serviceSelf.getBranchVersion?.(ownerName, repoName, branch) : void 0;
 		console.log(`🌐 [SW-HEARTBEAT] Timestamps comparison values -> Local: ${localVersion ? new Date(localVersion).toISOString() : 'NULL'} | Remote GitHub Branch: ${latestFileTime ? new Date(latestFileTime).toISOString() : 'NULL'}`);
 
-		if(localVersion && latestFileTime > localVersion)
+		if(latestFileTime && localVersion && latestFileTime > localVersion)
 		{
 			console.warn('⚠️ [SW-OUT-OF-SYNC] Remote version changes detected on repository root branch! Initiating destructive workspace purge sequence.');
 
-			console.log(`🗑️ [SW-PURGE] Dropping local IndexedDB database blocks: "${api.environmentRepository}"`);
-			await deleteOldDatabase(api.environmentRepository);
+			console.log(`🗑️ [SW-PURGE] Dropping local IndexedDB database blocks: "${serviceSelf.api?.environmentRepository}"`);
+			await serviceSelf.deleteOldDatabase?.(serviceSelf.api?.environmentRepository);
 			console.log(`🗑️ [SW-PURGE] Database wipe finished.`);
 
 			console.warn('🚀 [SW-LIFECYCLE] Executing serviceSelf.registration.unregister() to purge active browser cache handlers...');
@@ -710,7 +718,7 @@ async function lookupLocalVersion()
 		{
 			// Assuming getRecord takes a database identifier or repository reference as the 3rd argument
 			const versionFile = await serviceSelf.getRecord?.(serviceSelf.DB_STORE_NAME ?? '', '/base/settings.json', db.key);
-			return { versionFile, repo: db.key || db };
+			return { versionFile, repo: db.key };
 		} catch(e)
 		{
 			// Silently ignore individual database failures so one broken DB doesn't crash the loop
@@ -723,9 +731,9 @@ async function lookupLocalVersion()
 	// 2. Loop through the results to find the most recent copy based on timestamp
 	for(const result of results)
 	{
-		if(!result || !result.versionFile) continue;
+		if(!result || !result.versionFile || !result.versionFile.timestamp) continue;
 
-		if(!newestVersionFile || result.versionFile.timestamp > newestVersionFile.timestamp)
+		if(!newestVersionFile || (newestVersionFile?.timestamp && result.versionFile.timestamp > newestVersionFile.timestamp))
 		{
 			newestVersionFile = result.versionFile;
 			chosenRepo = result.repo ?? serviceSelf.DB_NAME ?? 'bjcullinan2/quedit';
@@ -739,20 +747,26 @@ async function lookupLocalVersion()
 		{
 			const settings = JSON.parse(new TextDecoder().decode(newestVersionFile.contents));
 			localVersion = settings.environment_version;
-			api.environmentRepository = settings.environment_repository || chosenRepo;
-			api.github_token = settings.github_token;
+			if(serviceSelf.api)
+			{
+				serviceSelf.api.environmentRepository = settings.environment_repository || chosenRepo;
+				serviceSelf.api.github_token = settings.github_token;
+			}
 		} catch(e)
 		{
 			console.log(`⚠️ [SW-MESSAGE] Version lookup failed, using fallback: ${localVersion}`);
 			console.error(e);
-			localVersion ||= newestVersionFile.timestamp || 'unknown';
-			api.environmentRepository = chosenRepo;
+			localVersion ||= newestVersionFile.timestamp || null;
+			if(serviceSelf.api)
+			{
+				serviceSelf.api.environmentRepository = chosenRepo;
+			}
 		}
 	} else
 	{
 		console.log(`⚠️ [SW-MESSAGE] No version file found across any databases. Fallback: ${localVersion}`);
 	}
-	if(!api.environmentRepository)
+	if(!serviceSelf.api?.environmentRepository)
 	{
 		debugger;
 		console.log('You\'re a fucking idiot.');
@@ -876,7 +890,7 @@ const uniqueAssets = serviceSelf.__assetsManifest?.map(ass => ass.path.replace(/
 
 
 
-serviceSelf.addEventListener('fetch', (/** @type {Event & {request: Request}} */ event) =>
+serviceSelf.addEventListener('fetch', (event) =>
 {
 	if(event.request.method !== 'GET') return;
 
@@ -951,7 +965,7 @@ serviceSelf.addEventListener('fetch', (/** @type {Event & {request: Request}} */
 		await checkStatus();
 
 		// --- FIX B: EVALUATE STATE ONLY AFTER THE LOCK RELEASES ---
-		let selected = fallbackSelected || api.environmentRepository;
+		let selected = fallbackSelected || serviceSelf.api?.environmentRepository;
 
 		if(!selected && !localCSP)
 		{

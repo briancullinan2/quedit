@@ -34,15 +34,15 @@ async function getAllLocalFiles(activeRepositories)
 	{
 		try
 		{
-			const db = await getDB(dbName);
-			if(!db.objectStoreNames.contains(workerSelf.DB_STORE_NAME))
+			const db = await workerSelf.getDB?.(dbName);
+			if(!db?.objectStoreNames.contains(workerSelf.DB_STORE_NAME ?? ''))
 			{
-				db.close();
+				db?.close();
 				debugger;
 				continue;
 			}
 
-			await readAll(dbName, file => allFiles.push({
+			await workerSelf.readAll?.(dbName, file => allFiles.push({
 				...file,
 				repoSource: dbName,
 				// Ensure contents are text strings if stored as array buffers/blobs

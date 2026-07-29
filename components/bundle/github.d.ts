@@ -6,6 +6,7 @@ import type { RepositorySettingsWindow } from "./menu.d";
 
 export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, ApiWindow
 {
+	getBranchVersion?: (ownerName: string, repo: string, branch?: string) => Promise<Date>;
 	githubRequest?: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
 	loadGitHubTree?: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
 	getBranches?: (repoOwner: string | undefined, repoName: string | undefined) => Promise<GitHubBranch[]>;

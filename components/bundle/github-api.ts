@@ -101,6 +101,8 @@ export async function getBranchVersion(ownerName: string, repo: string, branch?:
 	return new Date(dateString);
 }
 
+githubSelf.getBranchVersion = getBranchVersion;
+
 export async function getBranches(repoOwner: string | undefined, repoName: string | undefined): Promise<GitHubBranch[]>
 {
 	if(repoOwner === undefined)

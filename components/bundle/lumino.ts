@@ -207,15 +207,23 @@ function startServiceWorker()
 {
 	const swManager = new ServiceWorkerManager();
 
+	let workerState = luminoSelf.statusBar?.addStatusItem('sw-state', '[SW] Loading', 'bx bx-radio-circle', 'right');
+
 	swManager.initialize()
 		.then(() =>
 		{
 			// Update status to 'Worker Ready' and swap spin icon to a solid verified check shield
 			luminoSelf.statusBar?.updateStatusItem('env-state', 'Worker Ready');
+			luminoSelf.statusBar?.updateStatusItem('sw-state', '[SW] Active');
 			const iconNode = luminoSelf.envStatusNode?.querySelector('i');
 			if(iconNode)
 			{
 				iconNode.className = 'bx bx-check-shield';
+			}
+			const stateNode = workerState?.querySelector('i')
+			if(stateNode)
+			{
+				stateNode.className = 'bx bx-circle-marked';
 			}
 
 			// 3. Clear the status notification text after exactly 5 seconds (5000ms)
@@ -232,6 +240,7 @@ function startServiceWorker()
 		{
 			console.error("Critical worker boot fault:", err);
 			luminoSelf.statusBar?.updateStatusItem('env-state', 'Sync Error');
+			luminoSelf.statusBar?.updateStatusItem('sw-state', '[SW] Error');
 			const iconNode = luminoSelf.envStatusNode?.querySelector('i');
 			if(iconNode)
 			{

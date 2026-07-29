@@ -8,7 +8,9 @@ const localSelf = /** @type {any} */ (self);
 
 const DB_VERSION = 1; // Increment this when you add new C# Entities!
 const DB_NAME = "briancullinan2/quedit";
+localSelf.DB_NAME = DB_NAME;
 const DB_STORE_NAME = 'FILE_DATA';
+localSelf.DB_STORE_NAME = DB_STORE_NAME;
 const DB_DEBOUNCE_INTERVAL = 50;
 
 const DB_SCHEME = [
@@ -320,7 +322,7 @@ localSelf.queryIndex = queryIndex;
  * @param {any} record
  * @param {any} lower
  * @param {any} upper
- * @param {string | null} dbName
+ * @param {string | null | undefined} dbName
  * @param {'get' | 'put' | 'query' | 'cache'} MODE
  * @param {boolean} noBounce
  * @returns {Promise<any> | null | undefined}
@@ -449,6 +451,7 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 	return getBounceRegistry[MODE][registryKey].promise;
 }
 
+localSelf.debounceRecords = debounceRecords;
 
 /**
  *

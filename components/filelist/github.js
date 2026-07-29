@@ -2,7 +2,7 @@
 
 // @ts-check
 
-/** @type {import('./widget.d').GithubWorkerWindow} */
+/** @type {import('./widget.d').GithubWorkerWindow & import('../bundle/local.d').LocalWindow} */
 const githubSelf = /** @type {any} */ (self);
 
 if(!githubSelf.trees)
@@ -113,7 +113,7 @@ async function getDefaultBranch(owner, repo)
  *
  * @param {string} owner
  * @param {string} repo
- * @param {string} branch
+ * @param {string | undefined} branch
  * @returns
  */
 async function getBranchVersion(owner, repo, branch)
@@ -132,6 +132,8 @@ async function getBranchVersion(owner, repo, branch)
 
 	return buildDate;
 }
+
+githubSelf.getBranchVersion = getBranchVersion;
 
 
 /**
@@ -551,7 +553,7 @@ githubSelf.getGitShaBrowser = getGitShaBrowser;
 
 async function cacheFile(storeName, repoOwner, repoName, filePath, sha, forceReload = false)
 {
-	return await debounceRecords(githubSelf.DB_STORE_NAME, 'path', filePath, sha, forceReload, repoOwner + '/' + repoName, 'cache');
+	return await githubSelf.debounceRecords?.(githubSelf.DB_STORE_NAME ?? '', 'path', filePath, sha, forceReload, repoOwner + '/' + repoName, 'cache');
 }
 
 

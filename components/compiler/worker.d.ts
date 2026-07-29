@@ -1,5 +1,9 @@
+
+
 import JSZip from "jszip";
-import { BuildWindow, MakeSystemGlobals, MakeWindow } from "./make";
+import type { BuildWindow, MakeSystemGlobals, MakeWindow } from "./make.d";
+import type { LocalWindow } from "../bundle/local.d";
+import type { GithubWindow } from "../bundle/github.d";
 
 
 export interface MockAPI
@@ -118,6 +122,51 @@ export interface WorkerWindow extends
 	JSZip?: typeof JSZip;
 	API?: typeof WorkerAPI;
 	importScripts?: (...urls: (string | URL)[]) => void;
+}
+
+export interface ServiceWorkerEvent extends Event
+{
+	waitUntil: (promise: Promise<any>) => void;
+}
+
+
+export interface InstallEvent extends ServiceWorkerEvent
+{
+}
+
+export interface ActivateEvent extends ServiceWorkerEvent
+{
+
+}
+
+export interface ServiceWorkerEventMap
+{
+	"install": InstallEvent;
+	"activate": ActivateEvent;
+	"fetch": FetchEvent;
+}
+
+
+export interface ServiceWorkerWindow extends
+	GithubWindow,
+	LocalWindow,
+	ApiWindow
+{
+	__assetsManifest: { path: string, size: number; }[];
+
+	addEventListener<K extends keyof ServiceWorkerEventMap>(type: K, listener: (this: Worker, ev: ServiceWorkerEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+	skipWaiting: () => void;
+
+	clients: {
+		claim: () => void;
+	};
+
+	registration: {
+		active?: {
+			scriptURL: string;
+		};
+		unregister: () => void;
+	};
 }
 
 
