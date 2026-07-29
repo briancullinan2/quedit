@@ -1,4 +1,10 @@
 
+// @ts-check
+
+/** @type {import('../compiler/make.d').MakeWindow & import('../compiler/make.d').MakeSystemGlobals  & import('../compiler/make.d').BuildWindow} */
+const compilerSelf = /** @type {any} */ (self);
+
+
 const CMD_PREAMBLE = '\x1b[38;5;196m[RUNTIME ERROR]\x1b[0m';
 const API_PREAMBLE = '\x1b[38;5;214m[COMPILER]\x1b[0m ';      // Gold/Orange
 
@@ -35,72 +41,69 @@ const TOOLS_PREAMBLE = '\x1b[38;5;121m[TOOLS-BUILD]\x1b[0m ';
 const ENGINE_PREAMBLE = '\x1b[38;5;36m[QUAKE3E]\x1b[0m ';
 
 
-
-// 1. Implementation of path.join for the browser
-if(!self.path)
-{
-	self.path = {
-		join: (...parts) =>
-		{
-			return parts
-				.map((part, index) =>
-				{
-					if(index > 0) return part.replace(/^\//, ''); // Strip leading slash
-					return part.replace(/\/$/, ''); // Strip trailing slash
-				})
-				.filter(part => part.length > 0)
-				.join('/');
-		},
-		resolve: (...parts) =>
-		{
-			let resolvedSegments = [];
-
-			for(const part of parts)
+compilerSelf.path = {
+	join: (...parts) =>
+	{
+		return parts
+			.map((part, index) =>
 			{
-				if(!part) continue;
+				if(index > 0) return part.replace(/^\//, ''); // Strip leading slash
+				return part.replace(/\/$/, ''); // Strip trailing slash
+			})
+			.filter(part => part.length > 0)
+			.join('/');
+	},
+	resolve: (...parts) =>
+	{
+		let resolvedSegments = [];
 
-				// If a segment starts with '/', it acts as an absolute root reset
-				if(part.startsWith('/'))
-				{
-					resolvedSegments = part.split('/');
-				} else
-				{
-					resolvedSegments.push(...part.split('/'));
-				}
-			}
+		for(const part of parts)
+		{
+			if(!part) continue;
 
-			// Normalize the accumulated stack (. and .. processing)
-			const stack = [];
-			for(const segment of resolvedSegments)
+			// If a segment starts with '/', it acts as an absolute root reset
+			if(part.startsWith('/'))
 			{
-				if(segment === '' || segment === '.')
-				{
-					continue;
-				}
-				if(segment === '..')
-				{
-					if(stack.length > 0)
-					{
-						stack.pop();
-					}
-					continue;
-				}
-				stack.push(segment);
+				resolvedSegments = part.split('/');
+			} else
+			{
+				resolvedSegments.push(...part.split('/'));
 			}
-
-			// Reconstruct the path ensuring it behaves as an absolute result
-			return '/' + stack.join('/');
 		}
-	};
-}
 
+		// Normalize the accumulated stack (. and .. processing)
+		const stack = [];
+		for(const segment of resolvedSegments)
+		{
+			if(segment === '' || segment === '.')
+			{
+				continue;
+			}
+			if(segment === '..')
+			{
+				if(stack.length > 0)
+				{
+					stack.pop();
+				}
+				continue;
+			}
+			stack.push(segment);
+		}
+
+		// Reconstruct the path ensuring it behaves as an absolute result
+		return '/' + stack.join('/');
+	}
+};
 
 const COMPILE_PLATFORM = 'wasm';
+compilerSelf.COMPILE_PLATFORM = COMPILE_PLATFORM;
 const COMPILE_ARCH = 'js';
+compilerSelf.COMPILE_ARCH = COMPILE_ARCH;
 
 const GAME_PLATFORM = 'qvm';
+compilerSelf.GAME_PLATFORM = GAME_PLATFORM;
 const GAME_ARCH = 'bytecode';
-
+compilerSelf.GAME_ARCH = GAME_ARCH;
 
 
 const config = {
@@ -125,39 +128,37 @@ const config = {
 	RUNBASE: '/base',
 	MOD: 'baseq3a'
 };
+compilerSelf.config = config;
 
 const dirs = {
-	ENGINE_DEBUG: path.join(config.BUILD_DIR, `debug-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
-	ENGINE_RELEASE: path.join(config.BUILD_DIR, `release-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
+	ENGINE_DEBUG: compilerSelf.path.join(config.BUILD_DIR, `debug-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
+	ENGINE_RELEASE: compilerSelf.path.join(config.BUILD_DIR, `release-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
 
-	GAME_DEBUG: path.join(config.BUILD_DIR, `debug-${GAME_PLATFORM}-${GAME_ARCH}`),
-	GAME_RELEASE: path.join(config.BUILD_DIR, `release-${GAME_PLATFORM}-${GAME_ARCH}`),
+	GAME_DEBUG: compilerSelf.path.join(config.BUILD_DIR, `debug-${GAME_PLATFORM}-${GAME_ARCH}`),
+	GAME_RELEASE: compilerSelf.path.join(config.BUILD_DIR, `release-${GAME_PLATFORM}-${GAME_ARCH}`),
 
-	CGDIR: path.join(config.MOUNT_DIR, "cgame"),
-	QADIR: path.join(config.MOUNT_DIR, "game"),
-	UIDIR: path.join(config.MOUNT_DIR, "ui"),
-	Q3UIDIR: path.join(config.MOUNT_DIR, "q3_ui"),
+	CGDIR: compilerSelf.path.join(config.MOUNT_DIR, "cgame"),
+	QADIR: compilerSelf.path.join(config.MOUNT_DIR, "game"),
+	UIDIR: compilerSelf.path.join(config.MOUNT_DIR, "ui"),
+	Q3UIDIR: compilerSelf.path.join(config.MOUNT_DIR, "q3_ui"),
 
-	CDIR: path.join(config.MOUNT_DIR, "client"),
-	SDIR: path.join(config.MOUNT_DIR, "server"),
-	CMDIR: path.join(config.MOUNT_DIR, "qcommon"),
+	CDIR: compilerSelf.path.join(config.MOUNT_DIR, "client"),
+	SDIR: compilerSelf.path.join(config.MOUNT_DIR, "server"),
+	CMDIR: compilerSelf.path.join(config.MOUNT_DIR, "qcommon"),
 	//R1DIR: path.join(config.MOUNT_DIR, "renderer"),
-	R2DIR: path.join(config.MOUNT_DIR, "renderer2"),
-	RCDIR: path.join(config.MOUNT_DIR, "renderercommon"),
+	R2DIR: compilerSelf.path.join(config.MOUNT_DIR, "renderer2"),
+	RCDIR: compilerSelf.path.join(config.MOUNT_DIR, "renderercommon"),
 	//RVDIR: path.join(config.MOUNT_DIR, "renderervk"),
-	BLIBDIR: path.join(config.MOUNT_DIR, "botlib"),
-	WASMDIR: path.join(config.MOUNT_DIR, "wasm"),
+	BLIBDIR: compilerSelf.path.join(config.MOUNT_DIR, "botlib"),
+	WASMDIR: compilerSelf.path.join(config.MOUNT_DIR, "wasm"),
 };
-
-
-const TERMINALS = (typeof document !== 'undefined'
-	? Array.from(document.querySelectorAll('#terminals [href^="#"]')).map(el => el.getAttribute('href')?.split('#')[1])
-	: ['all', 'error', 'warn', 'info', 'soft', 'immediate', 'build', 'console', 'ai'])
-	.concat(['language'])
-	.filter((a, i, arr) => arr.indexOf(a) === i);
-
+compilerSelf.dirs = dirs;
 
 const ENGINE_MEMORY_BASE = 48 * 1024 * 1024;
+compilerSelf.ENGINE_MEMORY_BASE = ENGINE_MEMORY_BASE;
 const UI_MEMORY_BASE = 32;
+compilerSelf.UI_MEMORY_BASE = UI_MEMORY_BASE;
 const CGAME_MEMORY_BASE = 16 * 1024 * 1024;
+compilerSelf.CGAME_MEMORY_BASE = CGAME_MEMORY_BASE;
 const GAME_MEMORY_BASE = 32 * 1024 * 1024;
+compilerSelf.GAME_MEMORY_BASE = GAME_MEMORY_BASE;
