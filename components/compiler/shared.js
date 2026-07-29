@@ -263,7 +263,7 @@ sharedSelf.API = (function ()
 		/**
 		 *
 		 * @param {number} o
-		 * @param {number} len
+		 * @param {number | undefined} len
 		 * @returns
 		 */
 		readStr(o, len)
@@ -339,7 +339,7 @@ sharedSelf.API = (function ()
 
 		/**
 		 *
-		 * @param {WebAssembly.Memory} mem
+		 * @param {Memory} mem
 		 */
 		set hostMem(mem)
 		{
@@ -472,7 +472,7 @@ sharedSelf.API = (function ()
 		/**
 		 *
 		 * @param {string} path
-		 * @param {ArrayBuffer} contents
+		 * @param {ArrayBuffer | Uint8Array} contents
 		 * @returns
 		 */
 		addFile(path, contents)
@@ -598,7 +598,11 @@ sharedSelf.API = (function ()
 			return results;
 		}
 
-
+		/**
+		 *
+		 * @param {number} dirFd
+		 * @param {string} pathStr
+		 */
 		async recursiveDir(dirFd, pathStr = "")
 		{
 			// 1. Get the scratch space provided by your Wasm module
@@ -654,6 +658,11 @@ sharedSelf.API = (function ()
 		}
 
 
+		/**
+		 *
+		 * @param {string} path
+		 * @returns
+		 */
 		getFileContents(path)
 		{
 			this.mem.check();
@@ -682,6 +691,14 @@ sharedSelf.API = (function ()
 
 		abort() { throw new AbortError(); }
 
+		/**
+		 *
+		 * @param {number} fd
+		 * @param {number} iovs
+		 * @param {number} iovs_len
+		 * @param {number} nwritten_out
+		 * @returns
+		 */
 		host_write(fd, iovs, iovs_len, nwritten_out)
 		{
 			this.hostMem_.check();
@@ -1397,12 +1414,21 @@ sharedSelf.API = (function ()
 
 	class Tar
 	{
+		/**
+		 *
+		 * @param {ArrayBuffer} buffer
+		 */
 		constructor(buffer)
 		{
 			this.u8 = new Uint8Array(buffer);
 			this.offset = 0;
 		}
 
+		/**
+		 *
+		 * @param {number} len
+		 * @returns
+		 */
 		readStr(len)
 		{
 			const result = readStr(this.u8, this.offset, len);
@@ -1410,6 +1436,11 @@ sharedSelf.API = (function ()
 			return result;
 		}
 
+		/**
+		 *
+		 * @param {number} len
+		 * @returns
+		 */
 		readOctal(len)
 		{
 			return parseInt(this.readStr(len), 8);
@@ -2337,6 +2368,12 @@ sharedSelf.API = (function ()
 			return module.output || stillRunning === 0 || stillRunning === true ? 0 : stillRunning;
 		}
 
+		/**
+		 *
+		 * @param {WebAssembly.Module} module
+		 * @param  {...any} args
+		 * @returns
+		 */
 		async run(module, ...args)
 		{
 			await this.ready;

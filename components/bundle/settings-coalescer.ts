@@ -91,7 +91,7 @@ function coalesceImportSettings(sourceFiles: string[], outputPath: string): void
 					const settingKey = settingProp.name.getText(sourceFile).replace(/['"]/g, '');
 					if(!settingProp.initializer || !ts.isObjectLiteralExpression(settingProp.initializer)) continue;
 
-					const settingData: Partial<SettingConfig> = {};
+					const settingData: Record<string, any> = {};
 
 					for(const dataProp of settingProp.initializer.properties)
 					{

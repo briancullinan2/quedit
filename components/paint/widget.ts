@@ -116,6 +116,9 @@ export interface MiniPaintState
 	undo(): void;
 	redo(): void;
 	save_state(): void;
+	action_history: Array<any>;
+	action_history_index: Number;
+
 }
 
 export interface MiniPaintFileOpen
@@ -334,7 +337,10 @@ export class PaintWidget extends Widget implements MenuModules
 		}
 		this._updatePainterDimensions();
 
-		this.attachHistoryListener(this._instance?.State, paintSelf.historyToolbar?.appendHistoryItem.bind(paintSelf.historyToolbar));
+		if(this._instance && paintSelf.historyToolbar)
+		{
+			this.attachHistoryListener(this._instance.State, paintSelf.historyToolbar.appendHistoryItem.bind(paintSelf.historyToolbar));
+		}
 		paintSelf.registerAllCommands?.([IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
 		paintSelf.registerAllCommands?.(this._instance?.GUI.GUI_menu.menuDefinition ?? []);
 		paintSelf.injectMenus?.(PaintWidget.name, [IMAGE_MENU, LAYER_MENU, EFFECTS_MENU, TOOLS_MENU]);
@@ -342,13 +348,13 @@ export class PaintWidget extends Widget implements MenuModules
 
 	}
 
-	attachHistoryListener(actionsInstance: MiniPaintState, callback)
+	attachHistoryListener(actionsInstance: MiniPaintState, callback: (actionData: any, type?: string) => void)
 	{
 		let _historyArray = actionsInstance.action_history || [];
 		let _historyIndex = actionsInstance.action_history_index || 0;
 
 		const arrayMutationHandler = {
-			set(target, property, value, receiver)
+			set(target: Array<any>, property: any, value: Record<any, any>, receiver: any)
 			{
 				const isNumericProp = !isNaN(Number(property));
 				const oldLength = target.length;

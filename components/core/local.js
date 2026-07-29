@@ -253,7 +253,7 @@ async function putRecordInternal(storeName, record, dbName = null)
 }
 
 
-
+/** @type {Record<string, Record<string, import('../bundle/local.d').DebounceToken>>} */
 const getBounceRegistry = {
 	'put': {},
 	'get': {},
@@ -323,7 +323,7 @@ localSelf.queryIndex = queryIndex;
  * @param {string | null} dbName
  * @param {'get' | 'put' | 'query' | 'cache'} MODE
  * @param {boolean} noBounce
- * @returns {Promise<any>}
+ * @returns {Promise<any> | null | undefined}
  */
 function debounceRecords(storeName, indexName, record, lower, upper, dbName, MODE = 'get', noBounce = false)
 {
@@ -349,8 +349,11 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 	{
 		if(getBounceRegistry[MODE][registryKey])
 		{
-			clearTimeout(getBounceRegistry[MODE][registryKey].timer);
-			getBounceRegistry[MODE][registryKey].reject(new Error("Superseded by immediate write"));
+			if(getBounceRegistry[MODE][registryKey].timer)
+			{
+				clearTimeout(getBounceRegistry[MODE][registryKey].timer);
+			}
+			getBounceRegistry[MODE][registryKey].reject?.(new Error("Superseded by immediate write"));
 			delete getBounceRegistry[MODE][registryKey];
 		}
 
@@ -369,7 +372,10 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 	// 3. If a delayed operation with matching signature exists, reset clock AND update references
 	if(getBounceRegistry[MODE][registryKey])
 	{
-		clearTimeout(getBounceRegistry[MODE][registryKey].timer);
+		if(getBounceRegistry[MODE][registryKey].timer)
+		{
+			clearTimeout(getBounceRegistry[MODE][registryKey].timer);
+		}
 
 		// CRITICAL FIX: Refresh execution parameters in storage to defeat closure scope stalling!
 		getBounceRegistry[MODE][registryKey].latestArgs = { storeName, indexName, record, lower, upper, dbName, ownerName, repoName };
@@ -423,7 +429,7 @@ function debounceRecords(storeName, indexName, record, lower, upper, dbName, MOD
 			else
 				throw new Error('MODE not recognized in debounceRecords: ' + MODE);
 
-			currentExecutionState.resolve(result);
+			currentExecutionState.resolve?.(result);
 		} catch(err)
 		{
 			if(currentExecutionState && typeof currentExecutionState.reject === 'function')
@@ -619,7 +625,7 @@ async function readAll(dbName, callback = void 0)
 
 	return new Promise((resolve, reject) =>
 	{
-		request.onsuccess = async (event) =>
+		request.onsuccess = async (/** @type {Event & { target: IDBRequest }} */ event) =>
 		{
 			const allItems = event.target.result;
 
@@ -631,7 +637,7 @@ async function readAll(dbName, callback = void 0)
 			resolve(allItems);
 		};
 
-		request.onerror = (err) =>
+		request.onerror = (/** @type {Error} */ err) =>
 		{
 			console.error("IndexedDB Read Error:", err);
 			reject(err);

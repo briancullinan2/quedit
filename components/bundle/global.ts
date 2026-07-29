@@ -61,6 +61,10 @@ const COMPILE_ARCH = 'js';
 
 const GAME_PLATFORM = 'qvm';
 const GAME_ARCH = 'bytecode';
+buildSelf.GAME_PLATFORM = GAME_PLATFORM;
+buildSelf.GAME_ARCH = GAME_ARCH;
+buildSelf.COMPILE_PLATFORM = COMPILE_PLATFORM;
+buildSelf.COMPILE_ARCH = COMPILE_ARCH;
 
 export const config = {
 	BUILD_CLIENT: 1,
@@ -84,6 +88,7 @@ export const config = {
 	RUNBASE: '/base',
 	MOD: 'baseq3a'
 };
+buildSelf.config = config;
 
 export const dirs = {
 	ENGINE_DEBUG: path.join(config.BUILD_DIR, `debug-${COMPILE_PLATFORM}-${COMPILE_ARCH}`),
@@ -107,7 +112,7 @@ export const dirs = {
 	BLIBDIR: path.join(config.MOUNT_DIR, "botlib"),
 	WASMDIR: path.join(config.MOUNT_DIR, "wasm"),
 };
-
+buildSelf.dirs = dirs;
 
 const ENGINE_MEMORY_BASE = 48 * 1024 * 1024;
 const UI_MEMORY_BASE = 32;

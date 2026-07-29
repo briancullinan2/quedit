@@ -28,7 +28,7 @@
 		"skipLibCheck": true,
 		/* Checking Rules */
 		"strict": true,
-		"noImplicitAny": true, // Good for plain JS so it won't yell at un-annotated params
+		"noImplicitAny": false, // Good for plain JS so it won't yell at un-annotated params
 		"ignoreDeprecations": "6.0"
 	},
 	"include": [

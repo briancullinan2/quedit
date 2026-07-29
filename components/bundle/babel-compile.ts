@@ -18,12 +18,12 @@ const compileSelf: LuminoLayoutWindow = self as unknown as any;
 
 
 
-export const registry = new Map<string, Promise<void>>(
+export const registry = new Map<string, Promise<any>>(
 	[...document.scripts]
 		.map((s: HTMLScriptElement) => s.getAttribute('src'))
 		.filter((src): src is string => Boolean(src))
 		.concat([...document.styleSheets].map((s: CSSStyleSheet) => s.href).filter((href): href is string => Boolean(href)))
-		.map((url: string): [string, Promise<void>] =>
+		.map((url: string): [string, Promise<any>] =>
 		{
 			const absoluteUrl = new URL(url, window.location.origin).pathname;
 			// Pre-seed the Map with an instantly resolved promise for elements already loaded
@@ -46,8 +46,8 @@ export function collectDependencies(rawCode: string, baseRoute: string, dependen
 	});
 
 	// 2. Traverse the AST using a custom visitor
-	traverse(ast, {
-		ImportDeclaration(babelPath)
+	traverse(ast as any, {
+		ImportDeclaration(babelPath: NodePath<tType.ImportExpression>)
 		{
 			const moduleName = babelPath.node.source.value;
 			if(babelPath.node.importKind === 'type')
@@ -77,7 +77,7 @@ export function collectDependencies(rawCode: string, baseRoute: string, dependen
 				&& baseRoute?.includes('.'))
 			{
 				const ext = baseRoute.split('.').pop();
-				const modifiedModuleName = moduleName + (!moduleName.split('/').pop().includes('.')
+				const modifiedModuleName = moduleName + (!moduleName.split('/').pop()?.includes('.')
 					? '.' + ext
 					: '');
 				newDependency = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
@@ -89,10 +89,10 @@ export function collectDependencies(rawCode: string, baseRoute: string, dependen
 				dependenciesToFetch.push(newDependency);
 			}
 		},
-		CallExpression(babelPath)
+		CallExpression(babelPath: NodePath<tType.CallExpression>)
 		{
 			if(
-				babelPath.node.callee.name === 'require' &&
+				(babelPath.node.callee as any).name === 'require' &&
 				babelPath.node.arguments.length === 1 &&
 				babelPath.node.arguments[0].type === 'StringLiteral'
 			)
@@ -114,7 +114,7 @@ export function collectDependencies(rawCode: string, baseRoute: string, dependen
 					&& baseRoute?.includes('.'))
 				{
 					const ext = baseRoute.split('.').pop();
-					const modifiedModuleName = moduleName + (!moduleName.split('/').pop().includes('.')
+					const modifiedModuleName = moduleName + (!moduleName.split('/').pop()?.includes('.')
 						? '.' + (ext ? ext : '.js')
 						: '');
 					newDependency = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
@@ -400,10 +400,10 @@ export function transpileTypescriptWidget(rawCode: string, baseRoute: string): a
 				const { types: t, template } = babel;
 				return {
 					visitor: {
-						CallExpression(path)
+						CallExpression(path: NodePath<tType.CallExpression>)
 						{
 							if(
-								path.node.callee.name === 'require' &&
+								(path.node.callee as any).name === 'require' &&
 								path.node.arguments.length === 1 &&
 								path.node.arguments[0].type === 'StringLiteral'
 							)
@@ -475,7 +475,7 @@ export function transpileTypescriptWidget(rawCode: string, baseRoute: string): a
 							} else if(moduleName.startsWith('./') || moduleName.startsWith('../'))
 							{
 								const ext = baseRoute.split('.').pop();
-								const modifiedModuleName = moduleName + (!moduleName.split('/').pop().includes('.')
+								const modifiedModuleName = moduleName + (!moduleName.split('/').pop()?.includes('.')
 									? '.' + (ext ? ext : '.js')
 									: '');
 								const newPath = path.resolve(baseRoute.substring(0, baseRoute.lastIndexOf('/')),
@@ -491,12 +491,12 @@ export function transpileTypescriptWidget(rawCode: string, baseRoute: string): a
 
 								// Handle named imports safely: import { Widget, Panel } from '...'
 								const specifiers = babelPath.node.specifiers.filter(
-									(spec): spec is tType.ImportSpecifier => t.isImportSpecifier(spec)
+									(spec: any): spec is tType.ImportSpecifier => t.isImportSpecifier(spec)
 								);
 
 								if(specifiers.length > 0)
 								{
-									const properties = specifiers.map(spec =>
+									const properties = specifiers.map((spec: tType.ImportSpecifier) =>
 									{
 										const importedName = t.isIdentifier(spec.imported)
 											? spec.imported.name
@@ -522,7 +522,7 @@ export function transpileTypescriptWidget(rawCode: string, baseRoute: string): a
 
 								// Handle namespace/default imports smoothly: import * as widgets from '...' or import Tree from '...'
 								const namespaceOrDefaultSpecifier = babelPath.node.specifiers.find(
-									spec => t.isImportNamespaceSpecifier(spec) || t.isImportDefaultSpecifier(spec)
+									(spec: any) => t.isImportNamespaceSpecifier(spec) || t.isImportDefaultSpecifier(spec)
 								);
 
 								if(namespaceOrDefaultSpecifier)
@@ -552,7 +552,7 @@ export function transpileTypescriptWidget(rawCode: string, baseRoute: string): a
 			}
 		],
 		filename: baseRoute
-	});
+	} as any);
 
 
 	return transpiled;
@@ -605,7 +605,7 @@ Dynamically generates a minimal, isolated WebAssembly module in memory
 that binds a JavaScript function to a true native WASM execution vector.
 =======================================================================
 */
-function Sys_CompileJsToWasmRef(jsFunction, paramCount = 1)
+function Sys_CompileJsToWasmRef(jsFunction: Function, paramCount = 1)
 {
 	// WebAssembly Opcode Constants
 	const WASM_MAGIC = [0x00, 0x61, 0x73, 0x6d];
@@ -647,7 +647,7 @@ function Sys_CompileJsToWasmRef(jsFunction, paramCount = 1)
 	];
 
 	// Helper function to format sections with standard LEB128 length headers
-	function createSection(sectionId, payload)
+	function createSection(sectionId: number, payload: any[])
 	{
 		return [sectionId, ...encodeLEB128(payload.length), ...payload];
 	}
@@ -672,7 +672,7 @@ function Sys_CompileJsToWasmRef(jsFunction, paramCount = 1)
 }
 
 // Minimal LEB128 unsigned integer length packer utility
-function encodeLEB128(value)
+function encodeLEB128(value: number)
 {
 	const bytes: number[] = [];
 	do

@@ -1,5 +1,5 @@
 
-/** @type {Worker & WorkerGlobalScope & { api?: { github_token?: string | null | undefined } }} */
+/** @type {Worker & WorkerGlobalScope & import('../bundle/local.d').LocalWindow & import('../compiler/make.d').BuildWindow & import('../bundle/github.d').GithubWindow & { api?: { github_token?: string | null | undefined } }} */
 const workerSelf = /** @type {any} */ (self);
 
 if(!workerSelf.api)
@@ -19,8 +19,14 @@ importScripts('/components/filelist/github.js');
 /**
  * Pulls all files from IndexedDB to scan locally in memory
  */
+/**
+ *
+ * @param {string[]} activeRepositories
+ * @returns {Promise<(import('../bundle/local.d').FileRecord & {repoSource: string, textContent: string})[]>}
+ */
 async function getAllLocalFiles(activeRepositories)
 {
+	/** @type {(import('../bundle/local.d').FileRecord & {repoSource: string, textContent: string})[]} */
 	const allFiles = [];
 
 	// Scan across all registered repository DB namespaces
@@ -73,8 +79,9 @@ workerSelf.onmessage = async function (e)
 	// Determine if the query is intended to be processed as a path glob
 	const isGlobPattern = query.includes('*') || query.includes('?');
 
+	/** @type {RegExp} */
 	let regex;
-	if(isGlobPattern)
+	if(isGlobPattern && workerSelf.globToRegex)
 	{
 		regex = workerSelf.globToRegex(query, caseSensitive);
 	} else
@@ -165,7 +172,7 @@ workerSelf.onmessage = async function (e)
 	// -----------------------------------------------------------------
 	if(gitHubToken)
 	{
-		const remoteResults = await workerSelf.searchGitHubCode(query, activeRepositories || [], gitHubToken);
+		const remoteResults = await workerSelf.searchGitHubCode?.(query, activeRepositories || [], gitHubToken);
 		workerSelf.postMessage({ type: 'github', results: remoteResults, callbackId, query });
 	}
 };

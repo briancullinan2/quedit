@@ -8,7 +8,7 @@ const OUTPUT_FILE = path.join(BUILD_DIR, 'file-manifest.js');
 /**
  * Recursively walks a directory and collects file info
  */
-async function walkDirectory(dir)
+async function walkDirectory(dir: string)
 {
 	let files: any[] = [];
 	const entries = await fs.readdir(dir, { withFileTypes: true });

@@ -1485,7 +1485,8 @@
                     this._animationFrame = void 0)
                 }
                 addRefreshCallback(e) {
-                    //return this._refreshCallbacks.push(e),
+                    return this._refreshCallbacks.push(e),
+					this._innerRefresh()
                     //this._animationFrame || (this._animationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => this._innerRefresh()))),
                     //this._animationFrame
                 }
@@ -2099,7 +2100,8 @@
                 }
                 _queueRefresh(e, t) {
                     this._shouldUpdateDimensions = e || this._shouldUpdateDimensions,
-                    this._shouldUpdateAnchor = t || this._shouldUpdateAnchor
+                    this._shouldUpdateAnchor = t || this._shouldUpdateAnchor,
+					this._refreshDecorations()
                     //void 0 === this._animationFrame && (this._animationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => {
                     //    debugger;
                     //    this._refreshDecorations(),
@@ -3999,6 +4001,7 @@
                     this._onSelectionChange.fire()
                 }
                 refresh(e) {
+					this._refresh(),
                     //this._refreshAnimationFrame || (this._refreshAnimationFrame = window.terminalFrameLimiter.requestFrameUpdate(( () => this._refresh()))),
                     c.isLinux && e && this.selectionText.length && this._onLinuxMouseSelection.fire(this.selectionText)
                 }
