@@ -825,10 +825,10 @@ async function lcc(argv)
 /**
  *
  * @param {string[]} argv
- * @param {string | null} database
+ * @param {string | undefined} database
  * @returns
  */
-async function wasm(argv, database = null)
+async function wasm(argv, database = void 0)
 {
 	return await commandBuildSelf.api?.link?.({
 		LDFLAGS: argv,

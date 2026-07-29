@@ -28,6 +28,10 @@ export interface TerminalCommands
 	runWorker?: (argv: string[], database: string) => Promise<void>;
 	lburg?: (argv: string[], database: string) => Promise<void>;
 	kill?: () => Promise<void>;
+	header?: (argv: string[], database: string) => Promise<void>;
+	link?: (argv: string[], database: string) => Promise<void>;
+	clang?: (argv: string[], database: string, commandName: string, term: Terminal) => Promise<void>;
+	wasm?: (argv: string[], database: string) => Promise<void>;
 }
 
 

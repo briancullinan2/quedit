@@ -38,14 +38,14 @@ export class AceEditorPool
 	static instances: Array<{ editor: Ace.Editor; inUse: boolean; }> = [];
 	public static sessionCache: ISessionCache = {};
 
-	public static getOrCreateAceSession(fileId: string, content: string, editor: Ace.Editor): any
+	public static getOrCreateAceSession(fileId: string, content: string, editor: Ace.Editor): AceSession | undefined | void
 	{
 		if(this.sessionCache[fileId])
 		{
 			return this.sessionCache[fileId];
 		}
 
-		const session = editorSelf.ace?.createEditSession(content);
+		const session = editorSelf.ace?.createEditSession(content) as AceSession;
 		if(!session) return;
 
 		session.workspaceFileId = fileId;

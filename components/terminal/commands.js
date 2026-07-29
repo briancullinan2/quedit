@@ -341,8 +341,13 @@ const COMMAND_SCHEMA = {
 commandSelf.COMMAND_SCHEMA = COMMAND_SCHEMA;
 
 
-
-function writeCommandHelp(targetCommand, argv)
+/**
+ *
+ * @param {string} targetCommand
+ * @param {string[] | undefined} argv
+ * @returns
+ */
+function writeCommandHelp(targetCommand, argv = void 0)
 {
 	if(!targetCommand) return;
 
@@ -454,6 +459,13 @@ async function loadCommand(argv, database, commandName)
 }
 
 
+/**
+ *
+ * @param {string[]} argv
+ * @param {string} database
+ * @param {string} commandName
+ * @param {import('@xterm/xterm').Terminal} term
+ */
 async function help(argv, database, commandName, term)
 {
 	const targetCommand = argv[0];
@@ -507,7 +519,11 @@ async function help(argv, database, commandName, term)
 }
 
 
-
+/**
+ *
+ * @param {string} input
+ * @returns {string[]}
+ */
 function tokenize(input)
 {
 	// Regex matches words, or strings inside single/double quotes
@@ -530,6 +546,12 @@ commandSelf.CWD = '';
 commandSelf.runningCommand = false;
 commandSelf.detachedConsole = false;
 
+/**
+ *
+ * @param {string} input
+ * @param {import('@xterm/xterm').Terminal} term
+ * @returns
+ */
 async function handleCommand(input, term)
 {
 	const database = commandSelf.RepositoryToolbar?.owner?.value + '/' + commandSelf.RepositoryToolbar?.repository?.value;
@@ -608,6 +630,10 @@ async function handleCommand(input, term)
 commandSelf.handleCommand = handleCommand;
 
 
+/**
+ *
+ * @param {string[]} argv
+ */
 async function hello(argv)
 {
 	const name = argv[0] || 'User';
@@ -616,18 +642,35 @@ async function hello(argv)
 }
 
 
-
+/**
+ *
+ * @param {string[]} argv
+ */
 async function error(argv)
 {
 	throw new Error('test');
 }
 
 
+/**
+ *
+ * @param {string[]} argv
+ * @param {string} database
+ * @param {string} commandName
+ * @param {import('@xterm/xterm').Terminal} term
+ */
 function reset(argv, database, commandName, term)
 {
 	term.reset();
 }
 
+/**
+ *
+ * @param {string[]} argv
+ * @param {string} database
+ * @param {string} commandName
+ * @param {import('@xterm/xterm').Terminal} term
+ */
 function clear(argv, database, commandName, term)
 {
 	term.clear();
