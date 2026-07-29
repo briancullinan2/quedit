@@ -86,7 +86,8 @@ export interface TerminalCommandGitWindow extends
 	TerminalWindow,
 	GithubWindow,
 	GlobalToolbarsWindow,
-	LoggingWindow
+	LoggingWindow,
+	LuminoLayoutWindow
 {
 }
 
@@ -110,7 +111,8 @@ export interface TerminalCommandBuildWindow extends
 	BuildWindow,
 	MakeWindow,
 	LoggingWindow,
-	MakeSystemGlobals
+	MakeSystemGlobals,
+	LuminoLayoutWindow
 {
 }
 

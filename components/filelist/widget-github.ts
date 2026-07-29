@@ -1,14 +1,13 @@
 import { Message } from '@lumino/messaging';
 import { FileListWidget } from './widget';
 import Tree from './tree.js';
+import { GithubService, StagingStatusPayload } from '../bundle/github-worker';
 import type { NestedTreeNode } from '../bundle/github-tools';
 import type { LuminoLayoutWindow } from '../bundle/lumino.d';
 import type { GlobalToolbarsWindow } from '../bundle/menu.d';
 import type { FilelistWindow } from './widget.d';
 
-
 const filelistSelf: LuminoLayoutWindow & GlobalToolbarsWindow & FilelistWindow = self as unknown as any;
-
 
 export interface StagingDetails
 {
@@ -17,16 +16,8 @@ export interface StagingDetails
 	staged?: string[];
 }
 
-export interface PendingTreeRequest
-{
-	target: HTMLElement;
-	folderId: string;
-}
-
 export class GithubListWidget extends FileListWidget
 {
-	private githubWorker: Worker;
-	private pendingTreeRequests: Record<string, PendingTreeRequest> = {};
 	private githubTreeLoading: boolean = false;
 	private refreshGithubTreeTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -36,13 +27,11 @@ export class GithubListWidget extends FileListWidget
 		this.id = `github-list-panel-${filelistSelf.nextTemp?.()}`;
 		this.addClass('ide-github-tree-widget');
 
-		// Spin up dedicated worker thread for commit/staging tracking
-		this.githubWorker = new Worker('/components/filelist/commit-worker.js');
-		this.githubWorker.onmessage = this.handleWorkerMessage.bind(this);
+		// Bind shared staging and commit worker state manager
 	}
 
 	/**
-	 * Minimal Layout Override: Search Box + Results Render Container (No Toolbar/Repo Selects)
+	 * Minimal Layout Override: Search Box + Results Render Container
 	 */
 	protected override async renderLayout(): Promise<void>
 	{
@@ -50,14 +39,14 @@ export class GithubListWidget extends FileListWidget
 		{
 			this.node.innerHTML = `
             <div class="filelist-wrapper search-widget-wrapper">
-				<ul class="toolbar">
-					<li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
-					<li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
-					<li><a alt="Google Drive" href="#new-gdrive" class="bx bxl bx-google-cloud"></a></li>
-					<li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
-					<li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
-					<li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
-				</ul>
+                <ul class="toolbar">
+                    <li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
+                    <li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
+                    <li><a alt="Google Drive" href="#new-gdrive" class="bx bxl bx-google-cloud"></a></li>
+                    <li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
+                    <li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
+                    <li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
+                </ul>
                 <div class="search-box">
                     <input type="text" id="search-${this.id}" class="search-input-field" name="search" placeholder="Search files or contents..." />
                 </div>
@@ -66,6 +55,7 @@ export class GithubListWidget extends FileListWidget
             `;
 		}
 	}
+
 	protected override async initializeFiletrees(): Promise<void>
 	{
 		await this.showGithubTree();
@@ -127,49 +117,9 @@ export class GithubListWidget extends FileListWidget
 	}
 
 	/**
-	 * Worker message handler for commit status checks
-	 */
-	private handleWorkerMessage(e: MessageEvent): void
-	{
-		const { type, status, modified, added, error, callbackId } = e.data;
-
-		if(type === 'staging_status')
-		{
-			const request = this.pendingTreeRequests[callbackId];
-			if(!request) return;
-
-			delete this.pendingTreeRequests[callbackId];
-
-			if(status === 'SUCCESS')
-			{
-				this.buildGithubTreeFromStaging(request.target, request.folderId, {
-					modified: modified || [],
-					added: added || []
-				});
-			} else
-			{
-				console.error("Worker status check failed:", error);
-				const folderId = request.folderId;
-				if(this.loadedDatabases[folderId])
-				{
-					this.loadedDatabases[folderId].children = [
-						{ text: 'Error tracking files', id: `${folderId}/err`, path: `${folderId}/err`, status: 0, state: { open: false, expanded: false } } as NestedTreeNode
-					];
-				}
-				this.finalizeGithubTreeExpansion(folderId);
-			}
-		}
-
-		if(type === 'commit_status')
-		{
-			console.log(`Commit response signature: ${status}`);
-		}
-	}
-
-	/**
 	 * Intercepts tree folder expansion events and dispatches staging queries
 	 */
-	protected override async expandDatabaseTree(target: HTMLElement, folderId: string): Promise<void>
+	public override async expandDatabaseTree(target: HTMLElement, folderId: string): Promise<void>
 	{
 		if(!target.classList.contains('treejs-node__open')) return;
 
@@ -194,7 +144,7 @@ export class GithubListWidget extends FileListWidget
 				}
 			}
 
-			// LAYER A: Repository Root Node Expansion (Inject Modified / Added / Staged roots)
+			// LAYER A: Repository Root Node Expansion
 			if(parts.length === 2)
 			{
 				const newChildren: NestedTreeNode[] = [
@@ -229,20 +179,27 @@ export class GithubListWidget extends FileListWidget
 				this.finalizeGithubTreeExpansion(folderId);
 			}
 
-			// LAYER B: Query background worker for real-time status diffs
-			const callbackId = `tree_sync_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-			this.pendingTreeRequests[callbackId] = { target, folderId };
-
+			// LAYER B: Execute state check through service with piecewise progress support
 			const branch = await filelistSelf.getDefaultBranch?.(parts[0], parts[1]);
 
-			this.githubWorker.postMessage({
-				type: 'COMMIT_STATUS_CHECK',
-				owner: parts[0],
-				repo: parts[1],
-				branch: branch,
-				gitHubToken: localStorage.getItem('github_token') || (window as any).api?.github_token,
-				callbackId: callbackId
-			});
+			await GithubService.getInstance().executeCommand(
+				{
+					type: 'COMMIT_STATUS_CHECK',
+					owner: parts[0],
+					repo: parts[1],
+					branch: branch,
+					gitHubToken: localStorage.getItem('github_token') || (window as any).api?.github_token
+				},
+				{ target, folderId },
+				(partialResult: StagingStatusPayload) =>
+				{
+					this.buildGithubTreeFromStaging(target, folderId, {
+						modified: partialResult.modified || [],
+						added: partialResult.added || [],
+						staged: partialResult.staged || []
+					});
+				}
+			);
 
 		} catch(err: any)
 		{
@@ -438,8 +395,8 @@ export class GithubListWidget extends FileListWidget
 
 	protected override onBeforeDetach(msg: Message): void
 	{
-		this.githubWorker.terminate();
 		if(this.refreshGithubTreeTimer) clearTimeout(this.refreshGithubTreeTimer);
 		super.onBeforeDetach(msg);
 	}
 }
+

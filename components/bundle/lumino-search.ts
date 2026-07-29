@@ -201,4 +201,5 @@ export class SearchService
 }
 
 export const searchService = new SearchService();
+luminoSelf.SearchService = SearchService;
 luminoSelf.searchService = searchService;

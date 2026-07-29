@@ -20,6 +20,7 @@ import type { ScriptToolbar } from "./menu-script";
 import type { SearchService } from "./lumino-search";
 import type { SettingsToolbar } from "./menu-settings";
 import type { PaintWidget } from "../paint/widget";
+import type { GithubService } from "./github-worker";
 
 // ============================================================================
 // 1. TOOLBARS & COMPONENT INSTANCES / CONSTRUCTORS
@@ -69,6 +70,9 @@ export interface GlobalToolbarsWindow
 
 	searchService?: SearchService;
 	SearchService?: typeof SearchService;
+
+	githubService?: GithubService;
+	GithubService: typeof GithubService;
 
 	layoutAdjuster?: LayoutAdjuster;
 	LayoutAdjuster?: typeof LayoutAdjuster;

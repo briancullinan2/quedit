@@ -406,6 +406,28 @@ async function header(argv, database)
 
 
 /**
+ * @returns {{fileId: string, contents: string} | undefined}
+ */
+function currentSession()
+{
+	for(let widget of commandBuildSelf.mainDock?.widgets() ?? [])
+	{
+		if(widget.constructor.name === 'AceEditorWidget')
+		{
+			/** @type {import('../editor/widget').AceEditorWidget} */
+			const editorWidget = /** @type {any} */ (widget);
+			const editorFilename = editorWidget._editor?.getSession().workspaceFileId;
+			if(editorFilename?.endsWith('.c') || editorFilename?.endsWith('.h'))
+			{
+				return { fileId: editorFilename, contents: editorWidget._editor?.getValue() ?? '' };
+			}
+		}
+	}
+}
+
+
+
+/**
  *
  * @param {string[]} argv
  * @param {string} database
@@ -415,7 +437,9 @@ async function header(argv, database)
  */
 async function compileWorker(argv, database, commandName, term)
 {
-	let file = argv[0] || currentSession();
+	const session = !argv[0] ? currentSession() : void 0;
+	const file = argv[0] ?? session?.fileId;
+	if(!file) return;
 
 	/** @type {string | undefined | null} */
 	let selected = argv[1] || commandBuildSelf.engineRepository || database;
@@ -514,7 +538,7 @@ async function compileWorker(argv, database, commandName, term)
 	if(commandBuildSelf.TERMINATE) return;
 
 	//let sha = filesRepo[selected][file].sha
-	let contents = await commandBuildSelf.cacheFile?.(commandBuildSelf.DB_STORE_NAME ?? '', ownerName, repoName, file);
+	let contents = session ? session.contents : await commandBuildSelf.cacheFile?.(commandBuildSelf.DB_STORE_NAME ?? '', ownerName, repoName, file);
 
 	if(commandBuildSelf.api)
 	{
@@ -627,6 +651,7 @@ rm /tmp/lcc420.i
 					srcPath,
 					'-o', outPath,
 				],
+				contents: contents,
 				database: selected,
 				toolsRepo: commandBuildSelf.toolsRepository,
 				paths: [outPath, srcPath],
@@ -645,6 +670,7 @@ rm /tmp/lcc420.i
 					srcPath,
 					'-o', obj,
 				],
+				contents: contents,
 				database: selected,
 				toolsRepo: commandBuildSelf.toolsRepository,
 				paths: [obj, srcPath],
@@ -696,10 +722,13 @@ async function clang(argv, database, commandName, term)
 		? commandBuildSelf.dirs.ENGINE_RELEASE
 		: commandBuildSelf.dirs.ENGINE_DEBUG;
 
-	let file = argv[0] || currentSession();
+	const session = !argv[0] ? currentSession() : void 0;
+	const file = argv[0] ?? session?.fileId;
+	if(!file) return;
+
 	return await commandBuildSelf.api?.compile?.({
 		CFLAGS: argv,
-		contents: aceEditor.getValue(),
+		contents: session?.contents,
 		width: term.cols,
 		input: file,
 		database: database,

@@ -1,11 +1,11 @@
 // @ts-check
 
+
 /** @type {import('./widget.d').TerminalCommandGitWindow} */
 const commandGitSelf = /** @type {any} */ (self);
 
 
 /**
- *
  * @param {string[]} argv
  */
 async function clone(argv)
@@ -58,72 +58,58 @@ async function statusCommand(args)
 	const owner = parts[0];
 	const repo = parts[1];
 	const branch = await commandGitSelf.getDefaultBranch?.(owner, repo);
-	const callbackId = `term_status_${Date.now()}`;
 
 	console.log(`Calculating changes for ${owner}/${repo} on branch [${branch}]...`);
 
-	return new Promise((resolve) =>
+	try
 	{
-		// Register an ad-hoc one-off message trap on your persistent background worker
-		const handleMessage = (e) =>
-		{
-			if(e.data.callbackId !== callbackId || e.data.type !== 'staging_status') return;
-
-			githubWorker.removeEventListener('message', handleMessage);
-			const { status, modified, added, deleted, error } = e.data;
-
-			if(status !== 'SUCCESS')
-			{
-				console.log(`Status check aborted: ${error || 'Unknown execution variance'}`);
-				return resolve();
-			}
-
-			const totalChanges = (modified?.length || 0) + (added?.length || 0) + (deleted?.length || 0);
-
-			if(totalChanges === 0)
-			{
-				console.log(`On branch ${branch}\nYour branch is up to date with origin.\n\nnothing to commit, working tree clean`);
-				return resolve();
-			}
-
-			console.log(`On branch ${branch}\nChanges tracking matrix compiled:\n`);
-
-			// Pretty print variations mapping standard colors or markers
-			if(modified && modified.length > 0)
-			{
-				console.log("  Modified files:");
-				modified.forEach(p => console.log(`     modified:   ${p}`));
-				console.log("");
-			}
-
-			if(added && added.length > 0)
-			{
-				console.log("  Untracked / Added files:");
-				added.forEach(p => console.log(`     new file:   ${p}`));
-				console.log("");
-			}
-
-			if(deleted && deleted.length > 0)
-			{
-				console.log("  Deleted files:");
-				deleted.forEach(p => console.log(`     deleted:    ${p}`));
-				console.log("");
-			}
-
-			resolve();
-		};
-
-		githubWorker.addEventListener('message', handleMessage);
-
-		githubWorker.postMessage({
+		const githubStateService = commandGitSelf.GithubService.getInstance();
+		const response = await githubStateService.executeCommand({
 			type: 'COMMIT_STATUS_CHECK',
 			owner,
 			repo,
 			branch,
-			gitHubToken: localStorage.getItem('github_token') || commandGitSelf.api?.github_token,
-			callbackId
+			gitHubToken: localStorage.getItem('github_token') || commandGitSelf.api?.github_token
 		});
-	});
+
+		const { modified = [], added = [], deleted = [] } = response;
+		const totalChanges = modified.length + added.length + deleted.length;
+
+		if(totalChanges === 0)
+		{
+			console.log(`On branch ${branch}\nYour branch is up to date with origin.\n\nnothing to commit, working tree clean`);
+			return;
+		}
+
+		console.log(`On branch ${branch}\nChanges tracking matrix compiled:\n`);
+
+		if(modified.length > 0)
+		{
+			console.log("  Modified files:");
+			modified.forEach(p => console.log(`     modified:   ${p}`));
+			console.log("");
+		}
+
+		if(added.length > 0)
+		{
+			console.log("  Untracked / Added files:");
+			added.forEach(p => console.log(`     new file:   ${p}`));
+			console.log("");
+		}
+
+		if(deleted.length > 0)
+		{
+			console.log("  Deleted files:");
+			deleted.forEach(p => console.log(`     deleted:    ${p}`));
+			console.log("");
+		}
+	} catch(err)
+	{
+		if(err instanceof Error)
+		{
+			console.log(`Status check aborted: ${err.message || err}`);
+		}
+	}
 }
 
 commandGitSelf.statusCommand = statusCommand;
@@ -146,49 +132,51 @@ async function push(args)
 	const owner = parts[0];
 	const repo = parts[1];
 	const branch = await commandGitSelf.getDefaultBranch?.(owner, repo);
-	const callbackId = `term_push_${Date.now()}`;
 
 	console.log(`Assembling commit data layout package context structures to push directly...`);
 
-	return new Promise((resolve) =>
+	try
 	{
-		const handleMessage = (e) =>
-		{
-			if(e.data.callbackId !== callbackId || e.data.type !== 'commit_status') return;
-
-			githubWorker.removeEventListener('message', handleMessage);
-			const { status, sha, error } = e.data;
-
-			if(status === 'SUCCESS')
-			{
-				console.log(`\nCommit verification success! Head reference synchronized cleanly.`);
-				console.log(`New Remote Commit OID: ${sha}`);
-
-				// Optional: Re-render matching UI subtrees to reflect reset modifications state
-				if(commandGitSelf.trees?.['#github'] && loadedGithubTreeNodes[repoPath])
-				{
-					// Force an instant re-sync evaluation tree updates pass
-					expandGithubTree(document.querySelector(`[data-id="${repoPath}"]`), repoPath);
-				}
-			} else
-			{
-				console.log(`\nPush execution sequence bricked: ${error}`);
-			}
-			resolve();
-		};
-
-		githubWorker.addEventListener('message', handleMessage);
-
-		githubWorker.postMessage({
+		const githubStateService = commandGitSelf.GithubService.getInstance();
+		const response = await githubStateService.executeCommand({
 			type: 'COMMIT_PUSH',
 			owner,
 			repo,
 			branch,
 			message: commitMessage,
-			gitHubToken: localStorage.getItem('github_token') || commandGitSelf.api?.github_token,
-			callbackId
+			gitHubToken: localStorage.getItem('github_token') || commandGitSelf.api?.github_token
 		});
-	});
+
+		console.log(`\nCommit verification success! Head reference synchronized cleanly.`);
+		if(response.sha)
+		{
+			console.log(`New Remote Commit OID: ${response.sha}`);
+		}
+
+		// Optional: Re-render matching UI subtrees to reflect reset modifications state
+		for(let widget of commandGitSelf.mainDock?.widgets() ?? [])
+		{
+			if(widget.constructor.name === 'GithubListWidget' && commandGitSelf.trees?.[repoPath])
+			{
+				/** @type {import('../filelist/widget-github').GithubListWidget} */
+				const githubTree = /** @type {any} */ (widget);
+				/** @type {HTMLElement} */
+				const node = /** @type {any} */ (githubTree.node.querySelector('[data-id="${repoPath}"]'));
+				if(node)
+				{
+					githubTree.expandDatabaseTree(node, repoPath);
+				}
+				break;
+			}
+		}
+	} catch(err)
+	{
+		if(err instanceof Error)
+		{
+			console.log(`\nPush execution sequence bricked: ${err.message || err}`);
+		}
+	}
 }
 
 commandGitSelf.push = push;
+
