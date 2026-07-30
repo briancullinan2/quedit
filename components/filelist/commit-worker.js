@@ -495,12 +495,12 @@ workerSelf2.onmessage = async function (e)
 		}
 		try
 		{
-			const finalSha = await workerSelf2.downloadRepoZip?.(owner, repo, branch, message, (progress) =>
+			const fileCount = await workerSelf2.downloadRepoNew?.(owner, repo, branch, message, (progress) =>
 			{
 				workerSelf2.postMessage({ type: 'download_status', status: 'PROGRESS', isPartial: true, progress, callbackId });
 			});
 
-			workerSelf2.postMessage({ type: 'download_status', status: 'SUCCESS', sha: finalSha, callbackId });
+			workerSelf2.postMessage({ type: 'download_status', status: 'SUCCESS', count: fileCount, callbackId });
 		} catch(err)
 		{
 			if(err instanceof Error)

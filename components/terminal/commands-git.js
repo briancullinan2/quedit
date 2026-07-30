@@ -148,7 +148,7 @@ async function clone(argv, database, commandName, term)
 		commandGitSelf.terminalWrite?.('Download error: ' + branch + ' error: ' + response.error + ' from ' + ownerName + '/' + repoName + '\n\r');
 	} else
 	{
-		commandGitSelf.terminalWrite?.('Checked out: ' + branch + '.zip (' + response.sha + ') from ' + ownerName + '/' + repoName + '\n\r');
+		commandGitSelf.terminalWrite?.('Checked out: ' + branch + '.zip (' + response.count + ' files) from ' + ownerName + '/' + repoName + '\n\r');
 	}
 
 }

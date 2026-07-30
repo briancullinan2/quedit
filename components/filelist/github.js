@@ -759,7 +759,7 @@ githubSelf.cacheFileInternal = cacheFileInternal;
  * @param {string} repo
  * @param {string} [branch='master']
  * @param {string | null} [database=null]
- * @param {undefined | null | ((progress: { loaded: number, total: number, percent: number }) => void)} [onProgress]
+ * @param {undefined | null | import('../bundle/github.d').ProgressFunction} [onProgress]
  * @returns {Promise<string | undefined | null>}
  */
 async function downloadRepoZip(owner, repo, branch = 'master', database = null, onProgress = null)
@@ -905,6 +905,196 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null, 
 		throw err;
 	}
 }
+
+
+/**
+ * Downloads a GitHub repository file-by-file using the Git Tree API and raw content streams,
+ * updating progress piece-wise across all files without needing JSZip or CORS-blocked zipball endpoints.
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} [branch='master']
+ * @param {string | null} [database=null]
+ * @param {undefined | null | import('../bundle/github.d').ProgressFunction} [onProgress]
+ * @returns {Promise<number>} Returns the total count of files downloaded and mounted.
+ */
+async function downloadRepoNew(owner, repo, branch = 'master', database = null, onProgress = null)
+{
+	if(!database)
+	{
+		database = `${owner}/${repo}`;
+	}
+
+	let token = typeof githubSelf.api !== 'undefined'
+		? githubSelf.api.github_token
+		: githubSelf.settingsManager?.get('github', 'githubToken');
+
+	/** @type {HeadersInit} */
+	const headers = {
+		'Accept': 'application/vnd.github+json'
+	};
+
+	if(token)
+	{
+		headers['Authorization'] = `Bearer ${token}`;
+	}
+
+	try
+	{
+		console.info(`[downloadRepoNew] Fetching Git tree manifest for ${owner}/${repo} [${branch}]...`);
+
+		if(typeof onProgress === 'function')
+		{
+			onProgress({ loaded: 0, total: 0, percent: 0, stage: 'Fetching Tree' });
+		}
+
+		// 1. Get complete recursive tree structure
+		const treeResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`, {
+			headers
+		});
+
+		if(!treeResponse.ok)
+		{
+			throw new Error(`Failed to fetch git tree structure: HTTP ${treeResponse.status}`);
+		}
+
+		/** @type {({tree: import('../bundle/github-types').GitHubFileEntry[]})} */
+		const treeData = await treeResponse.json();
+
+		if(!treeData.tree || !Array.isArray(treeData.tree))
+		{
+			throw new Error('Invalid or empty Git tree object returned by API.');
+		}
+
+		// 2. Filter file blobs (type === 'blob') and calculate absolute size total upfront
+		/** @type {import('../bundle/github-types').GitHubFileEntry[]} */
+		const blobItems = treeData.tree.filter((item) => item.type === 'blob');
+
+		let totalBytes = 0;
+		blobItems.forEach(item =>
+		{
+			totalBytes += item.size || 0;
+		});
+
+		console.info(`[downloadRepoNew] Found ${blobItems.length} files (${totalBytes} total bytes). Downloading...`);
+
+		let cumulativeLoadedBytes = 0;
+
+		// Helper to report global progress state
+		const reportProgress = (stage = 'Downloading') =>
+		{
+			if(typeof onProgress === 'function')
+			{
+				const percent = totalBytes > 0
+					? Math.min(100, Math.round((cumulativeLoadedBytes / totalBytes) * 100))
+					: 0;
+
+				onProgress({
+					loaded: cumulativeLoadedBytes,
+					total: totalBytes,
+					percent,
+					stage
+				});
+			}
+		};
+
+		reportProgress('Downloading');
+
+		// 3. Download files piece-wise via stream and mount directly to virtual storage
+		for(let i = 0; i < blobItems.length; i++)
+		{
+			const item = blobItems[i];
+			const fullPath = githubSelf.path.join(githubSelf.config.MOUNT_DIR, item.path);
+			const expectedFileSize = item.size || 0;
+
+			// Use raw.githubusercontent.com for public files (completely bypasses API rate limits & CORS)
+			// Fall back to API raw media type if token is present for private repositories
+			const rawUrl = token
+				? `https://api.github.com/repos/${owner}/${repo}/contents/${item.path}?ref=${branch}`
+				: `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`;
+
+			/** @type {HeadersInit} */
+			const fileHeaders = token
+				? { ...headers, 'Accept': 'application/vnd.github.v3.raw' }
+				: {};
+
+			const fileResponse = await fetch(rawUrl, { headers: fileHeaders });
+
+			if(!fileResponse.ok)
+			{
+				console.warn(`[downloadRepoNew] Could not fetch file ${item.path} (HTTP ${fileResponse.status}). Skipping...`);
+				cumulativeLoadedBytes += expectedFileSize;
+				reportProgress('Downloading');
+				continue;
+			}
+
+			if(!fileResponse.body)
+			{
+				throw new Error(`ReadableStream not available for file stream: ${item.path}`);
+			}
+
+			const reader = fileResponse.body.getReader();
+			/** @type {Uint8Array[]} */
+			const chunks = [];
+			let fileDownloadedBytes = 0;
+
+			// Stream reading chunks piece-wise
+			while(true)
+			{
+				const { done, value } = await reader.read();
+
+				if(done)
+				{
+					break;
+				}
+
+				chunks.push(value);
+				fileDownloadedBytes += value.length;
+				cumulativeLoadedBytes += value.length;
+
+				reportProgress('Downloading');
+			}
+
+			// Concatenate binary chunks for this specific file
+			const fileBuffer = new Uint8Array(fileDownloadedBytes);
+			let offset = 0;
+			for(const chunk of chunks)
+			{
+				fileBuffer.set(chunk, offset);
+				offset += chunk.length;
+			}
+
+			// Mount directly into virtual file system & IndexedDB
+			githubSelf.FS.virtual[fullPath] = {
+				timestamp: new Date(),
+				mode: githubSelf.FS_FILE ?? (0o100000 | 0o666),
+				contents: fileBuffer,
+				path: fullPath,
+				sha: item.sha || (await getGitShaBrowser(fileBuffer)),
+				parent: fullPath.substring(0, fullPath.lastIndexOf('/'))
+			};
+
+			githubSelf.putRecord?.(githubSelf.DB_STORE_NAME ?? '', githubSelf.FS.virtual[fullPath], database);
+		}
+
+		reportProgress('Complete');
+		console.info(`[downloadRepoNew] Successfully mounted ${blobItems.length} files to virtual FS.`);
+
+		return blobItems.length;
+
+	} catch(err)
+	{
+		if(err instanceof Error)
+		{
+			console.error(`[downloadRepoNew] Failed downloading repo structure: ${err.message}`);
+		}
+		throw err;
+	}
+}
+
+
+githubSelf.downloadRepoNew = downloadRepoNew;
+
 
 /**
  *

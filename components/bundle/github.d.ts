@@ -31,6 +31,14 @@ export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, Api
 	getGitSha256Browser?: (content: string | Uint8Array | ArrayBuffer) => Promise<string>;
 	getAuthenticatedUser?: () => Promise<any>;
 
+	downloadRepoNew(
+		owner: string,
+		repo: string,
+		branch: string = 'master',
+		database: string | null = null,
+		onProgress?: ProgressFunction | null
+	): Promise<number>;
+
 	cacheFile?: (
 		storeName: string,
 		repoOwner: string,
