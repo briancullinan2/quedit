@@ -1000,13 +1000,14 @@ async function downloadRepoNew(owner, repo, branch = 'master', database = null, 
 
 		reportProgress('Downloading');
 
-		// 3. Download files piece-wise via stream and mount directly to virtual storage
-		for(let i = 0; i < blobItems.length; i++)
+		/**
+		 *
+		 * @param {import('../bundle/github-types').GitHubFileEntry} item
+		 * @param {string} fullPath
+		 * @param {number} expectedFileSize
+		 */
+		const fetchAndMount = async function (item, fullPath, expectedFileSize)
 		{
-			const item = blobItems[i];
-			const fullPath = githubSelf.path.join(githubSelf.config.MOUNT_DIR, item.path);
-			const expectedFileSize = item.size || 0;
-
 			// Use raw.githubusercontent.com for public files (completely bypasses API rate limits & CORS)
 			// Fall back to API raw media type if token is present for private repositories
 			const rawUrl = token
@@ -1025,7 +1026,7 @@ async function downloadRepoNew(owner, repo, branch = 'master', database = null, 
 				console.warn(`[downloadRepoNew] Could not fetch file ${item.path} (HTTP ${fileResponse.status}). Skipping...`);
 				cumulativeLoadedBytes += expectedFileSize;
 				reportProgress('Downloading');
-				continue;
+				return;
 			}
 
 			if(!fileResponse.body)
@@ -1075,6 +1076,18 @@ async function downloadRepoNew(owner, repo, branch = 'master', database = null, 
 			};
 
 			githubSelf.putRecord?.(githubSelf.DB_STORE_NAME ?? '', githubSelf.FS.virtual[fullPath], database);
+		};
+
+		const CONCURRENCY_LIMIT = 8;
+		for(let i = 0; i < blobItems.length; i += CONCURRENCY_LIMIT)
+		{
+			const chunk = blobItems.slice(i, i + CONCURRENCY_LIMIT);
+			await Promise.all(chunk.map(item =>
+			{
+				const fullPath = githubSelf.path.join(githubSelf.config.MOUNT_DIR, item.path);
+				const expectedFileSize = item.size || 0;
+				return fetchAndMount(item, fullPath, expectedFileSize);
+			}));
 		}
 
 		reportProgress('Complete');

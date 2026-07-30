@@ -9,6 +9,11 @@ const loggerSelf = /** @type {any} */ (self);
 /**
  * Safely inspects and extracts properties from complex engine objects,
  * walking up prototype chains without invoking dangerous getters.
+ * @param {any} obj
+ * @param {number} maxDepth
+ * @param {number} currentDepth
+ * @param {Set<any>} cache
+ * @returns {string}
  */
 function rebuildComplexObjectAsText(obj, maxDepth = 3, currentDepth = 0, cache = new Set())
 {
@@ -85,6 +90,11 @@ function rebuildComplexObjectAsText(obj, maxDepth = 3, currentDepth = 0, cache =
 }
 
 
+/**
+ *
+ * @param {any} arg
+ * @returns
+ */
 function formatMessageItem(arg)
 {
 	if(typeof arg === 'string')
@@ -132,6 +142,12 @@ function formatMessageItem(arg)
 	return String(arg);
 }
 
+/**
+ *
+ * @param {string} level
+ * @param {any[]} args
+ * @returns
+ */
 const formatMessage = (level, args) =>
 {
 	// Clean execution pass: Map items down their own independent serialization windows
@@ -149,52 +165,73 @@ const originalConsole = {
 
 loggerSelf.originalConsole = originalConsole;
 
+/**
+ *
+ * @param  {...any} args
+ */
 self.console.log = (...args) =>
 {
 	const formatted = formatMessage('log', args);
 	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
 	const source = [category, 'log', ...trailingFiles, func,
-		rawFile.split('/').pop().replace('.js', ''), rawFile
+		rawFile.split('/').pop()?.replace('.js', ''), rawFile
 	];
 	if(typeof loggerSelf.api !== 'undefined' && typeof loggerSelf.api.hostWrite != 'undefined' && !loggerSelf.api.worker) loggerSelf.api.hostWrite(formatted, source);
 	if(typeof originalConsole != 'undefined') originalConsole.log(...args);
 };
 
+/**
+ *
+ * @param  {...any} args
+ */
 self.console.warn = (...args) =>
 {
 	const formatted = formatMessage('warn', args);
 	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
 	const source = [category, 'warn', ...trailingFiles, func,
-		rawFile.split('/').pop().replace('.js', ''), rawFile
+		rawFile.split('/').pop()?.replace('.js', ''), rawFile
 	];
 	if(typeof loggerSelf.api !== 'undefined' && typeof loggerSelf.api.hostWrite != 'undefined' && !loggerSelf.api.worker) loggerSelf.api.hostWrite(formatted, source);
 	if(typeof originalConsole != 'undefined') originalConsole.warn(...args);
 };
 
+/**
+ *
+ * @param  {...any} args
+ */
 self.console.error = (...args) =>
 {
 	const formatted = formatMessage('error', args);
 	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
 	const source = [category, 'error', ...trailingFiles, func,
-		rawFile.split('/').pop().replace('.js', ''), rawFile
+		rawFile.split('/').pop()?.replace('.js', ''), rawFile
 	];
 	if(typeof loggerSelf.api !== 'undefined' && typeof loggerSelf.api.hostWrite != 'undefined' && !loggerSelf.api.worker) loggerSelf.api.hostWrite(formatted, source);
 	if(typeof originalConsole != 'undefined') originalConsole.error(...args);
 };
 
+/**
+ *
+ * @param  {...any} args
+ */
 self.console.info = (...args) =>
 {
 	const formatted = formatMessage('info', args);
 	const [func, trailingFiles, category, rawFile] = getCalleeInfoFromStackTrace();
 	const source = [category, 'info', ...trailingFiles, func,
-		rawFile.split('/').pop().replace('.js', ''), rawFile
+		rawFile.split('/').pop()?.replace('.js', ''), rawFile
 	];
 	if(typeof loggerSelf.api !== 'undefined' && typeof loggerSelf.api.hostWrite != 'undefined' && !loggerSelf.api.worker) loggerSelf.api.hostWrite(formatted, source);
 	if(typeof originalConsole != 'undefined') originalConsole.info(...args);
 };
 
 
-
+/**
+ *
+ * @param {string} text
+ * @param {number} maxCharsPerRow
+ * @returns
+ */
 function forceLineWrap(text, maxCharsPerRow = 80)
 {
 	const rows = [];
@@ -248,7 +285,12 @@ function forceLineWrap(text, maxCharsPerRow = 80)
 	return rows.join('\n\r');
 }
 
-
+/**
+ *
+ * @param {string} msg
+ * @param {string[]} source
+ * @returns
+ */
 function specialWrite(msg, source)
 {
 	if(!msg) return;
@@ -286,7 +328,8 @@ function specialWrite(msg, source)
 
 
 
-// Mapping system to identify active runtime environments based on trailing stack files
+// Mapping system to identify active runtime environments based on trailing stack files\
+/** @type {Record<string, string>} */
 const PIPELINE_CATEGORIES = {
 	'make': 'build',
 	'compiler': 'build',
@@ -297,6 +340,10 @@ const PIPELINE_CATEGORIES = {
 	'shared': 'build'
 };
 
+/**
+ *
+ * @returns {import('../bundle/logging.d').CalleeInfo}
+ */
 function getCalleeInfoFromStackTrace()
 {
 	try
@@ -304,9 +351,14 @@ function getCalleeInfoFromStackTrace()
 		throw new Error();
 	} catch(error)
 	{
-		if(!(error instanceof Error) || !error.stack) return ['unknown', [], 'unknown'];
+		if(!(error instanceof Error) || !error.stack) return ['unknown', [], 'unknown', ''];
 		const stackLines = error.stack.split('\n');
 
+		/**
+		 *
+		 * @param {string} line
+		 * @returns {({func: string, file: string}) | null}
+		 */
 		const parseLine = (line) =>
 		{
 			let match = line.match(/at\s+([^\s(]+)\s+\((.+):[0-9]+:[0-9]+\)/);
@@ -352,7 +404,7 @@ function getCalleeInfoFromStackTrace()
 			}
 
 			// Isolate clean script names (e.g., "file:///path/make.js" -> "make")
-			const scriptName = parsed.file.split('/').pop().replace('.js', '');
+			const scriptName = parsed.file.split('/').pop()?.replace('.js', '') ?? parsed.file;
 
 			if(!uniqueNames.has(scriptName))
 			{

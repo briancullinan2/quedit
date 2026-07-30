@@ -241,7 +241,7 @@ export async function treeHandler(selector: string, e: Event): Promise<void>
 				await filelistSelf.triggerPanelRoute?.('paint', filelistSelf.mainDock);
 			}
 
-			filelistSelf.PaintWidget.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
+			filelistSelf.PaintWidget?.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
 		} else
 		{
 			if(hasSequentialBinaryRegex.test(sampleText))

@@ -55,6 +55,7 @@ compilerSelf.path = {
 	},
 	resolve: (...parts) =>
 	{
+		/** @type {string[]} */
 		let resolvedSegments = [];
 
 		for(const part of parts)

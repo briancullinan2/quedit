@@ -29,11 +29,15 @@ export interface GithubTransactionState
 export class GithubService
 {
 	private static instance: GithubService;
-	private worker: Worker;
+	private worker?: Worker;
 	private activeTransactions: Map<string, GithubTransactionState> = new Map();
 
 	private constructor()
 	{
+		if(GithubService.instance)
+		{
+			return GithubService.instance;
+		}
 		this.worker = new Worker('/components/filelist/commit-worker.js');
 		this.worker.onmessage = this.handleWorkerMessage.bind(this);
 	}
@@ -71,7 +75,7 @@ export class GithubService
 
 			this.activeTransactions.set(callbackId, state);
 
-			this.worker.postMessage({
+			this.worker?.postMessage({
 				...payload,
 				callbackId
 			});
@@ -133,7 +137,7 @@ export class GithubService
 
 	public terminate(): void
 	{
-		this.worker.terminate();
+		this.worker?.terminate();
 		this.activeTransactions.clear();
 	}
 }

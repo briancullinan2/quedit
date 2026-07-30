@@ -505,7 +505,7 @@ const onAnyMessage = async event =>
 			const rx = workerSelf.globToRegex?.(filename);
 			for(let path of Object.keys(workerSelf.FS.virtual))
 			{
-				if(rx.test(path))
+				if(rx?.test(path))
 				{
 					delete workerSelf.FS.virtual[filename];
 					console.log(`Removing ${filename} from worker memory\n\r`);

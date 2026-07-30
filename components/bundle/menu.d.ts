@@ -63,7 +63,7 @@ export interface GlobalToolbarsWindow
 	aceEditorWidget?: AceEditorWidget;
 	AceEditorWidget?: typeof AceEditorWidget;
 
-	PaintWidget: typeof PaintWidget;
+	PaintWidget?: typeof PaintWidget;
 
 	spawnPoints: Record<string, string>;
 	searchWorker?: Worker;
@@ -72,7 +72,7 @@ export interface GlobalToolbarsWindow
 	SearchService?: typeof SearchService;
 
 	githubService?: GithubService;
-	GithubService: typeof GithubService;
+	GithubService?: typeof GithubService;
 
 	layoutAdjuster?: LayoutAdjuster;
 	LayoutAdjuster?: typeof LayoutAdjuster;

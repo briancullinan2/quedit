@@ -1,7 +1,7 @@
 import { Message } from '@lumino/messaging';
 import { FileListWidget } from './widget';
 import Tree from './tree.js';
-import { GithubService, StagingStatusPayload } from '../bundle/github-worker';
+import type { GithubService, StagingStatusPayload } from '../bundle/github-worker';
 import type { NestedTreeNode } from '../bundle/github-tools';
 import type { LuminoLayoutWindow } from '../bundle/lumino.d';
 import type { GlobalToolbarsWindow } from '../bundle/menu.d';
@@ -183,7 +183,7 @@ export class GithubListWidget extends FileListWidget
 			// LAYER B: Execute state check through service with piecewise progress support
 			const branch = await filelistSelf.getDefaultBranch?.(parts[0], parts[1]);
 
-			await GithubService.getInstance().executeCommand(
+			await filelistSelf.GithubService?.getInstance().executeCommand(
 				{
 					type: 'COMMIT_STATUS_CHECK',
 					owner: parts[0],

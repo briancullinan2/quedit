@@ -271,7 +271,7 @@ sharedSelf.API = (function ()
 		 * @param {number | undefined} len
 		 * @returns
 		 */
-		readStr(o, len)
+		readStr(o, len = void 0)
 		{
 			return readStr(this.u8, o, len);
 		}
@@ -706,41 +706,41 @@ sharedSelf.API = (function ()
 		 */
 		host_write(fd, iovs, iovs_len, nwritten_out)
 		{
-			this.hostMem_.check();
+			this.hostMem_?.check();
 			assert(fd <= 2);
 			let size = 0;
 			let str = '';
 			for(let i = 0; i < iovs_len; ++i)
 			{
-				const buf = this.hostMem_.read32(iovs);
+				const buf = this.hostMem_?.read32(iovs);
 				iovs += 4;
-				const len = this.hostMem_.read32(iovs);
+				const len = this.hostMem_?.read32(iovs);
 				iovs += 4;
-				str += this.hostMem_.readStr(buf, len);
+				str += this.hostMem_?.readStr(buf, len);
 				size += len;
 			}
-			this.hostMem_.write32(nwritten_out, size);
+			this.hostMem_?.write32(nwritten_out, size);
 			this.hostWrite(str);
 			return ESUCCESS;
 		}
 
 		host_read(fd, iovs, iovs_len, nread)
 		{
-			this.hostMem_.check();
+			this.hostMem_?.check();
 			assert(fd === 0);
 			let size = 0;
 			for(let i = 0; i < iovs_len; ++i)
 			{
-				const buf = this.hostMem_.read32(iovs);
+				const buf = this.hostMem_?.read32(iovs);
 				iovs += 4;
-				const len = this.hostMem_.read32(iovs);
+				const len = this.hostMem_?.read32(iovs);
 				iovs += 4;
 				const lenToWrite = Math.min(len, (this.stdinStr.length - this.stdinStrPos));
 				if(lenToWrite === 0)
 				{
 					break;
 				}
-				this.hostMem_.write(buf, this.stdinStr.substr(this.stdinStrPos, lenToWrite));
+				this.hostMem_?.write(buf, this.stdinStr.substr(this.stdinStrPos, lenToWrite));
 				size += lenToWrite;
 				this.stdinStrPos += lenToWrite;
 				if(lenToWrite !== len)
@@ -750,10 +750,15 @@ sharedSelf.API = (function ()
 			}
 			// For logging
 			// this.hostWrite("Read "+ size + "bytes, pos: "+ this.stdinStrPos + "\n");
-			this.hostMem_.write32(nread, size);
+			this.hostMem_?.write32(nread, size);
 			return ESUCCESS;
 		}
 
+		/**
+		 *
+		 * @param {number} buf
+		 * @param {number} len
+		 */
 		memfs_log(buf, len)
 		{
 			this.mem.check();
@@ -766,10 +771,10 @@ sharedSelf.API = (function ()
 		/*
 
 		copy_out(clang_dst, memfs_src, size) {
-		  this.hostMem_.check();
+		  this.hostMem_?.check();
 		  this.mem.check();
 
-		  const liveHostBuffer = this.hostMem_.buffer || Module.memory.buffer;
+		  const liveHostBuffer = this.hostMem_?.buffer || Module.memory.buffer;
 		  const liveMemfsBuffer = this.exports?.memory?.buffer || this.mem.buffer;
 
 		  // ─── SCATTER-GATHER INTERCEPTION GHOST ───
@@ -811,10 +816,10 @@ sharedSelf.API = (function ()
 
 		copy_in(memfs_dst, clang_src, size) {
 		  this.mem.check();
-		  this.hostMem_.check();
+		  this.hostMem_?.check();
 
 		  const liveMemfsBuffer = this.exports?.memory?.buffer || this.mem.buffer;
-		  const liveHostBuffer = this.hostMem_.buffer || Module.memory.buffer;
+		  const liveHostBuffer = this.hostMem_?.buffer || Module.memory.buffer;
 
 		  if (clang_src < 65536 && size > 0) {
 			try {
@@ -846,8 +851,8 @@ sharedSelf.API = (function ()
 
 		copy_out(clang_dst, memfs_src, size)
 		{
-			this.hostMem_.check();
-			const dst = new Uint8Array(this.hostMem_.buffer, clang_dst, size);
+			this.hostMem_?.check();
+			const dst = new Uint8Array(this.hostMem_?.buffer, clang_dst, size);
 			this.mem.check();
 			const src = new Uint8Array(this.mem.buffer, memfs_src, size);
 			// console.log(`copy_out(${clang_dst.toString(16)}, ${memfs_src.toString(16)}, ${size})`);
@@ -860,8 +865,8 @@ sharedSelf.API = (function ()
 			const dst = new Uint8Array(this.mem.buffer, memfs_dst, size);
 			if(this.hostMem_)
 			{
-				this.hostMem_.check();
-				const src = new Uint8Array(this.hostMem_.buffer, clang_src, size);
+				this.hostMem_?.check();
+				const src = new Uint8Array(this.hostMem_?.buffer, clang_src, size);
 				// console.log(`copy_in(${memfs_dst.toString(16)}, ${clang_src.toString(16)}, ${size})`);
 				dst.set(src);
 			}
@@ -872,6 +877,15 @@ sharedSelf.API = (function ()
 
 	class App
 	{
+		/**
+		 *
+		 * @param {API} api
+		 * @param {} hostWrite
+		 * @param {*} module
+		 * @param {*} sysrootFilename
+		 * @param {*} name
+		 * @param  {...any} args
+		 */
 		constructor(api, hostWrite, module, sysrootFilename, name, ...args)
 		{
 			this.module = module;
@@ -1640,10 +1654,11 @@ sharedSelf.API = (function ()
 		{
 			this.pid = 0;
 			this.options = options;
+			/** @type {Record<string, WebAssembly.Module>} */
 			this.moduleCache = {};
 			this.readBuffer = options.readBuffer;
 			this.compileStreaming = options.compileStreaming;
-			Module.hostWrite = this.hostWrite = options.hostWrite;
+			this.hostWrite = Module.hostWrite = options.hostWrite;
 			this.clangFilename = options.clang || 'clang.wasm';
 			this.lldFilename = options.lld || 'lld.wasm';
 			this.sysrootFilename = options.sysroot || 'sysroot.tar';
@@ -1674,7 +1689,10 @@ sharedSelf.API = (function ()
 
 		}
 
-
+		/**
+		 *
+		 * @param {string} message
+		 */
 		hostLog(message)
 		{
 			const timestamp = new Date().toLocaleTimeString();
@@ -1682,12 +1700,18 @@ sharedSelf.API = (function ()
 			const source = [
 				...trailingFiles,     // <-- ['make', 'shared', 'worker']
 				func,
-				rawFile.split('/').pop().replace('.js', ''),
+				rawFile.split('/').pop()?.replace('.js', ''),
 				rawFile
 			];
 			this.hostWrite(message, source);
 		}
 
+		/**
+		 *
+		 * @param {string} message
+		 * @param {Promise<any>} promise
+		 * @returns
+		 */
 		async hostLogAsync(message, promise)
 		{
 			const start = +new Date();
@@ -1715,7 +1739,11 @@ sharedSelf.API = (function ()
 			}
 		}
 
-
+		/**
+		 *
+		 * @param {string} name
+		 * @returns
+		 */
 		commonPaths(name)
 		{
 			let result = [
@@ -1939,6 +1967,11 @@ sharedSelf.API = (function ()
 		}
 
 
+		/**
+		 *
+		 * @param {MemFS} memfs
+		 * @param {string} filename
+		 */
 		async untar(memfs, filename)
 		{
 
@@ -1954,7 +1987,12 @@ sharedSelf.API = (function ()
 		}
 
 
-		extract(options, database)
+		/**
+		 *
+		 * @param {import('./worker').WorkerCommandOptions} options
+		 * @param {string | null | undefined} database
+		 */
+		extract(options, database = null)
 		{
 			if(options.configuration)
 				this.configuration = options.configuration;
@@ -1975,6 +2013,12 @@ sharedSelf.API = (function ()
 		}
 
 
+		/**
+		 *
+		 * @param {string} filePath
+		 * @param {boolean} alwaysMkdir
+		 * @returns
+		 */
 		async header(filePath, alwaysMkdir = false)
 		{
 			try
@@ -2011,6 +2055,11 @@ sharedSelf.API = (function ()
 			}
 		}
 
+		/**
+		 *
+		 * @param {string | undefined | null} database
+		 * @returns
+		 */
 		async upload(database = null)
 		{
 			await this.ready;
@@ -2019,7 +2068,11 @@ sharedSelf.API = (function ()
 		}
 
 
-
+		/**
+		 *
+		 * @param {import('./worker').WorkerCommandOptions} options
+		 * @returns
+		 */
 		async compile(options)
 		{
 
@@ -2119,6 +2172,11 @@ sharedSelf.API = (function ()
 			return result;
 		}
 
+		/**
+		 *
+		 * @param {import('./worker').WorkerCommandOptions} options
+		 * @returns
+		 */
 		async compileToAssembly(options)
 		{
 
@@ -2159,6 +2217,11 @@ sharedSelf.API = (function ()
 			return sharedSelf.FS.virtual[output];
 		}
 
+		/**
+		 *
+		 * @param {import('./worker').WorkerCommandOptions} options
+		 * @returns
+		 */
 		async compileTo6502(options)
 		{
 
@@ -2183,6 +2246,11 @@ sharedSelf.API = (function ()
 			return sharedSelf.FS.virtual[output];
 		}
 
+		/**
+		 *
+		 * @param {import('./worker').WorkerCommandOptions} options
+		 * @returns
+		 */
 		async link(options)
 		{
 
@@ -2277,7 +2345,11 @@ sharedSelf.API = (function ()
 			return sharedSelf.FS.virtual[virtualWasm];
 		}
 
-
+		/**
+		 *
+		 * @param {string} selected
+		 * @param {string} mode
+		 */
 		async build(selected, mode = 'all')
 		{
 
@@ -2320,7 +2392,12 @@ sharedSelf.API = (function ()
 
 		}
 
-
+		/**
+		 *
+		 * @param {WebAssembly.Module | App} module
+		 * @param  {...any} args
+		 * @returns
+		 */
 		runSync(module, ...args)
 		{
 
@@ -2375,7 +2452,7 @@ sharedSelf.API = (function ()
 
 		/**
 		 *
-		 * @param {WebAssembly.Module} module
+		 * @param {WebAssembly.Module | App} module
 		 * @param  {...any} args
 		 * @returns
 		 */
@@ -2439,6 +2516,11 @@ sharedSelf.API = (function ()
 			return module.output || stillRunning ? module : null;
 		}
 
+		/**
+		 *
+		 * @param {import('./worker').WorkerCommandOptions} options
+		 * @returns
+		 */
 		async compileLinkRun(options)
 		{
 

@@ -121,8 +121,8 @@ async function clone(argv, database, commandName, term)
 
 	commandGitSelf.terminalWrite?.('Downloaded file tree: ' + branch + ' from ' + ownerName + '/' + repoName + '\n\r');
 
-	const githubStateService = commandGitSelf.GithubService.getInstance();
-	const response = await githubStateService.executeCommand({
+	const githubStateService = commandGitSelf.GithubService?.getInstance();
+	const response = await githubStateService?.executeCommand({
 		type: 'DOWNLOAD_REPOSITORY',
 		owner: ownerName,
 		repo: repoName,
@@ -143,12 +143,12 @@ async function clone(argv, database, commandName, term)
 		}
 	});
 
-	if(response.status === 'ERROR')
+	if(response?.status === 'ERROR')
 	{
 		commandGitSelf.terminalWrite?.('Download error: ' + branch + ' error: ' + response.error + ' from ' + ownerName + '/' + repoName + '\n\r');
 	} else
 	{
-		commandGitSelf.terminalWrite?.('Checked out: ' + branch + '.zip (' + response.count + ' files) from ' + ownerName + '/' + repoName + '\n\r');
+		commandGitSelf.terminalWrite?.('Checked out: ' + branch + '.zip (' + response?.count + ' files) from ' + ownerName + '/' + repoName + '\n\r');
 	}
 
 }
@@ -185,8 +185,8 @@ async function statusCommand(args)
 
 	try
 	{
-		const githubStateService = commandGitSelf.GithubService.getInstance();
-		const response = await githubStateService.executeCommand({
+		const githubStateService = commandGitSelf.GithubService?.getInstance();
+		const response = await githubStateService?.executeCommand({
 			type: 'COMMIT_STATUS_CHECK',
 			owner,
 			repo,
@@ -260,8 +260,8 @@ async function push(args)
 
 	try
 	{
-		const githubStateService = commandGitSelf.GithubService.getInstance();
-		const response = await githubStateService.executeCommand({
+		const githubStateService = commandGitSelf.GithubService?.getInstance();
+		const response = await githubStateService?.executeCommand({
 			type: 'COMMIT_PUSH',
 			owner,
 			repo,
@@ -271,7 +271,7 @@ async function push(args)
 		});
 
 		console.log(`\nCommit verification success! Head reference synchronized cleanly.`);
-		if(response.sha)
+		if(response?.sha)
 		{
 			console.log(`New Remote Commit OID: ${response.sha}`);
 		}

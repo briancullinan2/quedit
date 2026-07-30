@@ -83,6 +83,8 @@ export class ResponsiveManager
 	private _savedLayoutState: DockPanel.ILayoutConfig | null = null;
 	private _isMobileCollapsed?: boolean = undefined;
 	private _isWidescreenSplit?: boolean = undefined;
+	alreadyResizing: boolean = false;
+	resizeTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	private constructor() { }
 
@@ -107,31 +109,41 @@ export class ResponsiveManager
 		mainDock: DockPanel
 	): Promise<void>
 	{
-		isDevToolsOpen();
-
-		const currentWidgets = Array.from(mainDock.widgets());
-
-		// 0. Pre-check screen dimensions & collapse tabs/panels if on mobile screens
-		this._handleResponsiveCollapse(mainDock);
-
-		// 1. Process responsive visibility rules & directions
-		this._updateVisibility(workspaceBox, toolbar);
-
-		// 2. Measure wrapped DOM layout sizes & update Lumino layout limits
-		this._recalculateToolbarHeight(headerRow);
-		await this._recalculateDockTabHeights(mainDock);
-
-		// 3. Process layout constraints if widget viewport configurations change
-		this._adjustDockPanelLayout(mainDock, currentWidgets);
-
-		// 4. Run synchronized layout updates cascading down the layout trees
-		requestAnimationFrame(() =>
+		if(this.resizeTimeout)
 		{
-			headerRow.fit();
-			mainDock.fit();
-			workspaceBox.fit();
-			windowRoot.update();
-		});
+			clearTimeout(this.resizeTimeout);
+		}
+		this.resizeTimeout = setTimeout(async () =>
+		{
+
+			isDevToolsOpen();
+
+			const currentWidgets = Array.from(mainDock.widgets());
+
+			// 0. Pre-check screen dimensions & collapse tabs/panels if on mobile screens
+			this._handleResponsiveCollapse(mainDock);
+
+			// 1. Process responsive visibility rules & directions
+			this._updateVisibility(workspaceBox, toolbar);
+
+			// 2. Measure wrapped DOM layout sizes & update Lumino layout limits
+			this._recalculateToolbarHeight(headerRow);
+			await this._recalculateDockTabHeights(mainDock);
+
+			// 3. Process layout constraints if widget viewport configurations change
+			this._adjustDockPanelLayout(mainDock, currentWidgets);
+
+			// 4. Run synchronized layout updates cascading down the layout trees
+			requestAnimationFrame(() =>
+			{
+				headerRow.fit();
+				mainDock.fit();
+				workspaceBox.fit();
+				windowRoot.update();
+				this.resizeTimeout = null;
+			});
+		}, 100);
+
 	}
 
 
@@ -591,11 +603,12 @@ export class ResponsiveManager
 	 */
 	private _adjustDockPanelLayout(mainDock: DockPanel, currentWidgets: any[]): void
 	{
-		if(currentWidgets.length <= this._prevWidgetCount)
+		if(currentWidgets.length <= this._prevWidgetCount || this.alreadyResizing)
 		{
 			this._prevWidgetCount = currentWidgets.length;
 			return;
 		}
+		this.alreadyResizing = true;
 
 		const layout = mainDock.saveLayout() as unknown as { main: LuminoLayoutNode | null; };
 		if(!layout || !layout.main)
@@ -626,6 +639,7 @@ export class ResponsiveManager
 			mainDock.restoreLayout(layout as any);
 		}
 
+		this.alreadyResizing = false;
 	}
 
 	/**

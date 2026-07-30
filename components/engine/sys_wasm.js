@@ -203,7 +203,7 @@ async function runEngine(database = null, noBounce = false) {
         return
 
     if (!database)
-        database = owner.value + '/' + repository.value
+        database = window.RepositoryToolbar?.owner?.value + '/' + window.RepositoryToolbar?.repository?.value
 
 
     let CONFIGURATION = configuration.value !== 'debug'

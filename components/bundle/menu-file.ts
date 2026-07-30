@@ -81,9 +81,9 @@ const FILE_MENU: MenuConfig = {
 	}, {
 		divider: true
 	}, {
-		name: "Export",
+		name: "Save",
 		ellipsis: true,
-		shortcut: "S",
+		shortcut: "Ctrl+S",
 		target: "file/save.export",
 		iconClass: "bx bx-export"
 	}, {

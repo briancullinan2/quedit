@@ -228,9 +228,7 @@ compileSelf.loadStyle = loadStyle;
 
 export async function loadScript(src: string): Promise<any>
 {
-	console.log('Fetching bullshit: ' + src);
-	const [targetUrl, isModule] = await fetchAndStore(src);
-
+	const targetUrl = src.replace(/^\.?\//, '/base/');
 	if(document.head.querySelector(`script[src*="${targetUrl}"]`))
 	{
 		console.warn('Already loaded bullshit: ' + src);
@@ -238,27 +236,28 @@ export async function loadScript(src: string): Promise<any>
 	}
 
 	// Create the promise and cache it immediately to block secondary asset creation runs
-	const scriptPromise = new Promise<void>((resolve, reject) =>
-	{
-		const script: HTMLScriptElement = document.createElement('script');
-		script.src = targetUrl + '?t=' + Date.now() + '&local-csp=true';
-		script.type = isModule ? 'module' : 'text/javascript';
-		script.async = false; // Preserves literal script tree order
-		console.log('Sourcing bullshit: ' + targetUrl);
-
-		script.onload = () =>
+	const scriptPromise = fetchAndStore(src)
+		.then(([targetUrl, isModule]) => new Promise<void>((resolve, reject) =>
 		{
-			console.log('Loaded bullshit: ' + targetUrl);
-			resolve();
-		};
-		script.onerror = () =>
-		{
-			registry.delete(targetUrl); // Evict on failure so a retry can clear the pipe
-			reject(new Error(`Failed execution pipeline: ${src}`));
-		};
+			const script: HTMLScriptElement = document.createElement('script');
+			script.src = targetUrl + '?t=' + Date.now() + '&local-csp=true';
+			script.type = isModule ? 'module' : 'text/javascript';
+			script.async = false; // Preserves literal script tree order
+			console.log('Sourcing bullshit: ' + targetUrl);
 
-		document.head.appendChild(script);
-	});
+			script.onload = () =>
+			{
+				console.log('Loaded bullshit: ' + targetUrl);
+				resolve();
+			};
+			script.onerror = () =>
+			{
+				registry.delete(targetUrl); // Evict on failure so a retry can clear the pipe
+				reject(new Error(`Failed execution pipeline: ${src}`));
+			};
+
+			document.head.appendChild(script);
+		}));
 
 	registry.set(targetUrl, scriptPromise);
 	return scriptPromise;
@@ -270,6 +269,8 @@ export async function fetchAndStore(baseRoute: string, dependenciesToFetch?: str
 	dependenciesToFetch ??= [];
 
 	const targetUrl = baseRoute.replace(/^\.?\//, '/base/');
+
+	console.log('Fetching bullshit: ' + baseRoute);
 	const response = await fetch(baseRoute + '?t=' + Date.now());
 	const rawCode = await response.text();
 
