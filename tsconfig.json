@@ -23,7 +23,7 @@
 		"skipLibCheck": true,
 		"allowSyntheticDefaultImports": true,
 		"forceConsistentCasingInFileNames": true,
-		"noImplicitAny": false,
+		"noImplicitAny": true,
 		"ignoreDeprecations": "6.0",
 		"sourceMap": true
 	},
@@ -46,4 +46,3 @@
 		"**/.git"
 	]
 }
-

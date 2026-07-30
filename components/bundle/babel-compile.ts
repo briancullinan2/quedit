@@ -1,3 +1,6 @@
+declare module '@babel/standalone' {
+    export * from '@babel/core';
+}
 import
 {
 	PluginObj, NodePath, transform

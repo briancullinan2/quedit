@@ -728,26 +728,105 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 githubSelf.cacheFileInternal = cacheFileInternal;
 
-
 /**
+ * Downloads a GitHub repository zip archive while streaming progress back to the caller.
  *
  * @param {string} owner
  * @param {string} repo
- * @param {string} branch
- * @param {string | null} database
+ * @param {string} [branch='master']
+ * @param {string | null} [database=null]
+ * @param {undefined | null | ((progress: { loaded: number, total: number, percent: number }) => void)} [onProgress]
+ * @returns {Promise<string | undefined | null>}
  */
-async function downloadRepoZip(owner, repo, branch = 'master', database = null)
+async function downloadRepoZip(owner, repo, branch = 'master', database = null, onProgress = null)
 {
-
 	if(!database)
-		database = owner + '/' + repo;
+	{
+		database = `${owner}/${repo}`;
+	}
+
+	let token = typeof githubSelf.api !== 'undefined'
+		? githubSelf.api.github_token
+		: githubSelf.settingsManager?.get('github', 'githubToken');
 
 	try
 	{
 		console.info(`Requesting archive from ${owner}/${repo}...`);
 
-		const buffer = await githubRequest(owner, repo, `zipball/${branch}`, true, true);
-		const zipPath = githubSelf.path.join(githubSelf.config.MOUNT_DIR, 'branch.zip');
+		const headers = {
+			'Accept': 'application/vnd.github+json'
+		};
+
+		if(token)
+		{
+			headers['Authorization'] = `Bearer ${token}`;
+		}
+
+		// 1. Fetch archive stream from GitHub API (follows redirects automatically)
+		const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/zipball/${branch}`, {
+			headers
+		});
+
+		if(!response.ok)
+		{
+			throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+		}
+
+		// 2. Extract total expected file size if present in response headers
+		const contentLength = response.headers.get('Content-Length');
+		const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+
+		// 3. Obtain stream reader from response body
+		if(!response.body)
+		{
+			throw new Error('ReadableStream not supported on target response body.');
+		}
+
+		const reader = response.body.getReader();
+		let receivedBytes = 0;
+		/** @type {Uint8Array[]} */
+		const chunks = [];
+
+		// 4. Read data stream chunk-by-chunk
+		while(true)
+		{
+			const { done, value } = await reader.read();
+
+			if(done)
+			{
+				break;
+			}
+
+			chunks.push(value);
+			receivedBytes += value.length;
+
+			// Compute percentage if total size is supplied by host
+			const percent = totalBytes > 0
+				? Math.min(100, Math.round((receivedBytes / totalBytes) * 100))
+				: 0;
+
+			if(typeof onProgress === 'function')
+			{
+				onProgress({
+					loaded: receivedBytes,
+					total: totalBytes,
+					percent
+				});
+			}
+		}
+
+		// 5. Concatenate binary chunks into unified Uint8Array buffer
+		const buffer = new Uint8Array(receivedBytes);
+		let position = 0;
+		for(const chunk of chunks)
+		{
+			buffer.set(chunk, position);
+			position += chunk.length;
+		}
+
+		const zipPath = githubSelf.path.join(githubSelf.config.MOUNT_DIR, `${branch}.zip`);
+
+
 		githubSelf.FS.virtual[zipPath] = {
 			timestamp: new Date(),
 			mode: githubSelf.FS_FILE ?? (0o100000 | 0o666),
@@ -790,12 +869,14 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null)
 		await Promise.all(unzipPromises);
 		console.info("Repository successfully mounted to virtual FS.");
 
+		return githubSelf.FS.virtual[zipPath].sha;
 	} catch(err)
 	{
 		if(err instanceof Error)
 		{
 			console.error(`Failed to download repo: ${err.message}`);
 		}
+		throw err;
 	}
 }
 

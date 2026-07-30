@@ -4,8 +4,21 @@ import type { GitHubBranch, GitHubFileTree } from "./github-types";
 import type { LocalWindow } from "./local.d";
 import type { RepositorySettingsWindow } from "./menu.d";
 
+
+export interface ProgressDetails
+{
+	loaded: number;
+	total: number;
+	percent: number;
+	stage?: string;
+}
+
+export type ProgressFunction = (progress: ProgressDetails) => void;
+
+
 export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, ApiWindow
 {
+	downloadRepoZip?: (ownerName: string, repo: string, branch = 'master', database: string | null = null, onProgress?: ProgressFunction) => Promise<string | undefined | null>;
 	getBranchVersion?: (ownerName: string, repo: string, branch?: string) => Promise<Date>;
 	githubRequest?: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
 	loadGitHubTree?: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;

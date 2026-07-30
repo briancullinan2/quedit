@@ -19,7 +19,7 @@ export interface TerminalCommands
 	statusCommand?: (args: string[], flags: string[]) => Promise<void>;
 	push?: (args: string[]) => Promise<void>;
 	find?: (argv: string[]) => Promise<void>;
-	clone?: (argv: string[]) => Promise<void>;
+	clone?: (argv: string[], database: string, commandName: string, term: Terminal) => Promise<void>;
 	ls?: (argv: string[], database: string) => Promise<void>;
 	buildCommand?: (argv: string[], database: string) => Promise<void>;
 	remove?: (argv: string[], database: string) => Promise<void>;

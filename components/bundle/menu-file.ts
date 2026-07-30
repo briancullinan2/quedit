@@ -23,7 +23,7 @@ const FILE_MENU: MenuConfig = {
 		iconClass: "bx bx-folder-open",
 		children: [{
 			name: "Open File",
-			shortcut: "O",
+			shortcut: "Ctrl+O",
 			ellipsis: true,
 			target: "file/open.open_file",
 			iconClass: "bx bx-file"

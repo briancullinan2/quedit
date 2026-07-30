@@ -485,4 +485,29 @@ workerSelf2.onmessage = async function (e)
 		}
 		return;
 	}
+
+	if(e.data.type === 'DOWNLOAD_REPOSITORY')
+	{
+		const { owner, repo, branch, message, callbackId, gitHubToken } = e.data;
+		if(workerSelf2.api)
+		{
+			workerSelf2.api.github_token = gitHubToken;
+		}
+		try
+		{
+			const finalSha = await workerSelf2.downloadRepoZip?.(owner, repo, branch, message, (progress) =>
+			{
+				workerSelf2.postMessage({ type: 'download_status', status: 'PROGRESS', isPartial: true, progress, callbackId });
+			});
+
+			workerSelf2.postMessage({ type: 'download_status', status: 'SUCCESS', sha: finalSha, callbackId });
+		} catch(err)
+		{
+			if(err instanceof Error)
+			{
+				workerSelf2.postMessage({ type: 'download_status', status: 'ERROR', error: err.message, callbackId });
+			}
+		}
+		return;
+	}
 };
