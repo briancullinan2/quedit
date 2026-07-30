@@ -2,9 +2,10 @@ import { Message } from '@lumino/messaging';
 import { FileListWidget } from './widget';
 import type { GroupedSearchResult } from '../bundle/lumino-search';
 import type { LuminoLayoutWindow } from '../bundle/lumino.d';
-import type { GlobalToolbarsWindow } from '../bundle/menu.d';
+import type { GlobalToolbarsWindow, LuminoMenuWindow } from '../bundle/menu.d';
+import type { GithubWindow } from '../bundle/github.d';
 
-const filelistSelf: LuminoLayoutWindow & GlobalToolbarsWindow = self as unknown as any;
+const filelistSelf: LuminoLayoutWindow & GlobalToolbarsWindow & GithubWindow & LuminoMenuWindow = self as unknown as any;
 
 export interface HistorySnapshot
 {
@@ -312,13 +313,34 @@ export class SearchListWidget extends FileListWidget
 
 		if(this.cachedFilePathEl)
 		{
-			(window as any).clickFile?.(
-				this.cachedFilePathEl.dataset.owner,
-				this.cachedFilePathEl.dataset.repoName,
-				this.cachedFilePathEl.dataset.path,
-				this.cachedFilePathEl.dataset.sha,
-				true
-			);
+			const ownerName = this.cachedFilePathEl.dataset.owner ?? filelistSelf.RepositoryToolbar?.owner?.value;
+			const repoName = this.cachedFilePathEl.dataset.repoName ?? filelistSelf.RepositoryToolbar?.repository?.value;
+			const filePath = this.cachedFilePathEl.dataset.path;
+			let contents = ownerName && repoName && filePath
+				? await filelistSelf.cacheFile?.(filelistSelf.DB_STORE_NAME ?? '', ownerName, repoName, filePath)
+				: void 0;
+			const contentLength = contents instanceof ArrayBuffer
+				? contents.byteLength
+				: contents instanceof Uint8Array
+					? contents?.length
+					: contents instanceof FileSystemFileHandle
+					&& (contents = await (await contents.getFile()).arrayBuffer()).byteLength;
+
+			console.warn('openFile: ' + filePath + ' length: ' + contentLength + ' from: ' + ownerName + '/' + repoName);
+			if(ownerName && repoName && filePath && contents)
+			{
+
+				if(typeof filelistSelf.AceEditorWidget === 'undefined')
+				{
+					await filelistSelf.triggerPanelRoute?.('editor', filelistSelf.mainDock);
+				}
+
+				if(contents instanceof ArrayBuffer || contents instanceof Uint8Array)
+				{
+					filelistSelf.AceEditorWidget?.openFileInNewTab(filePath, filePath, contents);
+				}
+			}
+
 			return;
 		}
 

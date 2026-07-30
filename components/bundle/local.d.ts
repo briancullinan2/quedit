@@ -25,7 +25,7 @@ export interface FileRecord
 {
 	timestamp?: Date | null;
 	mode: number;
-	contents?: Uint8Array | ArrayBuffer | FileSystemDirectoryHandle | any;
+	contents?: Uint8Array | ArrayBuffer | FileSystemDirectoryHandle | FileSystemFileHandle | null | undefined;
 	path: string;
 	sha?: string | null;
 	parent?: string | null;

@@ -452,12 +452,15 @@ makeSelf.LDFLAGS = [
 /**
  *
  * @param {string} fileName
- * @param {ArrayBuffer} content
- * @returns
+ * @param {ArrayBuffer | Uint8Array | FileSystemFileHandle} content
+ * @returns {Promise<string>}
  */
-function generateFallbackC(fileName, content)
+async function generateFallbackC(fileName, content)
 {
-
+	if(content instanceof FileSystemFileHandle)
+	{
+		content = await (await content.getFile()).arrayBuffer();
+	}
 	const decoder = new TextDecoder();
 	const str = decoder.decode(content);
 
@@ -816,7 +819,10 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 	if(makeSelf.FS && !makeSelf.FS.virtual[virtualFile]
 		|| (makeSelf.FS && makeSelf.FS.virtual[virtualFile] && makeSelf.FS.virtual[virtualFile].mode >> 12) !== makeSelf.ST_DIR
 		&& (!makeSelf.FS?.virtual[virtualFile]?.contents
-			|| makeSelf.FS.virtual[virtualFile].contents.length === 0)
+			|| (makeSelf.FS.virtual[virtualFile].contents instanceof Uint8Array
+				&& makeSelf.FS.virtual[virtualFile].contents.length === 0)
+			|| (makeSelf.FS.virtual[virtualFile].contents instanceof ArrayBuffer
+				&& makeSelf.FS.virtual[virtualFile].contents.byteLength === 0))
 	)
 	{
 		if(!loadedDirectories.includes(buildDir) && makeDirs)
@@ -838,7 +844,10 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 		// TODO!!!!! check if commit has changed or file has changed on disk
 		if((makeSelf.FS && !makeSelf.FS.virtual[virtualFile]
 			|| !makeSelf.FS?.virtual[virtualFile]?.contents
-			|| makeSelf.FS.virtual[virtualFile].contents.length === 0) && makeDirs /* only load github if its a controlled file */)
+			|| (makeSelf.FS.virtual[virtualFile].contents instanceof Uint8Array
+				&& makeSelf.FS.virtual[virtualFile].contents.length === 0)
+			|| (makeSelf.FS.virtual[virtualFile].contents instanceof ArrayBuffer
+				&& makeSelf.FS.virtual[virtualFile].contents.byteLength === 0)) && makeDirs /* only load github if its a controlled file */)
 		{
 			console.log(`Loading IDB/Github (${makeSelf.api?.worker ? 'frontend' : 'worker'}): ${file}`);
 			await makeSelf.cacheFile?.(makeSelf.DB_STORE_NAME ?? '', ownerName, repoName, file, void 0, makeDirs);
@@ -1250,9 +1259,15 @@ async function buildShaders(database = null, forceChanged = false)
 
 			console.log(`GLSL: ${obj}`);
 
-			const cCode = generateFallbackC(shader, makeSelf.FS?.virtual[virtualShader]?.contents);
+			const contents = makeSelf.FS?.virtual[virtualShader]?.contents;
+			const cCode = contents instanceof ArrayBuffer || contents instanceof Uint8Array || contents instanceof FileSystemFileHandle
+				? await generateFallbackC(shader, contents) : void 0;
+			if(!cCode)
+			{
+				continue;
+			}
 
-			let hasChanged = true;
+			hasChanged = true;
 
 			console.log(`CC: ${shader}`);
 

@@ -151,8 +151,9 @@ export class FileListWidget extends Widget
 				const widgetHandle = getRegistryIdFromWidget(this);
 				const settingKey: string = getSettingFromRegistryId(widgetHandle);
 				const database = filelistSelf.settingsManager?.get('github', 'environmentRepository');
-				const handle: FileSystemDirectoryHandle = (await filelistSelf.getRecord?.(filelistSelf.DB_STORE_NAME ?? '', '/' + settingKey, database))?.contents;
-				if(handle && await verifyPermission(handle as FileSystemHandle))
+				const handle = (await filelistSelf.getRecord?.(filelistSelf.DB_STORE_NAME ?? '', '/' + settingKey, database))?.contents;
+				if((handle instanceof FileSystemDirectoryHandle)
+					&& await verifyPermission(handle as FileSystemHandle))
 				{
 					this.handle = handle;
 					const settingsConfig = Object.values(LOCAL_SETTINGS.filelist).find(s => s.key === settingKey);

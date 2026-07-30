@@ -666,7 +666,7 @@ sharedSelf.API = (function ()
 		/**
 		 *
 		 * @param {string} path
-		 * @returns
+		 * @returns {Uint8Array}
 		 */
 		getFileContents(path)
 		{
@@ -724,6 +724,14 @@ sharedSelf.API = (function ()
 			return ESUCCESS;
 		}
 
+		/**
+		 *
+		 * @param {number} fd
+		 * @param {number} iovs
+		 * @param {number} iovs_len
+		 * @param {number} nread
+		 * @returns {number}
+		 */
 		host_read(fd, iovs, iovs_len, nread)
 		{
 			this.hostMem_?.check();
@@ -849,6 +857,12 @@ sharedSelf.API = (function ()
 
 		*/
 
+		/**
+		 *
+		 * @param {number} clang_dst
+		 * @param {number} memfs_src
+		 * @param {number} size
+		 */
 		copy_out(clang_dst, memfs_src, size)
 		{
 			this.hostMem_?.check();
@@ -859,6 +873,12 @@ sharedSelf.API = (function ()
 			dst.set(src);
 		}
 
+		/**
+		 *
+		 * @param {number} memfs_dst
+		 * @param {number} clang_src
+		 * @param {number} size
+		 */
 		copy_in(memfs_dst, clang_src, size)
 		{
 			this.mem.check();
@@ -880,7 +900,7 @@ sharedSelf.API = (function ()
 		/**
 		 *
 		 * @param {API} api
-		 * @param {} hostWrite
+		 * @param {(msg: string, source: string[]) => void} hostWrite
 		 * @param {*} module
 		 * @param {*} sysrootFilename
 		 * @param {*} name

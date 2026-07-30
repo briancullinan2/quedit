@@ -207,7 +207,7 @@ export const VSCODE_GO_MENU: MenuConfig = {
 		},
 		{
 			name: "Go to Definition",
-			shortcut: "F12",
+			//shortcut: "F12",
 			target: "ace_go.goto_definition",
 			iconClass: "bx bx-link-external"
 		},

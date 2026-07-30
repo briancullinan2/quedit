@@ -46,7 +46,7 @@ export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, Api
 		filePath: string,
 		sha?: string | null,
 		forceReload?: boolean
-	) => Promise<ArrayBuffer | Uint8Array | null>;
+	) => Promise<ArrayBuffer | Uint8Array | FileSystemDirectoryHandle | FileSystemFileHandle | null | undefined>;
 
 	// Direct IndexedDB / GitHub Worker Network Methods
 	cacheFileInternal?: (
@@ -56,7 +56,7 @@ export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, Api
 		localPath: string,
 		sha?: string | null,
 		forceReload?: boolean
-	) => Promise<any>;
+	) => Promise<ArrayBuffer | Uint8Array | FileSystemDirectoryHandle | FileSystemFileHandle | null | undefined>;
 
 	trees?: Record<string, any>;
 	filesRepo?: Record<string, Record<string, GitHubFileEntry> | undefined>;

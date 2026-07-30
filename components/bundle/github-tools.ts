@@ -48,7 +48,7 @@ export async function getGitShaBrowser(content: string | Uint8Array | ArrayBuffe
 githubSelf.getGitShaBrowser = getGitShaBrowser;
 
 
-export async function cacheFile(storeName: string, repoOwner: string, repoName: string, filePath: string, sha?: string | null, forceReload = false): Promise<any>
+export async function cacheFile(storeName: string, repoOwner: string, repoName: string, filePath: string, sha?: string | null, forceReload = false): Promise<ArrayBuffer | Uint8Array | FileSystemDirectoryHandle | FileSystemFileHandle | null | undefined>
 {
 	return await debounceRecords(storeName ?? DB_STORE_NAME, 'path', filePath, sha, forceReload, `${repoOwner}/${repoName}`, 'cache');
 }
@@ -56,7 +56,7 @@ export async function cacheFile(storeName: string, repoOwner: string, repoName: 
 githubSelf.cacheFile = cacheFile;
 
 
-export async function cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string | null, forceReload = false): Promise<any>
+export async function cacheFileInternal(storeName: string, repoOwner: string, repoName: string, localPath: string, sha?: string | null, forceReload = false): Promise<ArrayBuffer | Uint8Array | FileSystemDirectoryHandle | FileSystemFileHandle | null | undefined>
 {
 	const selected = `${repoOwner}/${repoName}`;
 	const filePath = selected + '/' + localPath;
@@ -72,7 +72,8 @@ export async function cacheFileInternal(storeName: string, repoOwner: string, re
 
 		if(!FS.virtual[filePath]
 			|| !FS.virtual[filePath].contents
-			|| FS.virtual[filePath].contents.length === 0
+			|| (FS.virtual[filePath].contents instanceof ArrayBuffer && FS.virtual[filePath].contents.byteLength === 0)
+			|| (FS.virtual[filePath].contents instanceof Uint8Array && FS.virtual[filePath].contents.length === 0)
 		)
 		{
 			FS.virtual[filePath] = await getRecord(storeName ?? DB_STORE_NAME, localPath, selected);
@@ -315,7 +316,7 @@ export function convertFlatToNested(data: FlatFileNode[]): NestedTreeNode[]
 githubSelf.convertFlatToNested = convertFlatToNested;
 
 
-export function sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[]
+export function sortNodes(nodes: NestedTreeNode[], recursion: NestedTreeNode[] = []): NestedTreeNode[]
 {
 	nodes.sort((a, b) =>
 	{
@@ -356,9 +357,14 @@ export function sortNodes(nodes: NestedTreeNode[]): NestedTreeNode[]
 	// 3. Recurse into valid child arrays
 	nodes.forEach(node =>
 	{
+		if(recursion.includes(node))
+		{
+			return;
+		}
 		if(Array.isArray(node.children) && node.children.length > 0)
 		{
-			sortNodes(node.children);
+			recursion[recursion.length - 1] = node;
+			sortNodes(node.children, recursion);
 		}
 	});
 
