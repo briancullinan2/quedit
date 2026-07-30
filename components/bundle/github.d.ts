@@ -1,6 +1,6 @@
 import type { ApiWindow } from "../compiler/worker.d";
 import type { NestedTreeNode } from "./github-tools";
-import type { GitHubBranch, GitHubFileTree } from "./github-types";
+import type { GitHubBranch, GitHubFileEntry } from "./github-types";
 import type { LocalWindow } from "./local.d";
 import type { RepositorySettingsWindow } from "./menu.d";
 
@@ -21,7 +21,7 @@ export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, Api
 	downloadRepoZip?: (ownerName: string, repo: string, branch = 'master', database: string | null = null, onProgress?: ProgressFunction) => Promise<string | undefined | null>;
 	getBranchVersion?: (ownerName: string, repo: string, branch?: string) => Promise<Date>;
 	githubRequest?: (ownerName: string, repoName: string, url: string, authorize?: boolean, buffer?: boolean) => Promise<any | ArrayBuffer>;
-	loadGitHubTree?: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<GitHubFileTree | undefined>;
+	loadGitHubTree?: (repoOwner: string, repoName: string, branch: string, path?: string) => Promise<Record<string, GitHubFileEntry> | undefined>;
 	getBranches?: (repoOwner: string | undefined, repoName: string | undefined) => Promise<GitHubBranch[]>;
 	getDefaultBranch?: (ownerName: string, repo: string) => Promise<string>;
 	searchGitHubCode?: (query: string, activeRepositories: string[], token: string | null) => Promise<any[]>;
@@ -38,7 +38,7 @@ export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, Api
 		filePath: string,
 		sha?: string | null,
 		forceReload?: boolean
-	) => Promise<any>;
+	) => Promise<ArrayBuffer | Uint8Array | null>;
 
 	// Direct IndexedDB / GitHub Worker Network Methods
 	cacheFileInternal?: (
@@ -51,7 +51,7 @@ export interface GithubWindow extends RepositorySettingsWindow, LocalWindow, Api
 	) => Promise<any>;
 
 	trees?: Record<string, any>;
-	filesRepo?: Record<string, GitHubFileTree | undefined>;
+	filesRepo?: Record<string, Record<string, GitHubFileEntry> | undefined>;
 	mapFiles?: Record<string, string>;
 	githubToken?: string;
 }

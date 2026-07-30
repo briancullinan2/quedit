@@ -5,7 +5,7 @@ import { updateSelectOptions } from "./github-settings";
 import
 {
 	defaultBranches, filesRepo, GitHubBranch
-	, GitHubFileEntry, GitHubFileTree, mapFiles
+	, GitHubFileEntry, mapFiles
 } from "./github-types";
 import
 {
@@ -159,12 +159,12 @@ export async function githubGraphQL(query: string, variables: Record<string, any
 	return result.data;
 }
 
-export async function loadGitHubTree(repoOwner: string, repoName: string, branch: string, path?: string): Promise<GitHubFileTree | undefined>
+export async function loadGitHubTree(repoOwner: string, repoName: string, branch: string, path?: string): Promise<Record<string, GitHubFileEntry> | undefined>
 {
 	try
 	{
 		const database = `${repoOwner}/${repoName}`;
-		const treeData = (path?.replace(/^[\/\\]|[\/\\]$/ig, '') ?? '').length > 0
+		const treeData: { tree: GitHubFileEntry[]; } = (path?.replace(/^[\/\\]|[\/\\]$/ig, '') ?? '').length > 0
 			? await githubRequest(repoOwner, repoName, `git/trees/${path}`)
 			: path ? await githubRequest(repoOwner, repoName, `git/trees/${branch}`)
 				: await githubRequest(repoOwner, repoName, `git/trees/${branch}?recursive=1`);
@@ -236,7 +236,7 @@ export async function loadGitHubTreeNew(repoOwner: string, repoName: string, bra
 	{
 		if(typeof filesRepo[database] === 'undefined')
 		{
-			filesRepo[database] = {} as GitHubFileTree;
+			filesRepo[database] = {} as Record<string, GitHubFileEntry>;
 		}
 
 		const filesToHydrate: string[] = [];
@@ -431,13 +431,14 @@ export async function searchGitHubCode(query: string, activeRepositories: string
 			headers
 		});
 		if(!response.ok) return [];
-		const data = await response.json();
 
-		return (data.items ?? []).map((item: any) => ({
+		const data: { items: GitHubFileEntry[]; } = await response.json();
+
+		return (data.items ?? []).map((item: GitHubFileEntry) => ({
 			path: item.path,
 			sha: item.sha,
 			repoSource: primaryRepo,
-			matchText: `Remote Instance (Index Pointer: ${item.sha.substring(0, 7)})`,
+			matchText: `Remote Instance (Index Pointer: ${item.sha?.substring(0, 7)})`,
 			isRemote: true
 		}));
 	} catch(err)

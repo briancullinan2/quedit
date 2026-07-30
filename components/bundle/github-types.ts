@@ -1,11 +1,6 @@
 import { GithubWindow } from "./github.d";
 import { FileRecord } from "./local.d";
 
-export interface GitHubFileTree extends Record<string, FileRecord | null | undefined>
-{
-	[key: string]: GitHubFileEntry;
-}
-
 
 export interface GitHubWriteEntry
 {
@@ -97,7 +92,7 @@ export const mapFiles: Record<string, string> = {
 githubSelf.mapFiles = mapFiles;
 
 export const trees: Record<string, any> = {};
-export const filesRepo: Record<string, GitHubFileTree | undefined> = {};
+export const filesRepo: Record<string, Record<string, GitHubFileEntry> | undefined> = {};
 
 
 githubSelf.trees = trees;

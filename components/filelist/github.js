@@ -140,13 +140,14 @@ githubSelf.getBranchVersion = getBranchVersion;
  *
  * @param {string} repoOwner
  * @param {string} repoName
- * @returns
+ * @returns {Promise<import('../bundle/github-types').GitHubBranch[]>}
  */
 async function getBranches(repoOwner, repoName)
 {
 
 	try
 	{
+		/** @type {import('../bundle/github-types').GitHubBranch[]} */
 		const branches = await githubRequest(repoOwner, repoName, 'branches');;
 
 		const defaultName = await getDefaultBranch(repoOwner, repoName);
@@ -196,7 +197,7 @@ async function githubGraphQL(query, variables = {})
 	return result.data;
 }
 
-
+/** @type {Record<string, string>} */
 const mapFiles = {
 	"": "Current map"
 };
@@ -214,6 +215,7 @@ async function loadGitHubTree(repoOwner, repoName, branch)
 	try
 	{
 		let database = repoOwner + '/' + repoName;
+		/** @type {({tree: import('../bundle/github-types').GitHubFileEntry[]})} */
 		const treeData = await githubRequest(repoOwner, repoName, `git/trees/${branch}?recursive=1`);
 
 		// 2. Get the latest commit to get a "Build Date"
@@ -222,14 +224,15 @@ async function loadGitHubTree(repoOwner, repoName, branch)
 
 		if(githubSelf.filesRepo)
 		{
-			githubSelf.filesRepo[database] = treeData.tree.reduce((obj, a) =>
+			githubSelf.filesRepo[database] = treeData.tree.reduce((/** @type {Record<string, import('../bundle/github-types').GitHubFileEntry>} */ obj, a) =>
 			{
 				// Attach the buildDate to every file as a fallback mtime
 				if(a.path.toLowerCase().includes('.map') || a.path.toLowerCase().includes('.bsp'))
 				{
-					if(!mapFiles[a.path])
+					const mapName = a.path.split('/').pop();
+					if(!mapFiles[a.path] && mapName)
 					{
-						mapFiles[a.path] = a.path.split('/').pop();
+						mapFiles[a.path] = mapName;
 					}
 				}
 				a.timestamp = buildDate;
@@ -551,12 +554,33 @@ async function getGitShaBrowser(content)
 
 githubSelf.getGitShaBrowser = getGitShaBrowser;
 
+/**
+ *
+ * @param {string} storeName
+ * @param {string} repoOwner
+ * @param {string} repoName
+ * @param {string} filePath
+ * @param {string | undefined | null} sha
+ * @param {boolean} forceReload
+ * @returns {Promise<ArrayBuffer | Uint8Array | null>}
+ */
 async function cacheFile(storeName, repoOwner, repoName, filePath, sha, forceReload = false)
 {
-	return await githubSelf.debounceRecords?.(githubSelf.DB_STORE_NAME ?? '', 'path', filePath, sha, forceReload, repoOwner + '/' + repoName, 'cache');
+	return await githubSelf.debounceRecords?.(storeName ?? githubSelf.DB_STORE_NAME ?? '', 'path', filePath, sha, forceReload, repoOwner + '/' + repoName, 'cache');
 }
 
+githubSelf.cacheFile = cacheFile;
 
+/**
+ *
+ * @param {string} storeName
+ * @param {string} repoOwner
+ * @param {string} repoName
+ * @param {string} filePath
+ * @param {string | undefined | null} sha
+ * @param {boolean} forceReload
+ * @returns  {Promise<ArrayBuffer | Uint8Array | null>}
+ */
 async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, forceReload = false)
 {
 
@@ -577,7 +601,7 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 			|| githubSelf.FS.virtual[filePath].contents.length === 0
 		)
 		{
-			githubSelf.FS.virtual[filePath] = await githubSelf.getRecord?.(storeName || githubSelf.DB_STORE_NAME, filePath, selected);
+			githubSelf.FS.virtual[filePath] = await githubSelf.getRecord?.(storeName ?? githubSelf.DB_STORE_NAME, filePath, selected);
 		}
 		if(githubSelf.filesRepo?.[selected]
 			&& githubSelf.filesRepo[selected][filePath] && githubSelf.FS.virtual[filePath])
@@ -692,7 +716,7 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 		// async to filesystem
 		// does it REALLY matter if it makes it? wont it just redownload?
-		await githubSelf.putRecord?.(storeName || githubSelf.DB_STORE_NAME, githubSelf.FS.virtual[filePath], selected);
+		await githubSelf.putRecord?.(storeName ?? githubSelf.DB_STORE_NAME, githubSelf.FS.virtual[filePath], selected);
 
 		try
 		{
@@ -753,6 +777,7 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null, 
 	{
 		console.info(`Requesting archive from ${owner}/${repo}...`);
 
+		/** @type {HeadersInit} */
 		const headers = {
 			'Accept': 'application/vnd.github+json'
 		};
@@ -839,11 +864,12 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null, 
 		console.info(`Downloaded ${buffer.byteLength} bytes. Processing...`);
 
 		// Use JSZip to hydrate FS.virtual
-		const contents = githubSelf.JSZip ? await new githubSelf.JSZip().loadAsync(buffer) : [];
+		const contents = githubSelf.JSZip ? await new githubSelf.JSZip().loadAsync(buffer) : undefined;
 
+		/** @type {Promise<any>[]} */
 		const unzipPromises = [];
 
-		contents.forEach((relativePath, file) =>
+		contents?.forEach((relativePath, file) =>
 		{
 			if(file.dir) return;
 
@@ -880,13 +906,18 @@ async function downloadRepoZip(owner, repo, branch = 'master', database = null, 
 	}
 }
 
+/**
+ *
+ * @param {string} owner
+ * @param {string} repo
+ * @returns {Promise<import('../bundle/github-types').GitHubRelease[] | undefined>}
+ */
 async function listReleases(owner, repo)
 {
 	try
 	{
+		/** @type {import('../bundle/github-types').GitHubRelease[]} */
 		const releases = await githubRequest(owner, repo, 'releases');
-
-
 
 		releases.forEach(release =>
 		{
@@ -967,6 +998,7 @@ async function searchGitHubRepositories(query, ownerName, repoName)
 		? githubSelf.api.github_token
 		: localStorage.getItem('github_token');
 
+	/** @type {HeadersInit} */
 	const headers = {
 		'Accept': 'application/vnd.github+json',
 		'X-GitHub-Api-Version': '2022-11-28'
@@ -1006,6 +1038,7 @@ async function searchGitHubCode(query, activeRepositories, token)
 	const queryString = `${query} repo:${primaryRepo}`;
 	const fullUrl = `https://api.github.com/search/code?q=${encodeURIComponent(queryString)}`;
 
+	/** @type {HeadersInit} */
 	const headers = {
 		'Accept': 'application/vnd.github+json',
 		'X-GitHub-Api-Version': '2022-11-28'
@@ -1023,13 +1056,15 @@ async function searchGitHubCode(query, activeRepositories, token)
 			headers
 		});
 		if(!response.ok) return [];
+
+		/** @type {({items: import('../bundle/github-types').GitHubFileEntry[]})} */
 		const data = await response.json();
 
 		return (data.items || []).map(item => ({
 			path: item.path,
 			sha: item.sha,
 			repoSource: primaryRepo,
-			matchText: `Remote Instance (Index Pointer: ${item.sha.substring(0, 7)})`,
+			matchText: `Remote Instance (Index Pointer: ${item.sha?.substring(0, 7)})`,
 			isRemote: true
 		}));
 	} catch(err)

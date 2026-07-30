@@ -1,12 +1,5 @@
-declare module '@babel/standalone' {
-    export * from '@babel/core';
-}
-import
-{
-	PluginObj, NodePath, transform
-	, types as tType, traverse
-	, packages
-} from '@babel/standalone';
+// @ts-ignore
+import { PluginObj, NodePath, transform, types as tType, traverse, packages } from '@babel/standalone';
 import { DB_STORE_NAME, FS_FILE, putRecord } from './local';
 import { SettingsManager } from './settings';
 import { getGitShaBrowser } from './github-tools';

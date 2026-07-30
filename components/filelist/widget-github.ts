@@ -14,6 +14,7 @@ export interface StagingDetails
 	modified: string[];
 	added: string[];
 	staged?: string[];
+	deleted?: string[];
 }
 
 export class GithubListWidget extends FileListWidget

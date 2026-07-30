@@ -124,8 +124,8 @@ async function clone(argv, database, commandName, term)
 	const githubStateService = commandGitSelf.GithubService.getInstance();
 	const response = await githubStateService.executeCommand({
 		type: 'DOWNLOAD_REPOSITORY',
-		ownerName,
-		repoName,
+		owner: ownerName,
+		repo: repoName,
 		branch,
 		gitHubToken: localStorage.getItem('github_token') || commandGitSelf.api?.github_token
 	}, void 0, (result) =>
@@ -194,7 +194,8 @@ async function statusCommand(args)
 			gitHubToken: localStorage.getItem('github_token') || commandGitSelf.api?.github_token
 		});
 
-		const { modified = [], added = [], deleted = [] } = response;
+
+		const { modified = [], added = [], deleted = [] } = /** @type {import('../filelist/widget-github').StagingDetails} */ (response);
 		const totalChanges = modified.length + added.length + deleted.length;
 
 		if(totalChanges === 0)
