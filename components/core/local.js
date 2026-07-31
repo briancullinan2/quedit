@@ -210,18 +210,33 @@ localSelf.setupDatabase = setupDatabase;
  */
 async function putRecordInternal(storeName, record, dbName = null)
 {
+	const filePath = dbName + '/' + record.path;
 	const newRecord = {
 		timestamp: record.timestamp,
 		mode: record.mode,
-		contents: record.contents instanceof FileSystemDirectoryHandle
-			? record.contents
-			: typeof localSelf.FS !== 'undefined'
-				? (record.contents = localSelf.FS.virtual[record.path]?.contents || record.contents?.slice(0))
-				: record.contents?.slice(0),
+		contents: record.contents,
 		path: record.path,
 		sha: record.sha,
 		parent: record.parent
 	};
+	const newerContents = localSelf.FS?.virtual[filePath]?.contents
+		|| localSelf.FS?.virtual[record.path]?.contents;
+	if(newerContents instanceof ArrayBuffer)
+	{
+		newRecord.contents = new Uint8Array(newerContents);
+	}
+	else if(newerContents instanceof Uint8Array)
+	{
+		newRecord.contents = newerContents.slice(0);
+	}
+	else if(record.contents instanceof ArrayBuffer)
+	{
+		newRecord.contents = new Uint8Array(record.contents);
+	}
+	else if(record.contents instanceof Uint8Array)
+	{
+		newRecord.contents = record.contents.slice(0);
+	}
 
 	if(newRecord.path.includes('//') || newRecord.path.includes('http:'))
 	{

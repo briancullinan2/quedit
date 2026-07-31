@@ -80,14 +80,17 @@ async function importScriptFromVFS(assetUrl)
 		throw new Error(`Script "${localName}" not found in IndexedDB VFS.`);
 	}
 
-	// Decode the Uint8Array binary array into a raw text string
-	const decoder = new TextDecoder('utf-8');
-	const scriptText = decoder.decode(fileRecord.contents);
+	if(fileRecord.contents instanceof ArrayBuffer || fileRecord.contents instanceof Uint8Array)
+	{
+		// Decode the Uint8Array binary array into a raw text string
+		const decoder = new TextDecoder('utf-8');
+		const scriptText = decoder.decode(fileRecord.contents);
 
-	// Execute the script globally inside the Service Worker context
-	// This accomplishes exactly what importScripts() does synchronously
-	globalThis.eval(scriptText);
-	console.log(`✨ [SW-INIT] Successfully evaluated script from VFS: "${localName}"`);
+		// Execute the script globally inside the Service Worker context
+		// This accomplishes exactly what importScripts() does synchronously
+		globalThis.eval(scriptText);
+		console.log(`✨ [SW-INIT] Successfully evaluated script from VFS: "${localName}"`);
+	}
 }
 
 // Orchestrator to attempt standard import, falling back to VFS if offline
@@ -741,7 +744,7 @@ async function lookupLocalVersion()
 	}
 
 	// 3. Process the newest file found (if any)
-	if(newestVersionFile)
+	if(newestVersionFile && (newestVersionFile.contents instanceof ArrayBuffer || newestVersionFile.contents instanceof Uint8Array))
 	{
 		try
 		{
@@ -995,11 +998,37 @@ serviceSelf.addEventListener('fetch', (event) =>
 			const files = await serviceSelf.getRecord?.(serviceSelf.DB_STORE_NAME ?? '', localName, selected);
 			if(files && files.contents)
 			{
+				/** @type {ArrayBuffer | undefined} */
+				let content;
+
+				if(files.contents instanceof FileSystemFileHandle)
+				{
+					const file = await files.contents.getFile();
+					content = await file.arrayBuffer();
+				} else if(files.contents instanceof ArrayBuffer)
+				{
+					content = files.contents;
+				} else if(files.contents instanceof Uint8Array)
+				{
+					// Copy bytes to guarantee a standalone, non-shared ArrayBuffer
+					const copy = new Uint8Array(files.contents.byteLength);
+					copy.set(files.contents);
+					content = /** @type {ArrayBuffer} */ (copy.buffer);
+				}
+
+				if(!content)
+				{
+					throw new Error('File could not be loaded: ' + files.path);
+				}
+
 				const newHeaders = assetUrl === 'index.html'
 					? await getHeaders()
-					: await getHeaders(undefined, files.contents);
+					: await getHeaders(undefined, content);
+
 				newHeaders.set('Content-Type', contentType);
-				return new Response(files.contents, {
+
+				// Cast explicitly to BodyInit to satisfy strict TS Response constructor types
+				return new Response(/** @type {BodyInit} */(content), {
 					status: 200,
 					statusText: 'OK',
 					headers: newHeaders

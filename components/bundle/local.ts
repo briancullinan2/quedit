@@ -215,15 +215,30 @@ async function putRecordInternal(storeName: string, record: FileRecord, dbName: 
 	const newRecord: FileRecord = {
 		timestamp: record.timestamp,
 		mode: record.mode,
-		contents: record.contents instanceof FileSystemDirectoryHandle
-			? record.contents
-			: typeof FS !== 'undefined'
-				? (record.contents = FS.virtual[filePath]?.contents || FS.virtual[record.path]?.contents || record.contents?.slice(0))
-				: record.contents?.slice(0),
+		contents: record.contents,
 		path: record.path,
 		sha: record.sha,
 		parent: record.parent
 	};
+	const newerContents = FS.virtual[filePath]?.contents
+		?? FS.virtual[record.path]?.contents;
+	if(newerContents instanceof ArrayBuffer)
+	{
+		newRecord.contents = new Uint8Array(newerContents);
+	}
+	else if(newerContents instanceof Uint8Array)
+	{
+		newRecord.contents = newerContents.slice(0);
+	}
+	else if(record.contents instanceof ArrayBuffer)
+	{
+		newRecord.contents = new Uint8Array(record.contents);
+	}
+	else if(record.contents instanceof Uint8Array)
+	{
+		newRecord.contents = record.contents.slice(0);
+	}
+
 
 	if(newRecord.path.includes('//') || newRecord.path.includes('http:'))
 	{
