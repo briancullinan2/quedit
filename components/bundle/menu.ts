@@ -87,7 +87,7 @@ menuSelf.TERMINAL_REGISTRY = TERMINAL_REGISTRY;
 
 export async function triggerPanelRoute(panelId: string, mainDock: DockPanel, noHide: boolean = false): Promise<void>
 {
-	let route = MODULE_REGISTRY[panelId];
+	const route = MODULE_REGISTRY[panelId];
 	/*TODO: this applied only to file open
 	if(panelId === 'viewport-frame')
 	{
@@ -121,15 +121,15 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel, no
 			);
 		}
 
+		// Find if a matching widget is mounted in the DOM dock
+		const matchingDOMWidget = currentDOMWidgets.find(
+			domWidget => domWidget.constructor.name === route.className
+		);
+
 		// 3. Handle toggling and activation
 		if(targetMemoryWidgets.length > 0)
 		{
 			console.log('Panel route already loaded in memory: ' + panelId);
-
-			// Find if a matching widget is mounted in the DOM dock
-			const matchingDOMWidget = currentDOMWidgets.find(
-				domWidget => domWidget.constructor.name === route.className
-			);
 
 			if(matchingDOMWidget && !noHide)
 			{
@@ -171,6 +171,16 @@ export async function triggerPanelRoute(panelId: string, mainDock: DockPanel, no
 					targetMemoryWidgets[0].activate();
 				}
 			}
+			return;
+		}
+
+
+		if(matchingDOMWidget)
+		{
+			console.log('Panel route already loaded: ' + panelId);
+			matchingDOMWidget.show();
+			mainDock.activateWidget(matchingDOMWidget);
+			matchingDOMWidget.activate();
 			return;
 		}
 
