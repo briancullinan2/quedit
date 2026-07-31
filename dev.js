@@ -59,7 +59,7 @@ if(cluster.isMaster)
 		wait: 200,
 
 		// 1. Keep this matching your project directory root
-		watch: ['./*.js', './*.html', './components/**'],
+		watch: ['./*.js', './*.html', './components/**', './ace/**'],
 
 		// 2. Add the ignore array right here.
 		// This stops live-server/chokidar from crawling these directories entirely.
