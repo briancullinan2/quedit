@@ -553,7 +553,6 @@ export async function renderHashCommand(targetHashName: string, noBounce: boolea
 {
 	const rawTarget = (targetHashName || '').trim().replace(/^#/, '');
 
-	// 1. Debounce rapid hash changes
 	if(hashDebounceTimer)
 	{
 		clearTimeout(hashDebounceTimer);
@@ -570,8 +569,8 @@ export async function renderHashCommand(targetHashName: string, noBounce: boolea
 	}
 
 	if(!rawTarget) return;
+	menuSelf.previousHashLineNumber = null;
 
-	// 2. CHECK MODULE REGISTRY MATCH FIRST
 	const matchedRoute = MODULE_REGISTRY[rawTarget];
 	if(matchedRoute)
 	{
@@ -608,18 +607,9 @@ export async function renderHashCommand(targetHashName: string, noBounce: boolea
 		}
 	}
 
-	// 4. FILE PATH RESOLUTION FALLBACK
 	try
 	{
-		const [filePath, selected, dbFile, lineNumber] = await FileManager.findFileTestPath(rawTarget);
-
-		menuSelf.previousHashLineNumber = lineNumber;
-
-		const targetPath = filePath || selected;
-		if(targetPath && typeof (window as any).navigateFile === 'function')
-		{
-			(window as any).navigateFile(targetPath, lineNumber, true, false, false);
-		}
+		await FileManager.navigateFile(rawTarget);
 	} catch(err)
 	{
 		console.error(`[HashRouter] Failed to resolve target file path for hash #${rawTarget}:`, err);

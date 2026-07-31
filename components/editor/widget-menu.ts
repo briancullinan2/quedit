@@ -539,15 +539,14 @@ ACE_MODULES['ace_view'] = {
 ACE_MODULES['ace_go'] = {
 	goto_line: function (_: any, widget: AceEditorWidget)
 	{
-		const editor = widget._editor;
-		if(!editor) return;
+		if(!widget._editor) return;
 		const lineStr = prompt('Go to Line:');
 		if(lineStr)
 		{
 			const line = parseInt(lineStr, 10);
 			if(!isNaN(line))
 			{
-				editor.gotoLine(line, 0, true);
+				widget._editor.gotoLine(line, 0, true);
 			}
 		}
 	},

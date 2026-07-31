@@ -100,16 +100,17 @@ async function ls(argv, database)
 		commandFileSelf.terminalWrite?.(`${'NAME'.padEnd(maxName + 2)}${'SIZE'.padEnd(10)}TYPE\n\r`);
 		commandFileSelf.terminalWrite?.('-'.repeat(maxName + 20) + '\n\r');
 
-		entries.forEach(e =>
+		for(let e of entries)
 		{
 			if(!e) return;
-			const size = e.contents ? flags.human ? formatBytes(e.contents.length) : e.contents.length.toString() : '0B';
+			const contentLength = e.contents ? await commandFileSelf.FileManager?.getContentLength(e.contents) : void 0;
+			const size = e.contents && contentLength ? flags.human ? formatBytes(contentLength) : contentLength.toString() : '0B';
 			const nameStr = e.path.padEnd(maxName + 2);
 			const sizeStr = size.padEnd(10);
 			const color = e.mode === commandFileSelf.FS_DIR ? '\x1b[1;34m' : '\x1b[0m'; // Blue for dirs
 
 			commandFileSelf.terminalWrite?.(`${color}${nameStr}\x1b[0m${sizeStr}${e.mode}\n\r`);
-		});
+		};
 	}
 }
 
@@ -229,9 +230,15 @@ function openCommand(argv, database)
 	const ownerName = parts.length == 2 ? parts[0] : commandFileSelf.RepositoryToolbar?.owner?.value;
 	const repoName = parts.length == 2 ? parts[1] : parts[0] || commandFileSelf.RepositoryToolbar?.repository?.value;
 	let fileName = argv[0];
+	if(!fileName)
+	{
+		return;
+	}
 	// TODO: I did this backwards, i should have had the terminal click execute the command, and put it in history
-	// navigateFile(fileName, null);
-
+	if(ownerName && repoName)
+	{
+		commandFileSelf.FileManager?.openFile(ownerName, repoName, fileName);
+	}
 }
 
 /**

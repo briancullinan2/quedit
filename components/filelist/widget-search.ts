@@ -22,8 +22,7 @@ export class SearchListWidget extends FileListWidget
 	private lastExecutedQueryVal: string | null = null;
 	private debounceSearchClickTimer: ReturnType<typeof setTimeout> | null = null;
 
-	private cachedFilePathEl: HTMLElement | null = null;
-	private cachedMatchRowEl: HTMLElement | null = null;
+	private cachedEl: HTMLElement | null = null;
 
 	constructor(titleStr: string = 'Search Workspace')
 	{
@@ -293,10 +292,9 @@ export class SearchListWidget extends FileListWidget
 	private async handleSearchResultsClick(event: MouseEvent, noBounce: boolean = false): Promise<void>
 	{
 		const target = event.target as HTMLElement;
-		this.cachedFilePathEl ||= target.closest('.search-file-path');
-		this.cachedMatchRowEl ||= target.closest('.search-match-row');
+		this.cachedEl ??= target.closest('.search-match-row') ?? target.closest('.search-file-path');
 
-		if(!this.cachedFilePathEl && !this.cachedMatchRowEl) return;
+		if(!this.cachedEl) return;
 		if(!noBounce && this.debounceSearchClickTimer) return;
 
 		if(!this.debounceSearchClickTimer)
@@ -305,65 +303,21 @@ export class SearchListWidget extends FileListWidget
 			{
 				this.handleSearchResultsClick(event, true);
 				this.debounceSearchClickTimer = null;
-				this.cachedFilePathEl = null;
-				this.cachedMatchRowEl = null;
+				this.cachedEl = null;
 			}, 400);
 			return;
 		}
 
-		if(this.cachedFilePathEl)
+		const filePath = this.cachedEl.dataset.path;
+		if(filePath)
 		{
-			const ownerName = this.cachedFilePathEl.dataset.owner ?? filelistSelf.RepositoryToolbar?.owner?.value;
-			const repoName = this.cachedFilePathEl.dataset.repoName ?? filelistSelf.RepositoryToolbar?.repository?.value;
-			const filePath = this.cachedFilePathEl.dataset.path;
-			let contents = ownerName && repoName && filePath
-				? await filelistSelf.cacheFile?.(filelistSelf.DB_STORE_NAME ?? '', ownerName, repoName, filePath)
-				: void 0;
-			const contentLength = contents instanceof ArrayBuffer
-				? contents.byteLength
-				: contents instanceof Uint8Array
-					? contents?.length
-					: contents instanceof FileSystemFileHandle
-					&& (contents = await (await contents.getFile()).arrayBuffer()).byteLength;
-
-			console.warn('openFile: ' + filePath + ' length: ' + contentLength + ' from: ' + ownerName + '/' + repoName);
-			if(ownerName && repoName && filePath && contents)
-			{
-
-				if(typeof filelistSelf.AceEditorWidget === 'undefined')
-				{
-					await filelistSelf.triggerPanelRoute?.('editor', filelistSelf.mainDock);
-				}
-
-				if(contents instanceof ArrayBuffer || contents instanceof Uint8Array)
-				{
-					filelistSelf.AceEditorWidget?.openFileInNewTab(filePath, filePath, contents);
-				}
-			}
-
-			return;
-		}
-
-		if(this.cachedMatchRowEl)
-		{
-			const isFilenameHit = this.cachedMatchRowEl.dataset.isFilenameHit === 'true';
-			const lineNum = parseInt(this.cachedMatchRowEl.dataset.line || '0', 10);
-
-			await (window as any).openFile?.(
-				this.cachedMatchRowEl.dataset.owner,
-				this.cachedMatchRowEl.dataset.repoName,
-				this.cachedMatchRowEl.dataset.path,
-				this.cachedMatchRowEl.dataset.sha,
-				true, true, true
+			await filelistSelf.FileManager?.navigateFile(
+				filePath,
+				this.cachedEl.dataset.owner,
+				this.cachedEl.dataset.repoName,
+				this.cachedEl.dataset.sha,
+				parseInt(this.cachedEl.dataset.line || '0', 10)
 			);
-
-			if(!isFilenameHit && (window as any).aceEditor)
-			{
-				setTimeout(() =>
-				{
-					(window as any).aceEditor.gotoLine(lineNum, 0, true);
-				}, 200);
-			}
 		}
 	}
 

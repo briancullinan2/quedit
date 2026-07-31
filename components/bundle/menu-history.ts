@@ -123,19 +123,14 @@ export class HistoryToolbar extends Widget
 			menuSelf.trees[database].values = [point.fileId];
 		}
 
-		//openFile(window.RepositoryToolbar.owner?.value, window.RepositoryToolbar.repository?.value, filePath, window.trees[database].nodesById[point.fileId].sha, false);
-
-		//if(typeof aceEditor !== 'undefined')
-		//{
-		//	aceEditor.gotoLine(point.row + 1, point.column);
-		//}
+		menuSelf.FileManager?.navigateFile(filePath, void 0, void 0, void 0, point.row + 1, point.column);
 
 		// TODO:
 		//this.updateTriggerButtonValue(meta.icon, meta.title, timeString);
 	}
 
 	// --- History Tracking Frame & Pipeline ---
-	public recordFileHistory(filePath: string, sha: string, lineNumber: number | null = null): void
+	public recordFileHistory(filePath: string, sha?: string, lineNumber: number | null = null): void
 	{
 		const aceEditor = menuSelf.lastInteractedWidget?.constructor.name === 'AceEditorWidget'
 			? menuSelf.lastInteractedWidget as AceEditorWidget

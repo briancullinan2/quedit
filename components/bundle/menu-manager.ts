@@ -296,6 +296,7 @@ export class MenuManager
 		const function_name = parts[1];
 		const param = object.parameter ??= undefined;
 		let modules = (menuSelf.lastInteractedWidget as MenuModules)?.modules;
+		//?? (menuSelf.previousInteractedWidget as MenuModules)?.modules;
 		if(menuSelf.globalModules && menuSelf.globalModules[module]
 			&& menuSelf.globalModules?.[module][function_name]
 		)

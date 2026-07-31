@@ -5,9 +5,10 @@ import { FILE_NAME_REGEX, SearchTerminal } from './search';
 import { clearCompletionState, handleTabAutocomplete } from './commands-complete';
 import { renderState } from './render';
 import type { TerminalEvents } from './widget.d';
+import type { GlobalToolbarsWindow } from '../bundle/menu.d';
 
 
-const termEventSelf: TerminalEvents = self as unknown as any;
+const termEventSelf: TerminalEvents & GlobalToolbarsWindow = self as unknown as any;
 
 
 // --- Types & Structural Interfaces ---
@@ -367,12 +368,8 @@ export class TerminalEventManager
 
 		if(data.filePath && !data.isFallback && event.button === 0)
 		{
-			console.log(`File: ${data.filePath}, Line: ${data.lineNumber}, Fallback: ${data.isFallback}`);
+			await termEventSelf.FileManager?.navigateFile(data.filePath, void 0, void 0, void 0, data.lineNumber);
 
-			if(typeof (window as any).navigateFile === 'function')
-			{
-				await (window as any).navigateFile(data.filePath, data.lineNumber);
-			}
 			return false;
 		}
 

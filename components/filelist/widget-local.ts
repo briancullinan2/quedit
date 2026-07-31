@@ -216,66 +216,7 @@ export async function treeHandler(selector: string, e: Event): Promise<void>
 
 		const filePath = tree.nodesById[fileId].path;
 
-		const [realFilePath, selectedGithub, dbFile, lineNumber] = await filelistSelf.FileManager?.findFileTestPath(filePath) ?? [];
-		let contents: Uint8Array | ArrayBuffer | FileSystemDirectoryHandle | FileSystemFileHandle | null | undefined | string = dbFile?.contents;
-		const contentLength = dbFile?.contents instanceof ArrayBuffer
-			? dbFile?.contents.byteLength
-			: dbFile?.contents instanceof Uint8Array
-				? dbFile?.contents?.length
-				: dbFile?.contents instanceof FileSystemFileHandle
-				&& (contents = await (await dbFile?.contents.getFile()).arrayBuffer()).byteLength;
-		console.warn('openFile: ' + filePath + ' length: ' + contentLength + ' from: ' + selectedGithub);
-		if(selectedGithub && (!contents || !dbFile?.contents ||
-			(dbFile.contents instanceof Uint8Array && dbFile.contents?.length === 0)
-			|| (dbFile.contents instanceof ArrayBuffer && dbFile.contents?.byteLength === 0)))
-		{
-			const parts = selectedGithub.split('/');
-			const newRepo = parts.length === 2 ? parts[1] : parts[0] || filelistSelf.RepositoryToolbar?.repository?.value;
-			const newOwner = parts.length === 2 ? parts[0] : filelistSelf.RepositoryToolbar?.owner?.value;
-			if(newOwner && newRepo)
-			{
-				contents = await filelistSelf.cacheFile?.(filelistSelf.DB_STORE_NAME ?? '', newOwner, newRepo, filePath) as ArrayBuffer;
-			}
-		}
-
-		const byteView = contents instanceof ArrayBuffer || contents instanceof Uint8Array
-			? new Uint8Array(contents).subarray(0, 8192) : void 0;
-		const sampleText = new TextDecoder().decode(byteView);
-
-		const isImageFile = AssetInspector.isActuallyImage(byteView, filePath);
-		if(isImageFile)
-		{
-			if(typeof filelistSelf.PaintWidget === 'undefined')
-			{
-				await filelistSelf.triggerPanelRoute?.('paint', filelistSelf.mainDock);
-			}
-
-			if(contents instanceof ArrayBuffer || contents instanceof Uint8Array)
-			{
-				filelistSelf.PaintWidget?.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
-			}
-		} else
-		{
-			if(hasSequentialBinaryRegex.test(sampleText))
-			{
-				contents = hexDump(byteView, contents, filePath);
-			} else if(contents instanceof Uint8Array || contents instanceof ArrayBuffer
-				|| typeof contents === 'string'
-			)
-			{
-				contents = new TextDecoder().decode(contents);
-			}
-
-			if(typeof filelistSelf.AceEditorWidget === 'undefined')
-			{
-				await filelistSelf.triggerPanelRoute?.('editor', filelistSelf.mainDock);
-			}
-
-			if(contents instanceof ArrayBuffer || contents instanceof Uint8Array)
-			{
-				filelistSelf.AceEditorWidget?.openFileInNewTab(realFilePath ?? filePath, realFilePath ?? filePath, contents);
-			}
-		}
+		await filelistSelf.FileManager?.navigateFile(filePath);
 	}
 }
 

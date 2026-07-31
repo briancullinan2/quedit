@@ -7,8 +7,10 @@ import type { FileRecord } from './local.d';
 import { AssetInspector, hasSequentialBinaryRegex, hexDump } from "../rosetta/binary.mjs";
 import { triggerPanelRoute } from "./menu";
 import type { LuminoFilesWindow } from "./lumino.d";
+import type { EditorWindow } from "../editor/widget.d";
+import type { AceEditorWidget } from "../editor/widget";
 
-const luminoSelf: LuminoFilesWindow = self as unknown as any;
+const luminoSelf: LuminoFilesWindow & EditorWindow = self as unknown as any;
 
 export interface PathCandidate
 {
@@ -25,7 +27,7 @@ export type ResolvedLocationTuple = [
 
 export interface FilePayload
 {
-	content: ArrayBuffer;
+	content: ArrayBuffer | Uint8Array;
 	sampleBytes: Uint8Array;
 	sampleStr: string;
 	isImageFile: boolean;
@@ -385,18 +387,63 @@ export class FileManager
 	}
 
 
-	private openFileDebounce: ReturnType<typeof setTimeout> | null = null;
-	private latestOpenRequest: (() => void) | null = null;
+	public static async navigateFile(
+		filePath: string,
+		owner?: string,
+		repo?: string,
+		sha?: string,
+		line?: number | null,
+		column?: null | null
+	)
+	{
+		const [realFilePath, selectedGithub, dbFile, lineNumber] = await this.findFileTestPath(filePath) ?? [];
+		if(!realFilePath || !selectedGithub) return;
+
+		luminoSelf.previousHashLineNumber = lineNumber;
+
+		const parts = selectedGithub.split('/');
+		const newRepo = owner ?? parts.length === 2 ? parts[1] : parts[0] || luminoSelf.RepositoryToolbar?.repository?.value;
+		const newOwner = repo ?? parts.length === 2 ? parts[0] : luminoSelf.RepositoryToolbar?.owner?.value;
+
+		if(newOwner && newRepo)
+		{
+			await this.openFile(newOwner, newRepo, realFilePath, sha);
+		}
+
+		line ??= lineNumber;
+		if(!line)
+		{
+			return;
+		}
+		for(let w of luminoSelf.mainDock?.widgets() ?? [])
+		{
+			if(w.constructor.name === 'AceEditorWidget'
+				&& (w as AceEditorWidget)._editor
+				&& (w as AceEditorWidget).fileId === realFilePath)
+			{
+				setTimeout(() =>
+				{
+					(w as AceEditorWidget)._editor?.gotoLine(line, column ?? 0, true);
+				}, 200);
+			}
+		}
+	}
+
+
+
+
+	private static openFileDebounce: ReturnType<typeof setTimeout> | null = null;
+	private static latestOpenRequest: (() => void) | null = null;
 
 	/**
 	 * CORE ORCHESTRATOR
 	 * Controls the high-level life cycle of opening a file target.
 	 */
-	public async openFile(
+	public static async openFile(
 		repoOwner: string,
 		repoName: string,
 		filePath: string,
-		sha: string,
+		sha?: string,
 		recordHistory: boolean = true,
 		hidePanels: boolean = true,
 		noBounce: boolean = false
@@ -414,6 +461,8 @@ export class FileManager
 
 		// Phase 3: Binary Inspection & Content Parsing
 		const payload = await this.analyzeAndParsePayload(content, filePath);
+
+		console.warn('openFile: ' + filePath + ' length: ' + payload.content.byteLength + ' from: ' + repoOwner + '/' + repoName);
 
 		// Phase 4: Dynamic Asset/Plugin Engine Bootstrapping
 		await this.bootstrapVisualEngines(payload, filePath);
@@ -433,9 +482,9 @@ export class FileManager
 	 * PHASE 1: Debounce Controller
 	 * Captures incoming rapid-fire operations to protect the engine thread.
 	 */
-	private handleDebounce(
-		owner: string, repo: string, path: string, sha: string,
-		history: boolean, panels: boolean, noBounce: boolean
+	private static handleDebounce(
+		owner: string, repo: string, path: string, sha?: string,
+		history: boolean = true, panels: boolean = true, noBounce: boolean = false
 	): boolean
 	{
 		this.latestOpenRequest = () =>
@@ -451,7 +500,7 @@ export class FileManager
 			{
 				if(this.latestOpenRequest) this.latestOpenRequest();
 				this.openFileDebounce = null;
-			}, 400);
+			}, 300);
 			return true;
 		}
 
@@ -459,14 +508,32 @@ export class FileManager
 	}
 
 
+	public static async getContentLength(contents: ArrayBuffer | Uint8Array | FileSystemFileHandle | FileSystemDirectoryHandle | undefined | null): Promise<number | undefined>
+	{
+		if(contents instanceof ArrayBuffer)
+			return contents.byteLength;
+		if(contents instanceof Uint8Array)
+			return contents.length;
+		if(contents instanceof FileSystemFileHandle)
+			return (await (await contents.getFile()).arrayBuffer()).byteLength;
+	}
+
+
 	/**
 	 * PHASE 2: Ingestion Layer
 	 * Tries memory caches first, falling back to a cascading network check.
 	 */
-	private async ingestFileContent(owner: string, repo: string, path: string, sha: string): Promise<ArrayBuffer | null>
+	public static async ingestFileContent(owner: string, repo: string, path: string, sha?: string | undefined): Promise<ArrayBuffer | Uint8Array | null>
 	{
 		let content = await cacheFile(DB_STORE_NAME, owner, repo, path, sha, true);
-		if(content && content.byteLength > 0)
+		if(content instanceof FileSystemFileHandle)
+		{
+			content = await (await content.getFile()).arrayBuffer();
+		}
+		const contentLength = await this.getContentLength(content);
+		if(content && contentLength && contentLength > 0
+			&& (content instanceof ArrayBuffer || content instanceof Uint8Array)
+		)
 		{
 			return content;
 		}
@@ -500,7 +567,7 @@ export class FileManager
 	 * PHASE 3: Payload Processing Engine
 	 * Inspects magic numbers/heuristics and parses buffer payloads into strings.
 	 */
-	private async analyzeAndParsePayload(content: ArrayBuffer, filePath: string): Promise<FilePayload>
+	private static async analyzeAndParsePayload(content: ArrayBuffer | Uint8Array, filePath: string): Promise<FilePayload>
 	{
 		const byteView = new Uint8Array(content);
 		const sampleBytes = byteView.subarray(0, 8192);
@@ -534,18 +601,32 @@ export class FileManager
 	 * PHASE 4: Visual Bootstrapper
 	 * Dynamically pulls asset runtime dependencies on-demand.
 	 */
-	private async bootstrapVisualEngines(payload: FilePayload, filePath: string): Promise<void>
+	private static async bootstrapVisualEngines(payload: FilePayload, filePath: string): Promise<void>
 	{
 		if(!luminoSelf.mainDock)
 		{
 			return;
 		}
-		if(payload.isImageFile)
+		if(payload.isMapFile)
+		{
+			let preferredRenderer = luminoSelf.settingsManager?.get('quake3e', 'preferredRenderer');
+
+			if(preferredRenderer === 'toji')
+			{
+				await triggerPanelRoute('toji', luminoSelf.mainDock);
+			} else if(preferredRenderer === 'nunu')
+			{
+				await triggerPanelRoute('nunu', luminoSelf.mainDock);
+			} else
+			{
+				await triggerPanelRoute('quake3e', luminoSelf.mainDock);
+			}
+		}
+		else if(payload.isImageFile)
 		{
 			await triggerPanelRoute('paint', luminoSelf.mainDock);
-
-			// TODO: openImage(payload.content, filePath);
-		} else
+		}
+		else
 		{
 			await triggerPanelRoute('editor', luminoSelf.mainDock);
 		}
@@ -555,14 +636,35 @@ export class FileManager
 	 * PHASE 6: UI Render Routing
 	 * Directs prepared states to the DOM nodes.
 	 */
-	private updateUIVisibility(payload: FilePayload, filePath: string): void
+	private static updateUIVisibility(payload: FilePayload, filePath: string): void
 	{
 		const viewportWrapper = document.getElementById('viewport-frame');
 
-		if(payload.isImageFile)
+		if(payload.isMapFile)
 		{
+			let preferredRenderer = luminoSelf.settingsManager?.get('quake3e', 'preferredRenderer');
+			const mapFile = filePath.split('/').pop()?.split('.')[0] ?? filePath;
 
-		} else if(typeof luminoSelf.AceEditorWidget !== 'undefined')
+			if(preferredRenderer === 'toji')
+			{
+			}
+			else if(preferredRenderer === 'quake3e')
+			{
+				//if(typeof Cbuf_AddText === 'function' && typeof stringToAddress === 'function')
+				//{
+				//	const bspCommand = `map ${mapFile} ; fs_restart ; vid_restart ;\n`;
+				//	Cbuf_AddText(stringToAddress(bspCommand));
+				//}
+			}
+			else if(preferredRenderer === 'nunu')
+			{
+			}
+		}
+		else if(payload.isImageFile && typeof luminoSelf.PaintWidget !== 'undefined')
+		{
+			luminoSelf.PaintWidget.openFileInNewTab(filePath, filePath, payload.content);
+		}
+		else if(typeof luminoSelf.AceEditorWidget !== 'undefined')
 		{
 			luminoSelf.AceEditorWidget.openFileInNewTab(filePath, filePath, payload.outputString);
 		}
