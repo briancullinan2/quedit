@@ -298,9 +298,12 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 			} else if(gitignoreRecord instanceof ArrayBuffer)
 			{
 				ignoreText = new TextDecoder().decode(new Uint8Array(gitignoreRecord));
+			} else if(gitignoreRecord instanceof FileSystemFileHandle)
+			{
+				ignoreText = await (await gitignoreRecord.getFile()).text();
 			} else
 			{
-				ignoreText = gitignoreRecord || "";
+				return changes;
 			}
 
 			// Split file content into clean rules

@@ -576,15 +576,18 @@ githubSelf.cacheFile = cacheFile;
  * @param {string} storeName
  * @param {string} repoOwner
  * @param {string} repoName
- * @param {string} filePath
+ * @param {string} localPath
  * @param {string | undefined | null} sha
  * @param {boolean} forceReload
- * @returns  {Promise<ArrayBuffer | Uint8Array | null>}
+ * @returns  {Promise<ArrayBuffer | Uint8Array | FileSystemDirectoryHandle | FileSystemFileHandle | null | undefined>}
  */
-async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, forceReload = false)
+async function cacheFileInternal(storeName, repoOwner, repoName, localPath, sha, forceReload = false)
 {
 
 	const selected = repoOwner + '/' + repoName;
+	const filePath = selected + '/' + localPath;
+	localPath = localPath.replace(selected, '');
+
 	try
 	{
 
@@ -598,7 +601,8 @@ async function cacheFileInternal(storeName, repoOwner, repoName, filePath, sha, 
 
 		if(!githubSelf.FS.virtual[filePath]
 			|| !githubSelf.FS.virtual[filePath].contents
-			|| githubSelf.FS.virtual[filePath].contents.length === 0
+			|| (githubSelf.FS.virtual[filePath].contents instanceof ArrayBuffer && githubSelf.FS.virtual[filePath].contents.byteLength === 0)
+			|| (githubSelf.FS.virtual[filePath].contents instanceof Uint8Array && githubSelf.FS.virtual[filePath].contents.length === 0)
 		)
 		{
 			githubSelf.FS.virtual[filePath] = await githubSelf.getRecord?.(storeName ?? githubSelf.DB_STORE_NAME, filePath, selected);

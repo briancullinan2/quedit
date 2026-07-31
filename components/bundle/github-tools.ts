@@ -144,7 +144,7 @@ export async function cacheFileInternal(storeName: string, repoOwner: string, re
 			console.info(`Downloading important (${typeof githubSelf.api !== 'undefined' && githubSelf.api.worker ? 'frontend' : 'worker'}): ${filePath}`);
 		}
 
-		const jsonResponse = await githubRequest(repoOwner, repoName, `contents/${filePath}`);
+		const jsonResponse = await githubRequest(repoOwner, repoName, `contents/${localPath}`);
 
 		let bytes: Uint8Array;
 		if(jsonResponse.encoding === 'base64')
@@ -363,7 +363,7 @@ export function sortNodes(nodes: NestedTreeNode[], recursion: NestedTreeNode[] =
 		}
 		if(Array.isArray(node.children) && node.children.length > 0)
 		{
-			recursion[recursion.length - 1] = node;
+			recursion[recursion.length] = node;
 			sortNodes(node.children, recursion);
 		}
 	});

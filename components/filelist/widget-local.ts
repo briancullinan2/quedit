@@ -1,6 +1,5 @@
 import type { SettingConfig } from "../bundle/settings";
 import type { FileListWidget } from "./widget";
-import { AssetInspector, hasSequentialBinaryRegex, hexDump } from '../rosetta/binary.mjs';
 import type { GitHubFileEntry } from "../bundle/github-types";
 import type { LuminoLayoutWindow } from "../bundle/lumino.d";
 import type { GlobalToolbarsWindow, LuminoMenuWindow } from "../bundle/menu.d";

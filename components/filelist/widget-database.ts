@@ -24,6 +24,29 @@ export class DatabaseListWidget extends FileListWidget
 		this.bindMutationObserver();
 	}
 
+	protected async renderLayout(): Promise<void>
+	{
+		if(this.node.innerHTML !== '')
+		{
+			return;
+		}
+		this.node.innerHTML = `
+			<div class="filelist-wrapper">
+				<ul class="toolbar">
+					<li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
+					<li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
+					<li><a alt="Google Drive" href="#new-gdrive" class="bx bxl bx-google-cloud"></a></li>
+					<li><a alt="Hidden Files" href="#hidden" class="bx bx-eye-slash"></a></li>
+					<li><a alt="Refresh List" href="#refresh" class="bx bx-refresh-cw"></a></li>
+				</ul>
+				<div class="search-box">
+				<input type="text" id="search" name="search" placeholder="Search many..." />
+				</div>
+				<div id="${this.treeContainerId}" class="treejs-render-target"></div>
+			</div>
+			`;
+	}
+
 	/**
 	 * Lazy load folders and render structural updates
 	 */

@@ -1,6 +1,15 @@
 
+import './rosetta.js';
+
 export const hasSequentialBinaryRegex = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]{3,}/;
 
+/**
+ *
+ * @param {Uint8Array} bytes
+ * @param {number} offset
+ * @param {number[]} pattern
+ * @returns {boolean}
+ */
 export function checkMagic(bytes, offset, pattern)
 {
 	if(bytes.length < offset + pattern.length) return false;
@@ -8,6 +17,9 @@ export function checkMagic(bytes, offset, pattern)
 };
 
 
+/**
+ * @type {Record<string, {description: string, match: (b: Uint8Array) => boolean}>}
+ */
 export const BINARY_DETECTOR = {
 	wasm: {
 		description: "WebAssembly Binary / LLVM Wasm Object File",
@@ -134,6 +146,9 @@ export const BINARY_DETECTOR = {
 };
 
 
+/**
+ * @type {Record<string, (bytes: Uint8Array, path: string) => boolean>}
+ */
 export const AssetInspector = {
 	isActuallyImage: (bytes, path) =>
 	{
@@ -155,9 +170,11 @@ export const AssetInspector = {
 		if(detectBinaryType(bytes) === 'bsp' || path.endsWith('.bsp')) return true;
 
 		// Text check against the waterfall registry keys
-		if(strContent)
+		const decoder = new TextDecoder();
+		const sampleStr = decoder.decode(bytes);
+		if(sampleStr)
 		{
-			const matched = TEXT_LANGUAGE_DETECTOR_WATERFALL.find(lang => lang.id.endsWith('map') && lang.match(strContent, bytes));
+			const matched = TEXT_LANGUAGE_DETECTOR_WATERFALL.find(lang => lang.id.endsWith('map') && lang.match(sampleStr, bytes));
 			if(matched) return true;
 		}
 		return /\.(map|vmf|mapx)$/i.test(path);

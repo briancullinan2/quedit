@@ -428,22 +428,20 @@ export class ResponsiveManager
 					{
 						// All other widgets (File lists, Paint tools, Editors) collapse into the primary tab container
 						const nonTerminal = LayoutAdjuster._findNonOutlineOrTerminal(mainDock);
-						if(OUTLINE_WIDGET_TYPES.includes(widget.constructor.name) && nonTerminal)
+						if(OUTLINE_WIDGET_TYPES.includes(widget.constructor.name))
 						{
-							mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.panels === 'left-hand-files' ? 'split-left' : 'split-right', ref: nonTerminal });
-						} else if(nonTerminal)
-						{
-							firstRefWidget[widgetName] = widget;
-							mainDock.addWidget(widget, { mode: 'tab-after', ref: nonTerminal ?? primaryWidget });
-						} else if(firstRefWidget['TerminalWidget'])
-						{
-							mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.order === 'normal-order' ? 'split-top' : 'split-bottom', ref: firstRefWidget['TerminalWidget'] });
-						} else if(OUTLINE_WIDGET_TYPES.includes(primaryWidget.constructor.name))
-						{
-							mainDock.addWidget(widget, { mode: luminoSelf.layoutState?.panels === 'left-hand-files' ? 'split-right' : 'split-left', ref: firstRefWidget['outline'] });
+							mainDock.addWidget(widget, {
+								mode: firstRefWidget['outline']
+									? 'tab-after'
+									: luminoSelf.layoutState?.panels === 'left-hand-files'
+										? 'split-left' : 'split-right',
+								ref: firstRefWidget['outline']
+							});
+							firstRefWidget['outline'] = widget;
 						} else
 						{
-							mainDock.addWidget(widget, { mode: 'tab-after', ref: primaryWidget });
+							mainDock.addWidget(widget, { mode: 'tab-after', ref: firstRefWidget[widgetName] ?? nonTerminal ?? primaryWidget });
+							firstRefWidget[widgetName] = widget;
 						}
 					}
 				});

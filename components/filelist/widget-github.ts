@@ -41,12 +41,12 @@ export class GithubListWidget extends FileListWidget
 			this.node.innerHTML = `
             <div class="filelist-wrapper search-widget-wrapper">
                 <ul class="toolbar">
-                    <li><a alt="New file" href="#new-file" class="bx bx-file-plus"></a></li>
-                    <li><a alt="New folder" href="#new-folder" class="bx bx-folder-plus"></a></li>
-                    <li><a alt="Google Drive" href="#new-gdrive" class="bx bxl bx-google-cloud"></a></li>
-                    <li><a alt="Hidden files" href="#hidden" class="bx bx-eye-slash"></a></li>
-                    <li><a alt="Github link" href="#link" class="bx bx-link"></a></li>
-                    <li><a alt="Refresh list" href="#refresh" class="bx bx-refresh-cw"></a></li>
+                    <li><a alt="Add File" href="#add-file" class="bx bx-file-plus"></a></li>
+                    <li><a alt="Add All" href="#new-folder" class="bx bx-list-plus"></a></li>
+					<li><a alt="Remove File" href="#new-folder" class="bx bx-file-minus"></a></li>
+					<li><a alt="Remove All" href="#new-folder" class="bx bx-list-minus"></a></li>
+                    <li><a alt="Hidden Files" href="#hidden" class="bx bx-eye-slash"></a></li>
+                    <li><a alt="Refresh List" href="#refresh" class="bx bx-refresh-cw"></a></li>
                 </ul>
                 <div class="search-box">
                     <input type="text" id="search-${this.id}" class="search-input-field" name="search" placeholder="Search files or contents..." />

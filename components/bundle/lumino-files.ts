@@ -1,4 +1,4 @@
-import { getDefaultBranch, loadGitHubTree } from "./github-api";
+import { getDefaultBranch } from "./github-api";
 import { cacheFile } from "./github-tools";
 import { filesRepo, GitHubFileEntry, trees } from "./github-types";
 import { FS } from "./global";
@@ -14,7 +14,7 @@ const luminoSelf: LuminoFilesWindow & EditorWindow = self as unknown as any;
 
 export interface PathCandidate
 {
-	testPath: string;
+	testPath: string | null;
 	line: number | null;
 }
 
@@ -58,6 +58,7 @@ export class FileManager
 
 		for(const item of candidates)
 		{
+			if(!item.testPath || item.testPath.length === 0) continue;
 			const currentPath = item.testPath;
 
 			const localResult = await this.checkFilesystemHandles(currentPath);
@@ -95,13 +96,17 @@ export class FileManager
 	private static extractCandidates(hintPath?: string): PathCandidate[]
 	{
 		const rawPathCandidates = [
-			hintPath,
+			hintPath?.replace(/^\/+/g, ''),
 			window.location?.hash?.substring(1),
 			window.location?.pathname?.substring(1)
 		].filter((loc): loc is string => typeof loc === 'string' && loc.trim().length > 0);
 
-		return rawPathCandidates.flatMap((rawCandidate) =>
+		return rawPathCandidates.flatMap((rawCandidate): PathCandidate[] =>
 		{
+			if(!rawCandidate || rawCandidate.length === 0)
+			{
+				return [];
+			}
 			const hasColon = rawCandidate.includes(':');
 			const cleanPathPart = hasColon ? rawCandidate.split(':')[0] : rawCandidate;
 			const extractedLine = hasColon ? parseInt(rawCandidate.split(':').pop() || '', 10) : null;

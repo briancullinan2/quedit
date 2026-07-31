@@ -353,7 +353,7 @@
                 const poisonedClone = {
                   ...child,
                   // SEVER THE LOOP: Force children empty so walkDown doesn't iterate infinitely
-                  children: [], 
+                  children: [],
                   parent: child.parent
                 };
 
@@ -361,7 +361,7 @@
                 poisonedClone.name = (poisonedClone.name || 'node') + '/[Recursive]';
                 poisonedClone.text = (poisonedClone.text || 'node') + '/[Recursive]';
                 poisonedClone.id = (poisonedClone.id || 'recursive-loop') + '/[Recursive]';
-                
+
                 if (poisonedClone.path) {
                   poisonedClone.path += '/[Recursive]';
                 } else {
@@ -390,7 +390,7 @@
                 // Use the built-in factory layout so it receives checkboxes, tags, and data attributes
                 const toxicLi = Tree.createLiEle(child, true);
                 toxicLi.classList.add('treejs-node__toxic');
-                
+
                 // Track state references inside treejs maps to cleanly bypass downstream click errors
                 this.nodesById[child.id] = child;
                 this.liElementsById[child.id] = toxicLi;
@@ -528,7 +528,7 @@
         let prevStatus = node.status;
 
         let status = prevStatus === 1 || prevStatus === 2 ? 0 : 2;
-        //node.status = status;
+        node.status = status;
         this.markWillUpdateNode(node);
         this.walkUp(node, 'status');
         this.walkDown(node, 'status');
@@ -1580,7 +1580,7 @@
         /*
         This regular expression is just a way to recursively match brackets within
         a string.
-      
+
          /url\s*\(  = Match on the word "url" with any whitespace after it and then a parens
            (  = Start a capturing group
              (?:  = Start a non-capturing group
@@ -1599,7 +1599,7 @@
                 *  = Match anything
              )  = Close capturing group
          \)  = Match a close parens
-      
+
          /gi  = Get all matches, not the first.  Be case insensitive.
          */
         let fixedCss = css.replace(/url\s*\(((?:[^)(]|\((?:[^)(]+|\([^)(]*\))*\))*)\)/gi, function (fullMatch, origUrl) {
