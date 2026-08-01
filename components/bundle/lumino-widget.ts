@@ -2,6 +2,10 @@ import { DockPanel, Menu, Widget } from '@lumino/widgets';
 import { OUTLINE_WIDGET_TYPES } from './lumino-resize';
 import type { LuminoLayoutWindow } from './lumino.d';
 import type { GlobalToolbarsWindow, LuminoMenuWindow } from './menu.d';
+import type { AceEditorWidget } from '../editor/widget';
+import type { TerminalWidget } from '../terminal/widget';
+import { historyToolbar } from './menu-history';
+import { MODULE_REGISTRY, TERMINAL_REGISTRY } from './menu';
 
 export const WIDESCREEN = 1200;
 export const MOBILEMODE = 600;
@@ -43,6 +47,8 @@ function trackWidgetInteraction(widget: Widget): void
 		{
 			luminoSelf.previousInteractedWidget = luminoSelf.lastInteractedWidget;
 			luminoSelf.lastInteractedWidget = widget;
+
+			updateHashFromWidget(widget);
 		}
 
 		console.log('Focused: ' + luminoSelf.lastInteractedWidget?.constructor.name + ' unFocused: ' + luminoSelf.previousInteractedWidget?.constructor.name);
@@ -54,6 +60,32 @@ function trackWidgetInteraction(widget: Widget): void
 
 	trackedWidgets.add(widget);
 }
+
+
+
+export function updateHashFromWidget(shownWidget: Widget)
+{
+	const widgetTypeName = shownWidget.constructor.name;
+	if(widgetTypeName === 'AceEditorWidget')
+	{
+		const aceEditor = shownWidget as AceEditorWidget;
+		historyToolbar.recordFileHistory(aceEditor._fileId, void 0, (aceEditor._editor?.getCursorPosition().row ?? 0) + 1);
+	} else if(widgetTypeName === 'TerminalWidget')
+	{
+		const filterId = (shownWidget as TerminalWidget).filterId;
+		const terminal = TERMINAL_REGISTRY.find(t => t.id === filterId);
+		const title = (terminal?.label ?? 'Terminal') + ' · Q3IDE';
+		document.title = title;
+		history.pushState({ location: '/#' + filterId, title: title }, title, '#' + filterId);
+	} else if(OUTLINE_WIDGET_TYPES.includes(widgetTypeName))
+	{
+		const widgetKey = Object.keys(MODULE_REGISTRY).find(key => MODULE_REGISTRY[key].className === widgetTypeName);
+		const title = widgetKey + ' · Q3IDE';
+		document.title = title;
+		history.pushState({ location: '/#' + widgetKey, title: title }, title, '#' + widgetKey);
+	}
+}
+
 
 /**
  * Smart Layout Orchestrator wrapper for Lumino DockPanel in TypeScript

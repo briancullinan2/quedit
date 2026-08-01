@@ -1,4 +1,6 @@
 
+// search-worker.js
+
 /** @type {Worker & WorkerGlobalScope & import('../bundle/local.d').LocalWindow & import('../compiler/make.d').BuildWindow & import('../bundle/github.d').GithubWindow & { api?: { github_token?: string | null | undefined } }} */
 const workerSelf = /** @type {any} */ (self);
 
@@ -9,11 +11,10 @@ if(!workerSelf.api)
 	};
 }
 
-// search-worker.js
 importScripts('/components/core/preambles.js');
 importScripts('/components/core/local.js');
 importScripts('/components/engine/sys_fs.js');
-importScripts('/components/filelist/github.js');
+importScripts('/components/workers/github.js');
 
 
 /**

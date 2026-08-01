@@ -38,7 +38,7 @@ export class GithubService
 		{
 			return GithubService.instance;
 		}
-		this.worker = new Worker('/components/filelist/commit-worker.js');
+		this.worker = new Worker('/components/workers/commit-worker.js', { type: 'module' });
 		this.worker.onmessage = this.handleWorkerMessage.bind(this);
 	}
 

@@ -59,7 +59,7 @@ export class SearchService
 
 		if(!luminoSelf.searchWorker)
 		{
-			luminoSelf.searchWorker = new Worker('/components/filelist/search-worker.js');
+			luminoSelf.searchWorker = new Worker('/components/workers/search-worker.js');
 		}
 		luminoSelf.searchWorker.onmessage = this.handleWorkerMessage.bind(this);
 	}

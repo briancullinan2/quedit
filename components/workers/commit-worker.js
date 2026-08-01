@@ -1,7 +1,10 @@
 
 // @ts-check
+import initGit from './lg2_async.js';
+//const lg = await initGit();
 
-/** @type {Worker & import('./widget.d').CommitWorkerWindow} */
+
+/** @type {Worker & import('../filelist/widget.d').CommitWorkerWindow} */
 const workerSelf2 = /** @type {any} */ (self);
 
 if(!workerSelf2.api)
@@ -11,10 +14,10 @@ if(!workerSelf2.api)
 	};
 }
 
-workerSelf2.importScripts?.('/components/core/preambles.js');
-workerSelf2.importScripts?.('/components/core/local.js');
-workerSelf2.importScripts?.('/components/engine/sys_fs.js');
-workerSelf2.importScripts?.('/components/filelist/github.js');
+import '../core/preambles.js';
+import '../core/local.js';
+import '../engine/sys_fs.js';
+import './github.js';
 
 /**
  *
@@ -22,7 +25,7 @@ workerSelf2.importScripts?.('/components/filelist/github.js');
  * @param {string} repoName
  * @param {string} branch
  * @param {string} commitMessage
- * @param {import('./widget.d').GithubChanges | undefined} staging
+ * @param {import('../filelist/widget.d').GithubChanges | undefined} staging
  * @returns
  */
 async function pushLocalChangesToGitHub(repoOwner, repoName, branch, commitMessage, staging = void 0)
@@ -241,7 +244,7 @@ function getGitHubHeaders()
  * @param {string} repoName
  * @param {string} branch
  * @param {boolean} listDeleted
- * @returns  {Promise<import('./widget.d').GithubChanges>}
+ * @returns  {Promise<import('../filelist/widget.d').GithubChanges>}
  */
 async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted = false)
 {
@@ -254,7 +257,7 @@ async function calculateStagedChanges(repoOwner, repoName, branch, listDeleted =
 	}
 	const remoteTree = workerSelf2.filesRepo?.[selected] || {};
 
-	/** @type {import('./widget.d').GithubChanges} */
+	/** @type {import('../filelist/widget.d').GithubChanges} */
 	const changes = {
 		modified: [],   // { path, localSha, remoteSha }
 		added: [],      // { path, localSha }

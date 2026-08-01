@@ -28,7 +28,7 @@ workerSelf.importScripts?.('../core/local.js');
 workerSelf.importScripts?.('../engine/sys_fs.js');
 workerSelf.importScripts?.('../engine/sys_std.js');
 workerSelf.importScripts?.('../engine/sys_web.js');
-workerSelf.importScripts?.('../filelist/github.js');
+workerSelf.importScripts?.('../workers/github.js');
 workerSelf.importScripts?.('../compiler/make.js');
 workerSelf.importScripts?.('../compiler/make-tools.js');
 workerSelf.importScripts?.('../compiler/make-qvm.js');

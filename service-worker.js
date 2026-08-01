@@ -99,7 +99,7 @@ async function initializeCoreScripts()
 	const scriptsToLoad = [
 		'/components/core/local.js',
 		'/file-manifest.js',
-		'/components/filelist/github.js',
+		'/components/workers/github.js',
 	];
 
 	for(const script of scriptsToLoad)
@@ -301,7 +301,7 @@ async function fetchAsset(urlInput, key, selected)
 		console.log(`💾 [SW-DATABASE] Writing payload binary content into IndexedDB Store: "${serviceSelf.DB_STORE_NAME}" -> Target Key: "${localKey}"`);
 
 
-		const isGithubContents = urlString.includes('api.github.com') && urlString.match(/contents\/|\/contents($|[\?])$/ig);
+		const isGithubContents = urlString.includes('api.github.com') && urlString.match(/contents\/|\/contents($|[\?])/ig);
 
 		// OFFLINE BULLSHIT
 		if(isGithubContents)

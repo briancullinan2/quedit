@@ -6,7 +6,7 @@ import { BoxPanel, DockPanel, Widget, Menu, MenuBar } from '@lumino/widgets';
 import * as commands from '@lumino/commands';
 import * as widgets from '@lumino/widgets';
 import * as messaging from '@lumino/messaging';
-import { createTopBar, initializeMenus, MODULE_REGISTRY, renderHashCommand, triggerPanelRoute } from './menu';
+import { createTopBar, initializeMenus, MODULE_REGISTRY, renderHashCommand, TERMINAL_REGISTRY, triggerPanelRoute } from './menu';
 import { StatusBarWidget } from './status';
 import { ServiceWorkerManager } from './worker';
 import { SettingConfig, SettingsManager } from './settings';
@@ -17,6 +17,7 @@ import { applyInitialLayout } from './menu-app';
 import JSZip from 'jszip';
 import type { LuminoLayoutWindow } from './lumino.d';
 import type { LuminoMenuWindow, RepositorySettingsWindow } from './menu.d';
+import { updateHashFromWidget } from './lumino-widget';
 
 
 const luminoSelf: LuminoLayoutWindow & LuminoMenuWindow & RepositorySettingsWindow = self as unknown as any;
@@ -106,10 +107,12 @@ function main(): void
 			const newType = shownWidget?.constructor.name;
 			const lastType = luminoSelf.lastInteractedWidget?.constructor.name;
 
-			if(newType !== lastType)
+			if(newType !== lastType || shownWidget !== luminoSelf.lastInteractedWidget)
 			{
 				luminoSelf.previousInteractedWidget = luminoSelf.lastInteractedWidget;
 				luminoSelf.lastInteractedWidget = shownWidget;
+
+				updateHashFromWidget(shownWidget);
 			}
 
 			console.log('Active: ' + luminoSelf.lastInteractedWidget?.constructor.name + ' inActive: ' + luminoSelf.previousInteractedWidget?.constructor.name);
@@ -197,7 +200,7 @@ function main(): void
 	{
 		// because scripts depend on service worker injections and TODO: eventually compiling from SW
 		const activeHash = window.location.hash.substring(1);
-		await renderHashCommand(activeHash);
+		await renderHashCommand(activeHash, true);
 
 		// TODO: load default editor specified in localStorage
 		const userWorkspaceChoice = SettingsManager.get('core', 'workspaceDefault');

@@ -228,7 +228,7 @@ export class AceEditorPool
  */
 export class AceEditorWidget extends Widget implements MenuModules
 {
-	protected _fileId: string;
+	public _fileId: string;
 	protected _initialContent: string;
 	public _editor: Ace.Editor | undefined = undefined;
 	protected static _defaultContent: string = '#include <stdio.h>\n\n// this is a comment\n\nint main() {\n    printf("Hello, Lumino!\\n")\n    printf("WASI Compiler Check: SUCCESS\\n");\n    return 0;\n}\n';

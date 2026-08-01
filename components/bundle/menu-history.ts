@@ -139,7 +139,7 @@ export class HistoryToolbar extends Widget
 		const fileName = fileNameMatch ? fileNameMatch[0] : filePath;
 
 		let targetLine = lineNumber;
-		if(lineNumber === null && typeof aceEditor !== 'undefined'
+		if(!lineNumber && typeof aceEditor !== 'undefined'
 			&& typeof aceEditor._editor !== 'undefined'
 		)
 		{
@@ -484,3 +484,4 @@ export class HistoryToolbar extends Widget
 }
 
 menuSelf.HistoryToolbar = HistoryToolbar;
+export const historyToolbar = HistoryToolbar.getInstance();
