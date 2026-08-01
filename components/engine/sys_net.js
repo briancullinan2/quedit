@@ -612,7 +612,7 @@ function Com_DL_Perform(nameStr, localName, responseData) {
     }
     // async to filesystem
     // does it REALLY matter if it makes it? wont it just redownload?
-    putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repository.value)
+    putRecord(DB_STORE_NAME, FS.virtual[nameStr], self.RepositoryToolbar?.owner?.value + '/' + self.RepositoryToolbar?.repository?.value)
     //Sys_FileReady(stringToAddress(localName), stringToAddress(nameStr));
   }
 
@@ -622,7 +622,7 @@ function Com_DL_Perform(nameStr, localName, responseData) {
 
 async function CL_Download(cmd, name, auto) {
   if (!FS.database) {
-    FS.database = getDB(owner.value + '/' + repository.value);
+    FS.database = getDB(self.RepositoryToolbar?.owner?.value + '/' + self.RepositoryToolbar?.repository?.value);
   }
 
   let cmdStr = addressToString(cmd);

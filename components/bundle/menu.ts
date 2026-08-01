@@ -578,7 +578,7 @@ export async function renderHashCommand(targetHashName: string, noBounce: boolea
 		return;
 	}
 
-	if(!rawTarget) return;
+	if(!rawTarget || rawTarget.length === 0) return;
 	menuSelf.previousHashLineNumber = null;
 
 	const matchedRoute = MODULE_REGISTRY[rawTarget];

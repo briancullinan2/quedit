@@ -140,7 +140,7 @@ function _extractSemanticOverrides(lines, tokenStream, languageKey, annotations,
         syntaxError: (recognizer, offendingSymbol, line, column, msg) => {
 
             // Pass the active lines array context and aggregate directly
-            // 'lines' must be available in scope or passed into 
+            // 'lines' must be available in scope or passed into
             if (typeof processSyntaxError === 'function' && typeof lines !== 'undefined') {
                 processSyntaxError(lines, annotations, { line, column, message: msg });
             } else {
@@ -298,7 +298,7 @@ function _extractSemanticOverrides(lines, tokenStream, languageKey, annotations,
                 token.ruleHistory = ruleHistory;
                 token.contextNode = ctx;
 
-                console.log(`Token: "${tokenText}" | Direct Rule: ${ruleName} | Inherited Trace Array:`, ruleHistory);
+                console.log(`Token: "${tokenText}" | Direct Rule: ${ruleName} | Line: ${token.line} | Inherited Trace Array:`, ruleHistory);
                 // 2. COMPUTE THE ACCURATE SCOPE OVERRIDE VALUE
                 if (token.text.includes('#include')) {
                     debugger
@@ -394,7 +394,7 @@ function _extractSemanticOverrides(lines, tokenStream, languageKey, annotations,
 }
 
 /**
- * Single-pass compilation token provider. 
+ * Single-pass compilation token provider.
  * Spins up a single lexer/parser pipeline, executes the semantic override tree walk,
  * and handles inline annotations directly.
  */

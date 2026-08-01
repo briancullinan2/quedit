@@ -363,7 +363,7 @@ async function readPreFS() {
         path: '/home',
         parent: ''
     }
-    //putRecord(DB_STORE_NAME, FS.virtual['/home'], owner.value + '/' + repository.value)
+    //putRecord(DB_STORE_NAME, FS.virtual['/home'], self.RepositoryToolbar?.owner?.value + '/' + self.RepositoryToolbar?.repository?.value)
 
 
     // TODO: check for cl_dlURL
@@ -388,7 +388,7 @@ async function readPreFS() {
         path: nameStr,
         parent: nameStr.substring(0, nameStr.lastIndexOf('/'))
     }
-    putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repository.value)
+    putRecord(DB_STORE_NAME, FS.virtual[nameStr], self.RepositoryToolbar?.owner?.value + '/' + self.RepositoryToolbar?.repository?.value)
 
     // write it in multiple places because of async startup
     nameStr = config.RUNBASE + '/' + MODNAME + '/pak2.pk3dir/description.txt'
@@ -400,7 +400,7 @@ async function readPreFS() {
         path: nameStr,
         parent: nameStr.substring(0, nameStr.lastIndexOf('/'))
     }
-    putRecord(DB_STORE_NAME, FS.virtual[nameStr], owner.value + '/' + repository.value)
+    putRecord(DB_STORE_NAME, FS.virtual[nameStr], self.RepositoryToolbar?.owner?.value + '/' + self.RepositoryToolbar?.repository?.value)
 
 
     let [_, selected, dbFile] = await findFileTestPath('build/release-wasm-js/baseq3a/q3_ui.wasm')

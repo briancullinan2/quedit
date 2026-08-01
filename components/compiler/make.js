@@ -915,7 +915,7 @@ async function prepInputOutput(file, obj, database, makeDirs = false)
 
 	try
 	{
-		if(makeDirs && outDir)
+		if(makeDirs && outDir && makeSelf.api?.memfs)
 			makeSelf.api?.memfs.mkdirp(outDir);
 	} catch(e)
 	{

@@ -6,7 +6,7 @@ import { BoxPanel, DockPanel, Widget, Menu, MenuBar } from '@lumino/widgets';
 import * as commands from '@lumino/commands';
 import * as widgets from '@lumino/widgets';
 import * as messaging from '@lumino/messaging';
-import { createTopBar, initializeMenus, MODULE_REGISTRY, triggerPanelRoute } from './menu';
+import { createTopBar, initializeMenus, MODULE_REGISTRY, renderHashCommand, triggerPanelRoute } from './menu';
 import { StatusBarWidget } from './status';
 import { ServiceWorkerManager } from './worker';
 import { SettingConfig, SettingsManager } from './settings';
@@ -193,16 +193,19 @@ function main(): void
 
 	isDevToolsOpen();
 
-	startServiceWorker().then(() =>
+	startServiceWorker().then(async () =>
 	{
 		// because scripts depend on service worker injections and TODO: eventually compiling from SW
-		const userWorkspaceChoice = SettingsManager.get('core', 'workspaceDefault');
+		const activeHash = window.location.hash.substring(1);
+		await renderHashCommand(activeHash);
 
 		// TODO: load default editor specified in localStorage
-		if(MODULE_REGISTRY[userWorkspaceChoice])
+		const userWorkspaceChoice = SettingsManager.get('core', 'workspaceDefault');
+		if(Array.from(mainDock.widgets()).length === 0 && MODULE_REGISTRY[userWorkspaceChoice])
 		{
 			triggerPanelRoute(userWorkspaceChoice, mainDock, true);
 		}
+
 	});
 
 }

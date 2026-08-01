@@ -470,6 +470,7 @@ export class AceEditorWidget extends Widget implements MenuModules
 		if(existingDefault && typeof existingDefault._editor !== 'undefined')
 		{
 			existingDefault.title.label = fileName.split('/').pop() ?? fileName;
+			existingDefault._fileId = fileId;
 			existingDefault._initialContent = fileContent;
 			const session = AceEditorPool.getOrCreateAceSession(fileId, fileContent, existingDefault._editor);
 			editorSelf.mainDock?.activateWidget(existingDefault);
