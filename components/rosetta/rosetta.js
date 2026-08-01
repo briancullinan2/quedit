@@ -943,7 +943,15 @@ const ROSETTA_LEXER_MATRIX = {
 	"DIGITS": "constant.numeric",
 	"SYMBOL": "keyword.operator",
 
+	"strikethrough": "markup.strikethrough",
+	"inline_code": "markup.raw.code",
+	"url_autolink": "markup.underline.link",
+	"task_listitem": "markup.list",
 
+	// --- New Lexer Tokens ---
+	"COLON": "keyword.operator",
+	"URL_LINK": "markup.underline.link",
+	"CODE_INLINE": "markup.raw.code",
 
 };
 
@@ -1474,42 +1482,53 @@ const ROSETTA_CROSS_LANGUAGE_MAPPING = {
 	"vpath_directive": ["declaration"],
 
 	// =====================================================================
-    // CREOLE PARSER & LEXER MAPPINGS (creole.g4 -> C AST Rules)
-    // =====================================================================
-    // --- Parser Rules ---
-    "document": ["compilationUnit", "translationUnit"],
-    "line": ["blockItem", "statement"],
-    "markup": ["expression", "primaryExpression"],
-    "text_": ["StringLiteral", "Identifier"],
-    "bold": ["primaryExpression", "constant"],
-    "italics": ["primaryExpression", "constant"],
-    "href": ["postfixExpression", "functionCall"],
-    "image": ["postfixExpression", "initializer"],
-    "hline": ["statement", "Semi"],
-    "listitem": ["initializerList", "blockItem"],
-    "tableheader": ["structOrUnionSpecifier", "declaration"],
-    "tablerow": ["initializerList", "compoundStatement"],
-    "title": ["functionDefinition", "externalDeclaration"],
-    "nowiki": ["StringLiteral", "asmStringLiteral"],
+	// CREOLE PARSER & LEXER MAPPINGS (creole.g4 -> C AST Rules)
+	// =====================================================================
+	// --- Parser Rules ---
+	"document": ["compilationUnit", "translationUnit"],
+	"line": ["blockItem", "statement"],
+	"markup": ["expression", "primaryExpression"],
+	"text_": ["StringLiteral", "Identifier"],
+	"bold": ["primaryExpression", "constant"],
+	"italics": ["primaryExpression", "constant"],
+	"href": ["postfixExpression", "functionCall"],
+	"image": ["postfixExpression", "initializer"],
+	"hline": ["statement", "Semi"],
+	"listitem": ["initializerList", "blockItem"],
+	"tableheader": ["structOrUnionSpecifier", "declaration"],
+	"tablerow": ["initializerList", "compoundStatement"],
+	"title": ["functionDefinition", "externalDeclaration"],
+	"nowiki": ["StringLiteral", "asmStringLiteral"],
 
-    // --- Lexer Tokens ---
-    "HASH": ["Hash"],
-    "LBRACKET": ["LeftBracket"],
-    "RBRACKET": ["RightBracket"],
-    "LBRACE": ["LeftBrace"],
-    "RBRACE": ["RightBrace"],
-    "CODE_BLOCK": ["asmStringLiteral", "StringLiteral"],
-    "NOWIKI_CREOLE": ["StringLiteral"],
-    "TEXT": ["Identifier", "StringLiteral"],
-    "WS": ["Whitespace"],
-    "CR": ["Newline"],
-    "RSLASH": ["Div"],
+	// --- Lexer Tokens ---
+	"HASH": ["Hash"],
+	"LBRACKET": ["LeftBracket"],
+	"RBRACKET": ["RightBracket"],
+	"LBRACE": ["LeftBrace"],
+	"RBRACE": ["RightBrace"],
+	"CODE_BLOCK": ["asmStringLiteral", "StringLiteral"],
+	"NOWIKI_CREOLE": ["StringLiteral"],
+	"TEXT": ["Identifier", "StringLiteral"],
+	"WS": ["Whitespace"],
+	"CR": ["Newline"],
+	"RSLASH": ["Div"],
 
-    // --- Lexer Fragments ---
-    "LANG_NAME": ["typedefName", "Identifier"],
-    "LETTERS": ["Nondigit"],
-    "DIGITS": ["Digit"],
-    "SYMBOL": ["punctuation", "operator"],
+	// --- Lexer Fragments ---
+	"LANG_NAME": ["typedefName", "Identifier"],
+	"LETTERS": ["Nondigit"],
+	"DIGITS": ["Digit"],
+	"SYMBOL": ["punctuation", "operator"],
+
+	// --- Parser Rules ---
+	"strikethrough": ["primaryExpression", "constant"],
+	"inline_code": ["StringLiteral", "asmStringLiteral"],
+	"url_autolink": ["StringLiteral", "Identifier"],
+	"task_listitem": ["initializerList", "blockItem"],
+
+	// --- Lexer Tokens ---
+	"COLON": ["Colon"],
+	"URL_LINK": ["StringLiteral"],
+	"CODE_INLINE": ["StringLiteral"],
 };
 
 
@@ -1799,8 +1818,12 @@ function toRosettaToken(symbolicName, ruleName, lexer, parser, ctxOrToken, token
 	if(finalTokens.includes("key") || finalTokens.includes("jsonkey") || state.ruleName === 'jsonKey')
 	{
 		finalTokens = finalTokens.filter(t => ![
-			"keyword", "constant", "storage", "type", "operator",
-			"assignmentexpression", "compoundstatement", "numeric", "text"
+			"keyword", "meta", "storage", "type", "operator",
+			"character", "language", "numeric", "unit", "constant",
+			"parameter", "invalid", "deprecated", "fold", "entity",
+			"name", "function", "variable", "class", "heading",
+			"string", "tag", "attribute-name", "regexp", "comment",
+			"assignmentexpression", "compoundstatement", "text"
 		].includes(t.toLowerCase()));
 		if(!finalTokens.includes("variable")) finalTokens.unshift("variable");
 	} else if(state.ruleName === 'jsonValue' && finalTokens.includes("string"))
