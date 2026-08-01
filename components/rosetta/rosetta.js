@@ -826,7 +826,89 @@ const ROSETTA_LEXER_MATRIX = {
 	"Whitespace": "whitespace.text",
 	"Newline": "whitespace.text",
 	"BlockComment": "c.block.comment",
-	"LineComment": "double_slash.line.comment"
+	"LineComment": "double_slash.line.comment",
+
+	// --- GNU Make Built-in Functions ---
+    "FUNC_SUBST": "function.support.builtin",
+    "FUNC_PATSUBST": "function.support.builtin",
+    "FUNC_STRIP": "function.support.builtin",
+    "FUNC_FINDSTRING": "function.support.builtin",
+    "FUNC_FILTER": "function.support.builtin",
+    "FUNC_FILTER_OUT": "function.support.builtin",
+    "FUNC_SORT": "function.support.builtin",
+    "FUNC_WORD": "function.support.builtin",
+    "FUNC_WORDS": "function.support.builtin",
+    "FUNC_WORDLIST": "function.support.builtin",
+    "FUNC_FIRSTWORD": "function.support.builtin",
+    "FUNC_LASTWORD": "function.support.builtin",
+
+    "FUNC_DIR": "function.support.builtin",
+    "FUNC_NOTDIR": "function.support.builtin",
+    "FUNC_SUFFIX": "function.support.builtin",
+    "FUNC_BASELINE": "function.support.builtin",
+    "FUNC_ADDSUFFIX": "function.support.builtin",
+    "FUNC_ADDPREFIX": "function.support.builtin",
+    "FUNC_JOIN": "function.support.builtin",
+    "FUNC_WILDCARD": "function.support.builtin",
+    "FUNC_REALPATH": "function.support.builtin",
+    "FUNC_ABSPATH": "function.support.builtin",
+
+    "FUNC_ERROR": "function.support.builtin",
+    "FUNC_WARNING": "function.support.builtin",
+    "FUNC_INFO": "function.support.builtin",
+
+    "FUNC_SHELL": "function.support.builtin",
+    "FUNC_FOREACH": "function.support.builtin",
+    "FUNC_IF": "function.support.builtin",
+    "FUNC_OR": "function.support.builtin",
+    "FUNC_AND": "function.support.builtin",
+    "FUNC_CALL": "function.support.builtin",
+    "FUNC_EVAL": "function.support.builtin",
+    "FUNC_FILE": "function.support.builtin",
+    "FUNC_VALUE": "function.support.builtin",
+    "FUNC_ORIGIN": "function.support.builtin",
+    "FUNC_FLAVOR": "function.support.builtin",
+
+    // --- Makefile Directives & Control Flow ---
+    "DEFINE": "control.keyword",
+    "ENDEF": "control.keyword",
+    "INCLUDE": "control.keyword",
+    "IFDEF": "control.keyword",
+    "IFNDEF": "control.keyword",
+    "IFEQ": "control.keyword",
+    "IFNEQ": "control.keyword",
+    "ELSE": "control.keyword",
+    "ENDIF": "control.keyword",
+    "EXPORT": "control.keyword",
+    "UNEXPORT": "control.keyword",
+    "OVERRIDE": "control.keyword",
+    "UNDEFINE": "control.keyword",
+    "VPATH": "control.keyword",
+
+    // --- Operators, Punctuation & Delimiters ---
+    "ASSIGN": "assignment.operator.keyword",
+    "COLON": "operator.keyword",
+    "SEMICOLON": "operator.keyword",
+    "PIPE": "operator.keyword",
+    "DOLLAR": "variable.keyword",
+    "LPAREN": "punctuation.operator",
+    "RPAREN": "punctuation.operator",
+    "LBRACE": "punctuation.operator",
+    "RBRACE": "punctuation.operator",
+    "COMMA": "punctuation.operator",
+    "EXCLAMATION": "logical.operator.keyword",
+
+    // --- Variables, Values & Recipes ---
+    "SPECIAL_VAR": "constant.language",
+    "COMMAND": "support.function",
+    "COMMENT": "line.comment",
+    "STRING": "quoted.string",
+    "NAME": "other.variable.identifier",
+    "CONTINUATION": "preprocessor.meta",
+    "NEWLINE": "whitespace.text",
+    "WS": "whitespace.text",
+
+
 };
 
 const LEXER_FUNCTIONAL_CLASSIFIER_MATRIX = {
@@ -1316,7 +1398,44 @@ const ROSETTA_CROSS_LANGUAGE_MAPPING = {
 	"Escape_encoded": ["SimpleEscapeSequence"],                 // Encoded system control sequences (`\n`, `\r`, `\t`)
 	"Escape_semicolon": ["EscapeSequence"],                     // Explicit inline token separators (`\;`)
 	"Quoted_cont": ["EscapeSequence"],                          // Escaped line-continuations inside active strings
-	"Bracket_arg_nested": ["StringLiteral"]                     // Internal recursive contents of raw block structures
+	"Bracket_arg_nested": ["StringLiteral"],                     // Internal recursive contents of raw block structures
+
+
+	// =====================================================================
+    // MAKEFILE PARSER SYMBOL MAPPINGS (MakefileParser.g4 -> C AST Rules)
+    // =====================================================================
+    "makefile": ["translationUnit"],
+    "item": ["blockItem"],
+    "rule_": ["declaration", "labeledStatement"],
+    "double_colon": ["Colon", "Colon"],
+    "targets": ["initDeclaratorList"],
+    "target": ["directDeclarator", "typedefName"],
+    "prerequisites": ["parameterTypeList"],
+    "normal_prerequisites": ["parameterTypeList"],
+    "order_only_prerequisites": ["parameterTypeList"],
+    "prerequisite": ["parameterDeclaration", "Identifier"],
+    "recipe": ["compoundStatement", "expressionStatement"],
+    "recipe_command": ["expressionStatement"],
+    "variable_assignment": ["initDeclarator", "assignmentExpression"],
+    "define_directive": ["functionDefinition", "compoundStatement"],
+    "define_body": ["blockItemList"],
+    "value": ["initializer", "assignmentExpression"],
+    "standalone_function": ["expressionStatement"],
+    "variable_ref": ["primaryExpression", "Identifier"],
+    "function_call": ["postfixExpression", "functionCall"],
+    "builtin_function": ["Identifier", "typedefName"],
+    "function_args": ["argumentExpressionList"],
+    "arg": ["assignmentExpression", "primaryExpression"],
+    "include_directive": ["externalDeclaration", "Directive"],
+    "conditional": ["selectionStatement"],
+    "conditional_header": ["selectionStatement"],
+    "conditional_else": ["selectionStatement"],
+    "conditional_endif": ["selectionStatement"],
+    "export_directive": ["declaration", "externalDeclaration"],
+    "override_directive": ["declaration"],
+    "undefine_directive": ["statement"],
+    "error_directive": ["statement", "Directive"],
+    "vpath_directive": ["declaration"]
 };
 
 
@@ -1342,7 +1461,7 @@ const ROSETTA_NEIGHBORHOOD_ASSOCIATIONS = {
 	// =====================================================================
 	"match.intercept.directive.precompiler.import": (t, s) =>
 	{
-		if(!t.tokenSymbol?.toLowerCase().includes('directive') && !t.tokenRule?.toLowerCase().includes('preproc') && !t.text?.startsWith('#') && !t.ruleHistory?.some(r => r.toLowerCase().includes('directive'))) return null;
+		if(!t.tokenSymbol?.toLowerCase().includes('directive') && !t.tokenRule?.toLowerCase().includes('preproc') && !t.ruleHistory?.some(r => r.toLowerCase().includes('directive'))) return null;
 		let tag = "keyword.control.import.directive";
 		const match = t.text?.match(/(?:#include|import|require)\s*["<]([^">]+)[">]/);
 		if(match?.[1])

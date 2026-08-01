@@ -19,7 +19,7 @@ const editorSelf: EditorWindow & GithubWindow & GlobalToolbarsWindow & LuminoLay
 
 interface ISessionCache
 {
-	[fileId: string]: any;
+	[fileId: string]: AceSession;
 }
 
 declare module "ace-builds" {
@@ -40,8 +40,29 @@ export class AceEditorPool
 
 	public static getOrCreateAceSession(fileId: string, content: string, editor: Ace.Editor): AceSession | undefined | void
 	{
+		const updateSessions = (session: AceSession) =>
+		{
+			bindBlockTrackerToSession(session, editor);
+			onBlockTrackerCursorChange(session, editor);
+
+			editor.setSession(session);
+			editor.resize();
+			editor.renderer.updateFull();
+			tryLoadingTerminalEditorBridge(editor);
+			editorSelf.ace?.require(["ace/mode/antlr_worker"], (antlrWorkerModule) =>
+			{
+				if(antlrWorkerModule && antlrWorkerModule.switchActiveSession)
+				{
+					antlrWorkerModule.switchActiveSession(session);
+				}
+			});
+
+		};
+
+
 		if(this.sessionCache[fileId])
 		{
+			updateSessions(this.sessionCache[fileId]);
 			return this.sessionCache[fileId];
 		}
 
@@ -49,7 +70,6 @@ export class AceEditorPool
 		if(!session) return;
 
 		session.workspaceFileId = fileId;
-
 
 		if(typeof editorSelf.getGitShaBrowser === 'function')
 		{
@@ -63,27 +83,13 @@ export class AceEditorPool
 		console.warn('Setting ace9 language highlighter: ' + mode + ' from ' + fileId);
 		session.setMode(mode);
 
-		bindBlockTrackerToSession(session, editor);
-		onBlockTrackerCursorChange(session, editor);
-
 		if(fileId.endsWith('.c') || fileId.endsWith('.h'))
 		{
 			session.setTabSize(4);
 		}
 
 		this.sessionCache[fileId] = session;
-
-		editor.setSession(session);
-		editor.resize();
-		editor.renderer.updateFull();
-		tryLoadingTerminalEditorBridge(editor);
-		editorSelf.ace?.require(["ace/mode/antlr_worker"], (antlrWorkerModule) =>
-		{
-			if(antlrWorkerModule && antlrWorkerModule.switchActiveSession)
-			{
-				antlrWorkerModule.switchActiveSession(session);
-			}
-		});
+		updateSessions(session);
 
 		return session;
 	}
