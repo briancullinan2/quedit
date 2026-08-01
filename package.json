@@ -22,6 +22,7 @@
 		"@lumino/widgets": "^2.9.0",
 		"ace-builds": "^1.44.0",
 		"jszip": "^3.10.1",
+		"litegraph.js": "^0.7.18",
 		"live-server": "^1.2.2"
 	},
 	"devDependencies": {

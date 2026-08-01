@@ -69,6 +69,9 @@ export function collectDependencies(rawCode: string, baseRoute: string, dependen
 			} else if(moduleName === 'xterm' || moduleName === '@xterm/xterm')
 			{
 				newDependency = '/components/terminal/xterm.js';
+			} else if(moduleName === 'litegraph.js')
+			{
+				newDependency = '/components/graph/litegraph.min.js';
 			} else if((moduleName.startsWith('./') || moduleName.startsWith('../'))
 				&& baseRoute?.includes('.'))
 			{
@@ -106,6 +109,9 @@ export function collectDependencies(rawCode: string, baseRoute: string, dependen
 				} else if((moduleName === 'xterm' || moduleName === '@xterm/xterm') && baseRoute)
 				{
 					newDependency = '/components/terminal/xterm.js';
+				} else if((moduleName === 'litegraph.js'))
+				{
+					newDependency = '/components/graph/litegraph.min.js';
 				} else if((moduleName.startsWith('./') || moduleName.startsWith('../'))
 					&& baseRoute?.includes('.'))
 				{
@@ -422,6 +428,9 @@ export function transpileTypescriptWidget(rawCode: string, baseRoute: string): a
 								} else if(moduleName === './tree.js')
 								{
 									path.replaceWithSourceString('window.Tree');
+								} else if(moduleName === 'litegraph.ks')
+								{
+									path.replaceWithSourceString('LiteGraph');
 								} else if(moduleName === './bundle.js')
 								{
 									path.replaceWithSourceString('window');
@@ -467,6 +476,9 @@ export function transpileTypescriptWidget(rawCode: string, baseRoute: string): a
 							{
 								globalExpression = t.identifier('window');
 							} else if(moduleName === 'xterm' || moduleName === '@xterm/xterm')
+							{
+								globalExpression = t.identifier('window');
+							} else if(moduleName === 'litegraph.js')
 							{
 								globalExpression = t.identifier('window');
 							} else if(moduleName.startsWith('./') || moduleName.startsWith('../'))

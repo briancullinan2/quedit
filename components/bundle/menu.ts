@@ -59,6 +59,7 @@ export const MODULE_REGISTRY: Record<string, ComponentRoute> = {
 	'settings': { label: 'Edit Settings', url: './components/editor/widget-settings.ts', className: 'SettingsWidget', iconClass: 'bx bx-gear' },
 	'viewport-frame': { label: '3D Viewport', url: './components/map-loader/widget.ts', className: 'TojiWidget', iconClass: 'bx bx-joystick' },
 	'terminal-container': { label: 'Show Console', url: './components/terminal/widget.ts', className: 'TerminalWidget', iconClass: 'bx bx-terminal' },
+	'graph': { label: 'Workflow Graph', url: './components/graph/widget.ts', className: 'LightGraphWidget', iconClass: 'bx bx-chart-stacked-rows' },
 };
 
 menuSelf.MODULE_REGISTRY = MODULE_REGISTRY;
