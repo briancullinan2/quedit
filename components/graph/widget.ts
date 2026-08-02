@@ -1,6 +1,6 @@
 import { Widget } from '@lumino/widgets';
 import { Message } from '@lumino/messaging';
-import { LGraph, LGraphCanvas, LGraphNode } from 'litegraph.js';
+import { LGraph, LGraphCanvas, LGraphNode, LiteGraph } from 'litegraph.js';
 import { populateDemoNodes } from './widget-nodes';
 
 // Extend window scope for system-wide module/menu bindings
@@ -260,6 +260,135 @@ export class LightGraphWidget extends Widget
 		});
 	}
 
+
+	static syncThemeWithAce(graphCanvas: LGraphCanvas): void
+	{
+		const style = getComputedStyle(document.body);
+		const getAceVar = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
+
+		// 1. Fetch Ace CSS Variable Values
+		const background = getAceVar('--ace-bg', '#1e1e1e');
+		const foreground = getAceVar('--ace-foreground', '#cccccc');
+		const gutter = getAceVar('--ace-gutter-bg', '#252526');
+		const pink = getAceVar('--ace-pink', '#ff79c6');
+		const purple = getAceVar('--ace-purple', '#bd93f9');
+		const blue = getAceVar('--ace-blue', '#8be9fd');
+		const green = getAceVar('--ace-green', '#50fa7b');
+
+		// 2. DOM Canvas Surface Setup
+		if(graphCanvas.bgcanvas)
+		{
+			graphCanvas.bgcanvas.style.backgroundColor = background;
+		}
+		if(graphCanvas.canvas)
+		{
+			graphCanvas.canvas.style.backgroundColor = background;
+		}
+		graphCanvas.clear_background = true;
+
+		// 3. Configure Link Wires & Active Connections
+		// Set link colors to vibrant theme accents instead of grey gutter colors
+		graphCanvas.default_link_color = blue;
+		graphCanvas.default_connection_color = {
+			input_off: gutter,
+			input_on: green,
+			output_off: gutter,
+			output_on: green
+		};
+
+		(LiteGraph as any).LINK_COLOR = blue;
+		(LiteGraph as any).EVENT_LINK_COLOR = purple;
+		(LiteGraph as any).CONNECTING_LINK_COLOR = pink;
+
+		// Map data types (number, string, boolean, etc.) to distinct colored wires
+		LGraphCanvas.link_type_colors = {
+			number: blue,
+			string: green,
+			boolean: pink,
+			event: purple,
+			action: purple
+		};
+
+		// 4. Override LiteGraph Text & Widget Constants
+		(LiteGraph as any).NODE_TEXT_COLOR = foreground;
+		(LiteGraph as any).NODE_TITLE_COLOR = foreground;
+		(LiteGraph as any).NODE_SELECTED_TITLE_COLOR = pink;
+
+		(LiteGraph as any).WIDGET_BGCOLOR = gutter;
+		(LiteGraph as any).WIDGET_TEXT_COLOR = foreground;
+		(LiteGraph as any).WIDGET_SECONDARY_TEXT_COLOR = foreground;
+
+		// 5. Retheme Node Color Palettes
+		LGraphCanvas.node_colors = {
+			default: {
+				color: gutter,
+				bgcolor: background,
+				groupcolor: gutter
+			},
+			blue: {
+				color: blue,
+				bgcolor: background,
+				groupcolor: blue
+			},
+			purple: {
+				color: purple,
+				bgcolor: background,
+				groupcolor: purple
+			},
+			green: {
+				color: green,
+				bgcolor: background,
+				groupcolor: green
+			},
+			pink: {
+				color: pink,
+				bgcolor: background,
+				groupcolor: pink
+			}
+		};
+
+		// 6. Custom Background Painter with Responsive Grid Lines
+		graphCanvas.onDrawBackground = (ctx: CanvasRenderingContext2D, visibleArea: number[]) =>
+		{
+			const [x, y, width, height] = visibleArea;
+
+			ctx.save();
+
+			// Fill background base
+			ctx.fillStyle = background;
+			ctx.fillRect(x, y, width, height);
+
+			// Draw Subtle Grid Lines
+			const gridSize = 20;
+			const startX = Math.floor(x / gridSize) * gridSize;
+			const startY = Math.floor(y / gridSize) * gridSize;
+
+			ctx.strokeStyle = gutter;
+			ctx.lineWidth = 1;
+			ctx.globalAlpha = 0.35; // Soft opacity for background grid
+
+			ctx.beginPath();
+			for(let gx = startX; gx < x + width; gx += gridSize)
+			{
+				ctx.moveTo(gx, y);
+				ctx.lineTo(gx, y + height);
+			}
+			for(let gy = startY; gy < y + height; gy += gridSize)
+			{
+				ctx.moveTo(x, gy);
+				ctx.lineTo(x + width, gy);
+			}
+			ctx.stroke();
+
+			ctx.restore();
+		};
+
+		// 7. Trigger Full Viewport Redraw
+		graphCanvas.setDirty(true, true);
+		graphCanvas.draw(true, true);
+	}
+
+
 	public get graphId(): string
 	{
 		return this._graphId;
@@ -302,6 +431,7 @@ export class LightGraphWidget extends Widget
 		}
 
 		populateDemoNodes(this._pooledCanvas?.session?.graph);
+		LightGraphWidget.syncThemeWithAce(this._pooledCanvas.graphCanvas);
 
 		appSelf.registerAllCommands?.([]);
 		appSelf.injectMenus?.(LightGraphWidget.name, []);

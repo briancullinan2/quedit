@@ -69,7 +69,7 @@ export function updateHashFromWidget(shownWidget: Widget)
 	if(widgetTypeName === 'AceEditorWidget')
 	{
 		const aceEditor = shownWidget as AceEditorWidget;
-		historyToolbar.recordFileHistory(aceEditor._fileId, void 0, (aceEditor._editor?.getCursorPosition().row ?? 0) + 1);
+		historyToolbar.recordFileHistory(aceEditor.fileId, void 0, (aceEditor._editor?.getCursorPosition().row ?? 0) + 1);
 	} else if(widgetTypeName === 'TerminalWidget')
 	{
 		const filterId = (shownWidget as TerminalWidget).filterId;

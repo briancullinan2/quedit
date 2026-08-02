@@ -9,6 +9,7 @@ import { triggerPanelRoute } from "./menu";
 import type { LuminoFilesWindow } from "./lumino.d";
 import type { EditorWindow } from "../editor/widget.d";
 import type { AceEditorWidget } from "../editor/widget";
+import type { PaintWidget } from "../paint/widget";
 
 const luminoSelf: LuminoFilesWindow & EditorWindow = self as unknown as any;
 
@@ -47,8 +48,10 @@ export class FileManager
 	 */
 	public static async findFileTestPath(hintPath?: string): Promise<ResolvedLocationTuple>
 	{
-		const candidates = this.extractCandidates(hintPath);
-		if(candidates.length === 0)
+		const candidates = this.extractCandidates(hintPath)
+			.filter(item => item.testPath && item.testPath.length !== 0);
+
+		if(candidates.length === 0 || hintPath?.startsWith('temp-'))
 		{
 			console.log(`[VFS Lookup Failed] File: ${hintPath}`);
 			return [null, null, null, null];
@@ -67,7 +70,13 @@ export class FileManager
 				console.log(`[VFS Resolved IndexedDB] File: ${currentPath} | Line: ${item.line}`);
 				return [currentPath, localResult.dbKey, localResult.fileNode, item.line];
 			}
+		}
 
+
+		for(const item of candidates)
+		{
+			if(!item.testPath || item.testPath.length === 0) continue;
+			const currentPath = item.testPath;
 			// LAYER B: Check Client IndexedDB Database Contexts
 			const dbResult = await this.checkIndexedDatabases(currentPath);
 			if(dbResult)
@@ -75,6 +84,13 @@ export class FileManager
 				console.log(`[VFS Resolved IndexedDB] File: ${currentPath} | Line: ${item.line}`);
 				return [currentPath, dbResult.dbKey, dbResult.fileNode, item.line];
 			}
+		}
+
+
+		for(const item of candidates)
+		{
+			if(!item.testPath || item.testPath.length === 0) continue;
+			const currentPath = item.testPath;
 
 			// LAYER A: Check Memory-Cached Repositories
 			const memoryResult = await this.checkMemoryRepositories(currentPath, activeRepositories);
@@ -401,6 +417,22 @@ export class FileManager
 		column?: null | null
 	)
 	{
+		// check to make sure it's not already loaded
+		for(let w of luminoSelf.mainDock?.widgets() ?? [])
+		{
+			if((w.constructor.name === 'AceEditorWidget'
+				&& (w as AceEditorWidget)._editor
+				&& (w as AceEditorWidget).fileId === filePath)
+				|| (w.constructor.name === 'PaintWidget'
+					&& (w as PaintWidget)._instance
+					&& (w as PaintWidget).fileId === filePath))
+			{
+				luminoSelf.mainDock?.activateWidget(w);
+				w.activate();
+				return;
+			}
+		}
+
 		const [realFilePath, selectedGithub, dbFile, lineNumber] = await this.findFileTestPath(filePath) ?? [];
 		if(!realFilePath || !selectedGithub) return;
 
